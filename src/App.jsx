@@ -205,18 +205,184 @@ function Register() {
   );
 }
 
+function AccountVerified() {
+  return (
+    <>
+      <div className="min-h-screen min-w-screen flex items-center justify-center flex-col">
+        <Icon
+          icon="ph:seal-check"
+          width="200"
+          height="200"
+          color="var(--color-primary)"
+        />
+        <h2 className="text-2xl font-bold mt-4">Account Verified</h2>
+        <p className="text-gray-600 mt-2">
+          Your account was successfully verified.
+        </p>
+        <Link
+          to="/"
+          className="w-xs mt-8 bg-primary text-white px-6 py-3 rounded-md hover:bg-primary-light transition-colors cursor-pointer font-medium flex justify-center"
+        >
+          Continue
+        </Link>
+      </div>
+    </>
+  );
+}
+
 function Home() {
-  return <h2>Home Page</h2>;
+  return (
+    <>
+      <div className="min-h-screen w-screen flex flex-col relative items-center scrollbar-hide bg-background overflow-x-hidden text-text">
+        <div className="fixed top-0 left-0 w-full pt-8 bg-primary z-[1000] flex items-center justify-center py-4">
+          <div className="relative w-3/4 max-w-lg ml-4">
+            <button
+              type="button"
+              className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"
+              aria-label="Search"
+            >
+              <Icon
+                icon="streamline-sharp:magnifying-glass-solid"
+                width="24"
+                height="24"
+              />
+            </button>
+            <input
+              type="text"
+              className="bg-white w-full p-3 pl-12 rounded-md text-base outline-none focus:outline-none focus:ring-2 focus:ring-primary shadow-sm"
+              placeholder="Search..."
+            />
+          </div>
+          <div className="relative">
+            <button
+              type="button"
+              className="ml-2 text-white px-4 py-3 rounded-md hover:bg-primary-light transition-colors cursor-pointer font-medium"
+              aria-label="Cart"
+            >
+              <Icon icon="ic:baseline-shopping-cart" width="28" height="28" />
+            </button>
+            <div className="absolute top-1 right-1 bg-red-500 text-white text-xs w-5 h-5 flex items-center justify-center rounded-full cursor-pointer select-none">
+              31
+            </div>
+          </div>
+          <div className="relative">
+            <button
+              type="button"
+              className="ml-2 text-white px-4 py-3 rounded-md hover:bg-primary-light transition-colors cursor-pointer font-medium"
+              aria-label="Messages"
+            >
+              <Icon icon="ic:baseline-message" width="28" height="28" />
+            </button>
+            <div className="absolute top-1 right-1 bg-red-500 text-white text-xs w-5 h-5 flex items-center justify-center rounded-full cursor-pointer select-none">
+              5
+            </div>
+          </div>
+        </div>
+        <div className="w-full mt-[120px] flex flex-col items-center overflow-x-hidden">
+          <div className="flex overflow-x-auto gap-6 px-4 py-2 scrollbar-hide w-full sm:w-auto">
+            {[
+              { name: "Vegetables", icon: "twemoji:carrot" },
+              { name: "Meat", icon: "twemoji:cut-of-meat" },
+              { name: "Grains", icon: "twemoji:bread" },
+              { name: "Seafood", icon: "twemoji:fish" },
+              { name: "Beverages", icon: "twemoji:beverage-box" },
+              { name: "Snacks", icon: "twemoji:popcorn" },
+            ].map((category, index) => (
+              <div
+                key={index}
+                className="flex flex-col items-center justify-center min-w-[80px] cursor-pointer"
+              >
+                <Icon icon={category.icon} width="40" height="40" />
+                <span className="mt-2 text-sm font-medium text-text">
+                  {category.name}
+                </span>
+              </div>
+            ))}
+          </div>
+          <div className="md:max-w-4/5 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 w-full px-4 my-4 overflow-x-hidden overflow-y-auto scrollbar-hide">
+            {[
+              {
+                name: "Carrots",
+                price: "$2.50",
+                image: "https://www.hhs1.com/hubfs/carrots%20on%20wood-1.jpg",
+              },
+              {
+                name: "Chicken",
+                price: "$8.00",
+                image: "https://www.hhs1.com/hubfs/carrots%20on%20wood-1.jpg",
+              },
+              {
+                name: "Rice",
+                price: "$1.20",
+                image: "https://www.hhs1.com/hubfs/carrots%20on%20wood-1.jpg",
+              },
+              {
+                name: "Salmon",
+                price: "$12.00",
+                image: "https://www.hhs1.com/hubfs/carrots%20on%20wood-1.jpg",
+              },
+              {
+                name: "Juice",
+                price: "$3.00",
+                image: "https://www.hhs1.com/hubfs/carrots%20on%20wood-1.jpg",
+              },
+              {
+                name: "Chips",
+                price: "$1.50",
+                image: "https://www.hhs1.com/hubfs/carrots%20on%20wood-1.jpg",
+              },
+              {
+                name: "Chips",
+                price: "$1.50",
+                image: "https://www.hhs1.com/hubfs/carrots%20on%20wood-1.jpg",
+              },
+              {
+                name: "Chips",
+                price: "$1.50",
+                image: "https://www.hhs1.com/hubfs/carrots%20on%20wood-1.jpg",
+              },
+              {
+                name: "Chips",
+                price: "$1.50",
+                image: "https://www.hhs1.com/hubfs/carrots%20on%20wood-1.jpg",
+              },
+            ].map((product, index) => (
+              <div
+                key={index}
+                className="bg-white rounded-lg shadow-md p-4 flex flex-col items-center"
+              >
+                <img
+                  src={product.image}
+                  alt={product.name}
+                  className="w-full h-40 object-cover rounded-md mb-4"
+                />
+                <h3 className="text-lg font-medium text-text">
+                  {product.name}
+                </h3>
+                <p className="text-primary font-semibold mt-2">
+                  {product.price}
+                </p>
+                <button className="mt-4 bg-primary text-white px-4 py-2 rounded-md hover:bg-primary-light transition-colors font-medium cursor-pointer">
+                  Add to Cart
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </>
+  );
 }
 
 function App() {
-  const [user, setUser] = useState(false);
+  const [user, setUser] = useState(true);
 
   return (
     <Router>
       <Routes>
         <Route path="/" element={user ? <Home /> : <Login />} />
         <Route path="/register" element={user ? <Home /> : <Register />} />
+        <Route path="/account-verified" element={<AccountVerified />} />
       </Routes>
     </Router>
   );
