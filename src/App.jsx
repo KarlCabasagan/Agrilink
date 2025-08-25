@@ -262,7 +262,7 @@ function Home() {
               <Icon icon="ic:baseline-shopping-cart" width="28" height="28" />
             </button>
             <div className="absolute top-1 right-1 bg-red-500 text-white text-xs w-5 h-5 flex items-center justify-center rounded-full cursor-pointer select-none">
-              31
+              3
             </div>
           </div>
           <div className="relative">
@@ -274,13 +274,14 @@ function Home() {
               <Icon icon="ic:baseline-message" width="28" height="28" />
             </button>
             <div className="absolute top-1 right-1 bg-red-500 text-white text-xs w-5 h-5 flex items-center justify-center rounded-full cursor-pointer select-none">
-              5
+              9+
             </div>
           </div>
         </div>
-        <div className="w-full mt-[120px] flex flex-col items-center overflow-x-hidden">
-          <div className="flex overflow-x-auto gap-6 px-4 py-2 scrollbar-hide w-full sm:w-auto">
+        <div className="w-full sm:w-10/12 mt-[120px] flex flex-col items-center overflow-x-hidden">
+          <div className="flex overflow-x-auto gap-6 px-4 py-2 scrollbar-hide w-full sm:w-auto md:max-w-4/5 bg-white rounded-xl">
             {[
+              { name: "All", icon: "mdi:apps-box" },
               { name: "Vegetables", icon: "twemoji:carrot" },
               { name: "Meat", icon: "twemoji:cut-of-meat" },
               { name: "Grains", icon: "twemoji:bread" },
@@ -292,79 +293,95 @@ function Home() {
                 key={index}
                 className="flex flex-col items-center justify-center min-w-[80px] cursor-pointer"
               >
-                <Icon icon={category.icon} width="40" height="40" />
+                <Icon
+                  icon={category.icon}
+                  width="40"
+                  height="40"
+                  color={index === 0 ? "#B0BEC5" : "currentColor"} // Pale color for "All" category
+                />
                 <span className="mt-2 text-sm font-medium text-text">
                   {category.name}
                 </span>
               </div>
             ))}
           </div>
-          <div className="md:max-w-4/5 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 w-full px-4 my-4 overflow-x-hidden overflow-y-auto scrollbar-hide">
+          <div className="w-full flex sm:justify-center my-1 mt-6">
+            <h2 className="text-xl font-bold text-text self-start px-4 sm:px-0">
+              All Products
+            </h2>
+          </div>
+          <div className="md:max-w-4/5 px-2 sm:px-0 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 w-full my-4 overflow-x-hidden overflow-y-auto scrollbar-hide">
             {[
               {
-                name: "Carrots",
+                name: "Carrots Fresh From Farm | Very Fresh Carrots | Buy Here Now SSSD",
                 price: "$2.50",
                 image: "https://www.hhs1.com/hubfs/carrots%20on%20wood-1.jpg",
+                address: "Maria Cristina, Purok 9 Zone 3",
               },
               {
                 name: "Chicken",
                 price: "$8.00",
                 image: "https://www.hhs1.com/hubfs/carrots%20on%20wood-1.jpg",
+                address: "Zone 4, Barangay 5",
               },
               {
                 name: "Rice",
                 price: "$1.20",
                 image: "https://www.hhs1.com/hubfs/carrots%20on%20wood-1.jpg",
+                address: "Poblacion, City Center",
               },
               {
                 name: "Salmon",
                 price: "$12.00",
                 image: "https://www.hhs1.com/hubfs/carrots%20on%20wood-1.jpg",
+                address: "Seaside Market, Zone 2",
               },
               {
                 name: "Juice",
                 price: "$3.00",
                 image: "https://www.hhs1.com/hubfs/carrots%20on%20wood-1.jpg",
+                address: "Green Valley, Zone 7",
               },
               {
                 name: "Chips",
                 price: "$1.50",
                 image: "https://www.hhs1.com/hubfs/carrots%20on%20wood-1.jpg",
-              },
-              {
-                name: "Chips",
-                price: "$1.50",
-                image: "https://www.hhs1.com/hubfs/carrots%20on%20wood-1.jpg",
-              },
-              {
-                name: "Chips",
-                price: "$1.50",
-                image: "https://www.hhs1.com/hubfs/carrots%20on%20wood-1.jpg",
-              },
-              {
-                name: "Chips",
-                price: "$1.50",
-                image: "https://www.hhs1.com/hubfs/carrots%20on%20wood-1.jpg",
+                address: "Hilltop, Zone 8",
               },
             ].map((product, index) => (
               <div
                 key={index}
-                className="bg-white rounded-lg shadow-md p-4 flex flex-col items-center"
+                className="bg-white rounded-lg shadow-md flex flex-col items-center h-full"
               >
                 <img
                   src={product.image}
                   alt={product.name}
-                  className="w-full h-40 object-cover rounded-md mb-4"
+                  className="w-full h-48 object-cover rounded-md mb-2 rounded-b-none"
                 />
-                <h3 className="text-lg font-medium text-text">
-                  {product.name}
-                </h3>
-                <p className="text-primary font-semibold mt-2">
-                  {product.price}
-                </p>
-                <button className="mt-4 bg-primary text-white px-4 py-2 rounded-md hover:bg-primary-light transition-colors font-medium cursor-pointer">
-                  Add to Cart
-                </button>
+                <div className="w-full flex flex-col p-3 pt-0 flex-grow">
+                  <h3 className="font-medium text-text line-clamp-2 sm:line-clamp-1">
+                    {product.name}
+                  </h3>
+                  <div className="w-full flex justify-between items-center mb-2">
+                    <p className="text-primary font-semibold mt-2">
+                      {product.price}
+                    </p>
+                    <p className="text-sm mt-2.5 text-gray-500">100 sold</p>
+                  </div>
+                  <div className="mt-auto">
+                    <div className="flex items-center text-gray-600">
+                      <Icon
+                        icon="mdi:map-marker"
+                        width="14"
+                        height="14"
+                        className="mr-2 min-w-[14px]"
+                      />
+                      <span className="text-sm line-clamp-1">
+                        {product.address}
+                      </span>
+                    </div>
+                  </div>
+                </div>
               </div>
             ))}
           </div>
