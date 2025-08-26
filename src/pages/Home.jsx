@@ -14,6 +14,7 @@ function Home() {
     { name: "Snacks", icon: "twemoji:popcorn" },
   ];
   const [selectedCategory, setSelectedCategory] = useState(categories[0].name);
+  const [search, setSearch] = useState("");
 
   const products = [
     {
@@ -60,15 +61,23 @@ function Home() {
     },
   ];
 
-  const filteredProducts =
+  const filteredProducts = (
     selectedCategory === "All"
       ? products
-      : products.filter((product) => product.category === selectedCategory);
+      : products.filter((product) => product.category === selectedCategory)
+  ).filter(
+    (product) =>
+      product.name.toLowerCase().includes(search.toLowerCase()) ||
+      product.address.toLowerCase().includes(search.toLowerCase())
+  );
 
   return (
     <>
       <div className="min-h-screen w-full flex flex-col relative items-center scrollbar-hide bg-background overflow-x-hidden text-text">
-        <ConsumerSearch />
+        <ConsumerSearch
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+        />
         <div className="w-full sm:w-10/12 mt-[120px] flex flex-col items-center overflow-x-hidden">
           <div className="flex overflow-x-auto gap-6 px-4 py-2 scrollbar-hide w-full sm:w-auto md:max-w-4/5 bg-white rounded-xl">
             {categories.map((category, index) => (

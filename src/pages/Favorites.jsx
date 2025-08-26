@@ -1,8 +1,10 @@
 import { Icon } from "@iconify/react";
 import { Link } from "react-router-dom";
 import ConsumerSearch from "../components/ConsumerSearch.jsx";
+import { useState } from "react";
 
 function Favorites() {
+  const [search, setSearch] = useState("");
   const favoriteProducts = [
     {
       name: "Carrots Fresh From Farm | Very Fresh Carrots | Buy Here Now SSSD",
@@ -18,23 +20,31 @@ function Favorites() {
     },
   ];
 
+  const filteredFavorites = favoriteProducts.filter(
+    (product) =>
+      product.name.toLowerCase().includes(search.toLowerCase()) ||
+      product.address.toLowerCase().includes(search.toLowerCase())
+  );
   return (
     <>
       <div className="min-h-screen w-full flex flex-col relative items-center scrollbar-hide bg-background overflow-x-hidden text-text">
-        <ConsumerSearch />
+        <ConsumerSearch
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+        />
         <div className="w-full sm:w-10/12 mt-[120px] flex flex-col items-center overflow-x-hidden">
           <div className="w-full flex sm:justify-center my-1 mt-6">
             <h2 className="text-xl font-bold text-gray-600 self-start px-4 sm:px-0">
               Favorite Products
             </h2>
           </div>
-          <div className="md:w-11/12 px-2 sm:px-0 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 w-full my-4 overflow-x-hidden overflow-y-auto scrollbar-hide">
-            {favoriteProducts.length === 0 ? (
+          <div className="md:w-11/12 px-2 pb-24 sm:px-0 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 w-full my-4 overflow-x-hidden overflow-y-auto scrollbar-hide">
+            {filteredFavorites.length === 0 ? (
               <div className="col-span-full text-center text-gray-400 py-8">
                 No favorite products found.
               </div>
             ) : (
-              favoriteProducts.map((product, index) => (
+              filteredFavorites.map((product, index) => (
                 <div
                   key={index}
                   className="bg-white rounded-lg shadow-md flex flex-col items-center h-full"

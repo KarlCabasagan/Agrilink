@@ -1,6 +1,6 @@
 import { Icon } from "@iconify/react";
 
-function ConsumerSearch() {
+function ConsumerSearch({ value, onChange }) {
   return (
     <div className="fixed top-0 left-0 w-full pt-8 bg-primary z-[1000] flex items-center justify-center py-4">
       <div className="relative w-3/4 max-w-lg ml-4">
@@ -19,6 +19,8 @@ function ConsumerSearch() {
           type="text"
           className="bg-white w-full p-3 pl-12 rounded-md text-base outline-none focus:outline-none focus:ring-2 focus:ring-primary shadow-sm"
           placeholder="Search..."
+          value={value}
+          onChange={onChange}
         />
       </div>
       <div className="relative">
