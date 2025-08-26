@@ -23,11 +23,9 @@ function Profile() {
                   johndoe@example.com
                 </p>
                 <p className="text-gray-600 truncate">
-                  Location: Maria Cristina, Purok 9 Zone 3
+                  Maria Cristina, Purok 9 Zone 3
                 </p>
-                <p className="text-gray-600 truncate">
-                  Contact: +63 912 345 6789
-                </p>
+                <p className="text-gray-600 truncate">+63 912 345 6789</p>
               </div>
               <div className="flex items-center pl-4 border-l-[1px] border-gray-300">
                 <button className="cursor-pointer text-text">
