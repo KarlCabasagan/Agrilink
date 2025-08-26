@@ -9,10 +9,10 @@ function Home() {
     { name: "All", icon: "mdi:apps-box" },
     { name: "Vegetables", icon: "twemoji:carrot" },
     { name: "Fruits", icon: "twemoji:red-apple" },
-    { name: "Grains", icon: "twemoji:bread" },
-    { name: "Seafood", icon: "twemoji:fish" },
-    { name: "Beverages", icon: "twemoji:beverage-box" },
-    { name: "Snacks", icon: "twemoji:popcorn" },
+    { name: "Grains", icon: "twemoji:cooked-rice" },
+    { name: "Spices", icon: "twemoji:onion" },
+    { name: "Root and Tuber", icon: "twemoji:potato" },
+    { name: "Legumes", icon: "twemoji:beans" },
   ];
   const [selectedCategory, setSelectedCategory] = useState(categories[0].name);
   const [search, setSearch] = useState("");
@@ -26,11 +26,11 @@ function Home() {
       category: "Vegetables",
     },
     {
-      name: "Chicken",
+      name: "Apple Barato Kaayo",
       price: "$8.00",
       image: "https://www.hhs1.com/hubfs/carrots%20on%20wood-1.jpg",
       address: "Zone 4, Barangay 5",
-      category: "Meat",
+      category: "Fruits",
     },
     {
       name: "Rice",
@@ -40,25 +40,25 @@ function Home() {
       category: "Grains",
     },
     {
-      name: "Salmon",
+      name: "Monggo | Sale",
       price: "$12.00",
       image: "https://www.hhs1.com/hubfs/carrots%20on%20wood-1.jpg",
       address: "Seaside Market, Zone 2",
-      category: "Seafood",
+      category: "Legumes",
     },
     {
-      name: "Juice",
+      name: "Onion",
       price: "$3.00",
       image: "https://www.hhs1.com/hubfs/carrots%20on%20wood-1.jpg",
       address: "Green Valley, Zone 7",
-      category: "Beverages",
+      category: "Spices",
     },
     {
-      name: "Chips",
+      name: "Potato",
       price: "$1.50",
       image: "https://www.hhs1.com/hubfs/carrots%20on%20wood-1.jpg",
       address: "Hilltop, Zone 8",
-      category: "Snacks",
+      category: "Root and Tuber",
     },
   ];
 
@@ -84,7 +84,7 @@ function Home() {
             {categories.map((category, index) => (
               <div
                 key={index}
-                className={`flex flex-col items-center justify-center min-w-[80px] cursor-pointer ${
+                className={`flex flex-col items-center justify-center min-w-[80px] cursor-pointer text-center ${
                   selectedCategory === category.name
                     ? "bg-primary/10 rounded-lg"
                     : ""
@@ -100,7 +100,7 @@ function Home() {
                   }
                 />
                 <span
-                  className={`mt-2 text-sm font-medium ${
+                  className={`mt-2 text-sm font-medium truncate max-w-[80px] ${
                     selectedCategory === category.name
                       ? "text-primary"
                       : "text-text"
