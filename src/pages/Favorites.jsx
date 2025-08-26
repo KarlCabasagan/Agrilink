@@ -1,5 +1,6 @@
 import { Icon } from "@iconify/react";
 import { Link } from "react-router-dom";
+import NavigationBar from "../components/NavigationBar";
 import ConsumerSearch from "../components/ConsumerSearch.jsx";
 import { useState } from "react";
 
@@ -83,31 +84,7 @@ function Favorites() {
             )}
           </div>
         </div>
-        <div className="fixed bottom-0 left-0 w-full bg-white shadow-md z-[1000]">
-          <div className="flex justify-around items-center py-2">
-            <Link
-              to="/"
-              className="flex flex-col items-center text-gray-600 hover:text-primary transition-colors"
-            >
-              <Icon icon="ic:baseline-home" width="28" height="28" />
-              <span className="text-xs mt-1">Home</span>
-            </Link>
-            <Link
-              to="/favorites"
-              className="flex flex-col items-center text-primary hover:text-primary transition-colors"
-            >
-              <Icon icon="ic:baseline-favorite-border" width="28" height="28" />
-              <span className="text-xs mt-1">Favorites</span>
-            </Link>
-            <Link
-              to="/profile"
-              className="flex flex-col items-center text-gray-600 hover:text-primary transition-colors"
-            >
-              <Icon icon="ic:baseline-person-outline" width="28" height="28" />
-              <span className="text-xs mt-1">Profile</span>
-            </Link>
-          </div>
-        </div>
+        <NavigationBar />
       </div>
     </>
   );
