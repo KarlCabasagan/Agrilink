@@ -8,7 +8,7 @@ function Home() {
   const categories = [
     { name: "All", icon: "mdi:apps-box" },
     { name: "Vegetables", icon: "twemoji:carrot" },
-    { name: "Meat", icon: "twemoji:cut-of-meat" },
+    { name: "Fruits", icon: "twemoji:red-apple" },
     { name: "Grains", icon: "twemoji:bread" },
     { name: "Seafood", icon: "twemoji:fish" },
     { name: "Beverages", icon: "twemoji:beverage-box" },
