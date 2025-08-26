@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Icon } from "@iconify/react";
 import { Link } from "react-router-dom";
+import ConsumerSearch from "../components/ConsumerSearch.jsx";
 
 function Home() {
   const categories = [
@@ -67,50 +68,7 @@ function Home() {
   return (
     <>
       <div className="min-h-screen w-full flex flex-col relative items-center scrollbar-hide bg-background overflow-x-hidden text-text">
-        <div className="fixed top-0 left-0 w-full pt-8 bg-primary z-[1000] flex items-center justify-center py-4">
-          <div className="relative w-3/4 max-w-lg ml-4">
-            <button
-              type="button"
-              className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"
-              aria-label="Search"
-            >
-              <Icon
-                icon="streamline-sharp:magnifying-glass-solid"
-                width="24"
-                height="24"
-              />
-            </button>
-            <input
-              type="text"
-              className="bg-white w-full p-3 pl-12 rounded-md text-base outline-none focus:outline-none focus:ring-2 focus:ring-primary shadow-sm"
-              placeholder="Search..."
-            />
-          </div>
-          <div className="relative">
-            <button
-              type="button"
-              className="ml-2 text-white px-4 py-3 rounded-md hover:bg-primary-light transition-colors cursor-pointer font-medium"
-              aria-label="Cart"
-            >
-              <Icon icon="ic:baseline-shopping-cart" width="28" height="28" />
-            </button>
-            <div className="absolute top-1 right-1 bg-red-500 text-white text-xs w-5 h-5 flex items-center justify-center rounded-full cursor-pointer select-none">
-              3
-            </div>
-          </div>
-          <div className="relative">
-            <button
-              type="button"
-              className="ml-2 text-white px-4 py-3 rounded-md hover:bg-primary-light transition-colors cursor-pointer font-medium"
-              aria-label="Messages"
-            >
-              <Icon icon="ic:baseline-message" width="28" height="28" />
-            </button>
-            <div className="absolute top-1 right-1 bg-red-500 text-white text-xs w-5 h-5 flex items-center justify-center rounded-full cursor-pointer select-none">
-              9+
-            </div>
-          </div>
-        </div>
+        <ConsumerSearch />
         <div className="w-full sm:w-10/12 mt-[120px] flex flex-col items-center overflow-x-hidden">
           <div className="flex overflow-x-auto gap-6 px-4 py-2 scrollbar-hide w-full sm:w-auto md:max-w-4/5 bg-white rounded-xl">
             {categories.map((category, index) => (
@@ -148,7 +106,7 @@ function Home() {
               {selectedCategory} Products
             </h2>
           </div>
-          <div className="md:w-11/12 px-2 sm:px-0 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 w-full my-4 overflow-x-hidden overflow-y-auto scrollbar-hide">
+          <div className="md:w-11/12 px-2 pb-24 sm:px-0 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 w-full my-4 overflow-x-hidden overflow-y-auto scrollbar-hide">
             {filteredProducts.length === 0 ? (
               <div className="col-span-full text-center text-gray-400 py-8">
                 No products found.
@@ -197,7 +155,7 @@ function Home() {
           <div className="flex justify-around items-center py-2">
             <Link
               to="/"
-              className="flex flex-col items-center text-gray-600 hover:text-primary transition-colors"
+              className="flex flex-col items-center text-primary hover:text-primary transition-colors"
             >
               <Icon icon="ic:baseline-home" width="28" height="28" />
               <span className="text-xs mt-1">Home</span>
