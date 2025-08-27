@@ -19,44 +19,54 @@ function Home() {
 
   const products = [
     {
-      name: "Carrots Fresh From Farm | Very Fresh Carrots | Buy Here Now SSSD",
+      id: 1,
+      name: "Carrot",
       price: "$2.50",
       image: "https://www.hhs1.com/hubfs/carrots%20on%20wood-1.jpg",
       address: "Maria Cristina, Purok 9 Zone 3",
       category: "Vegetables",
     },
     {
-      name: "Apple Barato Kaayo",
+      id: 2,
+      name: "Apple",
       price: "$8.00",
-      image: "https://www.hhs1.com/hubfs/carrots%20on%20wood-1.jpg",
+      image:
+        "https://assets.clevelandclinic.org/transform/LargeFeatureImage/cd71f4bd-81d4-45d8-a450-74df78e4477a/Apples-184940975-770x533-1_jpg",
       address: "Zone 4, Barangay 5",
       category: "Fruits",
     },
     {
+      id: 3,
       name: "Rice",
       price: "$1.20",
-      image: "https://www.hhs1.com/hubfs/carrots%20on%20wood-1.jpg",
+      image:
+        "https://cdn.prod.website-files.com/66e9e86e939e026869639119/66fc4e47b5d69fb0deb88654_iStock-153737841-scaled.jpeg",
       address: "Poblacion, City Center",
       category: "Grains",
     },
     {
-      name: "Monggo | Sale",
+      id: 4,
+      name: "Monggo",
       price: "$12.00",
-      image: "https://www.hhs1.com/hubfs/carrots%20on%20wood-1.jpg",
+      image: "https://images.yummy.ph/yummy/uploads/2021/02/monggo.jpg",
       address: "Seaside Market, Zone 2",
       category: "Legumes",
     },
     {
+      id: 5,
       name: "Onion",
       price: "$3.00",
-      image: "https://www.hhs1.com/hubfs/carrots%20on%20wood-1.jpg",
+      image:
+        "https://cdn-prod.medicalnewstoday.com/content/images/articles/276/276714/red-and-white-onions.jpg",
       address: "Green Valley, Zone 7",
       category: "Spices",
     },
     {
+      id: 6,
       name: "Potato",
       price: "$1.50",
-      image: "https://www.hhs1.com/hubfs/carrots%20on%20wood-1.jpg",
+      image:
+        "https://www.simplotfoods.com/_next/image?url=https%3A%2F%2Fimages.ctfassets.net%2F0dkgxhks0leg%2FRKiZ605RAV8kjDQnxFCWP%2Fb03b8729817c90b29b88d536bfd37ac5%2F9-Unusual-Uses-For-Potatoes.jpg%3Ffm%3Dwebp&w=1920&q=75",
       address: "Hilltop, Zone 8",
       category: "Root and Tuber",
     },
@@ -123,9 +133,10 @@ function Home() {
               </div>
             ) : (
               filteredProducts.map((product, index) => (
-                <div
+                <Link
+                  to={`/product/${product.id}`}
                   key={index}
-                  className="bg-white rounded-lg shadow-md flex flex-col items-center h-full"
+                  className="bg-white rounded-lg shadow-md flex flex-col items-center h-full cursor-pointer"
                 >
                   <img
                     src={product.image}
@@ -156,7 +167,7 @@ function Home() {
                       </div>
                     </div>
                   </div>
-                </div>
+                </Link>
               ))
             )}
           </div>

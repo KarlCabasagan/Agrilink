@@ -6,6 +6,7 @@ import Register from "./pages/Register";
 import AccountVerified from "./pages/AccountVerified";
 import Favorites from "./pages/Favorites";
 import Profile from "./pages/Profile";
+import Product from "./pages/Product";
 
 function App() {
   const [user, setUser] = useState(true);
@@ -18,6 +19,7 @@ function App() {
         <Route path="/account-verified" element={<AccountVerified />} />
         <Route path="/favorites" element={<Favorites />} />
         <Route path="/profile" element={<Profile />} />
+        <Route path="/product/:id" element={<Product />} />
       </Routes>
     </Router>
   );

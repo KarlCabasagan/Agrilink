@@ -9,7 +9,7 @@ function Profile() {
           <div className="w-full h-24 bg-primary flex justify-center items-end rounded-t-lg">
             <div className="bg-white rounded-full translate-y-1/2 p-1 shadow-md">
               <img
-                src="https://www.hhs1.com/hubfs/carrots%20on%20wood-1.jpg"
+                src="/assets/adel.jpg"
                 alt="Profile"
                 className="rounded-full object-cover w-32 h-32"
               />
@@ -18,7 +18,9 @@ function Profile() {
           <div className="p-4 pt-20">
             <div className="flex justify-between">
               <div className="max-w-[calc(100%-5rem)]">
-                <h2 className="text-2xl text-text font-bold mb-2">John Doe</h2>
+                <h2 className="text-2xl text-text font-bold mb-2">
+                  Marshal Luh
+                </h2>
                 <p className="text-gray-600 mb-4 truncate">
                   johndoe@example.com
                 </p>
@@ -36,7 +38,7 @@ function Profile() {
           </div>
         </div>
         <div className="w-11/12 bg-white p-4 rounded-lg shadow-md">
-          <button className="w-full flex border-b border-gray-300 py-4 px-1 text-left hover:bg-gray-100 transition-colors">
+          <button className="w-full flex border-b border-gray-300 py-4 px-1 text-left hover:bg-gray-100 transition-colors cursor-pointer">
             <div className="flex items-center">
               <Icon
                 icon="mingcute:shopping-cart-1-line"
@@ -52,7 +54,7 @@ function Profile() {
               className="ml-auto"
             />
           </button>
-          <button className="w-full flex border-b border-gray-300 py-4 px-1 text-left hover:bg-gray-100 transition-colors">
+          <button className="w-full flex border-b border-gray-300 py-4 px-1 text-left hover:bg-gray-100 transition-colors cursor-pointer">
             <div className="flex items-center">
               <Icon icon="ic:baseline-favorite-border" width="24" height="24" />
               <span className="ml-2">Favorite Products</span>
@@ -64,7 +66,7 @@ function Profile() {
               className="ml-auto"
             />
           </button>
-          <button className="w-full flex border-b border-gray-300 py-4 px-1 text-left hover:bg-gray-100 transition-colors">
+          <button className="w-full flex border-b border-gray-300 py-4 px-1 text-left hover:bg-gray-100 transition-colors cursor-pointer">
             <div className="flex items-center">
               <Icon icon="mingcute:truck-line" width="24" height="24" />
               <span className="ml-2">My Orders</span>
@@ -76,7 +78,7 @@ function Profile() {
               className="ml-auto"
             />
           </button>
-          <button className="w-full flex border-b border-gray-300 my-2 py-4 px-1 text-left hover:bg-gray-100 transition-colors">
+          <button className="w-full flex border-b border-gray-300 my-2 py-4 px-1 text-left hover:bg-gray-100 transition-colors cursor-pointer">
             <div className="flex items-center">
               <Icon
                 icon="mingcute:history-anticlockwise-line"
@@ -92,7 +94,7 @@ function Profile() {
               className="ml-auto"
             />
           </button>
-          <button className="w-full flex border-b border-gray-300 my-2 py-4 px-1 text-left text-primary hover:bg-gray-100 transition-colors">
+          <button className="w-full flex border-b border-gray-300 my-2 py-4 px-1 text-left text-primary hover:bg-gray-100 transition-colors cursor-pointer">
             <div className="flex items-center">
               <Icon icon="mingcute:paper-line" width="24" height="24" />
               <span className="ml-2">Apply to be a Seller</span>
@@ -105,7 +107,7 @@ function Profile() {
             />
           </button>
         </div>
-        <button className="w-11/12 text-red-600 bg-white flex border-b border-gray-300 shadow-md my-6 py-4 px-5 text-left hover:bg-gray-100 transition-colors rounded-lg">
+        <button className="w-11/12 text-red-600 bg-white flex border-b border-gray-300 shadow-md my-6 py-4 px-5 text-left hover:bg-gray-100 transition-colors rounded-lg cursor-pointer">
           <div className="flex items-center">
             <Icon icon="mingcute:delete-3-line" width="24" height="24" />
             <span className="ml-2">Delete Account</span>

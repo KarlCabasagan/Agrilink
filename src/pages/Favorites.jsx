@@ -8,16 +8,21 @@ function Favorites() {
   const [search, setSearch] = useState("");
   const favoriteProducts = [
     {
-      name: "Carrots Fresh From Farm | Very Fresh Carrots | Buy Here Now SSSD",
-      price: "$2.50",
-      image: "https://www.hhs1.com/hubfs/carrots%20on%20wood-1.jpg",
-      address: "Maria Cristina, Purok 9 Zone 3",
+      id: 4,
+      name: "Monggo",
+      price: "$12.00",
+      image: "https://images.yummy.ph/yummy/uploads/2021/02/monggo.jpg",
+      address: "Seaside Market, Zone 2",
+      category: "Legumes",
     },
     {
-      name: "Chicken",
+      id: 2,
+      name: "Apple",
       price: "$8.00",
-      image: "https://www.hhs1.com/hubfs/carrots%20on%20wood-1.jpg",
+      image:
+        "https://assets.clevelandclinic.org/transform/LargeFeatureImage/cd71f4bd-81d4-45d8-a450-74df78e4477a/Apples-184940975-770x533-1_jpg",
       address: "Zone 4, Barangay 5",
+      category: "Fruits",
     },
   ];
 
@@ -46,7 +51,8 @@ function Favorites() {
               </div>
             ) : (
               filteredFavorites.map((product, index) => (
-                <div
+                <Link
+                  to={`/product/${product.id}`}
                   key={index}
                   className="bg-white rounded-lg shadow-md flex flex-col items-center h-full"
                 >
@@ -79,7 +85,7 @@ function Favorites() {
                       </div>
                     </div>
                   </div>
-                </div>
+                </Link>
               ))
             )}
           </div>
