@@ -1,16 +1,67 @@
-import { useState } from "react";
-import { Link } from "react-router-dom";
+import { useContext, useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import { Icon } from "@iconify/react";
 import full_logo from "../assets/full_logo.png";
+
+import { AuthContext } from "../App.jsx";
+import supabase from "../SupabaseClient.jsx";
 
 function Register() {
   const [passwordVisible, setPasswordVisible] = useState(false);
   const [confirmPasswordVisible, setConfirmPasswordVisible] = useState(false);
+  const [email, setEmail] = useState("");
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+  const navigate = useNavigate();
+  const { setUser } = useContext(AuthContext);
+
   const togglePasswordVisibility = () => {
     setPasswordVisible(!passwordVisible);
   };
   const toggleConfirmPasswordVisibility = () => {
     setConfirmPasswordVisible(!confirmPasswordVisible);
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setError("");
+    if (!email || !username || !password || !confirmPassword) {
+      setError("All fields are required.");
+      return;
+    }
+    if (password !== confirmPassword) {
+      setError("Passwords do not match.");
+      return;
+    }
+    setLoading(true);
+    const options = {
+      emailRedirectTo: `${window.location.origin}/account-verified`,
+    };
+    try {
+      const { data, error: signUpError } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: { display_name: username },
+          emailRedirectTo: `${window.location.origin}/account-verified`,
+        },
+      });
+      if (signUpError) {
+        setError(signUpError.message);
+        setLoading(false);
+        return;
+      }
+      setUser(data.user || null);
+      setLoading(false);
+      navigate("/verify-account");
+    } catch (err) {
+      setError("Registration failed. Try again.");
+      console.log(err);
+      setLoading(false);
+    }
   };
 
   return (
@@ -26,28 +77,44 @@ function Register() {
             />
           </div>
           <div className="flex flex-col items-center w-full max-w-md">
-            <form className="w-full max-w-md flex flex-col items-center">
+            <form
+              className="w-full max-w-md flex flex-col items-center"
+              onSubmit={handleSubmit}
+            >
               <input
                 type="email"
                 className="bg-white w-full max-w-sm p-3 rounded-md mb-4 text-base outline-none focus:outline-none focus:ring-0 shadow-sm"
                 placeholder="Email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                autoComplete="email"
+                required
               />
               <input
                 type="text"
                 className="bg-white w-full max-w-sm p-3 rounded-md mb-4 text-base outline-none focus:outline-none focus:ring-0 shadow-sm"
                 placeholder="Username"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                autoComplete="username"
+                required
               />
               <div className="w-full max-w-sm rounded-md mb-4 relative">
                 <input
                   type={passwordVisible ? "text" : "password"}
                   className="bg-white w-full max-w-sm p-3 rounded-md text-base outline-none focus:outline-none focus:ring-0 shadow-sm"
                   placeholder="Password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  autoComplete="new-password"
+                  required
                 />
                 <button
                   type="button"
                   className="absolute right-3 top-1/2 transform -translate-y-1/2 cursor-pointer"
                   aria-label="Show password"
                   onClick={togglePasswordVisibility}
+                  tabIndex={-1}
                 >
                   <Icon
                     icon={
@@ -66,12 +133,17 @@ function Register() {
                   type={confirmPasswordVisible ? "text" : "password"}
                   className="bg-white w-full max-w-sm p-3 rounded-md text-base outline-none focus:outline-none focus:ring-0 shadow-sm"
                   placeholder="Confirm Password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  autoComplete="new-password"
+                  required
                 />
                 <button
                   type="button"
                   className="absolute right-3 top-1/2 transform -translate-y-1/2 cursor-pointer"
                   aria-label="Show password"
                   onClick={toggleConfirmPasswordVisibility}
+                  tabIndex={-1}
                 >
                   <Icon
                     icon={
@@ -85,11 +157,15 @@ function Register() {
                   />
                 </button>
               </div>
+              {error && (
+                <div className="text-red-500 mb-2 text-sm">{error}</div>
+              )}
               <button
                 type="submit"
                 className="bg-primary text-white w-full max-w-sm p-3 rounded-md mb-4 text-base hover:bg-primary-light transition-colors cursor-pointer font-medium"
+                disabled={loading}
               >
-                Register
+                {loading ? "Registering..." : "Register"}
               </button>
             </form>
             <div className="mt-10 text-center gap-2 flex items-center">
