@@ -37,11 +37,17 @@ function Register() {
       return;
     }
     setLoading(true);
+    const options = {
+      emailRedirectTo: `${window.location.origin}/account-verified`,
+    };
     try {
       const { data, error: signUpError } = await supabase.auth.signUp({
         email,
         password,
-        options: { data: { username } },
+        options: {
+          data: { display_name: username },
+          emailRedirectTo: `${window.location.origin}/account-verified`,
+        },
       });
       if (signUpError) {
         setError(signUpError.message);
@@ -50,7 +56,7 @@ function Register() {
       }
       setUser(data.user || null);
       setLoading(false);
-      navigate("/account-verified");
+      navigate("/verify-account");
     } catch (err) {
       setError("Registration failed. Try again.");
       console.log(err);

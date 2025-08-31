@@ -1,5 +1,6 @@
 import { useState, useEffect, createContext, useContext } from "react";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+
 import Home from "./pages/Home";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
@@ -8,32 +9,38 @@ import Favorites from "./pages/Favorites";
 import Profile from "./pages/Profile";
 import Product from "./pages/Product";
 import supabase from "./SupabaseClient.jsx";
+import VerifyAccount from "./pages/VerifyAccount.jsx";
+import LoadingScreen from "./components/LoadingScreen.jsx";
 
-// Create AuthContext
 export const AuthContext = createContext({ user: null, setUser: () => {} });
 
 function App() {
   const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Check for existing session on mount
     const session = supabase.auth.getSession
-      ? null // v2 API: getSession is async, so skip for now
+      ? null
       : supabase.auth.session && supabase.auth.session();
     if (session && session.user) {
       setUser(session.user);
     }
-    // Listen for auth state changes
     const { data: listener } = supabase.auth.onAuthStateChange?.(
       (event, session) => {
         setUser(session?.user || null);
       }
     ) || { data: {} };
+    const timer = setTimeout(() => setLoading(false), 1000);
     return () => {
       if (listener && listener.subscription)
         listener.subscription.unsubscribe();
+      clearTimeout(timer);
     };
   }, []);
+
+  if (loading) {
+    return <LoadingScreen />;
+  }
 
   return (
     <AuthContext.Provider value={{ user, setUser }}>
@@ -45,6 +52,7 @@ function App() {
           <Route path="/favorites" element={<Favorites />} />
           <Route path="/profile" element={<Profile />} />
           <Route path="/product/:id" element={<Product />} />
+          <Route path="/verify-account" element={<VerifyAccount />} />
         </Routes>
       </Router>
     </AuthContext.Provider>
