@@ -1,8 +1,20 @@
 import { Icon } from "@iconify/react";
 import NavigationBar from "../components/NavigationBar";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
+import { useContext } from "react";
+import { AuthContext } from "../App.jsx";
+import supabase from "../SupabaseClient.jsx";
 
 function Profile() {
+  const { setUser } = useContext(AuthContext);
+  const navigate = useNavigate();
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    setUser(null);
+    navigate("/", { replace: true });
+  };
+
   return (
     <>
       <div className="h-screen w-full flex flex-col relative items-center scrollbar-hide bg-background overflow-x-hidden text-text">
@@ -102,6 +114,21 @@ function Profile() {
             <div className="flex items-center">
               <Icon icon="mingcute:paper-line" width="24" height="24" />
               <span className="ml-2">Apply to be a Seller</span>
+            </div>
+            <Icon
+              icon="mingcute:right-line"
+              width="24"
+              height="24"
+              className="ml-auto"
+            />
+          </button>
+          <button
+            className="w-full flex border-b border-gray-300 my-2 py-4 px-1 text-left hover:bg-gray-100 transition-colors cursor-pointer"
+            onClick={handleLogout}
+          >
+            <div className="flex items-center">
+              <Icon icon="mingcute:user-remove-2-line" width="24" height="24" />
+              <span className="ml-2">Logout</span>
             </div>
             <Icon
               icon="mingcute:right-line"

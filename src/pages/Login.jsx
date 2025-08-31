@@ -1,12 +1,49 @@
-import { useState } from "react";
-import { Link } from "react-router-dom";
+import { useState, useContext } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import { Icon } from "@iconify/react";
 import full_logo from "../assets/full_logo.png";
+import supabase from "../SupabaseClient.jsx";
+import { AuthContext } from "../App.jsx";
 
 function Login() {
   const [passwordVisible, setPasswordVisible] = useState(false);
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+  const navigate = useNavigate();
+  const { setUser } = useContext(AuthContext);
+
   const togglePasswordVisibility = () => {
     setPasswordVisible(!passwordVisible);
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setError("");
+    if (!email || !password) {
+      setError("Email and password are required.");
+      return;
+    }
+    setLoading(true);
+    try {
+      const { data, error: loginError } =
+        await supabase.auth.signInWithPassword({
+          email,
+          password,
+        });
+      if (loginError) {
+        setError(loginError.message);
+        setLoading(false);
+        return;
+      }
+      setUser(data.user || null);
+      setLoading(false);
+      navigate("/");
+    } catch (err) {
+      setError("Login failed. Try again.");
+      setLoading(false);
+    }
   };
 
   return (
@@ -22,23 +59,35 @@ function Login() {
             />
           </div>
           <div className="flex flex-col items-center w-full max-w-md">
-            <form className="w-full max-w-md flex flex-col items-center">
+            <form
+              className="w-full max-w-md flex flex-col items-center"
+              onSubmit={handleSubmit}
+            >
               <input
                 type="email"
                 className="bg-white w-full max-w-sm p-3 rounded-md mb-4 text-base outline-none focus:outline-none focus:ring-0 shadow-sm"
                 placeholder="Email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                autoComplete="email"
+                required
               />
               <div className="w-full max-w-sm rounded-md mb-4 relative">
                 <input
                   type={passwordVisible ? "text" : "password"}
                   className="bg-white w-full max-w-sm p-3 rounded-md text-base outline-none focus:outline-none focus:ring-0 shadow-sm"
                   placeholder="Password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  autoComplete="current-password"
+                  required
                 />
                 <button
                   type="button"
                   className="absolute right-3 top-1/2 transform -translate-y-1/2 cursor-pointer"
                   aria-label="Show password"
                   onClick={togglePasswordVisibility}
+                  tabIndex={-1}
                 >
                   <Icon
                     icon={
@@ -52,11 +101,15 @@ function Login() {
                   />
                 </button>
               </div>
+              {error && (
+                <div className="text-red-500 mb-2 text-sm">{error}</div>
+              )}
               <button
                 type="submit"
                 className="bg-primary text-white w-full max-w-sm p-3 rounded-md mb-4 text-base hover:bg-primary-light transition-colors cursor-pointer font-medium"
+                disabled={loading}
               >
-                Login
+                {loading ? "Logging in..." : "Login"}
               </button>
             </form>
             <div className="flex items-center w-4/5 max-w-md my-4">
