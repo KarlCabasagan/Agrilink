@@ -6,7 +6,7 @@ import { AuthContext } from "../App.jsx";
 import supabase from "../SupabaseClient.jsx";
 
 function Profile() {
-  const { setUser } = useContext(AuthContext);
+  const { user, setUser } = useContext(AuthContext);
   const navigate = useNavigate();
 
   const handleLogout = async () => {
@@ -32,10 +32,13 @@ function Profile() {
             <div className="flex justify-between">
               <div className="max-w-[calc(100%-5rem)]">
                 <h2 className="text-2xl text-text font-bold mb-2">
-                  Marshal Luh
+                  {user?.user_metadata?.username ||
+                    user?.user_metadata?.full_name ||
+                    user?.user_metadata?.display_name ||
+                    "No Name"}
                 </h2>
                 <p className="text-gray-600 mb-4 truncate">
-                  johndoe@example.com
+                  {user?.email || "No Email"}
                 </p>
                 <p className="text-gray-600 truncate">
                   Maria Cristina, Purok 9 Zone 3

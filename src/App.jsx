@@ -1,5 +1,10 @@
 import { useState, useEffect, createContext, useContext } from "react";
-import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import {
+  BrowserRouter as Router,
+  Routes,
+  Route,
+  Navigate,
+} from "react-router-dom";
 
 import Home from "./pages/Home";
 import Login from "./pages/Login";
@@ -42,17 +47,65 @@ function App() {
     return <LoadingScreen />;
   }
 
+  // Route guards
+  const PrivateRoute = ({ children }) =>
+    user ? children : <Navigate to="/" replace />;
+  const AuthRoute = ({ children }) =>
+    !user ? children : <Navigate to="/" replace />;
+
   return (
     <AuthContext.Provider value={{ user, setUser }}>
       <Router>
         <Routes>
           <Route path="/" element={user ? <Home /> : <Login />} />
-          <Route path="/register" element={user ? <Home /> : <Register />} />
-          <Route path="/account-verified" element={<AccountVerified />} />
-          <Route path="/favorites" element={<Favorites />} />
-          <Route path="/profile" element={<Profile />} />
-          <Route path="/product/:id" element={<Product />} />
-          <Route path="/verify-account" element={<VerifyAccount />} />
+          <Route
+            path="/register"
+            element={
+              <AuthRoute>
+                <Register />
+              </AuthRoute>
+            }
+          />
+          <Route
+            path="/account-verified"
+            element={
+              <AuthRoute>
+                <AccountVerified />
+              </AuthRoute>
+            }
+          />
+          <Route
+            path="/verify-account"
+            element={
+              <AuthRoute>
+                <VerifyAccount />
+              </AuthRoute>
+            }
+          />
+          <Route
+            path="/favorites"
+            element={
+              <PrivateRoute>
+                <Favorites />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/profile"
+            element={
+              <PrivateRoute>
+                <Profile />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/product/:id"
+            element={
+              <PrivateRoute>
+                <Product />
+              </PrivateRoute>
+            }
+          />
         </Routes>
       </Router>
     </AuthContext.Provider>
