@@ -1,5 +1,6 @@
 import { Icon } from "@iconify/react";
 import NavigationBar from "../components/NavigationBar";
+import { Link } from "react-router-dom";
 
 function Profile() {
   return (
@@ -54,7 +55,10 @@ function Profile() {
               className="ml-auto"
             />
           </button>
-          <button className="w-full flex border-b border-gray-300 py-4 px-1 text-left hover:bg-gray-100 transition-colors cursor-pointer">
+          <Link
+            to="/favorites"
+            className="w-full flex border-b border-gray-300 py-4 px-1 text-left hover:bg-gray-100 transition-colors cursor-pointer"
+          >
             <div className="flex items-center">
               <Icon icon="ic:baseline-favorite-border" width="24" height="24" />
               <span className="ml-2">Favorite Products</span>
@@ -65,7 +69,7 @@ function Profile() {
               height="24"
               className="ml-auto"
             />
-          </button>
+          </Link>
           <button className="w-full flex border-b border-gray-300 py-4 px-1 text-left hover:bg-gray-100 transition-colors cursor-pointer">
             <div className="flex items-center">
               <Icon icon="mingcute:truck-line" width="24" height="24" />

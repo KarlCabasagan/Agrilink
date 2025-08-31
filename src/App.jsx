@@ -7,6 +7,7 @@ import AccountVerified from "./pages/AccountVerified";
 import Favorites from "./pages/Favorites";
 import Profile from "./pages/Profile";
 import Product from "./pages/Product";
+import supabase from "./SupabaseClient.jsx";
 
 function App() {
   const [user, setUser] = useState(true);
