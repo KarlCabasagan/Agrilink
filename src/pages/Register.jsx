@@ -54,6 +54,21 @@ function Register() {
         setLoading(false);
         return;
       }
+      const userId = data.user?.id;
+      if (userId) {
+        const { error: insertError } = await supabase.from("profiles").insert([
+          {
+            id: userId,
+            email: email,
+            name: username,
+          },
+        ]);
+        if (insertError) {
+          setError("User registered, but failed to save profile.");
+          setLoading(false);
+          return;
+        }
+      }
       setUser(data.user || null);
       setLoading(false);
       navigate("/verify-account");
@@ -93,7 +108,7 @@ function Register() {
               <input
                 type="text"
                 className="bg-white w-full max-w-sm p-3 rounded-md mb-4 text-base outline-none focus:outline-none focus:ring-0 shadow-sm"
-                placeholder="Username"
+                placeholder="Name"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
                 autoComplete="username"
