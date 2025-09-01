@@ -16,6 +16,7 @@ import Product from "./pages/Product";
 import supabase from "./SupabaseClient.jsx";
 import VerifyAccount from "./pages/VerifyAccount.jsx";
 import LoadingScreen from "./components/LoadingScreen.jsx";
+import EditProfile from "./pages/EditProfile.jsx";
 
 export const AuthContext = createContext({ user: null, setUser: () => {} });
 
@@ -48,8 +49,15 @@ function App() {
   }
 
   // Route guards
+  const isVerified = user && (user.email_confirmed_at || user.confirmed_at);
   const PrivateRoute = ({ children }) =>
-    user ? children : <Navigate to="/" replace />;
+    user && isVerified ? (
+      children
+    ) : user && !isVerified ? (
+      <Navigate to="/verify-account" replace />
+    ) : (
+      <Navigate to="/" replace />
+    );
   const AuthRoute = ({ children }) =>
     !user ? children : <Navigate to="/" replace />;
 
@@ -57,7 +65,20 @@ function App() {
     <AuthContext.Provider value={{ user, setUser }}>
       <Router>
         <Routes>
-          <Route path="/" element={user ? <Home /> : <Login />} />
+          <Route
+            path="/"
+            element={
+              user ? (
+                isVerified ? (
+                  <Home />
+                ) : (
+                  <Navigate to="/verify-account" replace />
+                )
+              ) : (
+                <Login />
+              )
+            }
+          />
           <Route
             path="/register"
             element={
@@ -69,9 +90,9 @@ function App() {
           <Route
             path="/account-verified"
             element={
-              <AuthRoute>
+              <PrivateRoute>
                 <AccountVerified />
-              </AuthRoute>
+              </PrivateRoute>
             }
           />
           <Route
@@ -106,6 +127,7 @@ function App() {
               </PrivateRoute>
             }
           />
+          <Route path="/edit-profile" element={<EditProfile />} />
         </Routes>
       </Router>
     </AuthContext.Provider>
