@@ -46,9 +46,9 @@ function Profile() {
                 <p className="text-gray-600 truncate">+63 912 345 6789</p>
               </div>
               <div className="flex items-center pl-4 border-l-[1px] border-gray-300">
-                <button className="cursor-pointer text-text">
+                <Link to="/edit-profile" className="cursor-pointer text-text">
                   <Icon icon="mingcute:edit-line" width="24" height="24" />
-                </button>
+                </Link>
               </div>
             </div>
           </div>

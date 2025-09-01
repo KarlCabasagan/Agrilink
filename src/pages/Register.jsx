@@ -10,7 +10,7 @@ function Register() {
   const [passwordVisible, setPasswordVisible] = useState(false);
   const [confirmPasswordVisible, setConfirmPasswordVisible] = useState(false);
   const [email, setEmail] = useState("");
-  const [username, setUsername] = useState("");
+  const [name, setName] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState("");
@@ -28,7 +28,7 @@ function Register() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
-    if (!email || !username || !password || !confirmPassword) {
+    if (!email || !name || !password || !confirmPassword) {
       setError("All fields are required.");
       return;
     }
@@ -45,7 +45,7 @@ function Register() {
         email,
         password,
         options: {
-          data: { display_name: username },
+          data: { display_name: name },
           emailRedirectTo: `${window.location.origin}/account-verified`,
         },
       });
@@ -60,7 +60,7 @@ function Register() {
           {
             id: userId,
             email: email,
-            name: username,
+            name: name,
           },
         ]);
         if (insertError) {
@@ -109,9 +109,9 @@ function Register() {
                 type="text"
                 className="bg-white w-full max-w-sm p-3 rounded-md mb-4 text-base outline-none focus:outline-none focus:ring-0 shadow-sm"
                 placeholder="Name"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                autoComplete="username"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                autoComplete="name"
                 required
               />
               <div className="w-full max-w-sm rounded-md mb-4 relative">

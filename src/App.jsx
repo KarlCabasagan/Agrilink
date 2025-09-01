@@ -58,8 +58,12 @@ function App() {
     ) : (
       <Navigate to="/" replace />
     );
-  const AuthRoute = ({ children }) =>
-    !user ? children : <Navigate to="/" replace />;
+
+  const AuthRoute = ({ children, allowUnverified = false }) => {
+    if (!user) return children;
+    if (allowUnverified && !isVerified) return children;
+    return <Navigate to="/" replace />;
+  };
 
   return (
     <AuthContext.Provider value={{ user, setUser }}>
@@ -98,7 +102,7 @@ function App() {
           <Route
             path="/verify-account"
             element={
-              <AuthRoute>
+              <AuthRoute allowUnverified={true}>
                 <VerifyAccount />
               </AuthRoute>
             }
