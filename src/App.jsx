@@ -7,41 +7,96 @@ import {
 } from "react-router-dom";
 
 import Home from "./pages/Home";
+import ProducerHome from "./pages/ProducerHome";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import AccountVerified from "./pages/AccountVerified";
 import Favorites from "./pages/Favorites";
 import Profile from "./pages/Profile";
+import ProducerProfile from "./pages/ProducerProfile";
 import Product from "./pages/Product";
 import Cart from "./pages/Cart";
 import Messages from "./pages/Messages";
+import ProducerMessages from "./pages/ProducerMessages";
+import Orders from "./pages/Orders";
+import CropRecommendation from "./pages/CropRecommendation";
 import supabase from "./SupabaseClient.jsx";
 import VerifyAccount from "./pages/VerifyAccount.jsx";
 import EditProfile from "./pages/EditProfile.jsx";
 import PasswordReset from "./pages/PasswordReset.jsx";
 
-export const AuthContext = createContext({ user: null, setUser: () => {} });
+export const AuthContext = createContext({
+    user: null,
+    setUser: () => {},
+    userRole: null,
+    setUserRole: () => {},
+});
 
 function App() {
     const [user, setUser] = useState(null);
+    const [userRole, setUserRole] = useState(null);
     const [loading, setLoading] = useState(true);
+
+    // Fetch user role from profiles table
+    const fetchUserRole = async (userId) => {
+        try {
+            const { data, error } = await supabase
+                .from("profiles")
+                .select("role_id")
+                .eq("id", userId)
+                .single();
+
+            if (data) {
+                setUserRole(data.role_id);
+            } else if (error && error.code === "PGRST116") {
+                // No profile found, default to Consumer role
+                setUserRole(1);
+            }
+        } catch (error) {
+            console.error("Error fetching user role:", error);
+            setUserRole(1); // Default to Consumer role
+        }
+    };
 
     useEffect(() => {
         // Get initial session
         supabase.auth.getSession().then(({ data: { session } }) => {
-            setUser(session?.user || null);
-            setLoading(false);
+            const sessionUser = session?.user || null;
+            setUser(sessionUser);
+
+            if (sessionUser) {
+                fetchUserRole(sessionUser.id);
+            } else {
+                setLoading(false);
+            }
         });
 
         // Listen for auth changes
         const {
             data: { subscription },
         } = supabase.auth.onAuthStateChange((event, session) => {
-            setUser(session?.user || null);
+            const sessionUser = session?.user || null;
+            setUser(sessionUser);
+
+            if (sessionUser) {
+                fetchUserRole(sessionUser.id);
+            } else {
+                setUserRole(null);
+                setLoading(false);
+            }
         });
 
         return () => subscription.unsubscribe();
     }, []);
+
+    // Set loading to false after role is fetched
+    useEffect(() => {
+        if (user && userRole !== null) {
+            setLoading(false);
+        } else if (!user) {
+            setLoading(false);
+        }
+    }, [user, userRole]);
 
     if (loading) {
         return (
@@ -68,8 +123,33 @@ function App() {
         return <Navigate to="/" replace />;
     };
 
+    // Role-based components
+    const RoleBasedHome = () => {
+        if (userRole === 2) {
+            // Producer
+            return <ProducerHome />;
+        }
+        return <Home />; // Consumer (role 1) or default
+    };
+
+    const RoleBasedProfile = () => {
+        if (userRole === 2) {
+            // Producer
+            return <ProducerProfile />;
+        }
+        return <Profile />; // Consumer (role 1) or default
+    };
+
+    const RoleBasedMessages = () => {
+        if (userRole === 2) {
+            // Producer
+            return <ProducerMessages />;
+        }
+        return <Messages />; // Consumer (role 1) or default
+    };
+
     return (
-        <AuthContext.Provider value={{ user, setUser }}>
+        <AuthContext.Provider value={{ user, setUser, userRole, setUserRole }}>
             <Router>
                 <Routes>
                     <Route
@@ -105,14 +185,34 @@ function App() {
                             </PrivateRoute>
                         }
                     />
+
+                    {/* Role-based routes */}
                     <Route
                         path="/"
                         element={
                             <PrivateRoute>
-                                <Home />
+                                <RoleBasedHome />
                             </PrivateRoute>
                         }
                     />
+                    <Route
+                        path="/profile"
+                        element={
+                            <PrivateRoute>
+                                <RoleBasedProfile />
+                            </PrivateRoute>
+                        }
+                    />
+                    <Route
+                        path="/messages"
+                        element={
+                            <PrivateRoute>
+                                <RoleBasedMessages />
+                            </PrivateRoute>
+                        }
+                    />
+
+                    {/* Consumer-only routes */}
                     <Route
                         path="/favorites"
                         element={
@@ -130,34 +230,38 @@ function App() {
                         }
                     />
                     <Route
-                        path="/messages"
+                        path="/product/:id"
                         element={
                             <PrivateRoute>
-                                <Messages />
+                                <Product />
+                            </PrivateRoute>
+                        }
+                    />
+
+                    {/* Producer-only routes */}
+                    <Route
+                        path="/orders"
+                        element={
+                            <PrivateRoute>
+                                <Orders />
                             </PrivateRoute>
                         }
                     />
                     <Route
-                        path="/profile"
+                        path="/crop-recommendation"
                         element={
                             <PrivateRoute>
-                                <Profile />
+                                <CropRecommendation />
                             </PrivateRoute>
                         }
                     />
+
+                    {/* Shared routes */}
                     <Route
                         path="/edit-profile"
                         element={
                             <PrivateRoute>
                                 <EditProfile />
-                            </PrivateRoute>
-                        }
-                    />
-                    <Route
-                        path="/product/:id"
-                        element={
-                            <PrivateRoute>
-                                <Product />
                             </PrivateRoute>
                         }
                     />
