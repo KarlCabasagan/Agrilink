@@ -230,7 +230,7 @@ function Orders() {
                 </h1>
             </div>
 
-            <div className="w-full max-w-4xl mx-4 sm:mx-auto mt-16">
+            <div className="w-full max-w-4xl mx-4 sm:mx-auto my-16">
                 {/* Status Filter */}
                 <div className="mb-6 mt-4">
                     <div className="flex overflow-x-auto gap-2 px-2 py-2 scrollbar-hide">
