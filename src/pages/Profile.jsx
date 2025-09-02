@@ -98,7 +98,7 @@ function Profile() {
                 </Link>
             </div>
 
-            <div className="w-full max-w-2xl mx-4 sm:mx-auto mt-16">
+            <div className="w-full max-w-2xl mx-4 sm:mx-auto my-16">
                 {/* Profile Card */}
                 <div className="bg-white rounded-lg shadow-md overflow-hidden mb-6">
                     <div className="relative h-32 bg-gradient-to-br from-primary to-primary-dark">

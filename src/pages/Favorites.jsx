@@ -99,7 +99,7 @@ function Favorites() {
                 </Link>
             </div>
 
-            <div className="w-full max-w-6xl mx-4 sm:mx-auto mt-16">
+            <div className="w-full max-w-6xl mx-4 sm:mx-auto my-16">
                 {/* Search Bar */}
                 <div className="mb-6 mt-4">
                     <ConsumerSearch
