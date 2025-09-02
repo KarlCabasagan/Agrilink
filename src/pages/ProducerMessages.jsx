@@ -1,0 +1,276 @@
+import { useState } from "react";
+import { Icon } from "@iconify/react";
+import { Link } from "react-router-dom";
+import ProducerNavigationBar from "../components/ProducerNavigationBar";
+
+function ProducerMessages() {
+    const [conversations] = useState([
+        {
+            id: 1,
+            customerName: "John Doe",
+            customerAvatar: "/assets/adel.jpg",
+            lastMessage:
+                "Hi! I'm interested in your fresh tomatoes. What's the minimum order?",
+            timestamp: "2 min ago",
+            unread: 2,
+            online: true,
+        },
+        {
+            id: 2,
+            customerName: "Maria Santos",
+            customerAvatar: "/assets/adel.jpg",
+            lastMessage:
+                "Thank you! The vegetables are very fresh. I'll order again.",
+            timestamp: "1 hour ago",
+            unread: 0,
+            online: false,
+        },
+        {
+            id: 3,
+            customerName: "Pedro Cruz",
+            customerAvatar: "/assets/adel.jpg",
+            lastMessage: "When will the carrots be ready for pickup?",
+            timestamp: "3 hours ago",
+            unread: 1,
+            online: true,
+        },
+        {
+            id: 4,
+            customerName: "Ana Garcia",
+            customerAvatar: "/assets/adel.jpg",
+            lastMessage: "I'd like to place a bulk order for potatoes.",
+            timestamp: "5 hours ago",
+            unread: 0,
+            online: false,
+        },
+    ]);
+
+    const [selectedConversation, setSelectedConversation] = useState(null);
+    const [newMessage, setNewMessage] = useState("");
+
+    const messages = selectedConversation
+        ? [
+              {
+                  id: 1,
+                  text: "Hi! I'm interested in your fresh tomatoes. What's the minimum order?",
+                  sender: "customer",
+                  timestamp: "10:30 AM",
+              },
+              {
+                  id: 2,
+                  text: "Hello! Thank you for your interest. Our minimum order is 1kg, and they're ₱50 per kg. All organic and fresh from today's harvest!",
+                  sender: "me",
+                  timestamp: "10:32 AM",
+              },
+              {
+                  id: 3,
+                  text: "Perfect! I'd like to order 3kg. When can I pick them up?",
+                  sender: "customer",
+                  timestamp: "10:35 AM",
+              },
+              {
+                  id: 4,
+                  text: "Great! You can pick them up tomorrow morning between 8-10 AM at our farm. I'll prepare them fresh for you.",
+                  sender: "me",
+                  timestamp: "10:37 AM",
+              },
+          ]
+        : [];
+
+    const handleSendMessage = () => {
+        if (newMessage.trim()) {
+            alert(`Message sent: ${newMessage}`);
+            setNewMessage("");
+        }
+    };
+
+    if (selectedConversation) {
+        const customer = conversations.find(
+            (c) => c.id === selectedConversation
+        );
+        return (
+            <div className="min-h-screen w-full flex flex-col relative bg-background text-text">
+                {/* Chat Header */}
+                <div className="fixed top-0 left-0 w-full bg-white shadow-md z-50 px-4 py-3 flex items-center gap-3">
+                    <button
+                        onClick={() => setSelectedConversation(null)}
+                        className="text-gray-600 hover:text-primary"
+                    >
+                        <Icon
+                            icon="mingcute:left-line"
+                            width="24"
+                            height="24"
+                        />
+                    </button>
+                    <img
+                        src={customer.customerAvatar}
+                        alt={customer.customerName}
+                        className="w-10 h-10 rounded-full object-cover"
+                    />
+                    <div className="flex-1">
+                        <h2 className="font-semibold text-gray-800">
+                            {customer.customerName}
+                        </h2>
+                        <p className="text-xs text-green-600">
+                            {customer.online ? "Online" : "Offline"}
+                        </p>
+                    </div>
+                    <button className="text-gray-600 hover:text-primary">
+                        <Icon
+                            icon="mingcute:phone-line"
+                            width="20"
+                            height="20"
+                        />
+                    </button>
+                </div>
+
+                {/* Messages */}
+                <div className="flex-1 mt-16 mb-16 px-4 py-4 overflow-y-auto">
+                    <div className="space-y-4">
+                        {messages.map((message) => (
+                            <div
+                                key={message.id}
+                                className={`flex ${
+                                    message.sender === "me"
+                                        ? "justify-end"
+                                        : "justify-start"
+                                }`}
+                            >
+                                <div
+                                    className={`max-w-xs px-4 py-2 rounded-2xl ${
+                                        message.sender === "me"
+                                            ? "bg-primary text-white"
+                                            : "bg-white shadow-sm"
+                                    }`}
+                                >
+                                    <p className="text-sm">{message.text}</p>
+                                    <p
+                                        className={`text-xs mt-1 ${
+                                            message.sender === "me"
+                                                ? "text-primary-light"
+                                                : "text-gray-500"
+                                        }`}
+                                    >
+                                        {message.timestamp}
+                                    </p>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+
+                {/* Message Input */}
+                <div className="fixed bottom-0 left-0 w-full bg-white border-t border-gray-200 px-4 py-3">
+                    <div className="flex items-center gap-3">
+                        <div className="flex-1 relative">
+                            <input
+                                type="text"
+                                placeholder="Type a message..."
+                                className="w-full px-4 py-2 border border-gray-300 rounded-full outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                                value={newMessage}
+                                onChange={(e) => setNewMessage(e.target.value)}
+                                onKeyPress={(e) =>
+                                    e.key === "Enter" && handleSendMessage()
+                                }
+                            />
+                        </div>
+                        <button
+                            onClick={handleSendMessage}
+                            className="bg-primary text-white p-2 rounded-full hover:bg-primary-dark transition-colors"
+                            disabled={!newMessage.trim()}
+                        >
+                            <Icon
+                                icon="mingcute:send-line"
+                                width="20"
+                                height="20"
+                            />
+                        </button>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
+    return (
+        <div className="min-h-screen w-full flex flex-col relative items-center scrollbar-hide bg-background overflow-x-hidden text-text pb-20">
+            {/* Header */}
+            <div className="fixed top-0 left-0 w-full bg-white shadow-md z-50 px-4 py-3">
+                <h1 className="text-lg font-semibold text-primary text-center">
+                    Customer Messages
+                </h1>
+            </div>
+
+            <div className="w-full max-w-2xl mx-4 sm:mx-auto mt-16">
+                {conversations.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center py-16">
+                        <Icon
+                            icon="mingcute:message-3-line"
+                            width="80"
+                            height="80"
+                            className="text-gray-300 mb-4"
+                        />
+                        <h2 className="text-xl font-bold text-gray-600 mb-2">
+                            No messages yet
+                        </h2>
+                        <p className="text-gray-500 text-center mb-6">
+                            Customers will reach out to you about your products
+                            here!
+                        </p>
+                        <Link
+                            to="/"
+                            className="bg-primary text-white px-6 py-3 rounded-lg hover:bg-primary-dark transition-colors font-medium"
+                        >
+                            Manage Products
+                        </Link>
+                    </div>
+                ) : (
+                    <div className="space-y-2 mt-4">
+                        {conversations.map((conversation) => (
+                            <button
+                                key={conversation.id}
+                                onClick={() =>
+                                    setSelectedConversation(conversation.id)
+                                }
+                                className="w-full bg-white rounded-lg shadow-sm p-4 hover:shadow-md transition-shadow text-left"
+                            >
+                                <div className="flex items-center gap-3">
+                                    <div className="relative">
+                                        <img
+                                            src={conversation.customerAvatar}
+                                            alt={conversation.customerName}
+                                            className="w-12 h-12 rounded-full object-cover"
+                                        />
+                                        {conversation.online && (
+                                            <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 border-2 border-white rounded-full"></div>
+                                        )}
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                        <div className="flex items-center justify-between mb-1">
+                                            <h3 className="font-semibold text-gray-800 truncate">
+                                                {conversation.customerName}
+                                            </h3>
+                                            <span className="text-xs text-gray-500">
+                                                {conversation.timestamp}
+                                            </span>
+                                        </div>
+                                        <p className="text-sm text-gray-600 truncate">
+                                            {conversation.lastMessage}
+                                        </p>
+                                    </div>
+                                    {conversation.unread > 0 && (
+                                        <div className="bg-primary text-white text-xs w-5 h-5 flex items-center justify-center rounded-full">
+                                            {conversation.unread}
+                                        </div>
+                                    )}
+                                </div>
+                            </button>
+                        ))}
+                    </div>
+                )}
+            </div>
+            <ProducerNavigationBar />
+        </div>
+    );
+}
+
+export default ProducerMessages;
