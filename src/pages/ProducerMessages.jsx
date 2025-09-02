@@ -200,7 +200,7 @@ function ProducerMessages() {
                 </h1>
             </div>
 
-            <div className="w-full max-w-2xl mx-4 sm:mx-auto mt-16">
+            <div className="w-full max-w-2xl mx-4 sm:mx-auto my-16">
                 {conversations.length === 0 ? (
                     <div className="flex flex-col items-center justify-center py-16">
                         <Icon

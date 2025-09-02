@@ -370,14 +370,22 @@ function ProducerHome() {
                 title="Delete Product"
                 message={`Are you sure you want to delete "${selectedProduct?.name}"? This action cannot be undone.`}
             />
+
             {/* Header */}
             <div className="fixed top-0 left-0 w-full bg-white shadow-md z-50 px-4 py-3 flex justify-between items-center">
-                <h1 className="text-lg font-semibold text-primary">Agrilink</h1>
                 <h1 className="text-lg font-semibold text-primary">
                     My Products
                 </h1>
+                <button
+                    onClick={() => setShowAddModal(true)}
+                    className="bg-primary text-white px-4 py-2 rounded-lg hover:bg-primary-dark transition-colors flex items-center gap-2"
+                >
+                    <Icon icon="mingcute:add-line" width="20" height="20" />
+                    Add Product
+                </button>
             </div>
-            <div className="w-full max-w-6xl mx-4 sm:mx-auto mt-16">
+
+            <div className="w-full max-w-6xl mx-4 sm:mx-auto my-16">
                 {/* Search Bar */}
                 <div className="mb-6 mt-4">
                     <div className="relative">

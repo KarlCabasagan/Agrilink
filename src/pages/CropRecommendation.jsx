@@ -239,7 +239,7 @@ function CropRecommendation() {
                 </h1>
             </div>
 
-            <div className="w-full max-w-6xl mx-4 sm:mx-auto mt-16 px-4 sm:px-0">
+            <div className="w-full max-w-6xl mx-4 sm:mx-auto my-16 px-4 sm:px-0">
                 {/* Info Banner */}
                 <div className="mb-6 mt-4 bg-blue-50 border border-blue-200 rounded-lg p-4">
                     <div className="flex items-start gap-3">
