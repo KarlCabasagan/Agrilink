@@ -1,4 +1,4 @@
-import { useState, useEffect, createContext, useContext } from "react";
+import { useState, useEffect, createContext } from "react";
 import {
     BrowserRouter as Router,
     Routes,
@@ -15,7 +15,6 @@ import Profile from "./pages/Profile";
 import Product from "./pages/Product";
 import supabase from "./SupabaseClient.jsx";
 import VerifyAccount from "./pages/VerifyAccount.jsx";
-import LoadingScreen from "./components/LoadingScreen.jsx";
 import EditProfile from "./pages/EditProfile.jsx";
 import PasswordReset from "./pages/PasswordReset.jsx";
 
@@ -26,38 +25,37 @@ function App() {
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        const session = supabase.auth.getSession
-            ? null
-            : supabase.auth.session && supabase.auth.session();
-        if (session && session.user) {
-            setUser(session.user);
-        }
-        const { data: listener } = supabase.auth.onAuthStateChange?.(
+        // Get initial session
+        supabase.auth.getSession().then(({ data: { session } }) => {
+            setUser(session?.user || null);
+            setLoading(false);
+        });
+
+        // Listen for auth changes
+        const { data: { subscription } } = supabase.auth.onAuthStateChange(
             (event, session) => {
                 setUser(session?.user || null);
             }
-        ) || { data: {} };
-        const timer = setTimeout(() => setLoading(false), 1000);
-        return () => {
-            if (listener && listener.subscription)
-                listener.subscription.unsubscribe();
-            clearTimeout(timer);
-        };
+        );
+
+        return () => subscription.unsubscribe();
     }, []);
 
     if (loading) {
-        return <LoadingScreen />;
+        return (
+            <div className="fixed inset-0 flex items-center justify-center bg-background">
+                <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-primary"></div>
+            </div>
+        );
     }
 
-    // Route guards
     const isVerified = user && (user.email_confirmed_at || user.confirmed_at);
+    
     const PrivateRoute = ({ children }) =>
-        user && isVerified ? (
-            children
-        ) : user && !isVerified ? (
+        user && isVerified ? children : user && !isVerified ? (
             <Navigate to="/verify-account" replace />
         ) : (
-            <Navigate to="/" replace />
+            <Navigate to="/login" replace />
         );
 
     const AuthRoute = ({ children, allowUnverified = false }) => {
@@ -70,77 +68,16 @@ function App() {
         <AuthContext.Provider value={{ user, setUser }}>
             <Router>
                 <Routes>
-                    <Route
-                        path="/"
-                        element={
-                            user ? (
-                                isVerified ? (
-                                    <Home />
-                                ) : (
-                                    <Navigate to="/verify-account" replace />
-                                )
-                            ) : (
-                                <Login />
-                            )
-                        }
-                    />
-                    <Route
-                        path="/register"
-                        element={
-                            <AuthRoute>
-                                <Register />
-                            </AuthRoute>
-                        }
-                    />
-                    <Route
-                        path="/account-verified"
-                        element={
-                            <PrivateRoute>
-                                <AccountVerified />
-                            </PrivateRoute>
-                        }
-                    />
-                    <Route
-                        path="/verify-account"
-                        element={
-                            <AuthRoute allowUnverified={true}>
-                                <VerifyAccount />
-                            </AuthRoute>
-                        }
-                    />
-                    <Route
-                        path="/favorites"
-                        element={
-                            <PrivateRoute>
-                                <Favorites />
-                            </PrivateRoute>
-                        }
-                    />
-                    <Route
-                        path="/profile"
-                        element={
-                            <PrivateRoute>
-                                <Profile />
-                            </PrivateRoute>
-                        }
-                    />
-                    <Route
-                        path="/product/:id"
-                        element={
-                            <PrivateRoute>
-                                <Product />
-                            </PrivateRoute>
-                        }
-                    />
-                    <Route
-                        path="/edit-profile"
-                        element={
-                            <PrivateRoute>
-                                <EditProfile />
-                            </PrivateRoute>
-                        }
-                    />
+                    <Route path="/login" element={<AuthRoute><Login /></AuthRoute>} />
+                    <Route path="/register" element={<AuthRoute><Register /></AuthRoute>} />
+                    <Route path="/verify-account" element={<AuthRoute allowUnverified={true}><VerifyAccount /></AuthRoute>} />
                     <Route path="/reset-password" element={<PasswordReset />} />
+                    <Route path="/account-verified" element={<PrivateRoute><AccountVerified /></PrivateRoute>} />
+                    <Route path="/" element={<PrivateRoute><Home /></PrivateRoute>} />
+                    <Route path="/favorites" element={<PrivateRoute><Favorites /></PrivateRoute>} />
+                    <Route path="/profile" element={<PrivateRoute><Profile /></PrivateRoute>} />
+                    <Route path="/edit-profile" element={<PrivateRoute><EditProfile /></PrivateRoute>} />
+                    <Route path="/product/:id" element={<PrivateRoute><Product /></PrivateRoute>} />
                 </Routes>
             </Router>
         </AuthContext.Provider>

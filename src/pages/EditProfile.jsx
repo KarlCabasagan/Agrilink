@@ -11,7 +11,7 @@ function EditProfile() {
     const [address, setAddress] = useState("");
     const [contact, setContact] = useState("");
     const [loading, setLoading] = useState(true);
-    // Modal state
+
     const [modalOpen, setModalOpen] = useState(false);
     const [modalMessage, setModalMessage] = useState("");
 
@@ -30,14 +30,46 @@ function EditProfile() {
                 setContact(data.contact || "");
             }
             setLoading(false);
-            if (error) console.log("Error fetching profile:", error);
+            // if (error) console.log("Error fetching profile:", error);
         };
         fetchProfile();
     }, [user]);
 
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
-        // Handle form submission
+        if (!user) {
+            setModalMessage("User not found.");
+            setModalOpen(true);
+            return;
+        }
+        setLoading(true);
+        const { error: profileError } = await supabase
+            .from("profiles")
+            .update({
+                name: name,
+                address: address,
+                contact: contact,
+            })
+            .eq("id", user.id);
+
+        let authError = null;
+        const { error: updateUserError } = await supabase.auth.updateUser({
+            data: { display_name: name, address: address, contact: contact },
+        });
+        if (updateUserError) authError = updateUserError;
+        setLoading(false);
+        if (profileError || authError) {
+            setModalMessage(
+                (profileError
+                    ? "Failed to update profile: " + profileError.message + "\n"
+                    : "") +
+                    (authError
+                        ? "Failed to update display name: " + authError.message
+                        : "")
+            );
+        } else {
+            setModalMessage("Profile and display name updated successfully!");
+        }
     };
 
     const handlePasswordReset = async () => {
