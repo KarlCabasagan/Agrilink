@@ -20,6 +20,11 @@ import Messages from "./pages/Messages";
 import ProducerMessages from "./pages/ProducerMessages";
 import Orders from "./pages/Orders";
 import CropRecommendation from "./pages/CropRecommendation";
+import AdminDashboard from "./pages/AdminDashboard";
+import AdminUserManagement from "./pages/AdminUserManagement";
+import AdminProductManagement from "./pages/AdminProductManagement";
+import AdminLogs from "./pages/AdminLogs";
+import AdminCropManagement from "./pages/AdminCropManagement";
 import supabase from "./SupabaseClient.jsx";
 import VerifyAccount from "./pages/VerifyAccount.jsx";
 import EditProfile from "./pages/EditProfile.jsx";
@@ -123,9 +128,25 @@ function App() {
         return <Navigate to="/" replace />;
     };
 
+    // Role-based access control
+    const RoleGuard = ({ children, allowedRoles }) => {
+        if (!user || !isVerified) {
+            return <Navigate to="/login" replace />;
+        }
+
+        if (!allowedRoles.includes(userRole)) {
+            return <Navigate to="/" replace />;
+        }
+
+        return children;
+    };
+
     // Role-based components
     const RoleBasedHome = () => {
-        if (userRole === 2) {
+        if (userRole === 3) {
+            // Admin
+            return <AdminDashboard />;
+        } else if (userRole === 2) {
             // Producer
             return <ProducerHome />;
         }
@@ -137,7 +158,7 @@ function App() {
             // Producer
             return <ProducerProfile />;
         }
-        return <Profile />; // Consumer (role 1) or default
+        return <Profile />; // Consumer (role 1) or Admin default
     };
 
     const RoleBasedMessages = () => {
@@ -216,25 +237,25 @@ function App() {
                     <Route
                         path="/favorites"
                         element={
-                            <PrivateRoute>
+                            <RoleGuard allowedRoles={[1]}>
                                 <Favorites />
-                            </PrivateRoute>
+                            </RoleGuard>
                         }
                     />
                     <Route
                         path="/cart"
                         element={
-                            <PrivateRoute>
+                            <RoleGuard allowedRoles={[1]}>
                                 <Cart />
-                            </PrivateRoute>
+                            </RoleGuard>
                         }
                     />
                     <Route
                         path="/product/:id"
                         element={
-                            <PrivateRoute>
+                            <RoleGuard allowedRoles={[1]}>
                                 <Product />
-                            </PrivateRoute>
+                            </RoleGuard>
                         }
                     />
 
@@ -242,17 +263,59 @@ function App() {
                     <Route
                         path="/orders"
                         element={
-                            <PrivateRoute>
+                            <RoleGuard allowedRoles={[2]}>
                                 <Orders />
-                            </PrivateRoute>
+                            </RoleGuard>
                         }
                     />
                     <Route
                         path="/crop-recommendation"
                         element={
-                            <PrivateRoute>
+                            <RoleGuard allowedRoles={[2]}>
                                 <CropRecommendation />
-                            </PrivateRoute>
+                            </RoleGuard>
+                        }
+                    />
+
+                    {/* Admin-only routes */}
+                    <Route
+                        path="/admin"
+                        element={
+                            <RoleGuard allowedRoles={[3]}>
+                                <AdminDashboard />
+                            </RoleGuard>
+                        }
+                    />
+                    <Route
+                        path="/admin/users"
+                        element={
+                            <RoleGuard allowedRoles={[3]}>
+                                <AdminUserManagement />
+                            </RoleGuard>
+                        }
+                    />
+                    <Route
+                        path="/admin/products"
+                        element={
+                            <RoleGuard allowedRoles={[3]}>
+                                <AdminProductManagement />
+                            </RoleGuard>
+                        }
+                    />
+                    <Route
+                        path="/admin/logs"
+                        element={
+                            <RoleGuard allowedRoles={[3]}>
+                                <AdminLogs />
+                            </RoleGuard>
+                        }
+                    />
+                    <Route
+                        path="/admin/crops"
+                        element={
+                            <RoleGuard allowedRoles={[3]}>
+                                <AdminCropManagement />
+                            </RoleGuard>
                         }
                     />
 
