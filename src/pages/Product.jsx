@@ -39,13 +39,31 @@ function Product() {
         return (
             <>
                 {[...Array(fullStars)].map((_, i) => (
-                    <Icon key={i} icon="mingcute:star-fill" className="text-yellow-400" width="16" height="16" />
+                    <Icon
+                        key={i}
+                        icon="mingcute:star-fill"
+                        className="text-yellow-400"
+                        width="16"
+                        height="16"
+                    />
                 ))}
                 {hasHalfStar && (
-                    <Icon key="half" icon="mingcute:star-half-fill" className="text-yellow-400" width="16" height="16" />
+                    <Icon
+                        key="half"
+                        icon="mingcute:star-half-fill"
+                        className="text-yellow-400"
+                        width="16"
+                        height="16"
+                    />
                 )}
                 {[...Array(emptyStars)].map((_, i) => (
-                    <Icon key={`empty-${i}`} icon="mingcute:star-line" className="text-gray-300" width="16" height="16" />
+                    <Icon
+                        key={`empty-${i}`}
+                        icon="mingcute:star-line"
+                        className="text-gray-300"
+                        width="16"
+                        height="16"
+                    />
                 ))}
             </>
         );
@@ -60,7 +78,11 @@ function Product() {
                 </Link>
                 <h1 className="text-lg font-semibold">Product Details</h1>
                 <Link to="/cart" className="text-gray-600 hover:text-primary">
-                    <Icon icon="mingcute:shopping-cart-1-line" width="24" height="24" />
+                    <Icon
+                        icon="mingcute:shopping-cart-1-line"
+                        width="24"
+                        height="24"
+                    />
                 </Link>
             </div>
 
@@ -74,29 +96,60 @@ function Product() {
                     />
 
                     <div className="p-4 sm:p-6">
-                        <h1 className="text-2xl sm:text-3xl font-bold mb-2">{product.name}</h1>
+                        <h1 className="text-2xl sm:text-3xl font-bold mb-2">
+                            {product.name}
+                        </h1>
 
                         <div className="bg-green-50 p-3 rounded-lg mb-4">
                             <div className="flex items-center gap-2 mb-1">
-                                <Icon icon="mingcute:user-3-line" width="20" height="20" className="text-green-600" />
-                                <span className="font-semibold text-green-800">Farmer: {product.farmerName}</span>
+                                <Icon
+                                    icon="mingcute:user-3-line"
+                                    width="20"
+                                    height="20"
+                                    className="text-green-600"
+                                />
+                                <span className="font-semibold text-green-800">
+                                    Farmer: {product.farmerName}
+                                </span>
                             </div>
                             <div className="flex items-center gap-2">
-                                <Icon icon="mingcute:location-line" width="16" height="16" className="text-green-600" />
-                                <span className="text-green-700 text-sm">{product.address}</span>
+                                <Icon
+                                    icon="mingcute:location-line"
+                                    width="16"
+                                    height="16"
+                                    className="text-green-600"
+                                />
+                                <span className="text-green-700 text-sm">
+                                    {product.address}
+                                </span>
                             </div>
                         </div>
 
                         <div className="flex items-center gap-2 mb-4">
-                            <div className="flex">{renderStars(product.rating)}</div>
-                            <span className="text-gray-600 text-sm">({product.rating}/5)</span>
-                            <span className="text-gray-500 text-sm">• {product.reviews.length} reviews</span>
+                            <div className="flex">
+                                {renderStars(product.rating)}
+                            </div>
+                            <span className="text-gray-600 text-sm">
+                                ({product.rating}/5)
+                            </span>
+                            <span className="text-gray-500 text-sm">
+                                • {product.reviews.length} reviews
+                            </span>
                         </div>
 
-                        <p className="text-3xl sm:text-4xl font-bold text-primary mb-3">₱{product.price.toFixed(2)}</p>
+                        <p className="text-3xl sm:text-4xl font-bold text-primary mb-3">
+                            ₱{product.price.toFixed(2)}
+                        </p>
 
                         <p className="text-gray-600 mb-4">
-                            Stock: <span className={product.stock > 10 ? "text-green-600" : "text-red-600"}>
+                            Stock:{" "}
+                            <span
+                                className={
+                                    product.stock > 10
+                                        ? "text-green-600"
+                                        : "text-red-600"
+                                }
+                            >
                                 {product.stock} available
                             </span>
                         </p>
@@ -108,8 +161,12 @@ function Product() {
                         </div>
 
                         <div className="mb-6">
-                            <h3 className="font-semibold mb-2 text-lg">Description</h3>
-                            <p className="text-gray-700 leading-relaxed">{product.description}</p>
+                            <h3 className="font-semibold mb-2 text-lg">
+                                Description
+                            </h3>
+                            <p className="text-gray-700 leading-relaxed">
+                                {product.description}
+                            </p>
                         </div>
 
                         <div className="flex items-center gap-4 mb-6">
@@ -122,7 +179,9 @@ function Product() {
                                 >
                                     -
                                 </button>
-                                <span className="px-4 py-2 border-l border-r bg-gray-50">{quantity}</span>
+                                <span className="px-4 py-2 border-l border-r bg-gray-50">
+                                    {quantity}
+                                </span>
                                 <button
                                     onClick={increaseQuantity}
                                     className="px-4 py-2 hover:bg-gray-100 rounded-r-lg"
@@ -143,30 +202,53 @@ function Product() {
                                         : "bg-primary text-white hover:bg-primary-dark"
                                 }`}
                             >
-                                <Icon icon="mingcute:shopping-cart-1-line" width="20" height="20" />
-                                {product.stock === 0 ? "Out of Stock" : "Add to Cart"}
+                                <Icon
+                                    icon="mingcute:shopping-cart-1-line"
+                                    width="20"
+                                    height="20"
+                                />
+                                {product.stock === 0
+                                    ? "Out of Stock"
+                                    : "Add to Cart"}
                             </button>
                             <button
                                 onClick={handleMessageFarmer}
                                 className="flex-1 py-3 px-4 rounded-lg font-semibold border-2 border-primary text-primary hover:bg-primary hover:text-white transition-colors flex items-center justify-center gap-2"
                             >
-                                <Icon icon="mingcute:message-3-line" width="20" height="20" />
+                                <Icon
+                                    icon="mingcute:message-3-line"
+                                    width="20"
+                                    height="20"
+                                />
                                 Message Farmer
                             </button>
                         </div>
 
                         {product.reviews.length > 0 && (
                             <div className="mt-8">
-                                <h3 className="font-semibold mb-4 text-lg">Customer Reviews</h3>
+                                <h3 className="font-semibold mb-4 text-lg">
+                                    Customer Reviews
+                                </h3>
                                 <div className="space-y-4">
                                     {product.reviews.map((review, index) => (
-                                        <div key={index} className="border-b pb-4 last:border-b-0">
+                                        <div
+                                            key={index}
+                                            className="border-b pb-4 last:border-b-0"
+                                        >
                                             <div className="flex justify-between items-start mb-2">
-                                                <span className="font-medium">{review.user}</span>
-                                                <span className="text-gray-500 text-sm">{review.date}</span>
+                                                <span className="font-medium">
+                                                    {review.user}
+                                                </span>
+                                                <span className="text-gray-500 text-sm">
+                                                    {review.date}
+                                                </span>
                                             </div>
-                                            <div className="flex mb-2">{renderStars(review.rating)}</div>
-                                            <p className="text-gray-700">{review.comment}</p>
+                                            <div className="flex mb-2">
+                                                {renderStars(review.rating)}
+                                            </div>
+                                            <p className="text-gray-700">
+                                                {review.comment}
+                                            </p>
                                         </div>
                                     ))}
                                 </div>

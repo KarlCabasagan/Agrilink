@@ -32,11 +32,11 @@ function App() {
         });
 
         // Listen for auth changes
-        const { data: { subscription } } = supabase.auth.onAuthStateChange(
-            (event, session) => {
-                setUser(session?.user || null);
-            }
-        );
+        const {
+            data: { subscription },
+        } = supabase.auth.onAuthStateChange((event, session) => {
+            setUser(session?.user || null);
+        });
 
         return () => subscription.unsubscribe();
     }, []);
@@ -50,9 +50,11 @@ function App() {
     }
 
     const isVerified = user && (user.email_confirmed_at || user.confirmed_at);
-    
+
     const PrivateRoute = ({ children }) =>
-        user && isVerified ? children : user && !isVerified ? (
+        user && isVerified ? (
+            children
+        ) : user && !isVerified ? (
             <Navigate to="/verify-account" replace />
         ) : (
             <Navigate to="/login" replace />
@@ -68,16 +70,79 @@ function App() {
         <AuthContext.Provider value={{ user, setUser }}>
             <Router>
                 <Routes>
-                    <Route path="/login" element={<AuthRoute><Login /></AuthRoute>} />
-                    <Route path="/register" element={<AuthRoute><Register /></AuthRoute>} />
-                    <Route path="/verify-account" element={<AuthRoute allowUnverified={true}><VerifyAccount /></AuthRoute>} />
+                    <Route
+                        path="/login"
+                        element={
+                            <AuthRoute>
+                                <Login />
+                            </AuthRoute>
+                        }
+                    />
+                    <Route
+                        path="/register"
+                        element={
+                            <AuthRoute>
+                                <Register />
+                            </AuthRoute>
+                        }
+                    />
+                    <Route
+                        path="/verify-account"
+                        element={
+                            <AuthRoute allowUnverified={true}>
+                                <VerifyAccount />
+                            </AuthRoute>
+                        }
+                    />
                     <Route path="/reset-password" element={<PasswordReset />} />
-                    <Route path="/account-verified" element={<PrivateRoute><AccountVerified /></PrivateRoute>} />
-                    <Route path="/" element={<PrivateRoute><Home /></PrivateRoute>} />
-                    <Route path="/favorites" element={<PrivateRoute><Favorites /></PrivateRoute>} />
-                    <Route path="/profile" element={<PrivateRoute><Profile /></PrivateRoute>} />
-                    <Route path="/edit-profile" element={<PrivateRoute><EditProfile /></PrivateRoute>} />
-                    <Route path="/product/:id" element={<PrivateRoute><Product /></PrivateRoute>} />
+                    <Route
+                        path="/account-verified"
+                        element={
+                            <PrivateRoute>
+                                <AccountVerified />
+                            </PrivateRoute>
+                        }
+                    />
+                    <Route
+                        path="/"
+                        element={
+                            <PrivateRoute>
+                                <Home />
+                            </PrivateRoute>
+                        }
+                    />
+                    <Route
+                        path="/favorites"
+                        element={
+                            <PrivateRoute>
+                                <Favorites />
+                            </PrivateRoute>
+                        }
+                    />
+                    <Route
+                        path="/profile"
+                        element={
+                            <PrivateRoute>
+                                <Profile />
+                            </PrivateRoute>
+                        }
+                    />
+                    <Route
+                        path="/edit-profile"
+                        element={
+                            <PrivateRoute>
+                                <EditProfile />
+                            </PrivateRoute>
+                        }
+                    />
+                    <Route
+                        path="/product/:id"
+                        element={
+                            <PrivateRoute>
+                                <Product />
+                            </PrivateRoute>
+                        }
+                    />
                 </Routes>
             </Router>
         </AuthContext.Provider>
