@@ -13,6 +13,8 @@ import AccountVerified from "./pages/AccountVerified";
 import Favorites from "./pages/Favorites";
 import Profile from "./pages/Profile";
 import Product from "./pages/Product";
+import Cart from "./pages/Cart";
+import Messages from "./pages/Messages";
 import supabase from "./SupabaseClient.jsx";
 import VerifyAccount from "./pages/VerifyAccount.jsx";
 import EditProfile from "./pages/EditProfile.jsx";
@@ -116,6 +118,22 @@ function App() {
                         element={
                             <PrivateRoute>
                                 <Favorites />
+                            </PrivateRoute>
+                        }
+                    />
+                    <Route
+                        path="/cart"
+                        element={
+                            <PrivateRoute>
+                                <Cart />
+                            </PrivateRoute>
+                        }
+                    />
+                    <Route
+                        path="/messages"
+                        element={
+                            <PrivateRoute>
+                                <Messages />
                             </PrivateRoute>
                         }
                     />

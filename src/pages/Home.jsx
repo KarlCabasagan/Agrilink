@@ -77,7 +77,11 @@ function Home() {
             <div className="fixed top-0 left-0 w-full bg-white shadow-md z-50 px-4 py-3 flex justify-between items-center">
                 <h1 className="text-lg font-semibold text-primary">AgriLink</h1>
                 <Link to="/cart" className="text-gray-600 hover:text-primary">
-                    <Icon icon="mingcute:shopping-cart-1-line" width="24" height="24" />
+                    <Icon
+                        icon="mingcute:shopping-cart-1-line"
+                        width="24"
+                        height="24"
+                    />
                 </Link>
             </div>
 
@@ -101,17 +105,27 @@ function Home() {
                                         ? "bg-primary text-white shadow-md"
                                         : "bg-white hover:bg-gray-50 shadow-sm"
                                 }`}
-                                onClick={() => setSelectedCategory(category.name)}
+                                onClick={() =>
+                                    setSelectedCategory(category.name)
+                                }
                             >
                                 <Icon
                                     icon={category.icon}
                                     width="32"
                                     height="32"
-                                    className={selectedCategory === category.name ? "text-white" : "text-gray-600"}
+                                    className={
+                                        selectedCategory === category.name
+                                            ? "text-white"
+                                            : "text-gray-600"
+                                    }
                                 />
-                                <span className={`mt-1 text-xs font-medium truncate max-w-[70px] ${
-                                    selectedCategory === category.name ? "text-white" : "text-gray-700"
-                                }`}>
+                                <span
+                                    className={`mt-1 text-xs font-medium truncate max-w-[70px] ${
+                                        selectedCategory === category.name
+                                            ? "text-white"
+                                            : "text-gray-700"
+                                    }`}
+                                >
                                     {category.name}
                                 </span>
                             </button>
@@ -133,9 +147,18 @@ function Home() {
                 <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 px-2">
                     {filteredProducts.length === 0 ? (
                         <div className="col-span-full flex flex-col items-center justify-center py-16">
-                            <Icon icon="mingcute:search-line" width="64" height="64" className="text-gray-300 mb-4" />
-                            <p className="text-gray-400 text-lg">No products found</p>
-                            <p className="text-gray-400 text-sm">Try adjusting your search or filters</p>
+                            <Icon
+                                icon="mingcute:search-line"
+                                width="64"
+                                height="64"
+                                className="text-gray-300 mb-4"
+                            />
+                            <p className="text-gray-400 text-lg">
+                                No products found
+                            </p>
+                            <p className="text-gray-400 text-sm">
+                                Try adjusting your search or filters
+                            </p>
                         </div>
                     ) : (
                         filteredProducts.map((product) => (
@@ -152,7 +175,12 @@ function Home() {
                                         loading="lazy"
                                     />
                                     <div className="absolute top-2 right-2 bg-white rounded-full p-1 shadow-md">
-                                        <Icon icon="mingcute:heart-line" width="16" height="16" className="text-gray-400" />
+                                        <Icon
+                                            icon="mingcute:heart-line"
+                                            width="16"
+                                            height="16"
+                                            className="text-gray-400"
+                                        />
                                     </div>
                                 </div>
 
@@ -162,12 +190,21 @@ function Home() {
                                     </h3>
 
                                     <div className="flex items-center gap-1 mb-2">
-                                        <div className="flex">{renderStars(product.rating || 4.5)}</div>
-                                        <span className="text-xs text-gray-500">({product.rating || 4.5})</span>
+                                        <div className="flex">
+                                            {renderStars(product.rating || 4.5)}
+                                        </div>
+                                        <span className="text-xs text-gray-500">
+                                            ({product.rating || 4.5})
+                                        </span>
                                     </div>
 
                                     <div className="flex items-center gap-1 mb-2">
-                                        <Icon icon="mingcute:location-line" width="12" height="12" className="text-gray-400" />
+                                        <Icon
+                                            icon="mingcute:location-line"
+                                            width="12"
+                                            height="12"
+                                            className="text-gray-400"
+                                        />
                                         <span className="text-xs text-gray-500 line-clamp-1">
                                             {product.address}
                                         </span>
