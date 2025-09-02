@@ -183,7 +183,7 @@ function ProducerProfile() {
                     </div>
                     <div className="bg-white rounded-lg shadow-md p-4 text-center">
                         <Icon
-                            icon="mingcute:shopping-bag-line"
+                            icon="mingcute:box-2-line"
                             width="24"
                             height="24"
                             className="mx-auto mb-2 text-green-600"
@@ -195,7 +195,7 @@ function ProducerProfile() {
                     </div>
                     <div className="bg-white rounded-lg shadow-md p-4 text-center">
                         <Icon
-                            icon="mingcute:currency-line"
+                            icon="mingcute:currency-dollar-line"
                             width="24"
                             height="24"
                             className="mx-auto mb-2 text-yellow-600"
