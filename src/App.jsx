@@ -1,4 +1,10 @@
-import { useState, useEffect, createContext } from "react";
+import {
+    useState,
+    useEffect,
+    createContext,
+    useCallback,
+    useMemo,
+} from "react";
 import {
     BrowserRouter as Router,
     Routes,
@@ -23,6 +29,7 @@ import CropRecommendation from "./pages/producer/CropRecommendation";
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import AdminUserManagement from "./pages/admin/AdminUserManagement";
 import AdminProductManagement from "./pages/admin/AdminProductManagement";
+import AdminProductReviews from "./pages/admin/AdminProductReviews";
 import AdminLogs from "./pages/admin/AdminLogs";
 import AdminCropManagement from "./pages/admin/AdminCropManagement";
 import supabase from "./SupabaseClient.jsx";
@@ -43,7 +50,7 @@ function App() {
     const [loading, setLoading] = useState(true);
 
     // Fetch user role from profiles table
-    const fetchUserRole = async (userId) => {
+    const fetchUserRole = useCallback(async (userId) => {
         try {
             const { data, error } = await supabase
                 .from("profiles")
@@ -61,11 +68,15 @@ function App() {
             console.error("Error fetching user role:", error);
             setUserRole(1); // Default to Consumer role
         }
-    };
+    }, []);
 
     useEffect(() => {
+        let mounted = true;
+
         // Get initial session
         supabase.auth.getSession().then(({ data: { session } }) => {
+            if (!mounted) return;
+
             const sessionUser = session?.user || null;
             setUser(sessionUser);
 
@@ -80,6 +91,8 @@ function App() {
         const {
             data: { subscription },
         } = supabase.auth.onAuthStateChange((event, session) => {
+            if (!mounted) return;
+
             const sessionUser = session?.user || null;
             setUser(sessionUser);
 
@@ -91,7 +104,31 @@ function App() {
             }
         });
 
-        return () => subscription.unsubscribe();
+        return () => {
+            mounted = false;
+            subscription.unsubscribe();
+        };
+    }, [fetchUserRole]);
+
+    // Prevent unnecessary re-renders on page visibility changes
+    useEffect(() => {
+        const handleVisibilityChange = () => {
+            // Only log the visibility change, don't trigger any auth state updates
+            if (document.visibilityState === "visible") {
+                console.log(
+                    "Page became visible - not triggering auth refresh"
+                );
+            }
+        };
+
+        document.addEventListener("visibilitychange", handleVisibilityChange);
+
+        return () => {
+            document.removeEventListener(
+                "visibilitychange",
+                handleVisibilityChange
+            );
+        };
     }, []);
 
     // Set loading to false after role is fetched
@@ -102,6 +139,17 @@ function App() {
             setLoading(false);
         }
     }, [user, userRole]);
+
+    // Memoize auth context value to prevent unnecessary re-renders
+    const authContextValue = useMemo(
+        () => ({
+            user,
+            setUser,
+            userRole,
+            setUserRole,
+        }),
+        [user, userRole]
+    );
 
     if (loading) {
         return (
@@ -170,7 +218,7 @@ function App() {
     };
 
     return (
-        <AuthContext.Provider value={{ user, setUser, userRole, setUserRole }}>
+        <AuthContext.Provider value={authContextValue}>
             <Router>
                 <Routes>
                     <Route
@@ -287,6 +335,14 @@ function App() {
                         }
                     />
                     <Route
+                        path="/admin/dashboard"
+                        element={
+                            <RoleGuard allowedRoles={[3]}>
+                                <AdminDashboard />
+                            </RoleGuard>
+                        }
+                    />
+                    <Route
                         path="/admin/users"
                         element={
                             <RoleGuard allowedRoles={[3]}>
@@ -299,6 +355,14 @@ function App() {
                         element={
                             <RoleGuard allowedRoles={[3]}>
                                 <AdminProductManagement />
+                            </RoleGuard>
+                        }
+                    />
+                    <Route
+                        path="/admin/products/:productId/reviews"
+                        element={
+                            <RoleGuard allowedRoles={[3]}>
+                                <AdminProductReviews />
                             </RoleGuard>
                         }
                     />

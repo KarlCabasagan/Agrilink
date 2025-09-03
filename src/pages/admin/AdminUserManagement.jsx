@@ -1,10 +1,18 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Icon } from "@iconify/react";
 import AdminNavigationBar from "../../components/AdminNavigationBar";
 import ConfirmModal from "../../components/ConfirmModal";
 
 function AdminUserManagement() {
-    const [activeTab, setActiveTab] = useState("applications");
+    // Get initial tab from localStorage or default to "applications"
+    const [activeTab, setActiveTab] = useState(() => {
+        return localStorage.getItem("adminUsersActiveTab") || "applications";
+    });
+
+    // Save activeTab to localStorage whenever it changes
+    useEffect(() => {
+        localStorage.setItem("adminUsersActiveTab", activeTab);
+    }, [activeTab]);
     const [showConfirmModal, setShowConfirmModal] = useState(false);
     const [confirmAction, setConfirmAction] = useState(null);
     const [searchTerm, setSearchTerm] = useState("");

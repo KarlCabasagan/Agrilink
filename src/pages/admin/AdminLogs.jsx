@@ -1,9 +1,17 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Icon } from "@iconify/react";
 import AdminNavigationBar from "../../components/AdminNavigationBar";
 
 function AdminLogs() {
-    const [activeTab, setActiveTab] = useState("transactions");
+    // Get initial tab from localStorage or default to "transactions"
+    const [activeTab, setActiveTab] = useState(() => {
+        return localStorage.getItem("adminLogsActiveTab") || "transactions";
+    });
+
+    // Save activeTab to localStorage whenever it changes
+    useEffect(() => {
+        localStorage.setItem("adminLogsActiveTab", activeTab);
+    }, [activeTab]);
     const [filterDate, setFilterDate] = useState("");
     const [filterType, setFilterType] = useState("");
     const [searchTerm, setSearchTerm] = useState("");

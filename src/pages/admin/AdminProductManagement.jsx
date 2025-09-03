@@ -1,10 +1,19 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Icon } from "@iconify/react";
+import { Link } from "react-router-dom";
 import AdminNavigationBar from "../../components/AdminNavigationBar";
 import ConfirmModal from "../../components/ConfirmModal";
 
 function AdminProductManagement() {
-    const [activeTab, setActiveTab] = useState("pending");
+    // Get initial tab from localStorage or default to "pending"
+    const [activeTab, setActiveTab] = useState(() => {
+        return localStorage.getItem("adminProductsActiveTab") || "pending";
+    });
+
+    // Save activeTab to localStorage whenever it changes
+    useEffect(() => {
+        localStorage.setItem("adminProductsActiveTab", activeTab);
+    }, [activeTab]);
     const [showConfirmModal, setShowConfirmModal] = useState(false);
     const [confirmAction, setConfirmAction] = useState(null);
     const [showCategoryModal, setShowCategoryModal] = useState(false);
@@ -23,28 +32,38 @@ function AdminProductManagement() {
             id: 1,
             name: "Vegetables",
             description: "Fresh vegetables and greens",
+            icon: "twemoji:leafy-greens",
         },
         {
             id: 2,
             name: "Grains",
             description: "Rice, corn, wheat and other grains",
+            icon: "twemoji:sheaf-of-rice",
         },
-        { id: 3, name: "Fruits", description: "Fresh seasonal fruits" },
+        {
+            id: 3,
+            name: "Fruits",
+            description: "Fresh seasonal fruits",
+            icon: "twemoji:red-apple",
+        },
         {
             id: 4,
             name: "Legumes",
             description: "Beans, lentils and other legumes",
+            icon: "twemoji:beans",
         },
         {
             id: 5,
             name: "Root Crops",
             description: "Potatoes, sweet potatoes, cassava",
+            icon: "twemoji:potato",
         },
     ]);
 
     const [newCategory, setNewCategory] = useState({
         name: "",
         description: "",
+        icon: "",
     });
 
     const [pendingProducts, setPendingProducts] = useState([
@@ -104,7 +123,7 @@ function AdminProductManagement() {
             description: "Sweet and tender corn",
             image: "/assets/adel.jpg",
             approvedDate: "2024-08-25",
-            status: "approved",
+            status: "Active", // Active or Suspended
             stock: 100,
             sales: 45,
             rating: 4.5,
@@ -118,13 +137,30 @@ function AdminProductManagement() {
             cropType: "Lettuce",
             price: 35,
             unit: "kg",
-            description: "Crisp lettuce leaves",
+            description: "Crisp lettuce leaves perfect for salads",
             image: "/assets/adel.jpg",
             approvedDate: "2024-08-20",
-            status: "approved",
+            status: "Active", // Active or Suspended
             stock: 75,
             sales: 32,
             rating: 4.2,
+            reviews: 18,
+        },
+        {
+            id: 103,
+            name: "Organic Cabbage",
+            producer: "Linda Torres",
+            category: "Vegetables",
+            cropType: "Cabbage",
+            price: 40,
+            unit: "kg",
+            description: "Organic cabbage grown with natural methods",
+            image: "/assets/adel.jpg",
+            approvedDate: "2024-08-18",
+            status: "Suspended", // Example of suspended product
+            stock: 60,
+            sales: 28,
+            rating: 4.0,
             reviews: 15,
         },
     ]);
@@ -182,9 +218,10 @@ function AdminProductManagement() {
                 id: Math.max(...categories.map((c) => c.id)) + 1,
                 name: newCategory.name.trim(),
                 description: newCategory.description.trim(),
+                icon: newCategory.icon.trim() || "twemoji:package",
             };
             setCategories([...categories, newCategoryObj]);
-            setNewCategory({ name: "", description: "" });
+            setNewCategory({ name: "", description: "", icon: "" });
         }
     };
 
@@ -193,6 +230,7 @@ function AdminProductManagement() {
         setNewCategory({
             name: category.name,
             description: category.description,
+            icon: category.icon || "",
         });
     };
 
@@ -205,12 +243,14 @@ function AdminProductManagement() {
                               ...cat,
                               name: newCategory.name.trim(),
                               description: newCategory.description.trim(),
+                              icon:
+                                  newCategory.icon.trim() || "twemoji:package",
                           }
                         : cat
                 )
             );
             setSelectedCategory(null);
-            setNewCategory({ name: "", description: "" });
+            setNewCategory({ name: "", description: "", icon: "" });
         }
     };
 
@@ -221,6 +261,20 @@ function AdminProductManagement() {
     const handleProductAction = (productId, action) => {
         setConfirmAction({ id: productId, type: action });
         setShowConfirmModal(true);
+    };
+
+    // Handle product status change (suspend/activate) - separate from approval/rejection
+    const handleProductStatusAction = (productId, action) => {
+        setApprovedProducts((prev) =>
+            prev.map((product) =>
+                product.id === productId
+                    ? {
+                          ...product,
+                          status: action === "suspend" ? "Suspended" : "Active",
+                      }
+                    : product
+            )
+        );
     };
 
     const confirmProductAction = () => {
@@ -267,7 +321,7 @@ function AdminProductManagement() {
                 </h1>
             </div>
 
-            <div className="w-full max-w-6xl mx-4 sm:mx-auto my-16">
+            <div className="w-full max-w-7xl mx-4 sm:mx-auto my-16">
                 {/* Tabs */}
                 <div className="bg-white rounded-lg shadow-md mb-6 mt-4">
                     <div className="flex border-b border-gray-200">
@@ -349,213 +403,148 @@ function AdminProductManagement() {
                                 </p>
                             </div>
                         ) : (
-                            <div className="bg-white rounded-lg shadow-md overflow-hidden">
-                                <div className="overflow-x-auto">
-                                    <table className="w-full">
-                                        <thead className="bg-gray-50">
-                                            <tr>
-                                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                                    Product
-                                                </th>
-                                                <th
-                                                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
-                                                    onClick={() =>
-                                                        handleSort("producer")
-                                                    }
-                                                >
-                                                    Producer{" "}
-                                                    {sortConfig.key ===
-                                                        "producer" && (
-                                                        <Icon
-                                                            icon={
-                                                                sortConfig.direction ===
-                                                                "asc"
-                                                                    ? "mingcute:up-line"
-                                                                    : "mingcute:down-line"
-                                                            }
-                                                            className="inline ml-1"
-                                                        />
-                                                    )}
-                                                </th>
-                                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                                    Category
-                                                </th>
-                                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                                    Crop Type
-                                                </th>
-                                                <th
-                                                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
-                                                    onClick={() =>
-                                                        handleSort("price")
-                                                    }
-                                                >
-                                                    Price{" "}
-                                                    {sortConfig.key ===
-                                                        "price" && (
-                                                        <Icon
-                                                            icon={
-                                                                sortConfig.direction ===
-                                                                "asc"
-                                                                    ? "mingcute:up-line"
-                                                                    : "mingcute:down-line"
-                                                            }
-                                                            className="inline ml-1"
-                                                        />
-                                                    )}
-                                                </th>
-                                                <th
-                                                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
-                                                    onClick={() =>
-                                                        handleSort("stock")
-                                                    }
-                                                >
-                                                    Stock (kg){" "}
-                                                    {sortConfig.key ===
-                                                        "stock" && (
-                                                        <Icon
-                                                            icon={
-                                                                sortConfig.direction ===
-                                                                "asc"
-                                                                    ? "mingcute:up-line"
-                                                                    : "mingcute:down-line"
-                                                            }
-                                                            className="inline ml-1"
-                                                        />
-                                                    )}
-                                                </th>
-                                                <th
-                                                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
-                                                    onClick={() =>
-                                                        handleSort(
-                                                            "submittedDate"
-                                                        )
-                                                    }
-                                                >
-                                                    Submitted Date{" "}
-                                                    {sortConfig.key ===
-                                                        "submittedDate" && (
-                                                        <Icon
-                                                            icon={
-                                                                sortConfig.direction ===
-                                                                "asc"
-                                                                    ? "mingcute:up-line"
-                                                                    : "mingcute:down-line"
-                                                            }
-                                                            className="inline ml-1"
-                                                        />
-                                                    )}
-                                                </th>
-                                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                                    Actions
-                                                </th>
-                                            </tr>
-                                        </thead>
-                                        <tbody className="bg-white divide-y divide-gray-200">
-                                            {filterData(
-                                                sortData(pendingProducts)
-                                            ).map((product) => (
-                                                <tr
-                                                    key={product.id}
-                                                    className="hover:bg-gray-50"
-                                                >
-                                                    <td className="px-6 py-4 whitespace-nowrap">
-                                                        <div className="flex items-center">
-                                                            <img
-                                                                src={
-                                                                    product.image
+                            <div className="space-y-4">
+                                {filterData(sortData(pendingProducts)).map(
+                                    (product) => (
+                                        <div
+                                            key={product.id}
+                                            className="bg-white rounded-lg shadow-md p-6"
+                                        >
+                                            <div className="flex flex-col lg:flex-row gap-6">
+                                                {/* Product Image */}
+                                                <div className="lg:w-48 flex-shrink-0">
+                                                    <img
+                                                        src={product.image}
+                                                        alt={product.name}
+                                                        className="w-full h-48 object-cover rounded-lg cursor-pointer hover:opacity-80 transition-opacity"
+                                                        onClick={() =>
+                                                            handleImageClick(
+                                                                product.image
+                                                            )
+                                                        }
+                                                    />
+                                                </div>
+
+                                                {/* Product Details */}
+                                                <div className="flex-1">
+                                                    <div className="flex items-start justify-between mb-4">
+                                                        <div>
+                                                            <h3 className="text-xl font-semibold text-gray-800">
+                                                                {product.name}
+                                                            </h3>
+                                                            <p className="text-sm text-gray-600">
+                                                                by{" "}
+                                                                {
+                                                                    product.producer
                                                                 }
-                                                                alt={
-                                                                    product.name
-                                                                }
-                                                                className="w-16 h-16 object-cover rounded-lg cursor-pointer hover:opacity-80 transition-opacity"
-                                                                onClick={() =>
-                                                                    handleImageClick(
-                                                                        product.image
-                                                                    )
-                                                                }
-                                                            />
-                                                            <div className="ml-4">
-                                                                <div className="text-sm font-medium text-gray-900">
-                                                                    {
-                                                                        product.name
-                                                                    }
-                                                                </div>
-                                                                <div className="text-sm text-gray-500">
-                                                                    {product.description.substring(
-                                                                        0,
-                                                                        50
-                                                                    )}
-                                                                    ...
-                                                                </div>
-                                                            </div>
+                                                            </p>
+                                                            <p className="text-xs text-gray-500 mt-1">
+                                                                Submitted on{" "}
+                                                                {new Date(
+                                                                    product.submittedDate
+                                                                ).toLocaleDateString()}
+                                                            </p>
                                                         </div>
-                                                    </td>
-                                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                                        {product.producer}
-                                                    </td>
-                                                    <td className="px-6 py-4 whitespace-nowrap">
-                                                        <select
-                                                            value={
-                                                                product.category
-                                                            }
-                                                            onChange={(e) => {
-                                                                setPendingProducts(
-                                                                    (prev) =>
-                                                                        prev.map(
-                                                                            (
-                                                                                p
-                                                                            ) =>
-                                                                                p.id ===
-                                                                                product.id
-                                                                                    ? {
-                                                                                          ...p,
-                                                                                          category:
-                                                                                              e
-                                                                                                  .target
-                                                                                                  .value,
-                                                                                      }
-                                                                                    : p
-                                                                        )
-                                                                );
-                                                            }}
-                                                            className="text-sm border-gray-300 rounded-md focus:ring-primary focus:border-primary"
-                                                        >
-                                                            {categories.map(
-                                                                (cat) => (
-                                                                    <option
-                                                                        key={
-                                                                            cat.id
-                                                                        }
-                                                                        value={
-                                                                            cat.name
-                                                                        }
-                                                                    >
-                                                                        {
-                                                                            cat.name
-                                                                        }
-                                                                    </option>
-                                                                )
-                                                            )}
-                                                        </select>
-                                                    </td>
-                                                    <td className="px-6 py-4 whitespace-nowrap">
-                                                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                                                            {product.cropType}
+                                                        <span className="bg-yellow-100 text-yellow-800 px-3 py-1 rounded-full text-sm">
+                                                            Pending Review
                                                         </span>
-                                                    </td>
-                                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                                        ₱{product.price}/
-                                                        {product.unit}
-                                                    </td>
-                                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                                        {product.stock} kg
-                                                    </td>
-                                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                                        {new Date(
-                                                            product.submittedDate
-                                                        ).toLocaleDateString()}
-                                                    </td>
-                                                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
+                                                    </div>
+
+                                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
+                                                        <div>
+                                                            <h4 className="font-medium text-gray-700 mb-1">
+                                                                Category
+                                                            </h4>
+                                                            <select
+                                                                value={
+                                                                    product.category
+                                                                }
+                                                                onChange={(
+                                                                    e
+                                                                ) => {
+                                                                    setPendingProducts(
+                                                                        (
+                                                                            prev
+                                                                        ) =>
+                                                                            prev.map(
+                                                                                (
+                                                                                    p
+                                                                                ) =>
+                                                                                    p.id ===
+                                                                                    product.id
+                                                                                        ? {
+                                                                                              ...p,
+                                                                                              category:
+                                                                                                  e
+                                                                                                      .target
+                                                                                                      .value,
+                                                                                          }
+                                                                                        : p
+                                                                            )
+                                                                    );
+                                                                }}
+                                                                className="text-sm border-gray-300 rounded-md focus:ring-primary focus:border-primary w-full"
+                                                            >
+                                                                {categories.map(
+                                                                    (cat) => (
+                                                                        <option
+                                                                            key={
+                                                                                cat.id
+                                                                            }
+                                                                            value={
+                                                                                cat.name
+                                                                            }
+                                                                        >
+                                                                            {
+                                                                                cat.name
+                                                                            }
+                                                                        </option>
+                                                                    )
+                                                                )}
+                                                            </select>
+                                                        </div>
+                                                        <div>
+                                                            <h4 className="font-medium text-gray-700 mb-1">
+                                                                Crop Type
+                                                            </h4>
+                                                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                                                {
+                                                                    product.cropType
+                                                                }
+                                                            </span>
+                                                        </div>
+                                                        <div>
+                                                            <h4 className="font-medium text-gray-700 mb-1">
+                                                                Price
+                                                            </h4>
+                                                            <p className="text-lg font-semibold text-green-600">
+                                                                ₱{product.price}{" "}
+                                                                / {product.unit}
+                                                            </p>
+                                                        </div>
+                                                        <div>
+                                                            <h4 className="font-medium text-gray-700 mb-1">
+                                                                Stock
+                                                            </h4>
+                                                            <p className="text-sm text-gray-600">
+                                                                {product.stock}{" "}
+                                                                kg available
+                                                            </p>
+                                                        </div>
+                                                    </div>
+
+                                                    <div className="mb-4">
+                                                        <h4 className="font-medium text-gray-700 mb-2">
+                                                            Description
+                                                        </h4>
+                                                        <p className="text-sm text-gray-600 leading-relaxed">
+                                                            {
+                                                                product.description
+                                                            }
+                                                        </p>
+                                                    </div>
+
+                                                    <div className="flex gap-3">
                                                         <button
                                                             onClick={() =>
                                                                 handleProductAction(
@@ -563,12 +552,9 @@ function AdminProductManagement() {
                                                                     "approved"
                                                                 )
                                                             }
-                                                            className="inline-flex items-center px-3 py-1 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
+                                                            className="flex items-center gap-2 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors"
                                                         >
-                                                            <Icon
-                                                                icon="mingcute:check-line"
-                                                                className="mr-1"
-                                                            />
+                                                            <Icon icon="mingcute:check-line" />
                                                             Approve
                                                         </button>
                                                         <button
@@ -578,20 +564,17 @@ function AdminProductManagement() {
                                                                     "rejected"
                                                                 )
                                                             }
-                                                            className="inline-flex items-center px-3 py-1 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+                                                            className="flex items-center gap-2 bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors"
                                                         >
-                                                            <Icon
-                                                                icon="mingcute:close-line"
-                                                                className="mr-1"
-                                                            />
+                                                            <Icon icon="mingcute:close-line" />
                                                             Reject
                                                         </button>
-                                                    </td>
-                                                </tr>
-                                            ))}
-                                        </tbody>
-                                    </table>
-                                </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )
+                                )}
                             </div>
                         )}
                     </div>
@@ -626,8 +609,24 @@ function AdminProductManagement() {
                                 <table className="w-full">
                                     <thead className="bg-gray-50">
                                         <tr>
-                                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                                Product
+                                            <th
+                                                className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                                                onClick={() =>
+                                                    handleSort("name")
+                                                }
+                                            >
+                                                Product{" "}
+                                                {sortConfig.key === "name" && (
+                                                    <Icon
+                                                        icon={
+                                                            sortConfig.direction ===
+                                                            "asc"
+                                                                ? "mingcute:up-line"
+                                                                : "mingcute:down-line"
+                                                        }
+                                                        className="inline ml-1"
+                                                    />
+                                                )}
                                             </th>
                                             <th
                                                 className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
@@ -729,25 +728,8 @@ function AdminProductManagement() {
                                                     />
                                                 )}
                                             </th>
-                                            <th
-                                                className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
-                                                onClick={() =>
-                                                    handleSort("approvedDate")
-                                                }
-                                            >
-                                                Approved Date{" "}
-                                                {sortConfig.key ===
-                                                    "approvedDate" && (
-                                                    <Icon
-                                                        icon={
-                                                            sortConfig.direction ===
-                                                            "asc"
-                                                                ? "mingcute:up-line"
-                                                                : "mingcute:down-line"
-                                                        }
-                                                        className="inline ml-1"
-                                                    />
-                                                )}
+                                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                Actions
                                             </th>
                                         </tr>
                                     </thead>
@@ -838,15 +820,51 @@ function AdminProductManagement() {
                                                         />
                                                         <span className="text-sm text-gray-900">
                                                             {product.rating} (
-                                                            {product.reviews}{" "}
-                                                            reviews)
+                                                            <Link
+                                                                to={`/admin/products/${product.id}/reviews`}
+                                                                className="text-blue-600 hover:text-blue-800 font-medium"
+                                                            >
+                                                                {
+                                                                    product.reviews
+                                                                }{" "}
+                                                                reviews
+                                                            </Link>
+                                                            )
                                                         </span>
                                                     </div>
                                                 </td>
-                                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                                    {new Date(
-                                                        product.approvedDate
-                                                    ).toLocaleDateString()}
+                                                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                                    <button
+                                                        onClick={() =>
+                                                            handleProductStatusAction(
+                                                                product.id,
+                                                                product.status ===
+                                                                    "Active"
+                                                                    ? "suspend"
+                                                                    : "activate"
+                                                            )
+                                                        }
+                                                        className={`inline-flex items-center px-3 py-1 border border-transparent text-sm leading-4 font-medium rounded-md text-white ${
+                                                            product.status ===
+                                                            "Active"
+                                                                ? "bg-red-600 hover:bg-red-700"
+                                                                : "bg-green-600 hover:bg-green-700"
+                                                        } focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500`}
+                                                    >
+                                                        <Icon
+                                                            icon={
+                                                                product.status ===
+                                                                "Active"
+                                                                    ? "mingcute:pause-line"
+                                                                    : "mingcute:play-line"
+                                                            }
+                                                            className="mr-1"
+                                                        />
+                                                        {product.status ===
+                                                        "Active"
+                                                            ? "Suspend"
+                                                            : "Activate"}
+                                                    </button>
                                                 </td>
                                             </tr>
                                         ))}
@@ -867,7 +885,7 @@ function AdminProductManagement() {
                                     ? "Edit Category"
                                     : "Add New Category"}
                             </h3>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-2">
                                         Category Name
@@ -901,6 +919,42 @@ function AdminProductManagement() {
                                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary"
                                         placeholder="Enter description"
                                     />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                        Icon{" "}
+                                        <a
+                                            href="https://icon-sets.iconify.design/twemoji/"
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="text-primary text-xs hover:underline ml-1"
+                                        >
+                                            FAQ
+                                        </a>
+                                    </label>
+                                    <input
+                                        type="text"
+                                        value={newCategory.icon}
+                                        onChange={(e) =>
+                                            setNewCategory({
+                                                ...newCategory,
+                                                icon: e.target.value,
+                                            })
+                                        }
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary"
+                                        placeholder="e.g., twemoji:carrot"
+                                    />
+                                    {newCategory.icon && (
+                                        <div className="mt-2 flex items-center gap-2">
+                                            <Icon
+                                                icon={newCategory.icon}
+                                                className="text-2xl"
+                                            />
+                                            <span className="text-sm text-gray-500">
+                                                Preview
+                                            </span>
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                             <div className="flex gap-2 mt-4">
@@ -939,6 +993,9 @@ function AdminProductManagement() {
                                 <table className="w-full">
                                     <thead className="bg-gray-50">
                                         <tr>
+                                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                Icon
+                                            </th>
                                             <th
                                                 className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
                                                 onClick={() =>
@@ -973,6 +1030,16 @@ function AdminProductManagement() {
                                                     key={category.id}
                                                     className="hover:bg-gray-50"
                                                 >
+                                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                                        {category.icon && (
+                                                            <Icon
+                                                                icon={
+                                                                    category.icon
+                                                                }
+                                                                className="text-2xl"
+                                                            />
+                                                        )}
+                                                    </td>
                                                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                                                         {category.name}
                                                     </td>
