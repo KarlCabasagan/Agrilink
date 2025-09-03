@@ -183,7 +183,10 @@ function Profile() {
                             />
                         </Link>
 
-                        <button className="w-full flex items-center justify-between p-4 hover:bg-gray-50 transition-colors">
+                        <Link
+                            to="/seller-application"
+                            className="w-full flex items-center justify-between p-4 hover:bg-gray-50 transition-colors"
+                        >
                             <div className="flex items-center gap-3">
                                 <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center">
                                     <Icon
@@ -203,7 +206,7 @@ function Profile() {
                                 height="16"
                                 className="text-gray-400"
                             />
-                        </button>
+                        </Link>
                     </div>
                 </div>
 

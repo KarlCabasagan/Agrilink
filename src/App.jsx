@@ -20,6 +20,7 @@ import Register from "./pages/Register";
 import AccountVerified from "./pages/AccountVerified";
 import Favorites from "./pages/consumer/Favorites";
 import Profile from "./pages/consumer/Profile";
+import SellerApplication from "./pages/consumer/SellerApplication";
 import ProducerProfile from "./pages/producer/ProducerProfile";
 import Product from "./pages/consumer/Product";
 import Cart from "./pages/consumer/Cart";
@@ -299,6 +300,14 @@ function App() {
                         element={
                             <RoleGuard allowedRoles={[1]}>
                                 <Cart />
+                            </RoleGuard>
+                        }
+                    />
+                    <Route
+                        path="/seller-application"
+                        element={
+                            <RoleGuard allowedRoles={[1]}>
+                                <SellerApplication />
                             </RoleGuard>
                         }
                     />
