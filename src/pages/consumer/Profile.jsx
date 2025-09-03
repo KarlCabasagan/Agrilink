@@ -1,9 +1,9 @@
 import { Icon } from "@iconify/react";
-import NavigationBar from "../components/NavigationBar";
+import NavigationBar from "../../components/NavigationBar";
 import { Link, useNavigate } from "react-router-dom";
 import { useContext, useEffect, useState } from "react";
-import { AuthContext } from "../App.jsx";
-import supabase from "../SupabaseClient.jsx";
+import { AuthContext } from "../../App.jsx";
+import supabase from "../../SupabaseClient.jsx";
 
 function Profile() {
     const { user, setUser } = useContext(AuthContext);

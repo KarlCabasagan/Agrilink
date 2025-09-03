@@ -2,8 +2,8 @@ import { useParams } from "react-router-dom";
 import { useState, useMemo } from "react";
 import { Icon } from "@iconify/react";
 import { Link } from "react-router-dom";
-import NavigationBar from "../components/NavigationBar";
-import { findProductById } from "../data/products.js";
+import NavigationBar from "../../components/NavigationBar";
+import { findProductById } from "../../data/products.js";
 
 function Product() {
     const { id } = useParams();

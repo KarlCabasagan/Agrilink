@@ -1,9 +1,9 @@
 import { Icon } from "@iconify/react";
 import { Link, useNavigate } from "react-router-dom";
 import { useContext, useEffect, useState } from "react";
-import { AuthContext } from "../App.jsx";
-import supabase from "../SupabaseClient.jsx";
-import ProducerNavigationBar from "../components/ProducerNavigationBar";
+import { AuthContext } from "../../App.jsx";
+import supabase from "../../SupabaseClient.jsx";
+import ProducerNavigationBar from "../../components/ProducerNavigationBar";
 
 function ProducerProfile() {
     const { user, setUser } = useContext(AuthContext);

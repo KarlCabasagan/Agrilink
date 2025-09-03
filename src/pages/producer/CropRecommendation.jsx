@@ -1,7 +1,7 @@
 import { useState, useEffect, useContext } from "react";
 import { Icon } from "@iconify/react";
-import { AuthContext } from "../App.jsx";
-import ProducerNavigationBar from "../components/ProducerNavigationBar";
+import { AuthContext } from "../../App.jsx";
+import ProducerNavigationBar from "../../components/ProducerNavigationBar";
 
 const cropData = [
     {

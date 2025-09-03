@@ -1,9 +1,9 @@
 import { useState, useMemo } from "react";
 import { Icon } from "@iconify/react";
 import { Link } from "react-router-dom";
-import NavigationBar from "../components/NavigationBar";
-import ConsumerSearch from "../components/ConsumerSearch.jsx";
-import { products } from "../data/products.js";
+import NavigationBar from "../../components/NavigationBar";
+import ConsumerSearch from "../../components/ConsumerSearch.jsx";
+import { products } from "../../data/products.js";
 
 const categories = [
     { name: "All", icon: "mdi:apps-box" },

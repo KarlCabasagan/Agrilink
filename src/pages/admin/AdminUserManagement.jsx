@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Icon } from "@iconify/react";
-import AdminNavigationBar from "../components/AdminNavigationBar";
-import ConfirmModal from "../components/ConfirmModal";
+import AdminNavigationBar from "../../components/AdminNavigationBar";
+import ConfirmModal from "../../components/ConfirmModal";
 
 function AdminUserManagement() {
     const [activeTab, setActiveTab] = useState("applications");

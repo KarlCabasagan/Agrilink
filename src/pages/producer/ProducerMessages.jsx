@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Icon } from "@iconify/react";
 import { Link } from "react-router-dom";
-import ProducerNavigationBar from "../components/ProducerNavigationBar";
+import ProducerNavigationBar from "../../components/ProducerNavigationBar";
 
 function ProducerMessages() {
     const [conversations] = useState([

@@ -1,5 +1,8 @@
 import { Icon } from "@iconify/react";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
+import { useContext } from "react";
+import { AuthContext } from "../App.jsx";
+import supabase from "../SupabaseClient.jsx";
 
 function AdminNavigationBar() {
     const location = useLocation();

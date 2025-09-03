@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Icon } from "@iconify/react";
-import AdminNavigationBar from "../components/AdminNavigationBar";
+import AdminNavigationBar from "../../components/AdminNavigationBar";
 
 function AdminLogs() {
     const [activeTab, setActiveTab] = useState("transactions");

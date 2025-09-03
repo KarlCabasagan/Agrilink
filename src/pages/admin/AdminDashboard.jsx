@@ -1,6 +1,6 @@
 import { Icon } from "@iconify/react";
 import { Link } from "react-router-dom";
-import AdminNavigationBar from "../components/AdminNavigationBar";
+import AdminNavigationBar from "../../components/AdminNavigationBar";
 
 function AdminDashboard() {
     const stats = {
