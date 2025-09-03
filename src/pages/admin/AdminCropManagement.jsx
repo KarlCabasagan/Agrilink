@@ -4,10 +4,15 @@ import AdminNavigationBar from "../../components/AdminNavigationBar";
 import ConfirmModal from "../../components/ConfirmModal";
 
 function AdminCropManagement() {
+    const [activeTab, setActiveTab] = useState("crops");
     const [showAddModal, setShowAddModal] = useState(false);
     const [showEditModal, setShowEditModal] = useState(false);
     const [showDeleteModal, setShowDeleteModal] = useState(false);
+    const [showAddGuideModal, setShowAddGuideModal] = useState(false);
+    const [showEditGuideModal, setShowEditGuideModal] = useState(false);
+    const [showDeleteGuideModal, setShowDeleteGuideModal] = useState(false);
     const [selectedCrop, setSelectedCrop] = useState(null);
+    const [selectedGuide, setSelectedGuide] = useState(null);
     const [searchTerm, setSearchTerm] = useState("");
 
     const [crops, setCrops] = useState([
@@ -18,15 +23,11 @@ function AdminCropManagement() {
             icon: "twemoji:tomato",
             plantingSeason: "Dry Season",
             harvestTime: "60-80 days",
-            avgPrice: 80,
-            marketDemand: "High",
             difficulty: "Easy",
             waterRequirement: "Moderate",
             description:
                 "Popular vegetable crop with high market demand year-round",
             tips: "Plant during cooler months, provide support for vines",
-            profitability: 85,
-            competition: "Medium",
             lastUpdated: "2024-09-01",
         },
         {
@@ -36,15 +37,11 @@ function AdminCropManagement() {
             icon: "twemoji:sheaf-of-rice",
             plantingSeason: "Wet Season",
             harvestTime: "120-150 days",
-            avgPrice: 45,
-            marketDemand: "Very High",
             difficulty: "Medium",
             waterRequirement: "High",
             description:
                 "Staple crop with consistent demand and government support",
             tips: "Requires flooded fields, timing is crucial for wet season",
-            profitability: 90,
-            competition: "High",
             lastUpdated: "2024-08-28",
         },
         {
@@ -54,16 +51,35 @@ function AdminCropManagement() {
             icon: "twemoji:leafy-greens",
             plantingSeason: "Cool Season",
             harvestTime: "45-60 days",
-            avgPrice: 35,
-            marketDemand: "Medium",
             difficulty: "Easy",
             waterRequirement: "Moderate",
             description:
                 "Fast-growing leafy vegetable with good profit margins",
             tips: "Grows best in cooler weather, harvest in early morning",
-            profitability: 70,
-            competition: "Low",
             lastUpdated: "2024-08-25",
+        },
+    ]);
+
+    const [farmingGuides, setFarmingGuides] = useState([
+        {
+            id: 1,
+            name: "Tomato Growing Basics",
+            summary:
+                "Complete guide on how to grow healthy tomatoes from seed to harvest",
+            videoUrl: "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+            category: "Vegetables",
+            duration: "15:30",
+            addedDate: "2024-09-01",
+        },
+        {
+            id: 2,
+            name: "Rice Farming Techniques",
+            summary:
+                "Traditional and modern rice farming methods for maximum yield",
+            videoUrl: "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+            category: "Grains",
+            duration: "20:45",
+            addedDate: "2024-08-28",
         },
     ]);
 
@@ -73,14 +89,17 @@ function AdminCropManagement() {
         icon: "",
         plantingSeason: "",
         harvestTime: "",
-        avgPrice: "",
-        marketDemand: "",
         difficulty: "",
         waterRequirement: "",
         description: "",
         tips: "",
-        profitability: "",
-        competition: "",
+    });
+
+    const [guideFormData, setGuideFormData] = useState({
+        name: "",
+        summary: "",
+        videoUrl: "",
+        category: "",
     });
 
     const resetForm = () => {
@@ -90,14 +109,19 @@ function AdminCropManagement() {
             icon: "",
             plantingSeason: "",
             harvestTime: "",
-            avgPrice: "",
-            marketDemand: "",
             difficulty: "",
             waterRequirement: "",
             description: "",
             tips: "",
-            profitability: "",
-            competition: "",
+        });
+    };
+
+    const resetGuideForm = () => {
+        setGuideFormData({
+            name: "",
+            summary: "",
+            videoUrl: "",
+            category: "",
         });
     };
 
@@ -121,8 +145,6 @@ function AdminCropManagement() {
         const newCrop = {
             ...formData,
             id: selectedCrop?.id || Date.now(),
-            avgPrice: parseFloat(formData.avgPrice),
-            profitability: parseFloat(formData.profitability),
             lastUpdated: new Date().toISOString().split("T")[0],
         };
 
@@ -146,6 +168,62 @@ function AdminCropManagement() {
         setCrops((prev) => prev.filter((crop) => crop.id !== selectedCrop.id));
         setShowDeleteModal(false);
         setSelectedCrop(null);
+    };
+
+    // Farming Guide Handlers
+    const handleAddGuide = () => {
+        setShowAddGuideModal(true);
+        resetGuideForm();
+    };
+
+    const handleEditGuide = (guide) => {
+        setSelectedGuide(guide);
+        setGuideFormData(guide);
+        setShowEditGuideModal(true);
+    };
+
+    const handleDeleteGuide = (guide) => {
+        setSelectedGuide(guide);
+        setShowDeleteGuideModal(true);
+    };
+
+    const saveGuide = () => {
+        const newGuide = {
+            ...guideFormData,
+            id: selectedGuide?.id || Date.now(),
+            addedDate: new Date().toISOString().split("T")[0],
+        };
+
+        if (selectedGuide) {
+            setFarmingGuides((prev) =>
+                prev.map((guide) =>
+                    guide.id === selectedGuide.id ? newGuide : guide
+                )
+            );
+        } else {
+            setFarmingGuides((prev) => [...prev, newGuide]);
+        }
+
+        setShowAddGuideModal(false);
+        setShowEditGuideModal(false);
+        setSelectedGuide(null);
+        resetGuideForm();
+    };
+
+    const confirmDeleteGuide = () => {
+        setFarmingGuides((prev) =>
+            prev.filter((guide) => guide.id !== selectedGuide.id)
+        );
+        setShowDeleteGuideModal(false);
+        setSelectedGuide(null);
+    };
+
+    // Helper function to extract video ID from YouTube URL
+    const getYouTubeVideoId = (url) => {
+        const regExp =
+            /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
+        const match = url.match(regExp);
+        return match && match[2].length === 11 ? match[2] : null;
     };
 
     const getDemandColor = (demand) => {
@@ -205,180 +283,399 @@ function AdminCropManagement() {
             </div>
 
             <div className="w-full max-w-6xl mx-4 sm:mx-auto my-16">
-                {/* Search and Add Button */}
-                <div className="bg-white rounded-lg shadow-md p-4 mb-6 mt-4">
-                    <div className="flex flex-col sm:flex-row gap-4 items-center">
-                        <div className="flex-1 relative">
-                            <Icon
-                                icon="mingcute:search-line"
-                                width="20"
-                                height="20"
-                                className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"
-                            />
-                            <input
-                                type="text"
-                                placeholder="Search crops..."
-                                value={searchTerm}
-                                onChange={(e) => setSearchTerm(e.target.value)}
-                                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
-                            />
-                        </div>
+                {/* Tabs */}
+                <div className="bg-white rounded-lg shadow-md mb-6 mt-4">
+                    <div className="flex border-b border-gray-200">
                         <button
-                            onClick={handleAdd}
-                            className="bg-primary text-white px-6 py-2 rounded-lg hover:bg-primary-dark transition-colors font-medium flex items-center gap-2"
+                            onClick={() => setActiveTab("crops")}
+                            className={`flex-1 py-3 px-4 text-center font-medium transition-colors ${
+                                activeTab === "crops"
+                                    ? "text-primary border-b-2 border-primary"
+                                    : "text-gray-600 hover:text-gray-800"
+                            }`}
                         >
-                            <Icon
-                                icon="mingcute:add-line"
-                                width="20"
-                                height="20"
-                            />
-                            Add New Crop
+                            Crop Management
+                        </button>
+                        <button
+                            onClick={() => setActiveTab("guides")}
+                            className={`flex-1 py-3 px-4 text-center font-medium transition-colors ${
+                                activeTab === "guides"
+                                    ? "text-primary border-b-2 border-primary"
+                                    : "text-gray-600 hover:text-gray-800"
+                            }`}
+                        >
+                            Farming Guides
                         </button>
                     </div>
                 </div>
 
-                {/* Crops Grid */}
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    {filteredCrops.map((crop) => (
-                        <div
-                            key={crop.id}
-                            className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow"
-                        >
-                            <div className="flex items-start justify-between mb-4">
-                                <div>
-                                    <h3 className="text-xl font-semibold text-gray-800">
-                                        {crop.name}
-                                    </h3>
-                                    <p className="text-sm text-gray-600">
-                                        {crop.category}
-                                    </p>
+                {/* Crops Tab */}
+                {activeTab === "crops" && (
+                    <>
+                        {/* Search and Add Button */}
+                        <div className="bg-white rounded-lg shadow-md p-4 mb-6">
+                            <div className="flex flex-col sm:flex-row gap-4 items-center">
+                                <div className="flex-1 relative">
+                                    <Icon
+                                        icon="mingcute:search-line"
+                                        width="20"
+                                        height="20"
+                                        className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"
+                                    />
+                                    <input
+                                        type="text"
+                                        placeholder="Search crops..."
+                                        value={searchTerm}
+                                        onChange={(e) =>
+                                            setSearchTerm(e.target.value)
+                                        }
+                                        className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+                                    />
                                 </div>
-                                <div className="flex gap-2">
-                                    <button
-                                        onClick={() => handleEdit(crop)}
-                                        className="text-blue-600 hover:text-blue-800"
-                                    >
-                                        <Icon
-                                            icon="mingcute:edit-line"
-                                            width="20"
-                                            height="20"
-                                        />
-                                    </button>
-                                    <button
-                                        onClick={() => handleDelete(crop)}
-                                        className="text-red-600 hover:text-red-800"
-                                    >
-                                        <Icon
-                                            icon="mingcute:delete-line"
-                                            width="20"
-                                            height="20"
-                                        />
-                                    </button>
-                                </div>
-                            </div>
-
-                            <div className="grid grid-cols-2 gap-4 mb-4">
-                                <div>
-                                    <h4 className="font-medium text-gray-700 mb-1">
-                                        Planting Season
-                                    </h4>
-                                    <p className="text-sm text-gray-600">
-                                        {crop.plantingSeason}
-                                    </p>
-                                </div>
-                                <div>
-                                    <h4 className="font-medium text-gray-700 mb-1">
-                                        Harvest Time
-                                    </h4>
-                                    <p className="text-sm text-gray-600">
-                                        {crop.harvestTime}
-                                    </p>
-                                </div>
-                                <div>
-                                    <h4 className="font-medium text-gray-700 mb-1">
-                                        Average Price
-                                    </h4>
-                                    <p className="text-sm font-semibold text-green-600">
-                                        ₱{crop.avgPrice}/kg
-                                    </p>
-                                </div>
-                                <div>
-                                    <h4 className="font-medium text-gray-700 mb-1">
-                                        Profitability
-                                    </h4>
-                                    <p className="text-sm font-semibold text-blue-600">
-                                        {crop.profitability}%
-                                    </p>
-                                </div>
-                            </div>
-
-                            <div className="flex flex-wrap gap-2 mb-4">
-                                <span
-                                    className={`px-2 py-1 text-xs rounded-full ${getDemandColor(
-                                        crop.marketDemand
-                                    )}`}
+                                <button
+                                    onClick={handleAdd}
+                                    className="bg-primary text-white px-6 py-2 rounded-lg hover:bg-primary-dark transition-colors font-medium flex items-center gap-2"
                                 >
-                                    {crop.marketDemand} Demand
-                                </span>
-                                <span
-                                    className={`px-2 py-1 text-xs rounded-full ${getDifficultyColor(
-                                        crop.difficulty
-                                    )}`}
-                                >
-                                    {crop.difficulty}
-                                </span>
-                                <span
-                                    className={`px-2 py-1 text-xs rounded-full ${getCompetitionColor(
-                                        crop.competition
-                                    )}`}
-                                >
-                                    {crop.competition} Competition
-                                </span>
-                                <span className="px-2 py-1 text-xs rounded-full bg-gray-100 text-gray-800">
-                                    {crop.waterRequirement} Water
-                                </span>
+                                    <Icon
+                                        icon="mingcute:add-line"
+                                        width="20"
+                                        height="20"
+                                    />
+                                    Add New Crop
+                                </button>
                             </div>
+                        </div>
 
-                            <p className="text-sm text-gray-600 mb-3">
-                                {crop.description}
-                            </p>
+                        {/* Crops Grid */}
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                            {filteredCrops.map((crop) => (
+                                <div
+                                    key={crop.id}
+                                    className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow"
+                                >
+                                    <div className="flex items-start justify-between mb-4">
+                                        <div className="flex items-center gap-3">
+                                            {crop.icon && (
+                                                <Icon
+                                                    icon={crop.icon}
+                                                    width="32"
+                                                    height="32"
+                                                    className="flex-shrink-0"
+                                                />
+                                            )}
+                                            <div>
+                                                <h3 className="text-xl font-semibold text-gray-800">
+                                                    {crop.name}
+                                                </h3>
+                                                <p className="text-sm text-gray-600">
+                                                    {crop.category}
+                                                </p>
+                                            </div>
+                                        </div>
+                                        <div className="flex gap-2">
+                                            <button
+                                                onClick={() => handleEdit(crop)}
+                                                className="text-blue-600 hover:text-blue-800"
+                                            >
+                                                <Icon
+                                                    icon="mingcute:edit-line"
+                                                    width="20"
+                                                    height="20"
+                                                />
+                                            </button>
+                                            <button
+                                                onClick={() =>
+                                                    handleDelete(crop)
+                                                }
+                                                className="text-red-600 hover:text-red-800"
+                                            >
+                                                <Icon
+                                                    icon="mingcute:delete-line"
+                                                    width="20"
+                                                    height="20"
+                                                />
+                                            </button>
+                                        </div>
+                                    </div>
 
-                            <div className="border-t pt-3">
-                                <h4 className="font-medium text-gray-700 mb-1">
-                                    Growing Tips:
-                                </h4>
-                                <p className="text-sm text-gray-600">
-                                    {crop.tips}
+                                    <div className="grid grid-cols-2 gap-4 mb-4">
+                                        <div>
+                                            <h4 className="font-medium text-gray-700 mb-1">
+                                                Planting Season
+                                            </h4>
+                                            <p className="text-sm text-gray-600">
+                                                {crop.plantingSeason}
+                                            </p>
+                                        </div>
+                                        <div>
+                                            <h4 className="font-medium text-gray-700 mb-1">
+                                                Harvest Time
+                                            </h4>
+                                            <p className="text-sm text-gray-600">
+                                                {crop.harvestTime}
+                                            </p>
+                                        </div>
+                                        <div>
+                                            <h4 className="font-medium text-gray-700 mb-1">
+                                                Average Price
+                                            </h4>
+                                            <p className="text-sm font-semibold text-green-600">
+                                                ₱{crop.avgPrice}/kg
+                                            </p>
+                                        </div>
+                                        <div>
+                                            <h4 className="font-medium text-gray-700 mb-1">
+                                                Profitability
+                                            </h4>
+                                            <p className="text-sm font-semibold text-blue-600">
+                                                {crop.profitability}%
+                                            </p>
+                                        </div>
+                                    </div>
+
+                                    <div className="flex flex-wrap gap-2 mb-4">
+                                        <span
+                                            className={`px-2 py-1 text-xs rounded-full ${getDemandColor(
+                                                crop.marketDemand
+                                            )}`}
+                                        >
+                                            {crop.marketDemand} Demand
+                                        </span>
+                                        <span
+                                            className={`px-2 py-1 text-xs rounded-full ${getDifficultyColor(
+                                                crop.difficulty
+                                            )}`}
+                                        >
+                                            {crop.difficulty}
+                                        </span>
+                                        <span
+                                            className={`px-2 py-1 text-xs rounded-full ${getCompetitionColor(
+                                                crop.competition
+                                            )}`}
+                                        >
+                                            {crop.competition} Competition
+                                        </span>
+                                        <span className="px-2 py-1 text-xs rounded-full bg-gray-100 text-gray-800">
+                                            {crop.waterRequirement} Water
+                                        </span>
+                                    </div>
+
+                                    <p className="text-sm text-gray-600 mb-3">
+                                        {crop.description}
+                                    </p>
+
+                                    <div className="border-t pt-3">
+                                        <h4 className="font-medium text-gray-700 mb-1">
+                                            Growing Tips:
+                                        </h4>
+                                        <p className="text-sm text-gray-600">
+                                            {crop.tips}
+                                        </p>
+                                    </div>
+
+                                    <p className="text-xs text-gray-400 mt-3">
+                                        Last updated:{" "}
+                                        {new Date(
+                                            crop.lastUpdated
+                                        ).toLocaleDateString()}
+                                    </p>
+                                </div>
+                            ))}
+                        </div>
+
+                        {filteredCrops.length === 0 && (
+                            <div className="bg-white rounded-lg shadow-md p-8 text-center">
+                                <Icon
+                                    icon="mingcute:leaf-line"
+                                    width="64"
+                                    height="64"
+                                    className="mx-auto text-gray-300 mb-4"
+                                />
+                                <h3 className="text-lg font-semibold text-gray-600 mb-2">
+                                    No crops found
+                                </h3>
+                                <p className="text-gray-500">
+                                    {searchTerm
+                                        ? "Try adjusting your search terms"
+                                        : "Start by adding your first crop"}
                                 </p>
                             </div>
+                        )}
+                    </>
+                )}
 
-                            <p className="text-xs text-gray-400 mt-3">
-                                Last updated:{" "}
-                                {new Date(
-                                    crop.lastUpdated
-                                ).toLocaleDateString()}
-                            </p>
+                {/* Farming Guides Tab */}
+                {activeTab === "guides" && (
+                    <>
+                        {/* Search and Add Guide Button */}
+                        <div className="bg-white rounded-lg shadow-md p-4 mb-6">
+                            <div className="flex flex-col sm:flex-row gap-4 items-center">
+                                <div className="relative flex-1">
+                                    <Icon
+                                        icon="mingcute:search-line"
+                                        width="20"
+                                        height="20"
+                                        className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"
+                                    />
+                                    <input
+                                        type="text"
+                                        placeholder="Search farming guides..."
+                                        value={searchTerm}
+                                        onChange={(e) =>
+                                            setSearchTerm(e.target.value)
+                                        }
+                                        className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary"
+                                    />
+                                </div>
+                                <button
+                                    onClick={handleAddGuide}
+                                    className="bg-primary text-white px-6 py-2 rounded-lg hover:bg-primary-dark transition-colors flex items-center gap-2"
+                                >
+                                    <Icon
+                                        icon="mingcute:add-line"
+                                        width="20"
+                                        height="20"
+                                    />
+                                    Add New Guide
+                                </button>
+                            </div>
                         </div>
-                    ))}
-                </div>
 
-                {filteredCrops.length === 0 && (
-                    <div className="bg-white rounded-lg shadow-md p-8 text-center">
-                        <Icon
-                            icon="mingcute:leaf-line"
-                            width="64"
-                            height="64"
-                            className="mx-auto text-gray-300 mb-4"
-                        />
-                        <h3 className="text-lg font-semibold text-gray-600 mb-2">
-                            No crops found
-                        </h3>
-                        <p className="text-gray-500">
-                            {searchTerm
-                                ? "Try adjusting your search terms"
-                                : "Start by adding your first crop"}
-                        </p>
-                    </div>
+                        {/* Farming Guides Grid */}
+                        {farmingGuides.filter(
+                            (guide) =>
+                                guide.name
+                                    .toLowerCase()
+                                    .includes(searchTerm.toLowerCase()) ||
+                                guide.summary
+                                    .toLowerCase()
+                                    .includes(searchTerm.toLowerCase()) ||
+                                guide.category
+                                    .toLowerCase()
+                                    .includes(searchTerm.toLowerCase())
+                        ).length > 0 ? (
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                {farmingGuides
+                                    .filter(
+                                        (guide) =>
+                                            guide.name
+                                                .toLowerCase()
+                                                .includes(
+                                                    searchTerm.toLowerCase()
+                                                ) ||
+                                            guide.summary
+                                                .toLowerCase()
+                                                .includes(
+                                                    searchTerm.toLowerCase()
+                                                ) ||
+                                            guide.category
+                                                .toLowerCase()
+                                                .includes(
+                                                    searchTerm.toLowerCase()
+                                                )
+                                    )
+                                    .map((guide) => {
+                                        const videoId = getYouTubeVideoId(
+                                            guide.videoUrl
+                                        );
+                                        return (
+                                            <div
+                                                key={guide.id}
+                                                className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow"
+                                            >
+                                                {/* Video Thumbnail */}
+                                                <div className="relative h-48 bg-gray-200">
+                                                    {videoId ? (
+                                                        <iframe
+                                                            src={`https://www.youtube.com/embed/${videoId}`}
+                                                            title={guide.name}
+                                                            className="w-full h-full"
+                                                            frameBorder="0"
+                                                            allowFullScreen
+                                                        ></iframe>
+                                                    ) : (
+                                                        <div className="w-full h-full flex items-center justify-center">
+                                                            <Icon
+                                                                icon="mingcute:video-line"
+                                                                width="48"
+                                                                height="48"
+                                                                className="text-gray-400"
+                                                            />
+                                                        </div>
+                                                    )}
+                                                </div>
+
+                                                {/* Guide Info */}
+                                                <div className="p-4">
+                                                    <div className="flex items-start justify-between mb-2">
+                                                        <h3 className="text-lg font-semibold text-gray-800 leading-tight">
+                                                            {guide.name}
+                                                        </h3>
+                                                    </div>
+
+                                                    <p className="text-sm text-gray-600 mb-3 line-clamp-3">
+                                                        {guide.summary}
+                                                    </p>
+
+                                                    <div className="flex items-center justify-between text-sm text-gray-500 mb-3">
+                                                        <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded text-xs">
+                                                            {guide.category}
+                                                        </span>
+                                                        <span>
+                                                            Added:{" "}
+                                                            {new Date(
+                                                                guide.addedDate
+                                                            ).toLocaleDateString()}
+                                                        </span>
+                                                    </div>
+
+                                                    {/* Action Buttons */}
+                                                    <div className="flex gap-2">
+                                                        <button
+                                                            onClick={() =>
+                                                                handleEditGuide(
+                                                                    guide
+                                                                )
+                                                            }
+                                                            className="flex-1 bg-blue-600 text-white py-2 px-3 rounded text-sm hover:bg-blue-700 transition-colors"
+                                                        >
+                                                            Edit
+                                                        </button>
+                                                        <button
+                                                            onClick={() =>
+                                                                handleDeleteGuide(
+                                                                    guide
+                                                                )
+                                                            }
+                                                            className="flex-1 bg-red-600 text-white py-2 px-3 rounded text-sm hover:bg-red-700 transition-colors"
+                                                        >
+                                                            Delete
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                            </div>
+                        ) : (
+                            <div className="bg-white rounded-lg shadow-md p-12 text-center">
+                                <Icon
+                                    icon="mingcute:video-line"
+                                    width="64"
+                                    height="64"
+                                    className="mx-auto text-gray-300 mb-4"
+                                />
+                                <h3 className="text-lg font-semibold text-gray-600 mb-2">
+                                    No Farming Guides Found
+                                </h3>
+                                <p className="text-gray-500">
+                                    {searchTerm
+                                        ? "Try adjusting your search terms"
+                                        : "Start by adding your first farming guide"}
+                                </p>
+                            </div>
+                        )}
+                    </>
                 )}
             </div>
 
