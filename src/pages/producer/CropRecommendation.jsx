@@ -154,11 +154,15 @@ const cropData = [
 
 function CropRecommendation() {
     const { user } = useContext(AuthContext);
+    const [activeTab, setActiveTab] = useState("recommendations");
     const [selectedCategory, setSelectedCategory] = useState("All");
     const [sortBy, setSortBy] = useState("recommendation");
     const [selectedRecommendation, setSelectedRecommendation] = useState(null);
     const [searchTerm, setSearchTerm] = useState("");
     const [plantedCrops, setPlantedCrops] = useState([]);
+    const [confirmingCrop, setConfirmingCrop] = useState(null);
+    const [confirmingHarvest, setConfirmingHarvest] = useState(null);
+    const [myCropsSubTab, setMyCropsSubTab] = useState("growing");
 
     const categories = [
         "All",
@@ -179,23 +183,63 @@ function CropRecommendation() {
     };
 
     const handlePlantCrop = (crop) => {
+        // Check if this crop type is already planted and not harvested
+        const isAlreadyPlanted = plantedCrops.some(
+            (plantedCrop) =>
+                plantedCrop.name === crop.name && !plantedCrop.harvestDate
+        );
+
+        if (isAlreadyPlanted) {
+            alert(
+                `You have already planted ${crop.name}. Please harvest it before planting again.`
+            );
+            return;
+        }
+
+        // Set the crop for confirmation
+        setConfirmingCrop(crop);
+    };
+
+    const confirmPlantCrop = () => {
+        if (!confirmingCrop) return;
+
         const newPlantedCrop = {
-            ...crop,
+            ...confirmingCrop,
             plantedDate: new Date().toISOString(),
             harvestDate: null,
-            id: `planted_${crop.id}_${Date.now()}`, // Unique ID for planted crop
+            id: `planted_${confirmingCrop.id}_${Date.now()}`, // Unique ID for planted crop
         };
         setPlantedCrops((prev) => [...prev, newPlantedCrop]);
+        setConfirmingCrop(null);
+
+        // Switch to My Crops tab to show the newly planted crop
+        setActiveTab("my-crops");
+        setMyCropsSubTab("growing");
+    };
+
+    const cancelPlantCrop = () => {
+        setConfirmingCrop(null);
     };
 
     const handleHarvestCrop = (plantedCropId) => {
+        setConfirmingHarvest(plantedCropId);
+    };
+
+    const confirmHarvestCrop = () => {
+        if (!confirmingHarvest) return;
+
         setPlantedCrops((prev) =>
             prev.map((crop) =>
-                crop.id === plantedCropId
+                crop.id === confirmingHarvest
                     ? { ...crop, harvestDate: new Date().toISOString() }
                     : crop
             )
         );
+        setConfirmingHarvest(null);
+    };
+
+    const cancelHarvestCrop = () => {
+        setConfirmingHarvest(null);
     };
 
     const searchCrops = (crops) => {
@@ -229,7 +273,24 @@ function CropRecommendation() {
                     crop.recommendation === selectedRecommendation
             )
     ).sort((a, b) => {
-        if (sortBy === "recommendation") {
+        if (sortBy === "available") {
+            // Prioritize crops that are not planted yet
+            const aPlanted = isCropAlreadyPlanted(a.name);
+            const bPlanted = isCropAlreadyPlanted(b.name);
+            if (aPlanted && !bPlanted) return 1;
+            if (!aPlanted && bPlanted) return -1;
+            // If both have same planting status, sort by recommendation
+            const recommendationOrder = {
+                "Highly Recommended": 1,
+                Recommended: 2,
+                "Consider Carefully": 3,
+                "Caution Advised": 4,
+            };
+            return (
+                recommendationOrder[a.recommendation] -
+                recommendationOrder[b.recommendation]
+            );
+        } else if (sortBy === "recommendation") {
             const recommendationOrder = {
                 "Highly Recommended": 1,
                 Recommended: 2,
@@ -272,7 +333,7 @@ function CropRecommendation() {
     const getDemandColor = (level) => {
         switch (level) {
             case "High":
-                return "text-green-600";
+                return "text-primary";
             case "Medium-High":
                 return "text-blue-600";
             case "Medium":
@@ -283,452 +344,961 @@ function CropRecommendation() {
     };
 
     const getCompetitionColor = (percentage) => {
-        if (percentage <= 20) return "text-green-600";
+        if (percentage <= 20) return "text-primary";
         if (percentage <= 40) return "text-yellow-600";
         return "text-red-600";
     };
+
+    // Check if a crop is already planted and not harvested
+    const isCropAlreadyPlanted = (cropName) => {
+        return plantedCrops.some(
+            (plantedCrop) =>
+                plantedCrop.name === cropName && !plantedCrop.harvestDate
+        );
+    };
+
+    // Get count of active planted crops (not harvested)
+    const activePlantedCropsCount = plantedCrops.filter(
+        (crop) => !crop.harvestDate
+    ).length;
+
+    // Get count of harvested crops
+    const harvestedCropsCount = plantedCrops.filter(
+        (crop) => crop.harvestDate
+    ).length;
 
     return (
         <div className="min-h-screen w-full flex flex-col relative items-center scrollbar-hide bg-background overflow-x-hidden text-text pb-20">
             {/* Header */}
             <div className="fixed top-0 left-0 w-full bg-white shadow-md z-50 px-4 py-3">
                 <h1 className="text-lg font-semibold text-primary text-center">
-                    Crop Recommendations
+                    Crop Management
                 </h1>
             </div>
 
             <div className="w-full max-w-6xl mx-4 sm:mx-auto my-16 px-4 sm:px-0">
-                {/* Info Banner */}
-                <div className="mb-6 mt-4 bg-blue-50 border border-blue-200 rounded-lg p-4">
-                    <div className="flex items-start gap-3">
-                        <Icon
-                            icon="mingcute:lightbulb-line"
-                            width="24"
-                            height="24"
-                            className="text-blue-600 mt-0.5"
-                        />
-                        <div>
-                            <h3 className="font-semibold text-blue-800 mb-1">
-                                Smart Crop Selection
-                            </h3>
-                            <p className="text-blue-700 text-sm">
-                                Based on current market data and planting
-                                patterns from local farmers. Choose crops with
-                                low competition and high demand for better
-                                profitability.
-                            </p>
-                        </div>
-                    </div>
-                </div>
-
-                {/* Controls */}
-                <div className="mb-6 space-y-4">
-                    {/* Search */}
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                            Search Crops
-                        </label>
-                        <div className="relative">
-                            <Icon
-                                icon="mingcute:search-line"
-                                width="20"
-                                height="20"
-                                className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"
-                            />
-                            <input
-                                type="text"
-                                placeholder="Search by crop name, category, or benefits..."
-                                value={searchTerm}
-                                onChange={(e) => setSearchTerm(e.target.value)}
-                                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-primary focus:border-primary"
-                            />
-                        </div>
-                    </div>
-
-                    {/* Filters */}
-                    <div className="flex flex-col sm:flex-row gap-4">
-                        {/* Category Filter */}
-                        <div className="flex-1">
-                            <label className="block text-sm font-medium text-gray-700 mb-2">
-                                Category
-                            </label>
-                            <select
-                                value={selectedCategory}
-                                onChange={(e) =>
-                                    setSelectedCategory(e.target.value)
-                                }
-                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-primary focus:border-primary"
-                            >
-                                {categories.map((category) => (
-                                    <option key={category} value={category}>
-                                        {category}
-                                    </option>
-                                ))}
-                            </select>
-                        </div>
-
-                        {/* Sort By */}
-                        <div className="flex-1">
-                            <label className="block text-sm font-medium text-gray-700 mb-2">
-                                Sort By
-                            </label>
-                            <select
-                                value={sortBy}
-                                onChange={(e) => setSortBy(e.target.value)}
-                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-primary focus:border-primary"
-                            >
-                                <option value="recommendation">
-                                    Recommendation Level
-                                </option>
-                                <option value="demand">Market Demand</option>
-                                <option value="competition">
-                                    Competition Level
-                                </option>
-                            </select>
-                        </div>
-                    </div>
-                </div>
-
-                {/* Legend */}
-                <div className="mb-6 grid grid-cols-2 sm:grid-cols-4 gap-2">
-                    <button
-                        onClick={() =>
-                            handleRecommendationToggle("Highly Recommended")
-                        }
-                        className={`transition-all duration-200 border rounded-lg p-2 text-center hover:shadow-md ${
-                            selectedRecommendation === "Highly Recommended"
-                                ? "bg-green-100 border-green-300 shadow-md ring-2 ring-green-200"
-                                : "bg-green-50 border-green-200 hover:bg-green-100"
-                        }`}
-                    >
-                        <Icon
-                            icon="mingcute:star-fill"
-                            width="20"
-                            height="20"
-                            className="mx-auto text-green-600 mb-1"
-                        />
-                        <p className="text-xs font-medium text-green-800">
-                            Highly Recommended
-                        </p>
-                    </button>
-                    <button
-                        onClick={() =>
-                            handleRecommendationToggle("Recommended")
-                        }
-                        className={`transition-all duration-200 border rounded-lg p-2 text-center hover:shadow-md ${
-                            selectedRecommendation === "Recommended"
-                                ? "bg-blue-100 border-blue-300 shadow-md ring-2 ring-blue-200"
-                                : "bg-blue-50 border-blue-200 hover:bg-blue-100"
-                        }`}
-                    >
-                        <Icon
-                            icon="mingcute:thumb-up-fill"
-                            width="20"
-                            height="20"
-                            className="mx-auto text-blue-600 mb-1"
-                        />
-                        <p className="text-xs font-medium text-blue-800">
-                            Recommended
-                        </p>
-                    </button>
-                    <button
-                        onClick={() =>
-                            handleRecommendationToggle("Consider Carefully")
-                        }
-                        className={`transition-all duration-200 border rounded-lg p-2 text-center hover:shadow-md ${
-                            selectedRecommendation === "Consider Carefully"
-                                ? "bg-yellow-100 border-yellow-300 shadow-md ring-2 ring-yellow-200"
-                                : "bg-yellow-50 border-yellow-200 hover:bg-yellow-100"
-                        }`}
-                    >
-                        <Icon
-                            icon="mingcute:question-fill"
-                            width="20"
-                            height="20"
-                            className="mx-auto text-yellow-600 mb-1"
-                        />
-                        <p className="text-xs font-medium text-yellow-800">
-                            Consider Carefully
-                        </p>
-                    </button>
-                    <button
-                        onClick={() =>
-                            handleRecommendationToggle("Caution Advised")
-                        }
-                        className={`transition-all duration-200 border rounded-lg p-2 text-center hover:shadow-md ${
-                            selectedRecommendation === "Caution Advised"
-                                ? "bg-red-100 border-red-300 shadow-md ring-2 ring-red-200"
-                                : "bg-red-50 border-red-200 hover:bg-red-100"
-                        }`}
-                    >
-                        <Icon
-                            icon="mingcute:alert-fill"
-                            width="20"
-                            height="20"
-                            className="mx-auto text-red-600 mb-1"
-                        />
-                        <p className="text-xs font-medium text-red-800">
-                            Caution Advised
-                        </p>
-                    </button>
-                </div>
-
-                {/* Crops Grid */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    {filteredCrops.map((crop) => (
-                        <div
-                            key={crop.id}
-                            className="bg-white rounded-lg shadow-md overflow-hidden"
+                {/* Tab Navigation */}
+                <div className="mb-6 mt-4">
+                    <div className="bg-white rounded-lg border border-gray-200 p-1 flex">
+                        <button
+                            onClick={() => setActiveTab("recommendations")}
+                            className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors flex items-center justify-center gap-2 ${
+                                activeTab === "recommendations"
+                                    ? "bg-primary text-white shadow-sm"
+                                    : "text-gray-600 hover:text-gray-800 hover:bg-gray-50"
+                            }`}
                         >
-                            {/* Header */}
-                            <div className="p-4 border-b border-gray-200">
-                                <div className="flex items-start justify-between mb-2">
-                                    <div className="flex items-center gap-3">
-                                        <Icon
-                                            icon={crop.icon}
-                                            width="40"
-                                            height="40"
-                                        />
-                                        <div>
-                                            <h3 className="font-semibold text-gray-800">
-                                                {crop.name}
-                                            </h3>
-                                            <p className="text-sm text-gray-600">
-                                                {crop.category}
-                                            </p>
-                                        </div>
-                                    </div>
-                                    <span
-                                        className={`px-3 py-1 rounded-full text-xs font-medium border ${crop.color}`}
-                                    >
-                                        <Icon
-                                            icon={getRecommendationIcon(
-                                                crop.recommendation
-                                            )}
-                                            width="12"
-                                            height="12"
-                                            className="inline mr-1"
-                                        />
-                                        {crop.recommendation}
-                                    </span>
+                            <Icon
+                                icon="mingcute:lightbulb-line"
+                                width="16"
+                                height="16"
+                            />
+                            Recommendations
+                        </button>
+                        <button
+                            onClick={() => setActiveTab("my-crops")}
+                            className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors flex items-center justify-center gap-2 relative ${
+                                activeTab === "my-crops"
+                                    ? "bg-primary text-white shadow-sm"
+                                    : "text-gray-600 hover:text-gray-800 hover:bg-gray-50"
+                            }`}
+                        >
+                            <Icon
+                                icon="mingcute:plant-line"
+                                width="16"
+                                height="16"
+                            />
+                            My Crops
+                            {activePlantedCropsCount > 0 && (
+                                <span
+                                    className={`ml-2 px-2 py-0.5 rounded-full text-xs font-bold ${
+                                        activeTab === "my-crops"
+                                            ? "bg-white text-primary"
+                                            : "bg-primary text-white"
+                                    }`}
+                                >
+                                    {activePlantedCropsCount}
+                                </span>
+                            )}
+                        </button>
+                    </div>
+                </div>
+                {/* Tab Content */}
+                {activeTab === "recommendations" && (
+                    <>
+                        {/* Info Banner */}
+                        <div className="mb-6 bg-blue-50 border border-blue-200 rounded-lg p-4">
+                            <div className="flex items-start gap-3">
+                                <Icon
+                                    icon="mingcute:lightbulb-line"
+                                    width="24"
+                                    height="24"
+                                    className="text-blue-600 mt-0.5"
+                                />
+                                <div>
+                                    <h3 className="font-semibold text-blue-800 mb-1">
+                                        Smart Crop Selection
+                                    </h3>
+                                    <p className="text-blue-700 text-sm">
+                                        Based on current market data and
+                                        planting patterns from local farmers.
+                                        Choose crops with low competition and
+                                        high demand for better profitability.
+                                    </p>
                                 </div>
-                                <p className="text-sm text-gray-700">
-                                    {crop.description}
-                                </p>
+                            </div>
+                        </div>
+
+                        {/* Controls */}
+                        <div className="mb-6 space-y-4">
+                            {/* Search */}
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    Search Crops
+                                </label>
+                                <div className="relative">
+                                    <Icon
+                                        icon="mingcute:search-line"
+                                        width="20"
+                                        height="20"
+                                        className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"
+                                    />
+                                    <input
+                                        type="text"
+                                        placeholder="Search by crop name, category, or benefits..."
+                                        value={searchTerm}
+                                        onChange={(e) =>
+                                            setSearchTerm(e.target.value)
+                                        }
+                                        className="w-full pl-10 pr-4 py-2 bg-white border border-gray-300 rounded-lg focus:ring-primary focus:border-primary"
+                                    />
+                                </div>
                             </div>
 
-                            {/* Stats */}
-                            <div className="p-4">
-                                <div className="grid grid-cols-2 gap-4 mb-4">
-                                    <div>
-                                        <label className="text-xs text-gray-500 font-medium">
-                                            Market Demand
-                                        </label>
-                                        <p
-                                            className={`font-semibold ${getDemandColor(
-                                                crop.demandLevel
-                                            )}`}
-                                        >
-                                            {crop.demandLevel}
-                                        </p>
-                                    </div>
-                                    <div>
-                                        <label className="text-xs text-gray-500 font-medium">
-                                            Competition Level
-                                        </label>
-                                        <p
-                                            className={`font-semibold ${getCompetitionColor(
-                                                crop.plantingPercentage
-                                            )}`}
-                                        >
-                                            {crop.plantingPercentage}% of
-                                            farmers
-                                        </p>
-                                    </div>
-                                    <div>
-                                        <label className="text-xs text-gray-500 font-medium">
-                                            Growing Season
-                                        </label>
-                                        <p className="font-medium text-gray-800">
-                                            {crop.season}
-                                        </p>
-                                    </div>
-                                    <div>
-                                        <label className="text-xs text-gray-500 font-medium">
-                                            Growth Period
-                                        </label>
-                                        <p className="font-medium text-gray-800">
-                                            {crop.growthPeriod}
-                                        </p>
-                                    </div>
-                                </div>
-
-                                {/* Competition Bar */}
-                                <div className="mb-4">
-                                    <div className="flex justify-between text-xs text-gray-600 mb-1">
-                                        <span>Competition Level</span>
-                                        <span>{crop.plantingPercentage}%</span>
-                                    </div>
-                                    <div className="w-full bg-gray-200 rounded-full h-2">
-                                        <div
-                                            className={`h-2 rounded-full ${
-                                                crop.plantingPercentage <= 20
-                                                    ? "bg-green-500"
-                                                    : crop.plantingPercentage <=
-                                                      40
-                                                    ? "bg-yellow-500"
-                                                    : "bg-red-500"
-                                            }`}
-                                            style={{
-                                                width: `${crop.plantingPercentage}%`,
-                                            }}
-                                        ></div>
-                                    </div>
-                                </div>
-
-                                {/* Benefits */}
-                                <div className="mb-4">
-                                    <label className="text-xs text-gray-500 font-medium mb-2 block">
-                                        Key Benefits
+                            {/* Filters */}
+                            <div className="flex flex-col sm:flex-row gap-4">
+                                {/* Category Filter */}
+                                <div className="flex-1">
+                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                        Category
                                     </label>
-                                    <div className="flex flex-wrap gap-1">
-                                        {crop.benefits.map((benefit, index) => (
-                                            <span
-                                                key={index}
-                                                className="px-2 py-1 bg-gray-100 text-gray-700 text-xs rounded-full"
+                                    <select
+                                        value={selectedCategory}
+                                        onChange={(e) =>
+                                            setSelectedCategory(e.target.value)
+                                        }
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-primary focus:border-primary"
+                                    >
+                                        {categories.map((category) => (
+                                            <option
+                                                key={category}
+                                                value={category}
                                             >
-                                                {benefit}
-                                            </span>
+                                                {category}
+                                            </option>
                                         ))}
-                                    </div>
+                                    </select>
                                 </div>
 
-                                {/* Plant Crop Button */}
-                                <div className="pt-4 border-t border-gray-200">
+                                {/* Sort By */}
+                                <div className="flex-1">
+                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                        Sort By
+                                    </label>
+                                    <select
+                                        value={sortBy}
+                                        onChange={(e) =>
+                                            setSortBy(e.target.value)
+                                        }
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-primary focus:border-primary"
+                                    >
+                                        <option value="recommendation">
+                                            Recommendation Level
+                                        </option>
+                                        <option value="available">
+                                            Available to Plant
+                                        </option>
+                                        <option value="demand">
+                                            Market Demand
+                                        </option>
+                                        <option value="competition">
+                                            Competition Level
+                                        </option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Legend */}
+                        <div className="mb-6 grid grid-cols-2 sm:grid-cols-4 gap-2">
+                            <button
+                                onClick={() =>
+                                    handleRecommendationToggle(
+                                        "Highly Recommended"
+                                    )
+                                }
+                                className={`transition-all duration-200 border rounded-lg p-2 text-center hover:shadow-md ${
+                                    selectedRecommendation ===
+                                    "Highly Recommended"
+                                        ? "bg-green-100 border-green-300 shadow-md ring-2 ring-green-200"
+                                        : "bg-green-50 border-green-200 hover:bg-green-100"
+                                }`}
+                            >
+                                <Icon
+                                    icon="mingcute:star-fill"
+                                    width="20"
+                                    height="20"
+                                    className="mx-auto text-green-600 mb-1"
+                                />
+                                <p className="text-xs font-medium text-green-800">
+                                    Highly Recommended
+                                </p>
+                            </button>
+                            <button
+                                onClick={() =>
+                                    handleRecommendationToggle("Recommended")
+                                }
+                                className={`transition-all duration-200 border rounded-lg p-2 text-center hover:shadow-md ${
+                                    selectedRecommendation === "Recommended"
+                                        ? "bg-blue-100 border-blue-300 shadow-md ring-2 ring-blue-200"
+                                        : "bg-blue-50 border-blue-200 hover:bg-blue-100"
+                                }`}
+                            >
+                                <Icon
+                                    icon="mingcute:thumb-up-fill"
+                                    width="20"
+                                    height="20"
+                                    className="mx-auto text-blue-600 mb-1"
+                                />
+                                <p className="text-xs font-medium text-blue-800">
+                                    Recommended
+                                </p>
+                            </button>
+                            <button
+                                onClick={() =>
+                                    handleRecommendationToggle(
+                                        "Consider Carefully"
+                                    )
+                                }
+                                className={`transition-all duration-200 border rounded-lg p-2 text-center hover:shadow-md ${
+                                    selectedRecommendation ===
+                                    "Consider Carefully"
+                                        ? "bg-yellow-100 border-yellow-300 shadow-md ring-2 ring-yellow-200"
+                                        : "bg-yellow-50 border-yellow-200 hover:bg-yellow-100"
+                                }`}
+                            >
+                                <Icon
+                                    icon="mingcute:question-fill"
+                                    width="20"
+                                    height="20"
+                                    className="mx-auto text-yellow-600 mb-1"
+                                />
+                                <p className="text-xs font-medium text-yellow-800">
+                                    Consider Carefully
+                                </p>
+                            </button>
+                            <button
+                                onClick={() =>
+                                    handleRecommendationToggle(
+                                        "Caution Advised"
+                                    )
+                                }
+                                className={`transition-all duration-200 border rounded-lg p-2 text-center hover:shadow-md ${
+                                    selectedRecommendation === "Caution Advised"
+                                        ? "bg-red-100 border-red-300 shadow-md ring-2 ring-red-200"
+                                        : "bg-red-50 border-red-200 hover:bg-red-100"
+                                }`}
+                            >
+                                <Icon
+                                    icon="mingcute:alert-fill"
+                                    width="20"
+                                    height="20"
+                                    className="mx-auto text-red-600 mb-1"
+                                />
+                                <p className="text-xs font-medium text-red-800">
+                                    Caution Advised
+                                </p>
+                            </button>
+                        </div>
+
+                        {/* Crops Grid */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            {filteredCrops.map((crop) => (
+                                <div
+                                    key={crop.id}
+                                    className="bg-white rounded-lg shadow-md overflow-hidden"
+                                >
+                                    {/* Header */}
+                                    <div className="p-4 border-b border-gray-200">
+                                        <div className="flex items-start justify-between mb-2">
+                                            <div className="flex items-center gap-3">
+                                                <Icon
+                                                    icon={crop.icon}
+                                                    width="40"
+                                                    height="40"
+                                                />
+                                                <div>
+                                                    <h3 className="font-semibold text-gray-800">
+                                                        {crop.name}
+                                                    </h3>
+                                                    <p className="text-sm text-gray-600">
+                                                        {crop.category}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                            <span
+                                                className={`px-3 py-1 rounded-full text-xs font-medium border ${crop.color}`}
+                                            >
+                                                <Icon
+                                                    icon={getRecommendationIcon(
+                                                        crop.recommendation
+                                                    )}
+                                                    width="12"
+                                                    height="12"
+                                                    className="inline mr-1"
+                                                />
+                                                {crop.recommendation}
+                                            </span>
+                                        </div>
+                                        <p className="text-sm text-gray-700">
+                                            {crop.description}
+                                        </p>
+                                    </div>
+
+                                    {/* Stats */}
+                                    <div className="p-4">
+                                        <div className="grid grid-cols-2 gap-4 mb-4">
+                                            <div>
+                                                <label className="text-xs text-gray-500 font-medium">
+                                                    Market Demand
+                                                </label>
+                                                <p
+                                                    className={`font-semibold ${getDemandColor(
+                                                        crop.demandLevel
+                                                    )}`}
+                                                >
+                                                    {crop.demandLevel}
+                                                </p>
+                                            </div>
+                                            <div>
+                                                <label className="text-xs text-gray-500 font-medium">
+                                                    Competition Level
+                                                </label>
+                                                <p
+                                                    className={`font-semibold ${getCompetitionColor(
+                                                        crop.plantingPercentage
+                                                    )}`}
+                                                >
+                                                    {crop.plantingPercentage}%
+                                                    of farmers
+                                                </p>
+                                            </div>
+                                            <div>
+                                                <label className="text-xs text-gray-500 font-medium">
+                                                    Growing Season
+                                                </label>
+                                                <p className="font-medium text-gray-800">
+                                                    {crop.season}
+                                                </p>
+                                            </div>
+                                            <div>
+                                                <label className="text-xs text-gray-500 font-medium">
+                                                    Growth Period
+                                                </label>
+                                                <p className="font-medium text-gray-800">
+                                                    {crop.growthPeriod}
+                                                </p>
+                                            </div>
+                                        </div>
+
+                                        {/* Competition Bar */}
+                                        <div className="mb-4">
+                                            <div className="flex justify-between text-xs text-gray-600 mb-1">
+                                                <span>Competition Level</span>
+                                                <span>
+                                                    {crop.plantingPercentage}%
+                                                </span>
+                                            </div>
+                                            <div className="w-full bg-gray-200 rounded-full h-2">
+                                                <div
+                                                    className={`h-2 rounded-full ${
+                                                        crop.plantingPercentage <=
+                                                        20
+                                                            ? "bg-primary"
+                                                            : crop.plantingPercentage <=
+                                                              40
+                                                            ? "bg-yellow-500"
+                                                            : "bg-red-500"
+                                                    }`}
+                                                    style={{
+                                                        width: `${crop.plantingPercentage}%`,
+                                                    }}
+                                                ></div>
+                                            </div>
+                                        </div>
+
+                                        {/* Benefits */}
+                                        <div className="mb-4">
+                                            <label className="text-xs text-gray-500 font-medium mb-2 block">
+                                                Key Benefits
+                                            </label>
+                                            <div className="flex flex-wrap gap-1">
+                                                {crop.benefits.map(
+                                                    (benefit, index) => (
+                                                        <span
+                                                            key={index}
+                                                            className="px-2 py-1 bg-gray-100 text-gray-700 text-xs rounded-full"
+                                                        >
+                                                            {benefit}
+                                                        </span>
+                                                    )
+                                                )}
+                                            </div>
+                                        </div>
+
+                                        {/* Plant Crop Button */}
+                                        <div className="pt-4 border-t border-gray-200">
+                                            {isCropAlreadyPlanted(crop.name) ? (
+                                                <div className="w-full bg-gray-100 text-gray-500 py-2 px-4 rounded-lg text-center font-medium text-sm flex items-center justify-center gap-2">
+                                                    <Icon
+                                                        icon="mingcute:plant-fill"
+                                                        width="16"
+                                                        height="16"
+                                                    />
+                                                    Already Planted
+                                                </div>
+                                            ) : confirmingCrop &&
+                                              confirmingCrop.id === crop.id ? (
+                                                <div className="flex gap-2">
+                                                    <button
+                                                        onClick={
+                                                            confirmPlantCrop
+                                                        }
+                                                        className="flex-1 bg-primary text-white py-2 px-4 rounded-lg hover:bg-primary-dark transition-colors font-medium text-sm flex items-center justify-center gap-2"
+                                                    >
+                                                        <Icon
+                                                            icon="mingcute:check-line"
+                                                            width="16"
+                                                            height="16"
+                                                        />
+                                                        Confirm
+                                                    </button>
+                                                    <button
+                                                        onClick={
+                                                            cancelPlantCrop
+                                                        }
+                                                        className="flex-1 bg-gray-500 text-white py-2 px-4 rounded-lg hover:bg-gray-600 transition-colors font-medium text-sm flex items-center justify-center gap-2"
+                                                    >
+                                                        <Icon
+                                                            icon="mingcute:close-line"
+                                                            width="16"
+                                                            height="16"
+                                                        />
+                                                        Cancel
+                                                    </button>
+                                                </div>
+                                            ) : (
+                                                <button
+                                                    onClick={() =>
+                                                        handlePlantCrop(crop)
+                                                    }
+                                                    className="w-full bg-primary text-white py-2 px-4 rounded-lg hover:bg-primary-dark transition-colors font-medium text-sm flex items-center justify-center gap-2"
+                                                >
+                                                    <Icon
+                                                        icon="mingcute:plant-line"
+                                                        width="16"
+                                                        height="16"
+                                                    />
+                                                    Plant This Crop
+                                                </button>
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </>
+                )}
+
+                {/* My Crops Tab */}
+                {activeTab === "my-crops" && (
+                    <>
+                        {/* My Crops Header */}
+                        <div className="mb-6 bg-primary/10 border border-primary/20 rounded-lg p-4">
+                            <div className="flex items-start gap-3">
+                                <Icon
+                                    icon="mingcute:plant-line"
+                                    width="24"
+                                    height="24"
+                                    className="text-primary mt-0.5"
+                                />
+                                <div>
+                                    <h3 className="font-semibold text-primary mb-1">
+                                        My Crop Portfolio
+                                    </h3>
+                                    <p className="text-primary/80 text-sm">
+                                        Track your planted crops and manage your
+                                        harvest schedule. You have{" "}
+                                        {activePlantedCropsCount} crops
+                                        currently growing and{" "}
+                                        {harvestedCropsCount} completed
+                                        harvests.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Sub-tabs for My Crops */}
+                        {(activePlantedCropsCount > 0 ||
+                            harvestedCropsCount > 0) && (
+                            <div className="mb-6">
+                                <div className="bg-white rounded-lg border border-gray-200 p-1 flex">
                                     <button
-                                        onClick={() => handlePlantCrop(crop)}
-                                        className="w-full bg-primary text-white py-2 px-4 rounded-lg hover:bg-primary-dark transition-colors font-medium text-sm flex items-center justify-center gap-2"
+                                        onClick={() =>
+                                            setMyCropsSubTab("growing")
+                                        }
+                                        className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors flex items-center justify-center gap-2 ${
+                                            myCropsSubTab === "growing"
+                                                ? "bg-primary text-white shadow-sm"
+                                                : "text-gray-600 hover:text-gray-800 hover:bg-gray-50"
+                                        }`}
                                     >
                                         <Icon
-                                            icon="mingcute:plant-line"
+                                            icon="mingcute:seedling-line"
                                             width="16"
                                             height="16"
                                         />
-                                        Plant This Crop
+                                        Currently Growing
+                                        {activePlantedCropsCount > 0 && (
+                                            <span
+                                                className={`ml-2 px-2 py-0.5 rounded-full text-xs font-bold ${
+                                                    myCropsSubTab === "growing"
+                                                        ? "bg-white text-primary"
+                                                        : "bg-primary text-white"
+                                                }`}
+                                            >
+                                                {activePlantedCropsCount}
+                                            </span>
+                                        )}
+                                    </button>
+                                    <button
+                                        onClick={() =>
+                                            setMyCropsSubTab("history")
+                                        }
+                                        className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors flex items-center justify-center gap-2 ${
+                                            myCropsSubTab === "history"
+                                                ? "bg-primary text-white shadow-sm"
+                                                : "text-gray-600 hover:text-gray-800 hover:bg-gray-50"
+                                        }`}
+                                    >
+                                        <Icon
+                                            icon="mingcute:check-circle-line"
+                                            width="16"
+                                            height="16"
+                                        />
+                                        Harvest History
+                                        {harvestedCropsCount > 0 && (
+                                            <span
+                                                className={`ml-2 px-2 py-0.5 rounded-full text-xs font-bold ${
+                                                    myCropsSubTab === "history"
+                                                        ? "bg-white text-primary"
+                                                        : "bg-primary text-white"
+                                                }`}
+                                            >
+                                                {harvestedCropsCount}
+                                            </span>
+                                        )}
                                     </button>
                                 </div>
                             </div>
-                        </div>
-                    ))}
+                        )}
+
+                        {/* Currently Planted Crops */}
+                        {myCropsSubTab === "growing" &&
+                            activePlantedCropsCount > 0 && (
+                                <div className="mb-8">
+                                    <h2 className="text-xl font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                                        <Icon
+                                            icon="mingcute:seedling-line"
+                                            width="24"
+                                            height="24"
+                                            className="text-primary"
+                                        />
+                                        Currently Growing (
+                                        {activePlantedCropsCount})
+                                    </h2>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                        {plantedCrops
+                                            .filter((crop) => !crop.harvestDate)
+                                            .map((crop) => {
+                                                const plantedDate = new Date(
+                                                    crop.plantedDate
+                                                );
+                                                const daysSincePlanted =
+                                                    Math.floor(
+                                                        (new Date() -
+                                                            plantedDate) /
+                                                            (1000 *
+                                                                60 *
+                                                                60 *
+                                                                24)
+                                                    );
+
+                                                return (
+                                                    <div
+                                                        key={crop.id}
+                                                        className="bg-white border border-primary/20 rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow"
+                                                    >
+                                                        <div className="flex items-center gap-3 mb-3">
+                                                            <Icon
+                                                                icon={crop.icon}
+                                                                width="32"
+                                                                height="32"
+                                                            />
+                                                            <div className="flex-1">
+                                                                <h3 className="font-medium text-gray-800">
+                                                                    {crop.name}
+                                                                </h3>
+                                                                <p className="text-sm text-gray-600">
+                                                                    {
+                                                                        crop.category
+                                                                    }
+                                                                </p>
+                                                            </div>
+                                                            <span className="bg-primary/10 text-primary px-2 py-1 rounded-full text-xs font-medium">
+                                                                Growing
+                                                            </span>
+                                                        </div>
+
+                                                        <div className="space-y-2 mb-4">
+                                                            <div className="flex justify-between text-sm">
+                                                                <span className="text-gray-600">
+                                                                    Planted:
+                                                                </span>
+                                                                <span className="font-medium">
+                                                                    {plantedDate.toLocaleDateString()}
+                                                                </span>
+                                                            </div>
+                                                            <div className="flex justify-between text-sm">
+                                                                <span className="text-gray-600">
+                                                                    Days
+                                                                    Growing:
+                                                                </span>
+                                                                <span className="font-medium text-primary">
+                                                                    {
+                                                                        daysSincePlanted
+                                                                    }{" "}
+                                                                    days
+                                                                </span>
+                                                            </div>
+                                                            <div className="flex justify-between text-sm">
+                                                                <span className="text-gray-600">
+                                                                    Growth
+                                                                    Period:
+                                                                </span>
+                                                                <span className="font-medium">
+                                                                    {
+                                                                        crop.growthPeriod
+                                                                    }
+                                                                </span>
+                                                            </div>
+                                                        </div>
+
+                                                        {confirmingHarvest ===
+                                                        crop.id ? (
+                                                            <div className="flex gap-2">
+                                                                <button
+                                                                    onClick={
+                                                                        confirmHarvestCrop
+                                                                    }
+                                                                    className="flex-1 bg-primary text-white py-2 px-4 rounded-lg hover:bg-primary-dark transition-colors font-medium text-sm flex items-center justify-center gap-2"
+                                                                >
+                                                                    <Icon
+                                                                        icon="mingcute:check-line"
+                                                                        width="16"
+                                                                        height="16"
+                                                                    />
+                                                                    Confirm
+                                                                </button>
+                                                                <button
+                                                                    onClick={
+                                                                        cancelHarvestCrop
+                                                                    }
+                                                                    className="flex-1 bg-gray-500 text-white py-2 px-4 rounded-lg hover:bg-gray-600 transition-colors font-medium text-sm flex items-center justify-center gap-2"
+                                                                >
+                                                                    <Icon
+                                                                        icon="mingcute:close-line"
+                                                                        width="16"
+                                                                        height="16"
+                                                                    />
+                                                                    Cancel
+                                                                </button>
+                                                            </div>
+                                                        ) : (
+                                                            <button
+                                                                onClick={() =>
+                                                                    handleHarvestCrop(
+                                                                        crop.id
+                                                                    )
+                                                                }
+                                                                className="w-full bg-primary text-white py-2 px-4 rounded-lg hover:bg-primary-dark transition-colors font-medium text-sm flex items-center justify-center gap-2"
+                                                            >
+                                                                <Icon
+                                                                    icon="mingcute:check-circle-line"
+                                                                    width="16"
+                                                                    height="16"
+                                                                />
+                                                                Mark as
+                                                                Harvested
+                                                            </button>
+                                                        )}
+                                                    </div>
+                                                );
+                                            })}
+                                    </div>
+                                </div>
+                            )}
+
+                        {/* Harvested Crops */}
+                        {myCropsSubTab === "history" &&
+                            harvestedCropsCount > 0 && (
+                                <div className="mb-8">
+                                    <h2 className="text-xl font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                                        <Icon
+                                            icon="mingcute:check-circle-fill"
+                                            width="24"
+                                            height="24"
+                                            className="text-primary"
+                                        />
+                                        Harvest History ({harvestedCropsCount})
+                                    </h2>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                        {plantedCrops
+                                            .filter((crop) => crop.harvestDate)
+                                            .map((crop) => {
+                                                const plantedDate = new Date(
+                                                    crop.plantedDate
+                                                );
+                                                const harvestedDate = new Date(
+                                                    crop.harvestDate
+                                                );
+                                                const growthDays = Math.floor(
+                                                    (harvestedDate -
+                                                        plantedDate) /
+                                                        (1000 * 60 * 60 * 24)
+                                                );
+
+                                                return (
+                                                    <div
+                                                        key={crop.id}
+                                                        className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm"
+                                                    >
+                                                        <div className="flex items-center gap-3 mb-3">
+                                                            <Icon
+                                                                icon={crop.icon}
+                                                                width="32"
+                                                                height="32"
+                                                                className="opacity-75"
+                                                            />
+                                                            <div className="flex-1">
+                                                                <h3 className="font-medium text-gray-800">
+                                                                    {crop.name}
+                                                                </h3>
+                                                                <p className="text-sm text-gray-600">
+                                                                    {
+                                                                        crop.category
+                                                                    }
+                                                                </p>
+                                                            </div>
+                                                            <span className="bg-gray-100 text-gray-600 px-2 py-1 rounded-full text-xs font-medium">
+                                                                Harvested
+                                                            </span>
+                                                        </div>
+
+                                                        <div className="space-y-2 mb-4">
+                                                            <div className="flex justify-between text-sm">
+                                                                <span className="text-gray-600">
+                                                                    Planted:
+                                                                </span>
+                                                                <span className="font-medium">
+                                                                    {plantedDate.toLocaleDateString()}
+                                                                </span>
+                                                            </div>
+                                                            <div className="flex justify-between text-sm">
+                                                                <span className="text-gray-600">
+                                                                    Harvested:
+                                                                </span>
+                                                                <span className="font-medium">
+                                                                    {harvestedDate.toLocaleDateString()}
+                                                                </span>
+                                                            </div>
+                                                            <div className="flex justify-between text-sm">
+                                                                <span className="text-gray-600">
+                                                                    Growth Days:
+                                                                </span>
+                                                                <span className="font-medium text-primary">
+                                                                    {growthDays}{" "}
+                                                                    days
+                                                                </span>
+                                                            </div>
+                                                        </div>
+
+                                                        <div className="bg-primary/5 border border-primary/20 rounded-lg p-3 text-center">
+                                                            <Icon
+                                                                icon="mingcute:check-circle-fill"
+                                                                width="20"
+                                                                height="20"
+                                                                className="mx-auto text-primary mb-1"
+                                                            />
+                                                            <p className="text-xs font-medium text-primary">
+                                                                Successfully
+                                                                Completed
+                                                            </p>
+                                                        </div>
+                                                    </div>
+                                                );
+                                            })}
+                                    </div>
+                                </div>
+                            )}
+
+                        {/* Empty States */}
+                        {plantedCrops.length === 0 && (
+                            <div className="text-center py-12">
+                                <Icon
+                                    icon="mingcute:plant-line"
+                                    width="80"
+                                    height="80"
+                                    className="mx-auto text-gray-300 mb-4"
+                                />
+                                <h3 className="text-xl font-semibold text-gray-600 mb-2">
+                                    No Crops Planted Yet
+                                </h3>
+                                <p className="text-gray-500 mb-6">
+                                    Start your farming journey by exploring our
+                                    crop recommendations.
+                                </p>
+                                <button
+                                    onClick={() =>
+                                        setActiveTab("recommendations")
+                                    }
+                                    className="bg-primary text-white px-6 py-3 rounded-lg hover:bg-primary-dark transition-colors font-medium flex items-center gap-2 mx-auto"
+                                >
+                                    <Icon
+                                        icon="mingcute:lightbulb-line"
+                                        width="20"
+                                        height="20"
+                                    />
+                                    View Recommendations
+                                </button>
+                            </div>
+                        )}
+
+                        {/* Empty state for growing tab */}
+                        {plantedCrops.length > 0 &&
+                            myCropsSubTab === "growing" &&
+                            activePlantedCropsCount === 0 && (
+                                <div className="text-center py-12">
+                                    <Icon
+                                        icon="mingcute:seedling-line"
+                                        width="80"
+                                        height="80"
+                                        className="mx-auto text-gray-300 mb-4"
+                                    />
+                                    <h3 className="text-xl font-semibold text-gray-600 mb-2">
+                                        No Crops Currently Growing
+                                    </h3>
+                                    <p className="text-gray-500 mb-6">
+                                        All your crops have been harvested.
+                                        Plant new crops to start growing again.
+                                    </p>
+                                    <button
+                                        onClick={() =>
+                                            setActiveTab("recommendations")
+                                        }
+                                        className="bg-primary text-white px-6 py-3 rounded-lg hover:bg-primary-dark transition-colors font-medium flex items-center gap-2 mx-auto"
+                                    >
+                                        <Icon
+                                            icon="mingcute:plant-line"
+                                            width="20"
+                                            height="20"
+                                        />
+                                        Plant New Crops
+                                    </button>
+                                </div>
+                            )}
+
+                        {/* Empty state for history tab */}
+                        {plantedCrops.length > 0 &&
+                            myCropsSubTab === "history" &&
+                            harvestedCropsCount === 0 && (
+                                <div className="text-center py-12">
+                                    <Icon
+                                        icon="mingcute:check-circle-line"
+                                        width="80"
+                                        height="80"
+                                        className="mx-auto text-gray-300 mb-4"
+                                    />
+                                    <h3 className="text-xl font-semibold text-gray-600 mb-2">
+                                        No Harvest History Yet
+                                    </h3>
+                                    <p className="text-gray-500 mb-6">
+                                        Complete your first harvest to see your
+                                        farming history here.
+                                    </p>
+                                    <button
+                                        onClick={() =>
+                                            setMyCropsSubTab("growing")
+                                        }
+                                        className="bg-primary text-white px-6 py-3 rounded-lg hover:bg-primary-dark transition-colors font-medium flex items-center gap-2 mx-auto"
+                                    >
+                                        <Icon
+                                            icon="mingcute:seedling-line"
+                                            width="20"
+                                            height="20"
+                                        />
+                                        View Growing Crops
+                                    </button>
+                                </div>
+                            )}
+                    </>
+                )}
+
+                {/* Quick Action Buttons */}
+                <div className="mt-8 flex justify-center">
+                    <div className="bg-white rounded-lg border border-gray-200 p-1 inline-flex">
+                        <button
+                            onClick={() => setActiveTab("recommendations")}
+                            className={`px-4 py-2 rounded-md text-sm font-medium transition-colors flex items-center gap-2 ${
+                                activeTab === "recommendations"
+                                    ? "bg-primary text-white"
+                                    : "text-gray-600 hover:text-gray-800 hover:bg-gray-50"
+                            }`}
+                        >
+                            <Icon
+                                icon="mingcute:search-line"
+                                width="16"
+                                height="16"
+                            />
+                            Find Crops to Plant
+                        </button>
+                        <button
+                            onClick={() => setActiveTab("my-crops")}
+                            className={`px-4 py-2 rounded-md text-sm font-medium transition-colors flex items-center gap-2 ${
+                                activeTab === "my-crops"
+                                    ? "bg-primary text-white"
+                                    : "text-gray-600 hover:text-gray-800 hover:bg-gray-50"
+                            }`}
+                        >
+                            <Icon
+                                icon="mingcute:plant-line"
+                                width="16"
+                                height="16"
+                            />
+                            Track My Crops
+                        </button>
+                    </div>
                 </div>
-
-                {/* Currently Planted Crops */}
-                {plantedCrops.length > 0 && (
-                    <div className="mt-8">
-                        <h2 className="text-xl font-semibold text-gray-800 mb-4">
-                            Currently Planted Crops
-                        </h2>
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                            {plantedCrops
-                                .filter((crop) => !crop.harvestDate)
-                                .map((crop) => (
-                                    <div
-                                        key={crop.id}
-                                        className="bg-white border border-green-200 rounded-lg p-4 shadow-sm"
-                                    >
-                                        <div className="flex items-center gap-3 mb-3">
-                                            <Icon
-                                                icon={crop.icon}
-                                                width="32"
-                                                height="32"
-                                            />
-                                            <div>
-                                                <h3 className="font-medium text-gray-800">
-                                                    {crop.name}
-                                                </h3>
-                                                <p className="text-sm text-gray-600">
-                                                    Planted:{" "}
-                                                    {new Date(
-                                                        crop.plantedDate
-                                                    ).toLocaleDateString()}
-                                                </p>
-                                            </div>
-                                        </div>
-                                        <div className="mb-3">
-                                            <p className="text-xs text-gray-500 mb-1">
-                                                Expected Growth Period
-                                            </p>
-                                            <p className="text-sm font-medium text-gray-700">
-                                                {crop.growthPeriod}
-                                            </p>
-                                        </div>
-                                        <button
-                                            onClick={() =>
-                                                handleHarvestCrop(crop.id)
-                                            }
-                                            className="w-full bg-green-600 text-white py-2 px-4 rounded-lg hover:bg-green-700 transition-colors font-medium text-sm flex items-center justify-center gap-2"
-                                        >
-                                            <Icon
-                                                icon="mingcute:check-circle-line"
-                                                width="16"
-                                                height="16"
-                                            />
-                                            Mark as Harvested
-                                        </button>
-                                    </div>
-                                ))}
-                        </div>
-                    </div>
-                )}
-
-                {/* Harvested Crops */}
-                {plantedCrops.some((crop) => crop.harvestDate) && (
-                    <div className="mt-8">
-                        <h2 className="text-xl font-semibold text-gray-800 mb-4">
-                            Harvested Crops
-                        </h2>
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                            {plantedCrops
-                                .filter((crop) => crop.harvestDate)
-                                .map((crop) => (
-                                    <div
-                                        key={crop.id}
-                                        className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm opacity-75"
-                                    >
-                                        <div className="flex items-center gap-3 mb-3">
-                                            <Icon
-                                                icon={crop.icon}
-                                                width="32"
-                                                height="32"
-                                            />
-                                            <div>
-                                                <h3 className="font-medium text-gray-800">
-                                                    {crop.name}
-                                                </h3>
-                                                <p className="text-sm text-gray-600">
-                                                    Harvested:{" "}
-                                                    {new Date(
-                                                        crop.harvestDate
-                                                    ).toLocaleDateString()}
-                                                </p>
-                                            </div>
-                                        </div>
-                                        <div className="bg-green-50 border border-green-200 rounded-lg p-2 text-center">
-                                            <Icon
-                                                icon="mingcute:check-circle-fill"
-                                                width="20"
-                                                height="20"
-                                                className="mx-auto text-green-600 mb-1"
-                                            />
-                                            <p className="text-xs font-medium text-green-800">
-                                                Successfully Harvested
-                                            </p>
-                                        </div>
-                                    </div>
-                                ))}
-                        </div>
-                    </div>
-                )}
             </div>
             <ProducerNavigationBar />
         </div>
