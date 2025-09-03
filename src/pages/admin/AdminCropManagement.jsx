@@ -15,6 +15,7 @@ function AdminCropManagement() {
             id: 1,
             name: "Tomatoes",
             category: "Vegetables",
+            icon: "twemoji:tomato",
             plantingSeason: "Dry Season",
             harvestTime: "60-80 days",
             avgPrice: 80,
@@ -32,6 +33,7 @@ function AdminCropManagement() {
             id: 2,
             name: "Rice",
             category: "Grains",
+            icon: "twemoji:sheaf-of-rice",
             plantingSeason: "Wet Season",
             harvestTime: "120-150 days",
             avgPrice: 45,
@@ -49,6 +51,7 @@ function AdminCropManagement() {
             id: 3,
             name: "Lettuce",
             category: "Vegetables",
+            icon: "twemoji:leafy-greens",
             plantingSeason: "Cool Season",
             harvestTime: "45-60 days",
             avgPrice: 35,
@@ -67,6 +70,7 @@ function AdminCropManagement() {
     const [formData, setFormData] = useState({
         name: "",
         category: "",
+        icon: "",
         plantingSeason: "",
         harvestTime: "",
         avgPrice: "",
@@ -83,6 +87,7 @@ function AdminCropManagement() {
         setFormData({
             name: "",
             category: "",
+            icon: "",
             plantingSeason: "",
             harvestTime: "",
             avgPrice: "",
@@ -445,6 +450,58 @@ function AdminCropManagement() {
                                     <option value="Legumes">Legumes</option>
                                     <option value="Herbs">Herbs</option>
                                 </select>
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    Icon
+                                    <button
+                                        type="button"
+                                        className="ml-2 text-gray-400 hover:text-gray-600"
+                                        title="Enter an iconify icon name (e.g., twemoji:tomato). Visit https://icon-sets.iconify.design/twemoji/ to browse available icons."
+                                    >
+                                        <Icon
+                                            icon="mingcute:question-line"
+                                            width="16"
+                                            height="16"
+                                        />
+                                    </button>
+                                </label>
+                                <input
+                                    type="text"
+                                    value={formData.icon}
+                                    onChange={(e) =>
+                                        setFormData({
+                                            ...formData,
+                                            icon: e.target.value,
+                                        })
+                                    }
+                                    placeholder="e.g., twemoji:tomato"
+                                    className="w-full px-3 py-3 border border-gray-300 rounded-lg text-base outline-none focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
+                                />
+                                <p className="text-xs text-gray-500 mt-1">
+                                    Browse icons at:{" "}
+                                    <a
+                                        href="https://icon-sets.iconify.design/twemoji/"
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="text-blue-600 hover:text-blue-800"
+                                    >
+                                        https://icon-sets.iconify.design/twemoji/
+                                    </a>
+                                </p>
+                                {formData.icon && (
+                                    <div className="mt-2 flex items-center gap-2">
+                                        <span className="text-sm text-gray-600">
+                                            Preview:
+                                        </span>
+                                        <Icon
+                                            icon={formData.icon}
+                                            width="24"
+                                            height="24"
+                                        />
+                                    </div>
+                                )}
                             </div>
 
                             <div>

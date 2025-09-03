@@ -15,6 +15,8 @@ function AdminUserManagement() {
     }, [activeTab]);
     const [showConfirmModal, setShowConfirmModal] = useState(false);
     const [confirmAction, setConfirmAction] = useState(null);
+    const [showImageModal, setShowImageModal] = useState(false);
+    const [selectedImage, setSelectedImage] = useState("");
     const [searchTerm, setSearchTerm] = useState("");
     const [sortConfig, setSortConfig] = useState({
         key: null,
@@ -34,6 +36,7 @@ function AdminUserManagement() {
             businessPermit: "Yes",
             status: "pending",
             applicationDate: "2024-08-30",
+            profileImage: "/assets/adel.jpg",
         },
         {
             id: 2,
@@ -47,6 +50,7 @@ function AdminUserManagement() {
             businessPermit: "Yes",
             status: "pending",
             applicationDate: "2024-08-28",
+            profileImage: "/assets/adel.jpg",
         },
     ]);
 
@@ -143,6 +147,11 @@ function AdminUserManagement() {
             setShowConfirmModal(false);
             setConfirmAction(null);
         }
+    };
+
+    const handleImageClick = (imageUrl) => {
+        setSelectedImage(imageUrl);
+        setShowImageModal(true);
     };
 
     const handleUserAction = (userId, action) => {
@@ -262,16 +271,28 @@ function AdminUserManagement() {
                                     className="bg-white rounded-lg shadow-md p-6"
                                 >
                                     <div className="flex items-start justify-between mb-4">
-                                        <div>
-                                            <h3 className="text-lg font-semibold text-gray-800">
-                                                {application.name}
-                                            </h3>
-                                            <p className="text-sm text-gray-600">
-                                                Applied on{" "}
-                                                {new Date(
-                                                    application.applicationDate
-                                                ).toLocaleDateString()}
-                                            </p>
+                                        <div className="flex items-center gap-4">
+                                            <img
+                                                src={application.profileImage}
+                                                alt={application.name}
+                                                className="w-16 h-16 object-cover rounded-full cursor-pointer hover:opacity-80 transition-opacity"
+                                                onClick={() =>
+                                                    handleImageClick(
+                                                        application.profileImage
+                                                    )
+                                                }
+                                            />
+                                            <div>
+                                                <h3 className="text-lg font-semibold text-gray-800">
+                                                    {application.name}
+                                                </h3>
+                                                <p className="text-sm text-gray-600">
+                                                    Applied on{" "}
+                                                    {new Date(
+                                                        application.applicationDate
+                                                    ).toLocaleDateString()}
+                                                </p>
+                                            </div>
                                         </div>
                                         <span className="bg-yellow-100 text-yellow-800 px-3 py-1 rounded-full text-sm">
                                             Pending Review
@@ -610,6 +631,37 @@ function AdminUserManagement() {
                             : "bg-red-600 hover:bg-red-700"
                     }
                 />
+            )}
+
+            {/* Image Modal */}
+            {showImageModal && (
+                <div
+                    className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+                    onClick={() => setShowImageModal(false)}
+                >
+                    <div className="bg-white p-4 rounded-lg max-w-2xl max-h-[80vh] overflow-auto">
+                        <div className="flex justify-between items-center mb-4">
+                            <h3 className="text-lg font-semibold">
+                                Profile Image
+                            </h3>
+                            <button
+                                onClick={() => setShowImageModal(false)}
+                                className="text-gray-500 hover:text-gray-700"
+                            >
+                                <Icon
+                                    icon="mingcute:close-line"
+                                    width="24"
+                                    height="24"
+                                />
+                            </button>
+                        </div>
+                        <img
+                            src={selectedImage}
+                            alt="Profile"
+                            className="w-full h-auto rounded-lg"
+                        />
+                    </div>
+                </div>
             )}
 
             <AdminNavigationBar />

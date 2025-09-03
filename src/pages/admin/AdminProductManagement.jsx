@@ -851,15 +851,6 @@ function AdminProductManagement() {
                                                                 : "bg-green-600 hover:bg-green-700"
                                                         } focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500`}
                                                     >
-                                                        <Icon
-                                                            icon={
-                                                                product.status ===
-                                                                "Active"
-                                                                    ? "mingcute:pause-line"
-                                                                    : "mingcute:play-line"
-                                                            }
-                                                            className="mr-1"
-                                                        />
                                                         {product.status ===
                                                         "Active"
                                                             ? "Suspend"
