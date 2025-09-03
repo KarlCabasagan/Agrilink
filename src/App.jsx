@@ -34,6 +34,8 @@ import AdminProductReviews from "./pages/admin/AdminProductReviews";
 import AdminMessages from "./pages/admin/AdminMessages";
 import AdminLogs from "./pages/admin/AdminLogs";
 import AdminCropManagement from "./pages/admin/AdminCropManagement";
+import FarmingGuides from "./pages/producer/FarmingGuides";
+import ThesisOnlyPage from "./pages/ThesisOnlyPage";
 import supabase from "./SupabaseClient.jsx";
 import VerifyAccount from "./pages/VerifyAccount.jsx";
 import EditProfile from "./pages/EditProfile.jsx";
@@ -334,6 +336,14 @@ function App() {
                             </RoleGuard>
                         }
                     />
+                    <Route
+                        path="/farming-guides"
+                        element={
+                            <RoleGuard allowedRoles={[2]}>
+                                <FarmingGuides />
+                            </RoleGuard>
+                        }
+                    />
 
                     {/* Admin-only routes */}
                     <Route
@@ -407,6 +417,22 @@ function App() {
                         element={
                             <PrivateRoute>
                                 <EditProfile />
+                            </PrivateRoute>
+                        }
+                    />
+                    <Route
+                        path="/business-settings"
+                        element={
+                            <PrivateRoute>
+                                <ThesisOnlyPage />
+                            </PrivateRoute>
+                        }
+                    />
+                    <Route
+                        path="/sales-analytics"
+                        element={
+                            <PrivateRoute>
+                                <ThesisOnlyPage />
                             </PrivateRoute>
                         }
                     />

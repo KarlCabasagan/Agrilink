@@ -85,17 +85,10 @@ function Profile() {
     return (
         <div className="min-h-screen w-full flex flex-col relative items-center scrollbar-hide bg-background overflow-x-hidden text-text pb-20">
             {/* Header */}
-            <div className="fixed top-0 left-0 w-full bg-white shadow-md z-50 px-4 py-3 flex justify-between items-center">
-                <Link to="/" className="text-gray-600 hover:text-primary">
-                    <Icon icon="mingcute:left-line" width="24" height="24" />
-                </Link>
-                <h1 className="text-lg font-semibold">My Profile</h1>
-                <Link
-                    to="/edit-profile"
-                    className="text-gray-600 hover:text-primary"
-                >
-                    <Icon icon="mingcute:edit-line" width="24" height="24" />
-                </Link>
+            <div className="fixed top-0 left-0 w-full bg-white shadow-md z-50 px-4 py-3">
+                <h1 className="text-lg font-semibold text-primary text-center">
+                    Profile
+                </h1>
             </div>
 
             <div className="w-full max-w-2xl mx-4 sm:mx-auto my-16">
@@ -115,7 +108,7 @@ function Profile() {
 
                     <div className="pt-16 pb-6 px-6 text-center">
                         <h2 className="text-xl font-bold text-gray-800 mb-2">
-                            {profile.name || "No Name"}
+                            {profile.name || "Consumer"}
                         </h2>
                         <p className="text-gray-600 mb-4">
                             {profile.email || user?.email || "No Email"}
