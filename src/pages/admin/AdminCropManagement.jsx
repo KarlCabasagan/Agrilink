@@ -1,10 +1,13 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Icon } from "@iconify/react";
 import AdminNavigationBar from "../../components/AdminNavigationBar";
 import ConfirmModal from "../../components/ConfirmModal";
 
 function AdminCropManagement() {
-    const [activeTab, setActiveTab] = useState("crops");
+    // Initialize activeTab from localStorage or default to "crops"
+    const [activeTab, setActiveTab] = useState(() => {
+        return localStorage.getItem("adminCropManagementTab") || "crops";
+    });
     const [showAddModal, setShowAddModal] = useState(false);
     const [showEditModal, setShowEditModal] = useState(false);
     const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -101,6 +104,11 @@ function AdminCropManagement() {
         videoUrl: "",
         category: "",
     });
+
+    // Save active tab to localStorage whenever it changes
+    useEffect(() => {
+        localStorage.setItem("adminCropManagementTab", activeTab);
+    }, [activeTab]);
 
     const resetForm = () => {
         setFormData({
@@ -415,45 +423,15 @@ function AdminCropManagement() {
                                                 {crop.harvestTime}
                                             </p>
                                         </div>
-                                        <div>
-                                            <h4 className="font-medium text-gray-700 mb-1">
-                                                Average Price
-                                            </h4>
-                                            <p className="text-sm font-semibold text-green-600">
-                                                ₱{crop.avgPrice}/kg
-                                            </p>
-                                        </div>
-                                        <div>
-                                            <h4 className="font-medium text-gray-700 mb-1">
-                                                Profitability
-                                            </h4>
-                                            <p className="text-sm font-semibold text-blue-600">
-                                                {crop.profitability}%
-                                            </p>
-                                        </div>
                                     </div>
 
                                     <div className="flex flex-wrap gap-2 mb-4">
-                                        <span
-                                            className={`px-2 py-1 text-xs rounded-full ${getDemandColor(
-                                                crop.marketDemand
-                                            )}`}
-                                        >
-                                            {crop.marketDemand} Demand
-                                        </span>
                                         <span
                                             className={`px-2 py-1 text-xs rounded-full ${getDifficultyColor(
                                                 crop.difficulty
                                             )}`}
                                         >
                                             {crop.difficulty}
-                                        </span>
-                                        <span
-                                            className={`px-2 py-1 text-xs rounded-full ${getCompetitionColor(
-                                                crop.competition
-                                            )}`}
-                                        >
-                                            {crop.competition} Competition
                                         </span>
                                         <span className="px-2 py-1 text-xs rounded-full bg-gray-100 text-gray-800">
                                             {crop.waterRequirement} Water
@@ -853,47 +831,6 @@ function AdminCropManagement() {
 
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                                    Average Price (₱/kg) *
-                                </label>
-                                <input
-                                    type="number"
-                                    value={formData.avgPrice}
-                                    onChange={(e) =>
-                                        setFormData({
-                                            ...formData,
-                                            avgPrice: e.target.value,
-                                        })
-                                    }
-                                    className="w-full px-3 py-3 border border-gray-300 rounded-lg text-base outline-none focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
-                                    required
-                                />
-                            </div>
-
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
-                                    Market Demand *
-                                </label>
-                                <select
-                                    value={formData.marketDemand}
-                                    onChange={(e) =>
-                                        setFormData({
-                                            ...formData,
-                                            marketDemand: e.target.value,
-                                        })
-                                    }
-                                    className="w-full px-3 py-3 border border-gray-300 rounded-lg text-base outline-none focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
-                                    required
-                                >
-                                    <option value="">Select Demand</option>
-                                    <option value="Very High">Very High</option>
-                                    <option value="High">High</option>
-                                    <option value="Medium">Medium</option>
-                                    <option value="Low">Low</option>
-                                </select>
-                            </div>
-
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
                                     Difficulty Level *
                                 </label>
                                 <select
@@ -932,48 +869,6 @@ function AdminCropManagement() {
                                     <option value="">Select Water Need</option>
                                     <option value="Low">Low</option>
                                     <option value="Moderate">Moderate</option>
-                                    <option value="High">High</option>
-                                </select>
-                            </div>
-
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
-                                    Profitability (%) *
-                                </label>
-                                <input
-                                    type="number"
-                                    value={formData.profitability}
-                                    onChange={(e) =>
-                                        setFormData({
-                                            ...formData,
-                                            profitability: e.target.value,
-                                        })
-                                    }
-                                    min="0"
-                                    max="100"
-                                    className="w-full px-3 py-3 border border-gray-300 rounded-lg text-base outline-none focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
-                                    required
-                                />
-                            </div>
-
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
-                                    Competition Level *
-                                </label>
-                                <select
-                                    value={formData.competition}
-                                    onChange={(e) =>
-                                        setFormData({
-                                            ...formData,
-                                            competition: e.target.value,
-                                        })
-                                    }
-                                    className="w-full px-3 py-3 border border-gray-300 rounded-lg text-base outline-none focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
-                                    required
-                                >
-                                    <option value="">Select Competition</option>
-                                    <option value="Low">Low</option>
-                                    <option value="Medium">Medium</option>
                                     <option value="High">High</option>
                                 </select>
                             </div>
@@ -1045,6 +940,154 @@ function AdminCropManagement() {
                     onConfirm={deleteCrop}
                     title="Delete Crop"
                     message={`Are you sure you want to delete "${selectedCrop?.name}"? This action cannot be undone.`}
+                    confirmText="Delete"
+                    confirmButtonClass="bg-red-600 hover:bg-red-700"
+                />
+            )}
+
+            {/* Add/Edit Guide Modal */}
+            {(showAddGuideModal || showEditGuideModal) && (
+                <>
+                    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black opacity-50"></div>
+                    <div className="bg-white rounded-lg shadow-xl p-6 max-w-2xl w-full max-h-[80vh] overflow-y-auto fixed top-1/12 left-1/2 transform -translate-x-1/2 -translate-y-1 z-50">
+                        <div className="flex items-center justify-between mb-6">
+                            <h2 className="text-xl font-semibold text-gray-800">
+                                {showAddGuideModal
+                                    ? "Add New Farming Guide"
+                                    : "Edit Farming Guide"}
+                            </h2>
+                            <button
+                                onClick={() => {
+                                    setShowAddGuideModal(false);
+                                    setShowEditGuideModal(false);
+                                    resetGuideForm();
+                                }}
+                                className="text-gray-400 hover:text-gray-600"
+                            >
+                                <Icon
+                                    icon="mingcute:close-line"
+                                    width="24"
+                                    height="24"
+                                />
+                            </button>
+                        </div>
+
+                        <div className="space-y-4">
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    Guide Name *
+                                </label>
+                                <input
+                                    type="text"
+                                    value={guideFormData.name}
+                                    onChange={(e) =>
+                                        setGuideFormData({
+                                            ...guideFormData,
+                                            name: e.target.value,
+                                        })
+                                    }
+                                    className="w-full px-3 py-3 border border-gray-300 rounded-lg text-base outline-none focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
+                                    required
+                                />
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    Category *
+                                </label>
+                                <select
+                                    value={guideFormData.category}
+                                    onChange={(e) =>
+                                        setGuideFormData({
+                                            ...guideFormData,
+                                            category: e.target.value,
+                                        })
+                                    }
+                                    className="w-full px-3 py-3 border border-gray-300 rounded-lg text-base outline-none focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
+                                    required
+                                >
+                                    <option value="">Select Category</option>
+                                    <option value="Vegetables">
+                                        Vegetables
+                                    </option>
+                                    <option value="Fruits">Fruits</option>
+                                    <option value="Grains">Grains</option>
+                                    <option value="Legumes">Legumes</option>
+                                    <option value="Herbs">Herbs</option>
+                                    <option value="General">General</option>
+                                </select>
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    Video URL *
+                                </label>
+                                <input
+                                    type="url"
+                                    value={guideFormData.videoUrl}
+                                    onChange={(e) =>
+                                        setGuideFormData({
+                                            ...guideFormData,
+                                            videoUrl: e.target.value,
+                                        })
+                                    }
+                                    placeholder="https://www.youtube.com/watch?v=..."
+                                    className="w-full px-3 py-3 border border-gray-300 rounded-lg text-base outline-none focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
+                                    required
+                                />
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    Summary *
+                                </label>
+                                <textarea
+                                    value={guideFormData.summary}
+                                    onChange={(e) =>
+                                        setGuideFormData({
+                                            ...guideFormData,
+                                            summary: e.target.value,
+                                        })
+                                    }
+                                    rows="4"
+                                    className="w-full px-3 py-3 border border-gray-300 rounded-lg text-base outline-none focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
+                                    required
+                                />
+                            </div>
+                        </div>
+
+                        <div className="flex flex-col sm:flex-row gap-3 mt-6">
+                            <button
+                                onClick={() => {
+                                    setShowAddGuideModal(false);
+                                    setShowEditGuideModal(false);
+                                    resetGuideForm();
+                                }}
+                                className="flex-1 text-center bg-gray-100 text-gray-700 px-4 py-3 rounded-lg hover:bg-gray-200 transition-colors"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={saveGuide}
+                                className="flex-1 px-4 py-3 bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors font-medium"
+                            >
+                                {showAddGuideModal
+                                    ? "Add Guide"
+                                    : "Save Changes"}
+                            </button>
+                        </div>
+                    </div>
+                </>
+            )}
+
+            {/* Delete Guide Confirmation Modal */}
+            {showDeleteGuideModal && (
+                <ConfirmModal
+                    isOpen={showDeleteGuideModal}
+                    onClose={() => setShowDeleteGuideModal(false)}
+                    onConfirm={confirmDeleteGuide}
+                    title="Delete Farming Guide"
+                    message={`Are you sure you want to delete "${selectedGuide?.name}"? This action cannot be undone.`}
                     confirmText="Delete"
                     confirmButtonClass="bg-red-600 hover:bg-red-700"
                 />

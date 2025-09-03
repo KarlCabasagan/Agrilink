@@ -167,6 +167,22 @@ function AdminUserManagement() {
         );
     };
 
+    const handleRoleToggle = (userId) => {
+        setAllUsers((prev) =>
+            prev.map((user) =>
+                user.id === userId
+                    ? {
+                          ...user,
+                          role:
+                              user.role === "Consumer"
+                                  ? "Producer"
+                                  : "Consumer",
+                      }
+                    : user
+            )
+        );
+    };
+
     return (
         <div className="min-h-screen w-full flex flex-col relative items-center scrollbar-hide bg-background overflow-x-hidden text-text pb-20">
             {/* Header */}
@@ -351,7 +367,7 @@ function AdminUserManagement() {
                                         </p>
                                     </div>
 
-                                    <div className="flex gap-3">
+                                    <div className="flex justify-end gap-3">
                                         <button
                                             onClick={() =>
                                                 handleApplicationAction(
@@ -534,15 +550,21 @@ function AdminUserManagement() {
                                                     </td>
                                                     <td className="px-6 py-4 whitespace-nowrap">
                                                         <span
-                                                            className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                                                            onClick={() =>
+                                                                handleRoleToggle(
+                                                                    user.id
+                                                                )
+                                                            }
+                                                            className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full cursor-pointer transition-all duration-200 hover:scale-105 hover:shadow-md ${
                                                                 user.role ===
                                                                 "Admin"
-                                                                    ? "bg-purple-100 text-purple-800"
+                                                                    ? "bg-purple-100 text-purple-800 hover:bg-purple-200"
                                                                     : user.role ===
                                                                       "Producer"
-                                                                    ? "bg-green-100 text-green-800"
-                                                                    : "bg-blue-100 text-blue-800"
+                                                                    ? "bg-green-100 text-green-800 hover:bg-green-200"
+                                                                    : "bg-blue-100 text-blue-800 hover:bg-blue-200"
                                                             }`}
+                                                            title="Click to toggle between Consumer and Producer"
                                                         >
                                                             {user.role}
                                                         </span>
