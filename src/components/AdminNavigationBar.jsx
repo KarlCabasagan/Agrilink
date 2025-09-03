@@ -6,9 +6,21 @@ import supabase from "../SupabaseClient.jsx";
 
 function AdminNavigationBar() {
     const location = useLocation();
+    const navigate = useNavigate();
+    const { setUser } = useContext(AuthContext);
 
     const isActive = (path) => {
         return location.pathname === path;
+    };
+
+    const handleLogout = async () => {
+        try {
+            await supabase.auth.signOut();
+            setUser(null);
+            navigate("/login");
+        } catch (error) {
+            console.error("Error logging out:", error);
+        }
     };
 
     const navItems = [
@@ -79,6 +91,15 @@ function AdminNavigationBar() {
                         )}
                     </Link>
                 ))}
+
+                {/* Logout button */}
+                <button
+                    onClick={handleLogout}
+                    className="flex flex-col items-center min-w-[60px] py-2 px-3 rounded-lg transition-all duration-200 text-red-600 hover:text-red-700 hover:bg-red-50"
+                >
+                    <Icon icon="mingcute:exit-line" width="24" height="24" />
+                    <span className="text-xs mt-1 font-medium">Logout</span>
+                </button>
             </div>
         </div>
     );
