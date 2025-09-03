@@ -124,15 +124,13 @@ function AdminDashboard() {
 
                     <div className="bg-white rounded-lg shadow-md p-4 text-center">
                         <Icon
-                            icon="mingcute:chart-line-line"
+                            icon="mingcute:notification-line"
                             width="32"
                             height="32"
                             className="mx-auto mb-2 text-purple-600"
                         />
-                        <p className="text-2xl font-bold text-gray-800">
-                            ₱{(stats.totalTransactions * 127).toLocaleString()}
-                        </p>
-                        <p className="text-sm text-gray-600">Total Revenue</p>
+                        <p className="text-2xl font-bold text-gray-800">12</p>
+                        <p className="text-sm text-gray-600">Unread Messages</p>
                     </div>
 
                     <div className="bg-white rounded-lg shadow-md p-4 text-center">
