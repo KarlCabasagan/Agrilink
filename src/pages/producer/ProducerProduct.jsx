@@ -1,0 +1,834 @@
+import { useState, useEffect, useContext } from "react";
+import { Icon } from "@iconify/react";
+import { useParams, useNavigate } from "react-router-dom";
+import { AuthContext } from "../../App.jsx";
+import ProducerNavigationBar from "../../components/ProducerNavigationBar";
+import ConfirmModal from "../../components/ConfirmModal";
+
+const categories = [
+    "Vegetables",
+    "Fruits",
+    "Grains",
+    "Spices",
+    "Root and Tuber",
+    "Legumes",
+];
+
+function ProducerProduct() {
+    const { id } = useParams();
+    const navigate = useNavigate();
+    const { user } = useContext(AuthContext);
+
+    const [product, setProduct] = useState(null);
+    const [loading, setLoading] = useState(true);
+    const [isEditing, setIsEditing] = useState(false);
+    const [showDeleteModal, setShowDeleteModal] = useState(false);
+    const [reviewSortBy, setReviewSortBy] = useState("newest");
+
+    const [editForm, setEditForm] = useState({
+        name: "",
+        price: "",
+        category: "Vegetables",
+        description: "",
+        stock: "",
+        image: null,
+        imagePreview: "",
+    });
+
+    // Sample products data (replace with actual data fetching)
+    const sampleProducts = [
+        {
+            id: 1,
+            name: "Fresh Organic Tomatoes",
+            price: 45.0,
+            category: "Vegetables",
+            description:
+                "Locally grown organic tomatoes, perfect for cooking and salads. These tomatoes are grown without pesticides and are harvested at peak ripeness.",
+            stock: 50,
+            image: "https://images.unsplash.com/photo-1546470427-e70c6b9a5e9c?w=400&h=300&fit=crop",
+            created_at: "2024-09-01T10:00:00Z",
+            updated_at: "2024-09-03T14:30:00Z",
+            rating: 4.5,
+            reviewCount: 23,
+            reviews: [
+                {
+                    id: 1,
+                    userName: "Maria Santos",
+                    rating: 5,
+                    comment:
+                        "Excellent quality! Very fresh and flavorful tomatoes. Will definitely buy again.",
+                    date: "2024-09-02T10:30:00Z",
+                    userImage:
+                        "https://images.unsplash.com/photo-1494790108755-2616b612b786?w=40&h=40&fit=crop&crop=face",
+                },
+                {
+                    id: 2,
+                    userName: "Juan Dela Cruz",
+                    rating: 4,
+                    comment:
+                        "Good quality tomatoes, perfect for my restaurant. Fast delivery too!",
+                    date: "2024-09-01T15:45:00Z",
+                    userImage:
+                        "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=40&h=40&fit=crop&crop=face",
+                },
+                {
+                    id: 3,
+                    userName: "Ana Rodriguez",
+                    rating: 5,
+                    comment:
+                        "These are the best tomatoes I've ever bought online. So fresh and organic!",
+                    date: "2024-08-30T09:15:00Z",
+                    userImage:
+                        "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=40&h=40&fit=crop&crop=face",
+                },
+            ],
+        },
+        {
+            id: 2,
+            name: "Premium Rice",
+            price: 55.0,
+            category: "Grains",
+            description:
+                "High-quality jasmine rice from local farms. Perfect for daily meals with excellent texture and aroma.",
+            stock: 100,
+            image: "https://images.unsplash.com/photo-1586201375761-83865001e31c?w=400&h=300&fit=crop",
+            created_at: "2024-08-28T09:15:00Z",
+            updated_at: "2024-09-02T16:45:00Z",
+            rating: 4.2,
+            reviewCount: 15,
+            reviews: [
+                {
+                    id: 1,
+                    userName: "Carlos Mendoza",
+                    rating: 4,
+                    comment: "Great quality rice. My family loves it!",
+                    date: "2024-09-01T12:20:00Z",
+                    userImage:
+                        "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=40&h=40&fit=crop&crop=face",
+                },
+                {
+                    id: 2,
+                    userName: "Lisa Garcia",
+                    rating: 5,
+                    comment:
+                        "Perfect texture and very aromatic. Highly recommended!",
+                    date: "2024-08-29T14:10:00Z",
+                    userImage:
+                        "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=40&h=40&fit=crop&crop=face",
+                },
+            ],
+        },
+        {
+            id: 3,
+            name: "Sweet Mangoes",
+            price: 80.0,
+            category: "Fruits",
+            description:
+                "Sweet and juicy mangoes, perfectly ripe. These mangoes are hand-picked at optimal ripeness for the best flavor.",
+            stock: 25,
+            image: "https://images.unsplash.com/photo-1605027990121-cbae9d0541ba?w=400&h=300&fit=crop",
+            created_at: "2024-08-30T11:20:00Z",
+            updated_at: "2024-09-01T13:10:00Z",
+            rating: 4.8,
+            reviewCount: 31,
+            reviews: [
+                {
+                    id: 1,
+                    userName: "Patricia Torres",
+                    rating: 5,
+                    comment:
+                        "Absolutely delicious! The mangoes were perfectly ripe and sweet.",
+                    date: "2024-08-31T16:30:00Z",
+                    userImage:
+                        "https://images.unsplash.com/photo-1487412720507-e7ab37603c6f?w=40&h=40&fit=crop&crop=face",
+                },
+                {
+                    id: 2,
+                    userName: "Roberto Silva",
+                    rating: 4,
+                    comment: "Very good quality mangoes. My kids loved them!",
+                    date: "2024-08-30T18:45:00Z",
+                    userImage:
+                        "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=40&h=40&fit=crop&crop=face",
+                },
+                {
+                    id: 3,
+                    userName: "Elena Morales",
+                    rating: 5,
+                    comment:
+                        "Best mangoes I've ever tasted! Will order again soon.",
+                    date: "2024-08-29T11:20:00Z",
+                    userImage:
+                        "https://images.unsplash.com/photo-1485875437342-9b39470b3d95?w=40&h=40&fit=crop&crop=face",
+                },
+            ],
+        },
+    ];
+
+    // Sort reviews function
+    const sortReviews = (reviews) => {
+        if (!reviews || reviews.length === 0) return reviews;
+
+        return [...reviews].sort((a, b) => {
+            switch (reviewSortBy) {
+                case "newest":
+                    return new Date(b.date) - new Date(a.date);
+                case "oldest":
+                    return new Date(a.date) - new Date(b.date);
+                case "highest":
+                    return b.rating - a.rating;
+                case "lowest":
+                    return a.rating - b.rating;
+                case "helpful":
+                    // Generate consistent "helpful" counts for demo
+                    const aHelpful = Math.floor(Math.random() * 15) + 5;
+                    const bHelpful = Math.floor(Math.random() * 15) + 5;
+                    return bHelpful - aHelpful;
+                default:
+                    return 0;
+            }
+        });
+    };
+
+    useEffect(() => {
+        // Simulate loading and finding product
+        setLoading(true);
+        setTimeout(() => {
+            const foundProduct = sampleProducts.find(
+                (p) => p.id === parseInt(id)
+            );
+            if (foundProduct) {
+                setProduct(foundProduct);
+                setEditForm({
+                    name: foundProduct.name,
+                    price: foundProduct.price.toString(),
+                    category: foundProduct.category,
+                    description: foundProduct.description,
+                    stock: foundProduct.stock.toString(),
+                    image: null,
+                    imagePreview: foundProduct.image,
+                });
+            }
+            setLoading(false);
+        }, 500);
+    }, [id]);
+
+    const handleImageUpload = (e) => {
+        const file = e.target.files[0];
+        if (file && file.type.startsWith("image/")) {
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                setEditForm((prev) => ({
+                    ...prev,
+                    image: file,
+                    imagePreview: event.target.result,
+                }));
+            };
+            reader.readAsDataURL(file);
+        }
+    };
+
+    const handleSave = () => {
+        if (!editForm.name || !editForm.price || !editForm.stock) return;
+
+        const updatedProduct = {
+            ...product,
+            name: editForm.name,
+            price: parseFloat(editForm.price),
+            category: editForm.category,
+            description: editForm.description,
+            stock: parseInt(editForm.stock),
+            image: editForm.imagePreview,
+            updated_at: new Date().toISOString(),
+        };
+
+        setProduct(updatedProduct);
+        setIsEditing(false);
+
+        // Here you would typically make an API call to update the product
+        // await updateProduct(product.id, updatedProduct);
+    };
+
+    const handleDelete = () => {
+        // Here you would typically make an API call to delete the product
+        // await deleteProduct(product.id);
+        navigate("/");
+    };
+
+    const handleCancel = () => {
+        setEditForm({
+            name: product.name,
+            price: product.price.toString(),
+            category: product.category,
+            description: product.description,
+            stock: product.stock.toString(),
+            image: null,
+            imagePreview: product.image,
+        });
+        setIsEditing(false);
+    };
+
+    if (loading) {
+        return (
+            <div className="min-h-screen w-full flex flex-col relative items-center scrollbar-hide bg-background overflow-x-hidden text-text pb-20">
+                <div className="fixed top-0 left-0 w-full bg-white shadow-md z-50 px-4 py-3">
+                    <h1 className="text-lg font-semibold text-primary text-center">
+                        Product Details
+                    </h1>
+                </div>
+                <div className="flex justify-center items-center h-screen">
+                    <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-primary"></div>
+                </div>
+                <ProducerNavigationBar />
+            </div>
+        );
+    }
+
+    if (!product) {
+        return (
+            <div className="min-h-screen w-full flex flex-col relative items-center scrollbar-hide bg-background overflow-x-hidden text-text pb-20">
+                <div className="fixed top-0 left-0 w-full bg-white shadow-md z-50 px-4 py-3">
+                    <h1 className="text-lg font-semibold text-primary text-center">
+                        Product Not Found
+                    </h1>
+                </div>
+                <div className="flex flex-col justify-center items-center h-screen">
+                    <Icon
+                        icon="mingcute:box-line"
+                        width="64"
+                        height="64"
+                        className="text-gray-300 mb-4"
+                    />
+                    <p className="text-gray-500 mb-4">Product not found</p>
+                    <button
+                        onClick={() => navigate("/")}
+                        className="bg-primary text-white px-6 py-2 rounded-lg hover:bg-primary-dark transition-colors"
+                    >
+                        Back to Products
+                    </button>
+                </div>
+                <ProducerNavigationBar />
+            </div>
+        );
+    }
+
+    return (
+        <div className="min-h-screen w-full flex flex-col relative items-center scrollbar-hide bg-background overflow-x-hidden text-text pb-20">
+            {/* Header */}
+            <div className="fixed top-0 left-0 w-full bg-white shadow-md z-50 px-4 py-3">
+                <div className="flex justify-between items-center">
+                    <button
+                        onClick={() => navigate("/")}
+                        className="text-primary hover:text-primary-dark transition-colors"
+                    >
+                        <Icon
+                            icon="mingcute:arrow-left-line"
+                            width="24"
+                            height="24"
+                        />
+                    </button>
+                    <h1 className="text-lg font-semibold text-primary">
+                        Product Details
+                    </h1>
+                    <div className="flex gap-2">
+                        {!isEditing ? (
+                            <>
+                                <button
+                                    onClick={() => setIsEditing(true)}
+                                    className="text-blue-600 hover:text-blue-800 transition-colors"
+                                >
+                                    <Icon
+                                        icon="mingcute:edit-line"
+                                        width="24"
+                                        height="24"
+                                    />
+                                </button>
+                                <button
+                                    onClick={() => setShowDeleteModal(true)}
+                                    className="text-red-600 hover:text-red-800 transition-colors"
+                                >
+                                    <Icon
+                                        icon="mingcute:delete-line"
+                                        width="24"
+                                        height="24"
+                                    />
+                                </button>
+                            </>
+                        ) : (
+                            <>
+                                <button
+                                    onClick={handleCancel}
+                                    className="text-gray-600 hover:text-gray-800 transition-colors"
+                                >
+                                    <Icon
+                                        icon="mingcute:close-line"
+                                        width="24"
+                                        height="24"
+                                    />
+                                </button>
+                                <button
+                                    onClick={handleSave}
+                                    className="text-green-600 hover:text-green-800 transition-colors"
+                                >
+                                    <Icon
+                                        icon="mingcute:check-line"
+                                        width="24"
+                                        height="24"
+                                    />
+                                </button>
+                            </>
+                        )}
+                    </div>
+                </div>
+            </div>
+
+            <div className="w-full max-w-4xl mx-4 sm:mx-auto my-16">
+                <div className="bg-white rounded-lg shadow-md overflow-hidden mt-4">
+                    {/* Product Image */}
+                    <div className="relative h-64 sm:h-80 bg-gray-200">
+                        <img
+                            src={
+                                isEditing
+                                    ? editForm.imagePreview
+                                    : product.image
+                            }
+                            alt={isEditing ? editForm.name : product.name}
+                            className="w-full h-full object-cover"
+                        />
+                        {isEditing && (
+                            <div className="absolute bottom-4 right-4">
+                                <label className="bg-white rounded-lg px-3 py-2 shadow-md cursor-pointer hover:bg-gray-50 transition-colors">
+                                    <Icon
+                                        icon="mingcute:camera-line"
+                                        width="20"
+                                        height="20"
+                                        className="inline mr-2"
+                                    />
+                                    Change Image
+                                    <input
+                                        type="file"
+                                        accept="image/*"
+                                        onChange={handleImageUpload}
+                                        className="hidden"
+                                    />
+                                </label>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Product Details */}
+                    <div className="p-6">
+                        {isEditing ? (
+                            <div className="space-y-4">
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                                        Product Name *
+                                    </label>
+                                    <input
+                                        type="text"
+                                        value={editForm.name}
+                                        onChange={(e) =>
+                                            setEditForm((prev) => ({
+                                                ...prev,
+                                                name: e.target.value,
+                                            }))
+                                        }
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-primary focus:border-primary"
+                                        required
+                                    />
+                                </div>
+
+                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                                            Price per kg (₱) *
+                                        </label>
+                                        <input
+                                            type="number"
+                                            step="0.01"
+                                            min="0"
+                                            value={editForm.price}
+                                            onChange={(e) =>
+                                                setEditForm((prev) => ({
+                                                    ...prev,
+                                                    price: e.target.value,
+                                                }))
+                                            }
+                                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-primary focus:border-primary"
+                                            required
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                                            Stock (kg) *
+                                        </label>
+                                        <input
+                                            type="number"
+                                            min="0"
+                                            step="0.1"
+                                            value={editForm.stock}
+                                            onChange={(e) =>
+                                                setEditForm((prev) => ({
+                                                    ...prev,
+                                                    stock: e.target.value,
+                                                }))
+                                            }
+                                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-primary focus:border-primary"
+                                            required
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                                            Category *
+                                        </label>
+                                        <select
+                                            value={editForm.category}
+                                            onChange={(e) =>
+                                                setEditForm((prev) => ({
+                                                    ...prev,
+                                                    category: e.target.value,
+                                                }))
+                                            }
+                                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-primary focus:border-primary"
+                                            required
+                                        >
+                                            {categories.map((cat) => (
+                                                <option key={cat} value={cat}>
+                                                    {cat}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                                        Description
+                                    </label>
+                                    <textarea
+                                        value={editForm.description}
+                                        onChange={(e) =>
+                                            setEditForm((prev) => ({
+                                                ...prev,
+                                                description: e.target.value,
+                                            }))
+                                        }
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-primary focus:border-primary"
+                                        rows="4"
+                                        placeholder="Describe your product..."
+                                    />
+                                </div>
+                            </div>
+                        ) : (
+                            <div>
+                                <h1 className="text-2xl font-bold text-gray-800 mb-2">
+                                    {product.name}
+                                </h1>
+
+                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
+                                    <div className="bg-gray-50 p-3 rounded-lg">
+                                        <h3 className="text-sm font-medium text-gray-600 mb-1">
+                                            Price per kg
+                                        </h3>
+                                        <p className="text-xl font-bold text-primary">
+                                            ₱{product.price.toFixed(2)}
+                                        </p>
+                                    </div>
+                                    <div className="bg-gray-50 p-3 rounded-lg">
+                                        <h3 className="text-sm font-medium text-gray-600 mb-1">
+                                            Stock
+                                        </h3>
+                                        <p className="text-lg font-semibold text-gray-800">
+                                            {product.stock} kg
+                                        </p>
+                                    </div>
+                                    <div className="bg-gray-50 p-3 rounded-lg">
+                                        <h3 className="text-sm font-medium text-gray-600 mb-1">
+                                            Category
+                                        </h3>
+                                        <p className="text-lg font-semibold text-gray-800">
+                                            {product.category}
+                                        </p>
+                                    </div>
+                                </div>
+
+                                {product.description && (
+                                    <div className="mb-6">
+                                        <h3 className="text-lg font-semibold text-gray-800 mb-2">
+                                            Description
+                                        </h3>
+                                        <p className="text-gray-600 leading-relaxed">
+                                            {product.description}
+                                        </p>
+                                    </div>
+                                )}
+
+                                {/* Rating and Reviews Summary */}
+                                <div className="bg-white border border-gray-200 rounded-lg shadow-sm p-6 mb-6">
+                                    <h3 className="text-lg font-semibold text-gray-800 mb-6">
+                                        Customer Reviews
+                                    </h3>
+
+                                    {/* Main Rating Display */}
+                                    <div className="flex items-center justify-center mb-6 p-4 bg-gray-50 rounded-lg">
+                                        <div className="text-center">
+                                            <div className="text-4xl font-bold text-gray-800 mb-2">
+                                                {product.rating}
+                                            </div>
+                                            <div className="flex items-center justify-center gap-1 mb-2">
+                                                {[1, 2, 3, 4, 5].map((star) => (
+                                                    <Icon
+                                                        key={star}
+                                                        icon="mingcute:star-fill"
+                                                        className={`w-6 h-6 ${
+                                                            star <=
+                                                            Math.floor(
+                                                                product.rating
+                                                            )
+                                                                ? "text-yellow-400"
+                                                                : star ===
+                                                                      Math.ceil(
+                                                                          product.rating
+                                                                      ) &&
+                                                                  product.rating %
+                                                                      1 !==
+                                                                      0
+                                                                ? "text-yellow-200"
+                                                                : "text-gray-300"
+                                                        }`}
+                                                    />
+                                                ))}
+                                            </div>
+                                            <div className="text-sm text-gray-600">
+                                                Based on {product.reviewCount}{" "}
+                                                reviews
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Rating Breakdown */}
+                                    <div className="space-y-2">
+                                        {[5, 4, 3, 2, 1].map((rating) => {
+                                            const count =
+                                                rating === 5
+                                                    ? 12
+                                                    : rating === 4
+                                                    ? 7
+                                                    : rating === 3
+                                                    ? 3
+                                                    : rating === 2
+                                                    ? 1
+                                                    : 0;
+                                            const percentage = Math.round(
+                                                (count / product.reviewCount) *
+                                                    100
+                                            );
+                                            return (
+                                                <div
+                                                    key={rating}
+                                                    className="flex items-center gap-3"
+                                                >
+                                                    <div className="flex items-center gap-1 w-12">
+                                                        <span className="text-sm text-gray-700">
+                                                            {rating}
+                                                        </span>
+                                                        <Icon
+                                                            icon="mingcute:star-fill"
+                                                            className="text-yellow-400"
+                                                            width="14"
+                                                            height="14"
+                                                        />
+                                                    </div>
+                                                    <div className="flex-1 bg-gray-200 rounded-full h-2">
+                                                        <div
+                                                            className="bg-yellow-400 h-2 rounded-full"
+                                                            style={{
+                                                                width: `${percentage}%`,
+                                                            }}
+                                                        ></div>
+                                                    </div>
+                                                    <div className="text-sm text-gray-600 w-12 text-right">
+                                                        {count}
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+
+                                {/* Individual Reviews */}
+                                {product.reviews &&
+                                    product.reviews.length > 0 && (
+                                        <div className="mb-6">
+                                            <div className="flex items-center justify-between mb-4">
+                                                <h3 className="text-lg font-semibold text-gray-800">
+                                                    Recent Reviews
+                                                </h3>
+                                                <div className="flex items-center gap-2">
+                                                    <span className="text-sm text-gray-600">
+                                                        Sort by:
+                                                    </span>
+                                                    <select
+                                                        value={reviewSortBy}
+                                                        onChange={(e) =>
+                                                            setReviewSortBy(
+                                                                e.target.value
+                                                            )
+                                                        }
+                                                        className="text-sm px-3 py-1 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary bg-white"
+                                                    >
+                                                        <option value="newest">
+                                                            Newest First
+                                                        </option>
+                                                        <option value="oldest">
+                                                            Oldest First
+                                                        </option>
+                                                        <option value="highest">
+                                                            Highest Rating
+                                                        </option>
+                                                        <option value="lowest">
+                                                            Lowest Rating
+                                                        </option>
+                                                        <option value="helpful">
+                                                            Most Helpful
+                                                        </option>
+                                                    </select>
+                                                </div>
+                                            </div>
+                                            <div className="space-y-4">
+                                                {sortReviews(product.reviews)
+                                                    .slice(0, 3)
+                                                    .map((review, index) => {
+                                                        // Generate consistent helpful count for demo
+                                                        const helpfulCount =
+                                                            Math.floor(
+                                                                Math.random() *
+                                                                    15
+                                                            ) + 5;
+                                                        return (
+                                                            <div
+                                                                key={`${review.id}-${reviewSortBy}-${index}`}
+                                                                className="bg-white border border-gray-200 rounded-lg shadow-sm p-6"
+                                                            >
+                                                                <div className="flex items-start justify-between mb-4">
+                                                                    <div className="flex items-start gap-4 flex-1">
+                                                                        <img
+                                                                            src={
+                                                                                review.userImage
+                                                                            }
+                                                                            alt={
+                                                                                review.userName
+                                                                            }
+                                                                            className="w-12 h-12 rounded-full object-cover"
+                                                                        />
+                                                                        <div className="flex-1">
+                                                                            <div className="flex items-center gap-2 mb-2">
+                                                                                <h4 className="font-medium text-gray-800">
+                                                                                    {
+                                                                                        review.userName
+                                                                                    }
+                                                                                </h4>
+                                                                                <span className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded">
+                                                                                    Verified
+                                                                                    Purchase
+                                                                                </span>
+                                                                            </div>
+                                                                            <div className="flex items-center gap-2 mb-3">
+                                                                                <div className="flex">
+                                                                                    {[
+                                                                                        1,
+                                                                                        2,
+                                                                                        3,
+                                                                                        4,
+                                                                                        5,
+                                                                                    ].map(
+                                                                                        (
+                                                                                            star
+                                                                                        ) => (
+                                                                                            <Icon
+                                                                                                key={
+                                                                                                    star
+                                                                                                }
+                                                                                                icon="mingcute:star-fill"
+                                                                                                className={`w-4 h-4 ${
+                                                                                                    star <=
+                                                                                                    review.rating
+                                                                                                        ? "text-yellow-400"
+                                                                                                        : "text-gray-300"
+                                                                                                }`}
+                                                                                            />
+                                                                                        )
+                                                                                    )}
+                                                                                </div>
+                                                                                <span className="text-sm text-gray-500">
+                                                                                    {new Date(
+                                                                                        review.date
+                                                                                    ).toLocaleDateString(
+                                                                                        "en-US",
+                                                                                        {
+                                                                                            year: "numeric",
+                                                                                            month: "long",
+                                                                                            day: "numeric",
+                                                                                        }
+                                                                                    )}
+                                                                                </span>
+                                                                            </div>
+                                                                            <p className="text-gray-600 leading-relaxed mb-3">
+                                                                                {
+                                                                                    review.comment
+                                                                                }
+                                                                            </p>
+                                                                            <div className="flex items-center gap-4 text-sm text-gray-500">
+                                                                                <span className="flex items-center gap-1">
+                                                                                    <Icon
+                                                                                        icon="mingcute:thumb-up-line"
+                                                                                        width="14"
+                                                                                        height="14"
+                                                                                    />
+                                                                                    {
+                                                                                        helpfulCount
+                                                                                    }{" "}
+                                                                                    helpful
+                                                                                </span>
+                                                                            </div>
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        );
+                                                    })}
+                                            </div>
+                                            {product.reviews.length > 3 && (
+                                                <div className="mt-6 text-center">
+                                                    <button className="bg-primary text-white px-6 py-2 rounded-lg hover:bg-primary-dark transition-colors font-medium">
+                                                        View all{" "}
+                                                        {product.reviewCount}{" "}
+                                                        reviews
+                                                    </button>
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
+                            </div>
+                        )}
+                    </div>
+                </div>
+            </div>
+
+            {/* Delete Confirmation Modal */}
+            <ConfirmModal
+                isOpen={showDeleteModal}
+                onClose={() => setShowDeleteModal(false)}
+                onConfirm={handleDelete}
+                title="Delete Product"
+                message={`Are you sure you want to delete "${product.name}"? This action cannot be undone.`}
+                confirmText="Delete"
+                confirmButtonClass="bg-red-600 hover:bg-red-700"
+            />
+
+            <ProducerNavigationBar />
+        </div>
+    );
+}
+
+export default ProducerProduct;

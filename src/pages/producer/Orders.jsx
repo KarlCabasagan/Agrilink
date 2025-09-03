@@ -49,6 +49,8 @@ function Orders() {
     const [loading, setLoading] = useState(true);
     const [selectedStatus, setSelectedStatus] = useState("all");
     const [expandedOrder, setExpandedOrder] = useState(null);
+    const [searchTerm, setSearchTerm] = useState("");
+    const [sortBy, setSortBy] = useState("newest");
 
     useEffect(() => {
         fetchOrders();
@@ -202,8 +204,54 @@ function Orders() {
         }
     };
 
-    const filteredOrders = orders.filter(
-        (order) => selectedStatus === "all" || order.status === selectedStatus
+    // Search and sort functions
+    const searchOrders = (orders) => {
+        if (!searchTerm) return orders;
+
+        return orders.filter(
+            (order) =>
+                order.customer_name
+                    .toLowerCase()
+                    .includes(searchTerm.toLowerCase()) ||
+                order.customer_contact.includes(searchTerm) ||
+                order.customer_address
+                    .toLowerCase()
+                    .includes(searchTerm.toLowerCase()) ||
+                order.id.toString().includes(searchTerm) ||
+                order.items.some((item) =>
+                    item.product_name
+                        .toLowerCase()
+                        .includes(searchTerm.toLowerCase())
+                )
+        );
+    };
+
+    const sortOrders = (orders) => {
+        return [...orders].sort((a, b) => {
+            switch (sortBy) {
+                case "newest":
+                    return new Date(b.created_at) - new Date(a.created_at);
+                case "oldest":
+                    return new Date(a.created_at) - new Date(b.created_at);
+                case "highest":
+                    return b.total_amount - a.total_amount;
+                case "lowest":
+                    return a.total_amount - b.total_amount;
+                case "customer":
+                    return a.customer_name.localeCompare(b.customer_name);
+                default:
+                    return 0;
+            }
+        });
+    };
+
+    const filteredOrders = sortOrders(
+        searchOrders(
+            orders.filter(
+                (order) =>
+                    selectedStatus === "all" || order.status === selectedStatus
+            )
+        )
     );
 
     const getStatusConfig = (status) => {
@@ -257,6 +305,46 @@ function Orders() {
                                 {status.label}
                             </button>
                         ))}
+                    </div>
+                </div>
+
+                {/* Search and Sort */}
+                <div className="mb-6">
+                    <div className="flex flex-col px-2 sm:flex-row gap-4">
+                        {/* Search */}
+                        <div className="flex-1 relative">
+                            <Icon
+                                icon="mingcute:search-line"
+                                width="20"
+                                height="20"
+                                className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"
+                            />
+                            <input
+                                type="text"
+                                placeholder="Search by customer, order ID, product, or address..."
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary bg-white"
+                            />
+                        </div>
+
+                        {/* Sort */}
+                        <div className="flex items-center gap-2">
+                            <span className="text-sm text-gray-600 whitespace-nowrap">
+                                Sort by:
+                            </span>
+                            <select
+                                value={sortBy}
+                                onChange={(e) => setSortBy(e.target.value)}
+                                className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary bg-white"
+                            >
+                                <option value="newest">Newest First</option>
+                                <option value="oldest">Oldest First</option>
+                                <option value="highest">Highest Amount</option>
+                                <option value="lowest">Lowest Amount</option>
+                                <option value="customer">Customer Name</option>
+                            </select>
+                        </div>
                     </div>
                 </div>
 
@@ -445,17 +533,30 @@ function Orders() {
                                                 )}
                                                 {order.status ===
                                                     "confirmed" && (
-                                                    <button
-                                                        onClick={() =>
-                                                            updateOrderStatus(
-                                                                order.id,
-                                                                "preparing"
-                                                            )
-                                                        }
-                                                        className="px-3 py-1 bg-orange-600 text-white rounded text-sm hover:bg-orange-700"
-                                                    >
-                                                        Start Preparing
-                                                    </button>
+                                                    <>
+                                                        <button
+                                                            onClick={() =>
+                                                                updateOrderStatus(
+                                                                    order.id,
+                                                                    "preparing"
+                                                                )
+                                                            }
+                                                            className="px-3 py-1 bg-orange-600 text-white rounded text-sm hover:bg-orange-700"
+                                                        >
+                                                            Start Preparing
+                                                        </button>
+                                                        <button
+                                                            onClick={() =>
+                                                                updateOrderStatus(
+                                                                    order.id,
+                                                                    "cancelled"
+                                                                )
+                                                            }
+                                                            className="px-3 py-1 bg-red-600 text-white rounded text-sm hover:bg-red-700"
+                                                        >
+                                                            Cancel
+                                                        </button>
+                                                    </>
                                                 )}
                                                 {order.status ===
                                                     "preparing" && (

@@ -1,6 +1,6 @@
 import { useState, useMemo, useContext, useEffect } from "react";
 import { Icon } from "@iconify/react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { AuthContext } from "../../App.jsx";
 import ProducerNavigationBar from "../../components/ProducerNavigationBar";
 import ConfirmModal from "../../components/ConfirmModal";
@@ -20,8 +20,44 @@ function ProducerHome() {
     const { user } = useContext(AuthContext);
     const [selectedCategory, setSelectedCategory] = useState("All");
     const [search, setSearch] = useState("");
-    const [products, setProducts] = useState([]);
-    const [loading, setLoading] = useState(true);
+    const [products, setProducts] = useState([
+        // Sample product for demonstration
+        {
+            id: 1,
+            name: "Fresh Organic Tomatoes",
+            price: 45.0,
+            category: "Vegetables",
+            description:
+                "Locally grown organic tomatoes, perfect for cooking and salads",
+            stock: 50,
+            image: "https://images.unsplash.com/photo-1546470427-e70c6b9a5e9c?w=400&h=300&fit=crop",
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+        },
+        {
+            id: 2,
+            name: "Premium Rice",
+            price: 55.0,
+            category: "Grains",
+            description: "High-quality jasmine rice from local farms",
+            stock: 100,
+            image: "https://images.unsplash.com/photo-1586201375761-83865001e31c?w=400&h=300&fit=crop",
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+        },
+        {
+            id: 3,
+            name: "Sweet Mangoes",
+            price: 80.0,
+            category: "Fruits",
+            description: "Sweet and juicy mangoes, perfectly ripe",
+            stock: 25,
+            image: "https://images.unsplash.com/photo-1605027990121-cbae9d0541ba?w=400&h=300&fit=crop",
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+        },
+    ]);
+    const [loading, setLoading] = useState(false);
     const [showAddModal, setShowAddModal] = useState(false);
     const [showEditModal, setShowEditModal] = useState(false);
     const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -32,7 +68,8 @@ function ProducerHome() {
         category: "Vegetables",
         description: "",
         stock: "",
-        image: "",
+        image: null,
+        imagePreview: "",
     });
 
     // Fetch user's products
@@ -75,10 +112,48 @@ function ProducerHome() {
             );
     }, [selectedCategory, search, products]);
 
+    // Handle file upload
+    const handleImageUpload = (e) => {
+        const file = e.target.files[0];
+        if (file && file.type.startsWith("image/")) {
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                setProductForm((prev) => ({
+                    ...prev,
+                    image: file,
+                    imagePreview: event.target.result,
+                }));
+            };
+            reader.readAsDataURL(file);
+        }
+    };
+
     const handleAddProduct = async () => {
-        if (!user || !productForm.name || !productForm.price) return;
+        if (!productForm.name || !productForm.price || !productForm.stock)
+            return;
 
         try {
+            // For demo purposes, we'll add to local state instead of Supabase
+            const newProduct = {
+                id: Date.now(), // Simple ID generation for demo
+                name: productForm.name,
+                price: parseFloat(productForm.price),
+                category: productForm.category,
+                description: productForm.description,
+                stock: parseInt(productForm.stock) || 0,
+                image:
+                    productForm.imagePreview ||
+                    "https://via.placeholder.com/300x200?text=No+Image",
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString(),
+            };
+
+            setProducts((prev) => [newProduct, ...prev]);
+            setShowAddModal(false);
+            resetForm();
+
+            // If you want to use Supabase, uncomment the code below:
+            /*
             const { data, error } = await supabase
                 .from("products")
                 .insert({
@@ -104,15 +179,44 @@ function ProducerHome() {
                 setShowAddModal(false);
                 resetForm();
             }
+            */
         } catch (error) {
             console.error("Unexpected error:", error);
         }
     };
 
     const handleEditProduct = async () => {
-        if (!selectedProduct || !productForm.name || !productForm.price) return;
+        if (
+            !selectedProduct ||
+            !productForm.name ||
+            !productForm.price ||
+            !productForm.stock
+        )
+            return;
 
         try {
+            // For demo purposes, we'll update local state instead of Supabase
+            const updatedProduct = {
+                ...selectedProduct,
+                name: productForm.name,
+                price: parseFloat(productForm.price),
+                category: productForm.category,
+                description: productForm.description,
+                stock: parseInt(productForm.stock) || 0,
+                image: productForm.imagePreview || selectedProduct.image,
+                updated_at: new Date().toISOString(),
+            };
+
+            setProducts((prev) =>
+                prev.map((p) =>
+                    p.id === selectedProduct.id ? updatedProduct : p
+                )
+            );
+            setShowEditModal(false);
+            resetForm();
+
+            // If you want to use Supabase, uncomment the code below:
+            /*
             const { data, error } = await supabase
                 .from("products")
                 .update({
@@ -137,6 +241,7 @@ function ProducerHome() {
                 setShowEditModal(false);
                 resetForm();
             }
+            */
         } catch (error) {
             console.error("Unexpected error:", error);
         }
@@ -146,6 +251,15 @@ function ProducerHome() {
         if (!selectedProduct) return;
 
         try {
+            // For demo purposes, we'll remove from local state instead of Supabase
+            setProducts((prev) =>
+                prev.filter((p) => p.id !== selectedProduct.id)
+            );
+            setShowDeleteModal(false);
+            setSelectedProduct(null);
+
+            // If you want to use Supabase, uncomment the code below:
+            /*
             const { error } = await supabase
                 .from("products")
                 .delete()
@@ -160,6 +274,7 @@ function ProducerHome() {
                 setShowDeleteModal(false);
                 setSelectedProduct(null);
             }
+            */
         } catch (error) {
             console.error("Unexpected error:", error);
         }
@@ -172,7 +287,8 @@ function ProducerHome() {
             category: "Vegetables",
             description: "",
             stock: "",
-            image: "",
+            image: null,
+            imagePreview: "",
         });
         setSelectedProduct(null);
     };
@@ -185,7 +301,8 @@ function ProducerHome() {
             category: product.category,
             description: product.description || "",
             stock: product.stock?.toString() || "",
-            image: product.image || "",
+            image: null,
+            imagePreview: product.image || "",
         });
         setShowEditModal(true);
     };
@@ -196,166 +313,195 @@ function ProducerHome() {
     };
 
     const ProductModal = ({ isEdit = false }) => (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black opacity-50">
-            <div className="bg-white rounded-lg shadow-xl p-6 max-w-md w-full m-4 max-h-[90vh] overflow-y-auto">
-                <div className="flex justify-between items-center mb-4">
-                    <h3 className="text-lg font-semibold">
-                        {isEdit ? "Edit Product" : "Add New Product"}
-                    </h3>
-                    <button
-                        onClick={() => {
-                            isEdit
-                                ? setShowEditModal(false)
-                                : setShowAddModal(false);
-                            resetForm();
-                        }}
-                        className="text-gray-400 hover:text-gray-600"
-                    >
-                        <Icon
-                            icon="mingcute:close-line"
-                            width="24"
-                            height="24"
-                        />
-                    </button>
-                </div>
-
-                <div className="space-y-4">
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                            Product Name
-                        </label>
-                        <input
-                            type="text"
-                            value={productForm.name}
-                            onChange={(e) =>
-                                setProductForm((prev) => ({
-                                    ...prev,
-                                    name: e.target.value,
-                                }))
-                            }
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-primary focus:border-primary"
-                            placeholder="Enter product name"
-                        />
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-4">
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">
-                                Price (₱)
-                            </label>
-                            <input
-                                type="number"
-                                step="0.01"
-                                value={productForm.price}
-                                onChange={(e) =>
-                                    setProductForm((prev) => ({
-                                        ...prev,
-                                        price: e.target.value,
-                                    }))
-                                }
-                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-primary focus:border-primary"
-                                placeholder="0.00"
-                            />
+        <>
+            <div
+                className="fixed inset-0 z-40 bg-black bg-opacity-50"
+                onClick={() => {
+                    isEdit ? setShowEditModal(false) : setShowAddModal(false);
+                    resetForm();
+                }}
+            ></div>
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+                <div className="bg-white rounded-lg shadow-xl max-w-md w-full max-h-[90vh] overflow-y-auto">
+                    <div className="p-6">
+                        <div className="flex justify-between items-center mb-4">
+                            <h3 className="text-lg font-semibold">
+                                {isEdit ? "Edit Product" : "Add New Product"}
+                            </h3>
+                            <button
+                                onClick={() => {
+                                    isEdit
+                                        ? setShowEditModal(false)
+                                        : setShowAddModal(false);
+                                    resetForm();
+                                }}
+                                className="text-gray-400 hover:text-gray-600"
+                            >
+                                <Icon
+                                    icon="mingcute:close-line"
+                                    width="24"
+                                    height="24"
+                                />
+                            </button>
                         </div>
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">
-                                Stock
-                            </label>
-                            <input
-                                type="number"
-                                value={productForm.stock}
-                                onChange={(e) =>
-                                    setProductForm((prev) => ({
-                                        ...prev,
-                                        stock: e.target.value,
-                                    }))
+
+                        <div className="space-y-4">
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">
+                                    Product Name *
+                                </label>
+                                <input
+                                    type="text"
+                                    value={productForm.name}
+                                    onChange={(e) =>
+                                        setProductForm((prev) => ({
+                                            ...prev,
+                                            name: e.target.value,
+                                        }))
+                                    }
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-primary focus:border-primary"
+                                    placeholder="Enter product name"
+                                    required
+                                />
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                                        Price (₱) *
+                                    </label>
+                                    <input
+                                        type="number"
+                                        step="0.01"
+                                        min="0"
+                                        value={productForm.price}
+                                        onChange={(e) =>
+                                            setProductForm((prev) => ({
+                                                ...prev,
+                                                price: e.target.value,
+                                            }))
+                                        }
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-primary focus:border-primary"
+                                        placeholder="0.00"
+                                        required
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                                        Stock *
+                                    </label>
+                                    <input
+                                        type="number"
+                                        min="0"
+                                        value={productForm.stock}
+                                        onChange={(e) =>
+                                            setProductForm((prev) => ({
+                                                ...prev,
+                                                stock: e.target.value,
+                                            }))
+                                        }
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-primary focus:border-primary"
+                                        placeholder="0"
+                                        required
+                                    />
+                                </div>
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">
+                                    Category *
+                                </label>
+                                <select
+                                    value={productForm.category}
+                                    onChange={(e) =>
+                                        setProductForm((prev) => ({
+                                            ...prev,
+                                            category: e.target.value,
+                                        }))
+                                    }
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-primary focus:border-primary"
+                                    required
+                                >
+                                    {categories.slice(1).map((cat) => (
+                                        <option key={cat.name} value={cat.name}>
+                                            {cat.name}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">
+                                    Product Image
+                                </label>
+                                <input
+                                    type="file"
+                                    accept="image/*"
+                                    onChange={handleImageUpload}
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-primary focus:border-primary"
+                                />
+                                {productForm.imagePreview && (
+                                    <div className="mt-2">
+                                        <img
+                                            src={productForm.imagePreview}
+                                            alt="Preview"
+                                            className="w-full h-32 object-cover rounded-lg"
+                                        />
+                                    </div>
+                                )}
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">
+                                    Description
+                                </label>
+                                <textarea
+                                    value={productForm.description}
+                                    onChange={(e) =>
+                                        setProductForm((prev) => ({
+                                            ...prev,
+                                            description: e.target.value,
+                                        }))
+                                    }
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-primary focus:border-primary"
+                                    rows="3"
+                                    placeholder="Describe your product..."
+                                />
+                            </div>
+                        </div>
+
+                        <div className="flex gap-3 mt-6">
+                            <button
+                                onClick={() => {
+                                    isEdit
+                                        ? setShowEditModal(false)
+                                        : setShowAddModal(false);
+                                    resetForm();
+                                }}
+                                className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={
+                                    isEdit
+                                        ? handleEditProduct
+                                        : handleAddProduct
                                 }
-                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-primary focus:border-primary"
-                                placeholder="0"
-                            />
+                                disabled={
+                                    !productForm.name ||
+                                    !productForm.price ||
+                                    !productForm.stock
+                                }
+                                className="flex-1 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed"
+                            >
+                                {isEdit ? "Update" : "Add"} Product
+                            </button>
                         </div>
                     </div>
-
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                            Category
-                        </label>
-                        <select
-                            value={productForm.category}
-                            onChange={(e) =>
-                                setProductForm((prev) => ({
-                                    ...prev,
-                                    category: e.target.value,
-                                }))
-                            }
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-primary focus:border-primary"
-                        >
-                            {categories.slice(1).map((cat) => (
-                                <option key={cat.name} value={cat.name}>
-                                    {cat.name}
-                                </option>
-                            ))}
-                        </select>
-                    </div>
-
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                            Image URL
-                        </label>
-                        <input
-                            type="url"
-                            value={productForm.image}
-                            onChange={(e) =>
-                                setProductForm((prev) => ({
-                                    ...prev,
-                                    image: e.target.value,
-                                }))
-                            }
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-primary focus:border-primary"
-                            placeholder="https://example.com/image.jpg"
-                        />
-                    </div>
-
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                            Description
-                        </label>
-                        <textarea
-                            value={productForm.description}
-                            onChange={(e) =>
-                                setProductForm((prev) => ({
-                                    ...prev,
-                                    description: e.target.value,
-                                }))
-                            }
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-primary focus:border-primary"
-                            rows="3"
-                            placeholder="Describe your product..."
-                        />
-                    </div>
-                </div>
-
-                <div className="flex gap-3 mt-6">
-                    <button
-                        onClick={() => {
-                            isEdit
-                                ? setShowEditModal(false)
-                                : setShowAddModal(false);
-                            resetForm();
-                        }}
-                        className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
-                    >
-                        Cancel
-                    </button>
-                    <button
-                        onClick={isEdit ? handleEditProduct : handleAddProduct}
-                        className="flex-1 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark"
-                    >
-                        {isEdit ? "Update" : "Add"} Product
-                    </button>
                 </div>
             </div>
-        </div>
+        </>
     );
 
     return (
@@ -364,11 +510,13 @@ function ProducerHome() {
             {showAddModal && <ProductModal />}
             {showEditModal && <ProductModal isEdit={true} />}
             <ConfirmModal
-                open={showDeleteModal}
+                isOpen={showDeleteModal}
                 onClose={() => setShowDeleteModal(false)}
                 onConfirm={handleDeleteProduct}
                 title="Delete Product"
                 message={`Are you sure you want to delete "${selectedProduct?.name}"? This action cannot be undone.`}
+                confirmText="Delete"
+                confirmButtonClass="bg-red-600 hover:bg-red-700"
             />
 
             {/* Header */}
@@ -400,7 +548,7 @@ function ProducerHome() {
                             placeholder="Search your products..."
                             value={search}
                             onChange={(e) => setSearch(e.target.value)}
-                            className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-primary focus:border-primary"
+                            className="w-full pl-10 pr-4 py-3 bg-white border border-gray-300 rounded-lg focus:ring-primary focus:border-primary"
                         />
                     </div>
                 </div>
@@ -490,67 +638,80 @@ function ProducerHome() {
                             filteredProducts.map((product) => (
                                 <div
                                     key={product.id}
-                                    className="bg-white rounded-lg shadow-md hover:shadow-lg transition-shadow duration-300 overflow-hidden"
+                                    className="bg-white rounded-lg shadow-md hover:shadow-lg transition-shadow duration-300 overflow-hidden relative group"
                                 >
-                                    <div className="relative">
-                                        <img
-                                            src={product.image}
-                                            alt={product.name}
-                                            className="w-full h-40 sm:h-48 object-cover"
-                                            loading="lazy"
-                                        />
-                                        <div className="absolute top-2 right-2 flex gap-1">
-                                            <button
-                                                onClick={() =>
-                                                    openEditModal(product)
-                                                }
-                                                className="bg-white rounded-full p-2 shadow-md hover:bg-gray-50"
-                                            >
-                                                <Icon
-                                                    icon="mingcute:edit-line"
-                                                    width="16"
-                                                    height="16"
-                                                    className="text-blue-600"
-                                                />
-                                            </button>
-                                            <button
-                                                onClick={() =>
-                                                    openDeleteModal(product)
-                                                }
-                                                className="bg-white rounded-full p-2 shadow-md hover:bg-gray-50"
-                                            >
-                                                <Icon
-                                                    icon="mingcute:delete-line"
-                                                    width="16"
-                                                    height="16"
-                                                    className="text-red-600"
-                                                />
-                                            </button>
-                                        </div>
-                                    </div>
-
-                                    <div className="p-3">
-                                        <h3 className="font-semibold text-gray-800 line-clamp-2 mb-1 text-sm">
-                                            {product.name}
-                                        </h3>
-
-                                        <div className="flex items-center justify-between mb-2">
-                                            <p className="text-primary font-bold text-lg">
-                                                ₱{product.price?.toFixed(2)}
-                                            </p>
-                                            <span className="text-xs text-gray-500">
-                                                {product.stock || 0} in stock
-                                            </span>
-                                        </div>
-
-                                        <div className="flex items-center gap-1 text-xs text-gray-500">
-                                            <Icon
-                                                icon="mingcute:tag-line"
-                                                width="12"
-                                                height="12"
+                                    <Link
+                                        to={`/producer/product/${product.id}`}
+                                        className="block"
+                                    >
+                                        <div className="relative">
+                                            <img
+                                                src={product.image}
+                                                alt={product.name}
+                                                className="w-full h-40 sm:h-48 object-cover"
+                                                loading="lazy"
                                             />
-                                            {product.category}
+                                            <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-10 transition-all duration-200"></div>
                                         </div>
+
+                                        <div className="p-3">
+                                            <h3 className="font-semibold text-gray-800 line-clamp-2 mb-1 text-sm">
+                                                {product.name}
+                                            </h3>
+
+                                            <div className="flex items-center justify-between mb-2">
+                                                <p className="text-primary font-bold text-lg">
+                                                    ₱{product.price?.toFixed(2)}
+                                                </p>
+                                                <span className="text-xs text-gray-500">
+                                                    {product.stock || 0}kg in
+                                                    stock
+                                                </span>
+                                            </div>
+
+                                            <div className="flex items-center gap-1 text-xs text-gray-500">
+                                                <Icon
+                                                    icon="mingcute:tag-line"
+                                                    width="12"
+                                                    height="12"
+                                                />
+                                                {product.category}
+                                            </div>
+                                        </div>
+                                    </Link>
+
+                                    {/* Action buttons overlay */}
+                                    <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                                        <button
+                                            onClick={(e) => {
+                                                e.preventDefault();
+                                                e.stopPropagation();
+                                                openEditModal(product);
+                                            }}
+                                            className="bg-white rounded-full p-2 shadow-md hover:bg-gray-50 z-10"
+                                        >
+                                            <Icon
+                                                icon="mingcute:edit-line"
+                                                width="16"
+                                                height="16"
+                                                className="text-blue-600"
+                                            />
+                                        </button>
+                                        <button
+                                            onClick={(e) => {
+                                                e.preventDefault();
+                                                e.stopPropagation();
+                                                openDeleteModal(product);
+                                            }}
+                                            className="bg-white rounded-full p-2 shadow-md hover:bg-gray-50 z-10"
+                                        >
+                                            <Icon
+                                                icon="mingcute:delete-line"
+                                                width="16"
+                                                height="16"
+                                                className="text-red-600"
+                                            />
+                                        </button>
                                     </div>
                                 </div>
                             ))

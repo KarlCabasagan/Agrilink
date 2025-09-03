@@ -14,6 +14,7 @@ import {
 
 import Home from "./pages/consumer/Home";
 import ProducerHome from "./pages/producer/ProducerHome";
+import ProducerProduct from "./pages/producer/ProducerProduct";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import AccountVerified from "./pages/AccountVerified";
@@ -308,6 +309,14 @@ function App() {
                     />
 
                     {/* Producer-only routes */}
+                    <Route
+                        path="/producer/product/:id"
+                        element={
+                            <RoleGuard allowedRoles={[2]}>
+                                <ProducerProduct />
+                            </RoleGuard>
+                        }
+                    />
                     <Route
                         path="/orders"
                         element={
