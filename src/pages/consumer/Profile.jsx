@@ -155,173 +155,198 @@ function Profile() {
                 {/* Menu Items */}
                 <div className="bg-white rounded-lg shadow-md overflow-hidden mb-6">
                     <h3 className="text-lg font-semibold text-gray-800 p-4 border-b border-gray-200">
-                        My Account
+                        Account Settings
                     </h3>
-
-                    <Link
-                        to="/cart"
-                        className="flex items-center justify-between p-4 hover:bg-gray-50 transition-colors border-b border-gray-100"
-                    >
-                        <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
-                                <Icon
-                                    icon="mingcute:shopping-cart-1-line"
-                                    width="20"
-                                    height="20"
-                                    className="text-blue-600"
-                                />
+                    <div className="divide-y divide-gray-200">
+                        <Link
+                            to="/edit-profile"
+                            className="flex items-center justify-between p-4 hover:bg-gray-50 transition-colors"
+                        >
+                            <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
+                                    <Icon
+                                        icon="mingcute:edit-line"
+                                        width="20"
+                                        height="20"
+                                        className="text-blue-600"
+                                    />
+                                </div>
+                                <span className="text-gray-800">
+                                    Edit Profile
+                                </span>
                             </div>
-                            <span className="font-medium text-gray-700">
-                                My Cart
-                            </span>
-                        </div>
-                        <Icon
-                            icon="mingcute:right-line"
-                            width="20"
-                            height="20"
-                            className="text-gray-400"
-                        />
-                    </Link>
+                            <Icon
+                                icon="mingcute:right-line"
+                                width="16"
+                                height="16"
+                                className="text-gray-400"
+                            />
+                        </Link>
 
-                    <Link
-                        to="/favorites"
-                        className="flex items-center justify-between p-4 hover:bg-gray-50 transition-colors border-b border-gray-100"
-                    >
-                        <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 bg-red-100 rounded-lg flex items-center justify-center">
-                                <Icon
-                                    icon="mingcute:heart-line"
-                                    width="20"
-                                    height="20"
-                                    className="text-red-600"
-                                />
+                        <button className="w-full flex items-center justify-between p-4 hover:bg-gray-50 transition-colors">
+                            <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center">
+                                    <Icon
+                                        icon="mingcute:paper-line"
+                                        width="20"
+                                        height="20"
+                                        className="text-purple-600"
+                                    />
+                                </div>
+                                <span className="text-gray-800">
+                                    Apply to be a Seller
+                                </span>
                             </div>
-                            <span className="font-medium text-gray-700">
-                                Favorite Products
-                            </span>
-                        </div>
-                        <Icon
-                            icon="mingcute:right-line"
-                            width="20"
-                            height="20"
-                            className="text-gray-400"
-                        />
-                    </Link>
-
-                    <button className="w-full flex items-center justify-between p-4 hover:bg-gray-50 transition-colors border-b border-gray-100">
-                        <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
-                                <Icon
-                                    icon="mingcute:truck-line"
-                                    width="20"
-                                    height="20"
-                                    className="text-green-600"
-                                />
-                            </div>
-                            <span className="font-medium text-gray-700">
-                                My Orders
-                            </span>
-                        </div>
-                        <Icon
-                            icon="mingcute:right-line"
-                            width="20"
-                            height="20"
-                            className="text-gray-400"
-                        />
-                    </button>
-
-                    <button className="w-full flex items-center justify-between p-4 hover:bg-gray-50 transition-colors border-b border-gray-100">
-                        <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 bg-yellow-100 rounded-lg flex items-center justify-center">
-                                <Icon
-                                    icon="mingcute:history-anticlockwise-line"
-                                    width="20"
-                                    height="20"
-                                    className="text-yellow-600"
-                                />
-                            </div>
-                            <span className="font-medium text-gray-700">
-                                Order History
-                            </span>
-                        </div>
-                        <Icon
-                            icon="mingcute:right-line"
-                            width="20"
-                            height="20"
-                            className="text-gray-400"
-                        />
-                    </button>
-
-                    <button className="w-full flex items-center justify-between p-4 hover:bg-gray-50 transition-colors">
-                        <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center">
-                                <Icon
-                                    icon="mingcute:paper-line"
-                                    width="20"
-                                    height="20"
-                                    className="text-purple-600"
-                                />
-                            </div>
-                            <span className="font-medium text-primary">
-                                Apply to be a Seller
-                            </span>
-                        </div>
-                        <Icon
-                            icon="mingcute:right-line"
-                            width="20"
-                            height="20"
-                            className="text-gray-400"
-                        />
-                    </button>
+                            <Icon
+                                icon="mingcute:right-line"
+                                width="16"
+                                height="16"
+                                className="text-gray-400"
+                            />
+                        </button>
+                    </div>
                 </div>
 
-                {/* Actions */}
-                <div className="space-y-3">
+                {/* Orders & Shopping */}
+                <div className="bg-white rounded-lg shadow-md overflow-hidden mb-6">
+                    <h3 className="text-lg font-semibold text-gray-800 p-4 border-b border-gray-200">
+                        My Shopping
+                    </h3>
+                    <div className="divide-y divide-gray-200">
+                        <Link
+                            to="/cart"
+                            className="flex items-center justify-between p-4 hover:bg-gray-50 transition-colors"
+                        >
+                            <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center">
+                                    <Icon
+                                        icon="mingcute:shopping-cart-1-line"
+                                        width="20"
+                                        height="20"
+                                        className="text-purple-600"
+                                    />
+                                </div>
+                                <span className="text-gray-800">My Cart</span>
+                            </div>
+                            <Icon
+                                icon="mingcute:right-line"
+                                width="16"
+                                height="16"
+                                className="text-gray-400"
+                            />
+                        </Link>
+
+                        <Link
+                            to="/favorites"
+                            className="flex items-center justify-between p-4 hover:bg-gray-50 transition-colors"
+                        >
+                            <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 bg-red-100 rounded-lg flex items-center justify-center">
+                                    <Icon
+                                        icon="mingcute:heart-line"
+                                        width="20"
+                                        height="20"
+                                        className="text-red-600"
+                                    />
+                                </div>
+                                <span className="text-gray-800">
+                                    Favorite Products
+                                </span>
+                            </div>
+                            <Icon
+                                icon="mingcute:right-line"
+                                width="16"
+                                height="16"
+                                className="text-gray-400"
+                            />
+                        </Link>
+
+                        <button className="w-full flex items-center justify-between p-4 hover:bg-gray-50 transition-colors">
+                            <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
+                                    <Icon
+                                        icon="mingcute:truck-line"
+                                        width="20"
+                                        height="20"
+                                        className="text-green-600"
+                                    />
+                                </div>
+                                <span className="text-gray-800">My Orders</span>
+                            </div>
+                            <Icon
+                                icon="mingcute:right-line"
+                                width="16"
+                                height="16"
+                                className="text-gray-400"
+                            />
+                        </button>
+
+                        <button className="w-full flex items-center justify-between p-4 hover:bg-gray-50 transition-colors">
+                            <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 bg-yellow-100 rounded-lg flex items-center justify-center">
+                                    <Icon
+                                        icon="mingcute:history-anticlockwise-line"
+                                        width="20"
+                                        height="20"
+                                        className="text-yellow-600"
+                                    />
+                                </div>
+                                <span className="text-gray-800">
+                                    Order History
+                                </span>
+                            </div>
+                            <Icon
+                                icon="mingcute:right-line"
+                                width="16"
+                                height="16"
+                                className="text-gray-400"
+                            />
+                        </button>
+                    </div>
+                </div>
+
+                {/* Support & Info */}
+                <div className="bg-white rounded-lg shadow-md overflow-hidden mb-6">
+                    <h3 className="text-lg font-semibold text-gray-800 p-4 border-b border-gray-200">
+                        Support & Information
+                    </h3>
+                    <div className="divide-y divide-gray-200">
+                        <button className="w-full flex items-center justify-between p-4 hover:bg-gray-50 transition-colors">
+                            <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 bg-orange-100 rounded-lg flex items-center justify-center">
+                                    <Icon
+                                        icon="mingcute:question-line"
+                                        width="20"
+                                        height="20"
+                                        className="text-orange-600"
+                                    />
+                                </div>
+                                <span className="text-gray-800">
+                                    Help & Support
+                                </span>
+                            </div>
+                            <Icon
+                                icon="mingcute:right-line"
+                                width="16"
+                                height="16"
+                                className="text-gray-400"
+                            />
+                        </button>
+                    </div>
+                </div>
+
+                {/* Logout */}
+                <div className="bg-white rounded-lg shadow-md overflow-hidden">
                     <button
                         onClick={handleLogout}
-                        className="w-full bg-white rounded-lg shadow-md p-4 flex items-center justify-between hover:bg-gray-50 transition-colors"
+                        className="w-full flex items-center justify-center gap-3 p-4 text-red-600 hover:bg-red-50 transition-colors"
                     >
-                        <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center">
-                                <Icon
-                                    icon="mingcute:user-remove-2-line"
-                                    width="20"
-                                    height="20"
-                                    className="text-gray-600"
-                                />
-                            </div>
-                            <span className="font-medium text-gray-700">
-                                Logout
-                            </span>
-                        </div>
                         <Icon
-                            icon="mingcute:right-line"
+                            icon="mingcute:exit-line"
                             width="20"
                             height="20"
-                            className="text-gray-400"
                         />
-                    </button>
-
-                    <button className="w-full bg-white rounded-lg shadow-md p-4 flex items-center justify-between hover:bg-red-50 transition-colors">
-                        <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 bg-red-100 rounded-lg flex items-center justify-center">
-                                <Icon
-                                    icon="mingcute:delete-3-line"
-                                    width="20"
-                                    height="20"
-                                    className="text-red-600"
-                                />
-                            </div>
-                            <span className="font-medium text-red-600">
-                                Delete Account
-                            </span>
-                        </div>
-                        <Icon
-                            icon="mingcute:right-line"
-                            width="20"
-                            height="20"
-                            className="text-red-400"
-                        />
+                        <span className="font-medium">Log Out</span>
                     </button>
                 </div>
             </div>

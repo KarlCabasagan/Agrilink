@@ -162,97 +162,166 @@ function AdminMessages() {
     const unreadCount = messages.filter((m) => m.status === "unread").length;
 
     return (
-        <div className="min-h-screen bg-gray-50 pb-20">
-            <div className="max-w-4xl mx-auto p-4">
-                {/* Header */}
-                <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
-                    <div className="flex items-center justify-between mb-4">
-                        <div>
-                            <h1 className="text-2xl font-bold text-gray-800">
-                                Messages
-                            </h1>
-                            <p className="text-gray-600 mt-1">
-                                Manage user inquiries and support requests
-                            </p>
-                        </div>
-                        <div className="flex items-center space-x-2">
-                            <div className="bg-red-100 text-red-800 px-3 py-1 rounded-full text-sm font-medium">
-                                {unreadCount} unread
-                            </div>
-                        </div>
+        <div className="min-h-screen w-full flex flex-col relative items-center scrollbar-hide bg-background overflow-x-hidden text-text pb-20">
+            {/* Header */}
+            <div className="fixed top-0 left-0 w-full bg-white shadow-md z-50 px-4 py-3">
+                <h1 className="text-lg font-semibold text-primary text-center">
+                    Messages
+                </h1>
+            </div>
+
+            <div className="w-full max-w-4xl mx-4 sm:mx-auto my-16">
+                {/* Stats Overview */}
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6 mt-4 px-4 sm:px-0">
+                    <div className="bg-white rounded-lg shadow-md p-4 text-center">
+                        <Icon
+                            icon="mingcute:mail-line"
+                            width="32"
+                            height="32"
+                            className="mx-auto mb-2 text-blue-600"
+                        />
+                        <p className="text-2xl font-bold text-gray-800">
+                            {messages.length}
+                        </p>
+                        <p className="text-sm text-gray-600">Total Messages</p>
                     </div>
 
-                    {/* Search Bar */}
-                    <div className="relative mb-4">
-                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                            <Icon
-                                icon="mingcute:search-line"
-                                className="h-5 w-5 text-gray-400"
+                    <div className="bg-white rounded-lg shadow-md p-4 text-center">
+                        <Icon
+                            icon="mingcute:notification-line"
+                            width="32"
+                            height="32"
+                            className="mx-auto mb-2 text-red-600"
+                        />
+                        <p className="text-2xl font-bold text-gray-800">
+                            {unreadCount}
+                        </p>
+                        <p className="text-sm text-gray-600">Unread</p>
+                    </div>
+
+                    <div className="bg-white rounded-lg shadow-md p-4 text-center">
+                        <Icon
+                            icon="mingcute:alert-line"
+                            width="32"
+                            height="32"
+                            className="mx-auto mb-2 text-yellow-600"
+                        />
+                        <p className="text-2xl font-bold text-gray-800">
+                            {
+                                messages.filter((m) => m.priority === "high")
+                                    .length
+                            }
+                        </p>
+                        <p className="text-sm text-gray-600">High Priority</p>
+                    </div>
+
+                    <div className="bg-white rounded-lg shadow-md p-4 text-center">
+                        <Icon
+                            icon="mingcute:group-line"
+                            width="32"
+                            height="32"
+                            className="mx-auto mb-2 text-green-600"
+                        />
+                        <p className="text-2xl font-bold text-gray-800">
+                            {
+                                messages.filter(
+                                    (m) => m.senderType === "producer"
+                                ).length
+                            }
+                        </p>
+                        <p className="text-sm text-gray-600">From Producers</p>
+                    </div>
+                </div>
+
+                {/* Search and Filter Section */}
+                <div className="bg-white rounded-lg shadow-md overflow-hidden mb-6">
+                    <div className="p-6">
+                        <h2 className="text-lg font-semibold text-gray-800 mb-4">
+                            Search & Filter Messages
+                        </h2>
+
+                        {/* Search Bar */}
+                        <div className="relative mb-4">
+                            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                <Icon
+                                    icon="mingcute:search-line"
+                                    className="h-5 w-5 text-gray-400"
+                                />
+                            </div>
+                            <input
+                                type="text"
+                                placeholder="Search messages by sender, subject, or content..."
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                                className="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-2 focus:ring-primary focus:border-primary"
                             />
                         </div>
-                        <input
-                            type="text"
-                            placeholder="Search messages by sender, subject, or content..."
-                            value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
-                            className="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-2 focus:ring-primary focus:border-primary"
-                        />
-                    </div>
 
-                    {/* Filter Buttons */}
-                    <div className="flex flex-wrap gap-2">
-                        {[
-                            {
-                                key: "all",
-                                label: "All Messages",
-                                count: messages.length,
-                            },
-                            {
-                                key: "unread",
-                                label: "Unread",
-                                count: messages.filter(
-                                    (m) => m.status === "unread"
-                                ).length,
-                            },
-                            {
-                                key: "high",
-                                label: "High Priority",
-                                count: messages.filter(
-                                    (m) => m.priority === "high"
-                                ).length,
-                            },
-                            {
-                                key: "producer",
-                                label: "Producers",
-                                count: messages.filter(
-                                    (m) => m.senderType === "producer"
-                                ).length,
-                            },
-                            {
-                                key: "consumer",
-                                label: "Consumers",
-                                count: messages.filter(
-                                    (m) => m.senderType === "consumer"
-                                ).length,
-                            },
-                        ].map((filter) => (
-                            <button
-                                key={filter.key}
-                                onClick={() => setSelectedFilter(filter.key)}
-                                className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                                    selectedFilter === filter.key
-                                        ? "bg-primary text-white"
-                                        : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                                }`}
-                            >
-                                {filter.label} ({filter.count})
-                            </button>
-                        ))}
+                        {/* Filter Buttons */}
+                        <div className="flex flex-wrap gap-2">
+                            {[
+                                {
+                                    key: "all",
+                                    label: "All Messages",
+                                    count: messages.length,
+                                },
+                                {
+                                    key: "unread",
+                                    label: "Unread",
+                                    count: messages.filter(
+                                        (m) => m.status === "unread"
+                                    ).length,
+                                },
+                                {
+                                    key: "high",
+                                    label: "High Priority",
+                                    count: messages.filter(
+                                        (m) => m.priority === "high"
+                                    ).length,
+                                },
+                                {
+                                    key: "producer",
+                                    label: "Producers",
+                                    count: messages.filter(
+                                        (m) => m.senderType === "producer"
+                                    ).length,
+                                },
+                                {
+                                    key: "consumer",
+                                    label: "Consumers",
+                                    count: messages.filter(
+                                        (m) => m.senderType === "consumer"
+                                    ).length,
+                                },
+                            ].map((filter) => (
+                                <button
+                                    key={filter.key}
+                                    onClick={() =>
+                                        setSelectedFilter(filter.key)
+                                    }
+                                    className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                                        selectedFilter === filter.key
+                                            ? "bg-primary text-white"
+                                            : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                                    }`}
+                                >
+                                    {filter.label} ({filter.count})
+                                </button>
+                            ))}
+                        </div>
                     </div>
                 </div>
 
                 {/* Messages List */}
-                <div className="bg-white rounded-lg shadow-sm border border-gray-200">
+                <div className="bg-white rounded-lg shadow-md overflow-hidden">
+                    <div className="p-6 border-b border-gray-200">
+                        <h2 className="text-lg font-semibold text-gray-800">
+                            Messages
+                        </h2>
+                        <p className="text-sm text-gray-600 mt-1">
+                            Manage user inquiries and support requests
+                        </p>
+                    </div>
                     {filteredMessages.length === 0 ? (
                         <div className="p-8 text-center">
                             <Icon
