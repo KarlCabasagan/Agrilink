@@ -45,6 +45,13 @@ function AdminNavigationBar() {
             badge: 3, // Mock pending products
         },
         {
+            path: "/admin/messages",
+            icon: "mingcute:mail-line",
+            activeIcon: "mingcute:mail-fill",
+            label: "Messages",
+            badge: 12, // Mock unread messages
+        },
+        {
             path: "/admin/logs",
             icon: "mingcute:history-anticlockwise-line",
             activeIcon: "mingcute:history-anticlockwise-fill",

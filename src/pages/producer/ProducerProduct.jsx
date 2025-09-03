@@ -25,6 +25,47 @@ function ProducerProduct() {
     const [showDeleteModal, setShowDeleteModal] = useState(false);
     const [reviewSortBy, setReviewSortBy] = useState("newest");
 
+    // Available crops from recommendation system
+    const availableCrops = [
+        "Rice",
+        "Corn",
+        "Tomatoes",
+        "Sweet Corn",
+        "Lettuce",
+        "Cabbage",
+        "Carrots",
+        "Onions",
+        "Potatoes",
+        "Bell Peppers",
+        "Eggplant",
+        "Cucumber",
+        "Squash",
+        "Okra",
+        "Kangkong",
+        "Pechay",
+        "Radish",
+        "Mango",
+        "Banana",
+        "Papaya",
+        "Pineapple",
+        "Coconut",
+        "Rambutan",
+        "Lanzones",
+        "Durian",
+        "Avocado",
+        "Guava",
+        "Jackfruit",
+        "Citrus",
+    ];
+
+    const [cropSearchTerm, setCropSearchTerm] = useState("");
+    const [showCropDropdown, setShowCropDropdown] = useState(false);
+
+    // Filter crops based on search term
+    const filteredCrops = availableCrops.filter((crop) =>
+        crop.toLowerCase().includes(cropSearchTerm.toLowerCase())
+    );
+
     const [editForm, setEditForm] = useState({
         name: "",
         price: "",
@@ -33,6 +74,7 @@ function ProducerProduct() {
         stock: "",
         image: null,
         imagePreview: "",
+        cropType: "",
     });
 
     // Sample products data (replace with actual data fetching)
@@ -42,6 +84,7 @@ function ProducerProduct() {
             name: "Fresh Organic Tomatoes",
             price: 45.0,
             category: "Vegetables",
+            cropType: "Tomatoes",
             description:
                 "Locally grown organic tomatoes, perfect for cooking and salads. These tomatoes are grown without pesticides and are harvested at peak ripeness.",
             stock: 50,
@@ -88,6 +131,7 @@ function ProducerProduct() {
             name: "Premium Rice",
             price: 55.0,
             category: "Grains",
+            cropType: "Rice",
             description:
                 "High-quality jasmine rice from local farms. Perfect for daily meals with excellent texture and aroma.",
             stock: 100,
@@ -123,6 +167,7 @@ function ProducerProduct() {
             name: "Sweet Mangoes",
             price: 80.0,
             category: "Fruits",
+            cropType: "Mango",
             description:
                 "Sweet and juicy mangoes, perfectly ripe. These mangoes are hand-picked at optimal ripeness for the best flavor.",
             stock: 25,
@@ -203,6 +248,7 @@ function ProducerProduct() {
                     name: foundProduct.name,
                     price: foundProduct.price.toString(),
                     category: foundProduct.category,
+                    cropType: foundProduct.cropType || "",
                     description: foundProduct.description,
                     stock: foundProduct.stock.toString(),
                     image: null,
@@ -231,11 +277,20 @@ function ProducerProduct() {
     const handleSave = () => {
         if (!editForm.name || !editForm.price || !editForm.stock) return;
 
+        // Validate crop type
+        if (editForm.cropType && !availableCrops.includes(editForm.cropType)) {
+            alert(
+                "Please select a valid crop type from the available options."
+            );
+            return;
+        }
+
         const updatedProduct = {
             ...product,
             name: editForm.name,
             price: parseFloat(editForm.price),
             category: editForm.category,
+            cropType: editForm.cropType,
             description: editForm.description,
             stock: parseInt(editForm.stock),
             image: editForm.imagePreview,
@@ -260,11 +315,14 @@ function ProducerProduct() {
             name: product.name,
             price: product.price.toString(),
             category: product.category,
+            cropType: product.cropType || "",
             description: product.description,
             stock: product.stock.toString(),
             image: null,
             imagePreview: product.image,
         });
+        setCropSearchTerm("");
+        setShowCropDropdown(false);
         setIsEditing(false);
     };
 
@@ -501,6 +559,88 @@ function ProducerProduct() {
                                     </div>
                                 </div>
 
+                                {/* Crop Type Field */}
+                                <div className="relative">
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                                        Crop Type
+                                    </label>
+                                    <div className="relative">
+                                        <input
+                                            type="text"
+                                            value={editForm.cropType}
+                                            onChange={(e) => {
+                                                const value = e.target.value;
+                                                setEditForm((prev) => ({
+                                                    ...prev,
+                                                    cropType: value,
+                                                }));
+                                                setCropSearchTerm(value);
+                                                setShowCropDropdown(
+                                                    value.length > 0
+                                                );
+                                            }}
+                                            onFocus={() => {
+                                                setCropSearchTerm(
+                                                    editForm.cropType
+                                                );
+                                                setShowCropDropdown(true);
+                                            }}
+                                            onBlur={() => {
+                                                setTimeout(
+                                                    () =>
+                                                        setShowCropDropdown(
+                                                            false
+                                                        ),
+                                                    150
+                                                );
+                                            }}
+                                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-primary focus:border-primary"
+                                            placeholder="Search for crop type..."
+                                        />
+                                        <Icon
+                                            icon="material-symbols:search"
+                                            className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5"
+                                        />
+
+                                        {/* Dropdown */}
+                                        {showCropDropdown &&
+                                            filteredCrops.length > 0 && (
+                                                <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                                                    {filteredCrops.map(
+                                                        (crop) => (
+                                                            <div
+                                                                key={crop}
+                                                                className="px-3 py-2 hover:bg-primary/10 cursor-pointer text-sm"
+                                                                onMouseDown={(
+                                                                    e
+                                                                ) => {
+                                                                    e.preventDefault();
+                                                                    setEditForm(
+                                                                        (
+                                                                            prev
+                                                                        ) => ({
+                                                                            ...prev,
+                                                                            cropType:
+                                                                                crop,
+                                                                        })
+                                                                    );
+                                                                    setCropSearchTerm(
+                                                                        crop
+                                                                    );
+                                                                    setShowCropDropdown(
+                                                                        false
+                                                                    );
+                                                                }}
+                                                            >
+                                                                {crop}
+                                                            </div>
+                                                        )
+                                                    )}
+                                                </div>
+                                            )}
+                                    </div>
+                                </div>
+
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-1">
                                         Description
@@ -525,7 +665,7 @@ function ProducerProduct() {
                                     {product.name}
                                 </h1>
 
-                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
                                     <div className="bg-gray-50 p-3 rounded-lg">
                                         <h3 className="text-sm font-medium text-gray-600 mb-1">
                                             Price per kg
@@ -550,6 +690,16 @@ function ProducerProduct() {
                                             {product.category}
                                         </p>
                                     </div>
+                                    {product.cropType && (
+                                        <div className="bg-gray-50 p-3 rounded-lg">
+                                            <h3 className="text-sm font-medium text-gray-600 mb-1">
+                                                Crop Type
+                                            </h3>
+                                            <p className="text-lg font-semibold text-gray-800">
+                                                {product.cropType}
+                                            </p>
+                                        </div>
+                                    )}
                                 </div>
 
                                 {product.description && (

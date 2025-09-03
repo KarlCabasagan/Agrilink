@@ -156,6 +156,9 @@ function CropRecommendation() {
     const { user } = useContext(AuthContext);
     const [selectedCategory, setSelectedCategory] = useState("All");
     const [sortBy, setSortBy] = useState("recommendation");
+    const [selectedRecommendation, setSelectedRecommendation] = useState(null);
+    const [searchTerm, setSearchTerm] = useState("");
+    const [plantedCrops, setPlantedCrops] = useState([]);
 
     const categories = [
         "All",
@@ -165,36 +168,91 @@ function CropRecommendation() {
         "Grains",
     ];
 
-    const filteredCrops = cropData
-        .filter(
+    const handleRecommendationToggle = (recommendation) => {
+        if (selectedRecommendation === recommendation) {
+            // If clicking the same recommendation, toggle it off (show all)
+            setSelectedRecommendation(null);
+        } else {
+            // Set the selected recommendation
+            setSelectedRecommendation(recommendation);
+        }
+    };
+
+    const handlePlantCrop = (crop) => {
+        const newPlantedCrop = {
+            ...crop,
+            plantedDate: new Date().toISOString(),
+            harvestDate: null,
+            id: `planted_${crop.id}_${Date.now()}`, // Unique ID for planted crop
+        };
+        setPlantedCrops((prev) => [...prev, newPlantedCrop]);
+    };
+
+    const handleHarvestCrop = (plantedCropId) => {
+        setPlantedCrops((prev) =>
+            prev.map((crop) =>
+                crop.id === plantedCropId
+                    ? { ...crop, harvestDate: new Date().toISOString() }
+                    : crop
+            )
+        );
+    };
+
+    const searchCrops = (crops) => {
+        if (!searchTerm) return crops;
+
+        return crops.filter(
             (crop) =>
-                selectedCategory === "All" || crop.category === selectedCategory
-        )
-        .sort((a, b) => {
-            if (sortBy === "recommendation") {
-                const recommendationOrder = {
-                    "Highly Recommended": 1,
-                    Recommended: 2,
-                    "Consider Carefully": 3,
-                    "Caution Advised": 4,
-                };
-                return (
-                    recommendationOrder[a.recommendation] -
-                    recommendationOrder[b.recommendation]
-                );
-            } else if (sortBy === "demand") {
-                const demandOrder = {
-                    High: 1,
-                    "Medium-High": 2,
-                    Medium: 3,
-                    Low: 4,
-                };
-                return demandOrder[a.demandLevel] - demandOrder[b.demandLevel];
-            } else if (sortBy === "competition") {
-                return a.plantingPercentage - b.plantingPercentage;
-            }
-            return 0;
-        });
+                crop.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                crop.category
+                    .toLowerCase()
+                    .includes(searchTerm.toLowerCase()) ||
+                crop.description
+                    .toLowerCase()
+                    .includes(searchTerm.toLowerCase()) ||
+                crop.benefits.some((benefit) =>
+                    benefit.toLowerCase().includes(searchTerm.toLowerCase())
+                )
+        );
+    };
+
+    const filteredCrops = searchCrops(
+        cropData
+            .filter(
+                (crop) =>
+                    selectedCategory === "All" ||
+                    crop.category === selectedCategory
+            )
+            .filter(
+                (crop) =>
+                    !selectedRecommendation ||
+                    crop.recommendation === selectedRecommendation
+            )
+    ).sort((a, b) => {
+        if (sortBy === "recommendation") {
+            const recommendationOrder = {
+                "Highly Recommended": 1,
+                Recommended: 2,
+                "Consider Carefully": 3,
+                "Caution Advised": 4,
+            };
+            return (
+                recommendationOrder[a.recommendation] -
+                recommendationOrder[b.recommendation]
+            );
+        } else if (sortBy === "demand") {
+            const demandOrder = {
+                High: 1,
+                "Medium-High": 2,
+                Medium: 3,
+                Low: 4,
+            };
+            return demandOrder[a.demandLevel] - demandOrder[b.demandLevel];
+        } else if (sortBy === "competition") {
+            return a.plantingPercentage - b.plantingPercentage;
+        }
+        return 0;
+    });
 
     const getRecommendationIcon = (recommendation) => {
         switch (recommendation) {
@@ -264,51 +322,85 @@ function CropRecommendation() {
                 </div>
 
                 {/* Controls */}
-                <div className="mb-6 flex flex-col sm:flex-row gap-4">
-                    {/* Category Filter */}
-                    <div className="flex-1">
+                <div className="mb-6 space-y-4">
+                    {/* Search */}
+                    <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">
-                            Category
+                            Search Crops
                         </label>
-                        <select
-                            value={selectedCategory}
-                            onChange={(e) =>
-                                setSelectedCategory(e.target.value)
-                            }
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-primary focus:border-primary"
-                        >
-                            {categories.map((category) => (
-                                <option key={category} value={category}>
-                                    {category}
-                                </option>
-                            ))}
-                        </select>
+                        <div className="relative">
+                            <Icon
+                                icon="mingcute:search-line"
+                                width="20"
+                                height="20"
+                                className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"
+                            />
+                            <input
+                                type="text"
+                                placeholder="Search by crop name, category, or benefits..."
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-primary focus:border-primary"
+                            />
+                        </div>
                     </div>
 
-                    {/* Sort By */}
-                    <div className="flex-1">
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                            Sort By
-                        </label>
-                        <select
-                            value={sortBy}
-                            onChange={(e) => setSortBy(e.target.value)}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-primary focus:border-primary"
-                        >
-                            <option value="recommendation">
-                                Recommendation Level
-                            </option>
-                            <option value="demand">Market Demand</option>
-                            <option value="competition">
-                                Competition Level
-                            </option>
-                        </select>
+                    {/* Filters */}
+                    <div className="flex flex-col sm:flex-row gap-4">
+                        {/* Category Filter */}
+                        <div className="flex-1">
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                                Category
+                            </label>
+                            <select
+                                value={selectedCategory}
+                                onChange={(e) =>
+                                    setSelectedCategory(e.target.value)
+                                }
+                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-primary focus:border-primary"
+                            >
+                                {categories.map((category) => (
+                                    <option key={category} value={category}>
+                                        {category}
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+
+                        {/* Sort By */}
+                        <div className="flex-1">
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                                Sort By
+                            </label>
+                            <select
+                                value={sortBy}
+                                onChange={(e) => setSortBy(e.target.value)}
+                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-primary focus:border-primary"
+                            >
+                                <option value="recommendation">
+                                    Recommendation Level
+                                </option>
+                                <option value="demand">Market Demand</option>
+                                <option value="competition">
+                                    Competition Level
+                                </option>
+                            </select>
+                        </div>
                     </div>
                 </div>
 
                 {/* Legend */}
                 <div className="mb-6 grid grid-cols-2 sm:grid-cols-4 gap-2">
-                    <div className="bg-green-50 border border-green-200 rounded-lg p-2 text-center">
+                    <button
+                        onClick={() =>
+                            handleRecommendationToggle("Highly Recommended")
+                        }
+                        className={`transition-all duration-200 border rounded-lg p-2 text-center hover:shadow-md ${
+                            selectedRecommendation === "Highly Recommended"
+                                ? "bg-green-100 border-green-300 shadow-md ring-2 ring-green-200"
+                                : "bg-green-50 border-green-200 hover:bg-green-100"
+                        }`}
+                    >
                         <Icon
                             icon="mingcute:star-fill"
                             width="20"
@@ -318,8 +410,17 @@ function CropRecommendation() {
                         <p className="text-xs font-medium text-green-800">
                             Highly Recommended
                         </p>
-                    </div>
-                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-2 text-center">
+                    </button>
+                    <button
+                        onClick={() =>
+                            handleRecommendationToggle("Recommended")
+                        }
+                        className={`transition-all duration-200 border rounded-lg p-2 text-center hover:shadow-md ${
+                            selectedRecommendation === "Recommended"
+                                ? "bg-blue-100 border-blue-300 shadow-md ring-2 ring-blue-200"
+                                : "bg-blue-50 border-blue-200 hover:bg-blue-100"
+                        }`}
+                    >
                         <Icon
                             icon="mingcute:thumb-up-fill"
                             width="20"
@@ -329,8 +430,17 @@ function CropRecommendation() {
                         <p className="text-xs font-medium text-blue-800">
                             Recommended
                         </p>
-                    </div>
-                    <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-2 text-center">
+                    </button>
+                    <button
+                        onClick={() =>
+                            handleRecommendationToggle("Consider Carefully")
+                        }
+                        className={`transition-all duration-200 border rounded-lg p-2 text-center hover:shadow-md ${
+                            selectedRecommendation === "Consider Carefully"
+                                ? "bg-yellow-100 border-yellow-300 shadow-md ring-2 ring-yellow-200"
+                                : "bg-yellow-50 border-yellow-200 hover:bg-yellow-100"
+                        }`}
+                    >
                         <Icon
                             icon="mingcute:question-fill"
                             width="20"
@@ -340,8 +450,17 @@ function CropRecommendation() {
                         <p className="text-xs font-medium text-yellow-800">
                             Consider Carefully
                         </p>
-                    </div>
-                    <div className="bg-red-50 border border-red-200 rounded-lg p-2 text-center">
+                    </button>
+                    <button
+                        onClick={() =>
+                            handleRecommendationToggle("Caution Advised")
+                        }
+                        className={`transition-all duration-200 border rounded-lg p-2 text-center hover:shadow-md ${
+                            selectedRecommendation === "Caution Advised"
+                                ? "bg-red-100 border-red-300 shadow-md ring-2 ring-red-200"
+                                : "bg-red-50 border-red-200 hover:bg-red-100"
+                        }`}
+                    >
                         <Icon
                             icon="mingcute:alert-fill"
                             width="20"
@@ -351,7 +470,7 @@ function CropRecommendation() {
                         <p className="text-xs font-medium text-red-800">
                             Caution Advised
                         </p>
-                    </div>
+                    </button>
                 </div>
 
                 {/* Crops Grid */}
@@ -468,7 +587,7 @@ function CropRecommendation() {
                                 </div>
 
                                 {/* Benefits */}
-                                <div>
+                                <div className="mb-4">
                                     <label className="text-xs text-gray-500 font-medium mb-2 block">
                                         Key Benefits
                                     </label>
@@ -483,10 +602,133 @@ function CropRecommendation() {
                                         ))}
                                     </div>
                                 </div>
+
+                                {/* Plant Crop Button */}
+                                <div className="pt-4 border-t border-gray-200">
+                                    <button
+                                        onClick={() => handlePlantCrop(crop)}
+                                        className="w-full bg-primary text-white py-2 px-4 rounded-lg hover:bg-primary-dark transition-colors font-medium text-sm flex items-center justify-center gap-2"
+                                    >
+                                        <Icon
+                                            icon="mingcute:plant-line"
+                                            width="16"
+                                            height="16"
+                                        />
+                                        Plant This Crop
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     ))}
                 </div>
+
+                {/* Currently Planted Crops */}
+                {plantedCrops.length > 0 && (
+                    <div className="mt-8">
+                        <h2 className="text-xl font-semibold text-gray-800 mb-4">
+                            Currently Planted Crops
+                        </h2>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                            {plantedCrops
+                                .filter((crop) => !crop.harvestDate)
+                                .map((crop) => (
+                                    <div
+                                        key={crop.id}
+                                        className="bg-white border border-green-200 rounded-lg p-4 shadow-sm"
+                                    >
+                                        <div className="flex items-center gap-3 mb-3">
+                                            <Icon
+                                                icon={crop.icon}
+                                                width="32"
+                                                height="32"
+                                            />
+                                            <div>
+                                                <h3 className="font-medium text-gray-800">
+                                                    {crop.name}
+                                                </h3>
+                                                <p className="text-sm text-gray-600">
+                                                    Planted:{" "}
+                                                    {new Date(
+                                                        crop.plantedDate
+                                                    ).toLocaleDateString()}
+                                                </p>
+                                            </div>
+                                        </div>
+                                        <div className="mb-3">
+                                            <p className="text-xs text-gray-500 mb-1">
+                                                Expected Growth Period
+                                            </p>
+                                            <p className="text-sm font-medium text-gray-700">
+                                                {crop.growthPeriod}
+                                            </p>
+                                        </div>
+                                        <button
+                                            onClick={() =>
+                                                handleHarvestCrop(crop.id)
+                                            }
+                                            className="w-full bg-green-600 text-white py-2 px-4 rounded-lg hover:bg-green-700 transition-colors font-medium text-sm flex items-center justify-center gap-2"
+                                        >
+                                            <Icon
+                                                icon="mingcute:check-circle-line"
+                                                width="16"
+                                                height="16"
+                                            />
+                                            Mark as Harvested
+                                        </button>
+                                    </div>
+                                ))}
+                        </div>
+                    </div>
+                )}
+
+                {/* Harvested Crops */}
+                {plantedCrops.some((crop) => crop.harvestDate) && (
+                    <div className="mt-8">
+                        <h2 className="text-xl font-semibold text-gray-800 mb-4">
+                            Harvested Crops
+                        </h2>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                            {plantedCrops
+                                .filter((crop) => crop.harvestDate)
+                                .map((crop) => (
+                                    <div
+                                        key={crop.id}
+                                        className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm opacity-75"
+                                    >
+                                        <div className="flex items-center gap-3 mb-3">
+                                            <Icon
+                                                icon={crop.icon}
+                                                width="32"
+                                                height="32"
+                                            />
+                                            <div>
+                                                <h3 className="font-medium text-gray-800">
+                                                    {crop.name}
+                                                </h3>
+                                                <p className="text-sm text-gray-600">
+                                                    Harvested:{" "}
+                                                    {new Date(
+                                                        crop.harvestDate
+                                                    ).toLocaleDateString()}
+                                                </p>
+                                            </div>
+                                        </div>
+                                        <div className="bg-green-50 border border-green-200 rounded-lg p-2 text-center">
+                                            <Icon
+                                                icon="mingcute:check-circle-fill"
+                                                width="20"
+                                                height="20"
+                                                className="mx-auto text-green-600 mb-1"
+                                            />
+                                            <p className="text-xs font-medium text-green-800">
+                                                Successfully Harvested
+                                            </p>
+                                        </div>
+                                    </div>
+                                ))}
+                        </div>
+                    </div>
+                )}
             </div>
             <ProducerNavigationBar />
         </div>

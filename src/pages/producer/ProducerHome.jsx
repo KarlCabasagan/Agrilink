@@ -70,7 +70,26 @@ function ProducerHome() {
         stock: "",
         image: null,
         imagePreview: "",
+        cropType: "",
     });
+    const [cropTypeSearch, setCropTypeSearch] = useState("");
+    const [showCropDropdown, setShowCropDropdown] = useState(false);
+
+    // Available crop types from crop recommendation
+    const availableCrops = [
+        "Sweet Potato",
+        "Lettuce",
+        "Herbs (Basil, Cilantro)",
+        "Bell Peppers",
+        "Cabbage",
+        "Tomatoes",
+        "Carrots",
+        "Rice",
+    ];
+
+    const filteredCrops = availableCrops.filter((crop) =>
+        crop.toLowerCase().includes(cropTypeSearch.toLowerCase())
+    );
 
     // Fetch user's products
     useEffect(() => {
@@ -129,8 +148,19 @@ function ProducerHome() {
     };
 
     const handleAddProduct = async () => {
-        if (!productForm.name || !productForm.price || !productForm.stock)
+        if (
+            !productForm.name ||
+            !productForm.price ||
+            !productForm.stock ||
+            !productForm.cropType
+        )
             return;
+
+        // Validate crop type exists in available crops
+        if (!availableCrops.includes(productForm.cropType)) {
+            alert("Please select a valid crop type from the list");
+            return;
+        }
 
         try {
             // For demo purposes, we'll add to local state instead of Supabase
@@ -144,6 +174,7 @@ function ProducerHome() {
                 image:
                     productForm.imagePreview ||
                     "https://via.placeholder.com/300x200?text=No+Image",
+                cropType: productForm.cropType,
                 created_at: new Date().toISOString(),
                 updated_at: new Date().toISOString(),
             };
@@ -289,7 +320,10 @@ function ProducerHome() {
             stock: "",
             image: null,
             imagePreview: "",
+            cropType: "",
         });
+        setCropTypeSearch("");
+        setShowCropDropdown(false);
         setSelectedProduct(null);
     };
 
@@ -303,7 +337,9 @@ function ProducerHome() {
             stock: product.stock?.toString() || "",
             image: null,
             imagePreview: product.image || "",
+            cropType: product.cropType || "",
         });
+        setCropTypeSearch(product.cropType || "");
         setShowEditModal(true);
     };
 
@@ -428,6 +464,67 @@ function ProducerHome() {
                                         </option>
                                     ))}
                                 </select>
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">
+                                    Crop Type *
+                                </label>
+                                <div className="relative">
+                                    <input
+                                        type="text"
+                                        value={cropTypeSearch}
+                                        onChange={(e) => {
+                                            setCropTypeSearch(e.target.value);
+                                            setShowCropDropdown(true);
+                                            setProductForm((prev) => ({
+                                                ...prev,
+                                                cropType: e.target.value,
+                                            }));
+                                        }}
+                                        onFocus={() =>
+                                            setShowCropDropdown(true)
+                                        }
+                                        onBlur={() =>
+                                            setTimeout(
+                                                () =>
+                                                    setShowCropDropdown(false),
+                                                200
+                                            )
+                                        }
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-primary focus:border-primary"
+                                        placeholder="Search for crop type..."
+                                        required
+                                    />
+                                    {showCropDropdown &&
+                                        filteredCrops.length > 0 && (
+                                            <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-40 overflow-y-auto">
+                                                {filteredCrops.map((crop) => (
+                                                    <div
+                                                        key={crop}
+                                                        onClick={() => {
+                                                            setCropTypeSearch(
+                                                                crop
+                                                            );
+                                                            setProductForm(
+                                                                (prev) => ({
+                                                                    ...prev,
+                                                                    cropType:
+                                                                        crop,
+                                                                })
+                                                            );
+                                                            setShowCropDropdown(
+                                                                false
+                                                            );
+                                                        }}
+                                                        className="px-3 py-2 hover:bg-gray-100 cursor-pointer"
+                                                    >
+                                                        {crop}
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
+                                </div>
                             </div>
 
                             <div>

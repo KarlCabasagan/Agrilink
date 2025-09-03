@@ -4,6 +4,8 @@ import { Link } from "react-router-dom";
 import ProducerNavigationBar from "../../components/ProducerNavigationBar";
 
 function ProducerMessages() {
+    const [searchTerm, setSearchTerm] = useState("");
+    const [showSearch, setShowSearch] = useState(false);
     const [conversations] = useState([
         {
             id: 1,
@@ -47,6 +49,17 @@ function ProducerMessages() {
 
     const [selectedConversation, setSelectedConversation] = useState(null);
     const [newMessage, setNewMessage] = useState("");
+
+    // Filter conversations based on search term
+    const filteredConversations = conversations.filter(
+        (conversation) =>
+            conversation.customerName
+                .toLowerCase()
+                .includes(searchTerm.toLowerCase()) ||
+            conversation.lastMessage
+                .toLowerCase()
+                .includes(searchTerm.toLowerCase())
+    );
 
     const messages = selectedConversation
         ? [
@@ -195,9 +208,62 @@ function ProducerMessages() {
         <div className="min-h-screen w-full flex flex-col relative items-center scrollbar-hide bg-background overflow-x-hidden text-text pb-20">
             {/* Header */}
             <div className="fixed top-0 left-0 w-full bg-white shadow-md z-50 px-4 py-3">
-                <h1 className="text-lg font-semibold text-primary text-center">
-                    Customer Messages
-                </h1>
+                {showSearch ? (
+                    <div className="flex items-center gap-3">
+                        <button
+                            onClick={() => {
+                                setShowSearch(false);
+                                setSearchTerm("");
+                            }}
+                            className="text-gray-600 hover:text-primary"
+                        >
+                            <Icon
+                                icon="mingcute:left-line"
+                                width="24"
+                                height="24"
+                            />
+                        </button>
+                        <div className="flex-1 relative">
+                            <input
+                                type="text"
+                                placeholder="Search customer conversations..."
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-primary focus:border-primary outline-none"
+                                autoFocus
+                            />
+                            {searchTerm && (
+                                <button
+                                    onClick={() => setSearchTerm("")}
+                                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                                >
+                                    <Icon
+                                        icon="mingcute:close-line"
+                                        width="16"
+                                        height="16"
+                                    />
+                                </button>
+                            )}
+                        </div>
+                    </div>
+                ) : (
+                    <div className="flex items-center justify-between">
+                        <div className="w-6"></div> {/* Spacer for centering */}
+                        <h1 className="text-lg font-semibold text-primary">
+                            Customer Messages
+                        </h1>
+                        <button
+                            onClick={() => setShowSearch(true)}
+                            className="text-gray-600 hover:text-primary"
+                        >
+                            <Icon
+                                icon="mingcute:search-line"
+                                width="24"
+                                height="24"
+                            />
+                        </button>
+                    </div>
+                )}
             </div>
 
             <div className="w-full max-w-2xl mx-4 sm:mx-auto my-16">
@@ -223,9 +289,36 @@ function ProducerMessages() {
                             Manage Products
                         </Link>
                     </div>
+                ) : filteredConversations.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center py-16">
+                        <Icon
+                            icon="mingcute:search-line"
+                            width="80"
+                            height="80"
+                            className="text-gray-300 mb-4"
+                        />
+                        <h2 className="text-xl font-bold text-gray-600 mb-2">
+                            No conversations found
+                        </h2>
+                        <p className="text-gray-500 text-center mb-6">
+                            Try adjusting your search terms
+                        </p>
+                        <button
+                            onClick={() => setSearchTerm("")}
+                            className="bg-primary text-white px-6 py-3 rounded-lg hover:bg-primary-dark transition-colors font-medium"
+                        >
+                            Clear Search
+                        </button>
+                    </div>
                 ) : (
                     <div className="space-y-2 mt-4">
-                        {conversations.map((conversation) => (
+                        {searchTerm && (
+                            <div className="px-4 py-2 text-sm text-gray-600 bg-gray-50 rounded-lg">
+                                Showing {filteredConversations.length} of{" "}
+                                {conversations.length} conversations
+                            </div>
+                        )}
+                        {filteredConversations.map((conversation) => (
                             <button
                                 key={conversation.id}
                                 onClick={() =>

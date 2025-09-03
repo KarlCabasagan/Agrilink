@@ -31,6 +31,7 @@ import AdminDashboard from "./pages/admin/AdminDashboard";
 import AdminUserManagement from "./pages/admin/AdminUserManagement";
 import AdminProductManagement from "./pages/admin/AdminProductManagement";
 import AdminProductReviews from "./pages/admin/AdminProductReviews";
+import AdminMessages from "./pages/admin/AdminMessages";
 import AdminLogs from "./pages/admin/AdminLogs";
 import AdminCropManagement from "./pages/admin/AdminCropManagement";
 import supabase from "./SupabaseClient.jsx";
@@ -372,6 +373,14 @@ function App() {
                         element={
                             <RoleGuard allowedRoles={[3]}>
                                 <AdminProductReviews />
+                            </RoleGuard>
+                        }
+                    />
+                    <Route
+                        path="/admin/messages"
+                        element={
+                            <RoleGuard allowedRoles={[3]}>
+                                <AdminMessages />
                             </RoleGuard>
                         }
                     />
