@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Icon } from "@iconify/react";
 import { Link } from "react-router-dom";
-import NavigationBar from "../components/NavigationBar";
+import NavigationBar from "../../components/NavigationBar";
 
 function Cart() {
     const [cartItems, setCartItems] = useState([

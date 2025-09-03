@@ -1,6 +1,6 @@
 import { Icon } from "@iconify/react";
 import { Link } from "react-router-dom";
-import AdminNavigationBar from "../components/AdminNavigationBar";
+import AdminNavigationBar from "../../components/AdminNavigationBar";
 
 function AdminDashboard() {
     const stats = {
@@ -10,6 +10,7 @@ function AdminDashboard() {
         pendingProducts: 3,
         totalTransactions: 3421,
         activeCrops: 24,
+        totalReviews: 156,
     };
 
     const recentActivities = [
@@ -123,28 +124,26 @@ function AdminDashboard() {
 
                     <div className="bg-white rounded-lg shadow-md p-4 text-center">
                         <Icon
-                            icon="mingcute:chart-line-line"
+                            icon="mingcute:notification-line"
                             width="32"
                             height="32"
                             className="mx-auto mb-2 text-purple-600"
                         />
-                        <p className="text-2xl font-bold text-gray-800">
-                            ₱{(stats.totalTransactions * 127).toLocaleString()}
-                        </p>
-                        <p className="text-sm text-gray-600">Total Revenue</p>
+                        <p className="text-2xl font-bold text-gray-800">12</p>
+                        <p className="text-sm text-gray-600">Unread Messages</p>
                     </div>
 
                     <div className="bg-white rounded-lg shadow-md p-4 text-center">
                         <Icon
-                            icon="mingcute:time-line"
+                            icon="mingcute:comment-line"
                             width="32"
                             height="32"
                             className="mx-auto mb-2 text-indigo-600"
                         />
                         <p className="text-2xl font-bold text-gray-800">
-                            {stats.pendingApplications + stats.pendingProducts}
+                            {stats.totalReviews}
                         </p>
-                        <p className="text-sm text-gray-600">Pending Reviews</p>
+                        <p className="text-sm text-gray-600">Total Reviews</p>
                     </div>
                 </div>
 
@@ -217,7 +216,7 @@ function AdminDashboard() {
                 </div>
 
                 {/* Recent Activities */}
-                <div className="bg-white rounded-lg shadow-md p-6">
+                <div className="bg-white rounded-lg shadow-md p-6 mb-6">
                     <h2 className="text-lg font-semibold text-gray-800 mb-4">
                         Recent Activities
                     </h2>
@@ -240,6 +239,85 @@ function AdminDashboard() {
                                     <p className="text-xs text-gray-500">
                                         {activity.timestamp}
                                     </p>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+
+                {/* Top Approved Products */}
+                <div className="bg-white rounded-lg shadow-md p-6">
+                    <h2 className="text-lg font-semibold text-gray-800 mb-4">
+                        Top Approved Products
+                    </h2>
+                    <div className="space-y-4">
+                        {[
+                            {
+                                id: 101,
+                                name: "Sweet Corn",
+                                producer: "Ana Garcia",
+                                rating: 4.5,
+                                reviews: 23,
+                                sales: 45,
+                                image: "/assets/adel.jpg",
+                            },
+                            {
+                                id: 102,
+                                name: "Fresh Lettuce",
+                                producer: "Carlos Mendoza",
+                                rating: 4.2,
+                                reviews: 15,
+                                sales: 32,
+                                image: "/assets/adel.jpg",
+                            },
+                            {
+                                id: 103,
+                                name: "Organic Tomatoes",
+                                producer: "John Farmer",
+                                rating: 4.8,
+                                reviews: 38,
+                                sales: 67,
+                                image: "/assets/adel.jpg",
+                            },
+                        ].map((product) => (
+                            <div
+                                key={product.id}
+                                className="flex items-center gap-4 p-4 bg-gray-50 rounded-lg"
+                            >
+                                <img
+                                    src={product.image}
+                                    alt={product.name}
+                                    className="w-16 h-16 object-cover rounded-lg"
+                                />
+                                <div className="flex-1">
+                                    <h3 className="font-medium text-gray-800">
+                                        {product.name}
+                                    </h3>
+                                    <p className="text-sm text-gray-600">
+                                        by {product.producer}
+                                    </p>
+                                    <p className="text-sm text-gray-500">
+                                        {product.sales} sold
+                                    </p>
+                                </div>
+                                <div className="text-right">
+                                    <div className="flex items-center gap-1 mb-1">
+                                        <Icon
+                                            icon="mingcute:star-fill"
+                                            className="text-yellow-400"
+                                            width="16"
+                                            height="16"
+                                        />
+                                        <span className="text-sm font-medium">
+                                            {product.rating}
+                                        </span>
+                                    </div>
+                                    <Link
+                                        to={`/admin/products/${product.id}/reviews`}
+                                        className="text-blue-600 hover:text-blue-800 text-sm font-medium"
+                                    >
+                                        {product.reviews} reviews →
+                                    </Link>
                                 </div>
                             </div>
                         ))}

@@ -1,7 +1,7 @@
 import { Icon } from "@iconify/react";
 import { Link } from "react-router-dom";
-import NavigationBar from "../components/NavigationBar";
-import ConsumerSearch from "../components/ConsumerSearch.jsx";
+import NavigationBar from "../../components/NavigationBar";
+import ConsumerSearch from "../../components/ConsumerSearch.jsx";
 import { useState } from "react";
 
 function Favorites() {

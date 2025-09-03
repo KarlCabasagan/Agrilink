@@ -1,11 +1,11 @@
 import { Icon } from "@iconify/react";
+import NavigationBar from "../../components/NavigationBar";
 import { Link, useNavigate } from "react-router-dom";
 import { useContext, useEffect, useState } from "react";
-import { AuthContext } from "../App.jsx";
-import supabase from "../SupabaseClient.jsx";
-import ProducerNavigationBar from "../components/ProducerNavigationBar";
+import { AuthContext } from "../../App.jsx";
+import supabase from "../../SupabaseClient.jsx";
 
-function ProducerProfile() {
+function Profile() {
     const { user, setUser } = useContext(AuthContext);
     const navigate = useNavigate();
     const [profile, setProfile] = useState({
@@ -15,69 +15,6 @@ function ProducerProfile() {
         contact: "",
     });
     const [loading, setLoading] = useState(true);
-    const [stats, setStats] = useState({
-        totalProducts: 0,
-        totalOrders: 0,
-        totalRevenue: 0,
-    });
-
-    useEffect(() => {
-        const fetchProfile = async () => {
-            if (!user) return;
-            setLoading(true);
-            try {
-                const { data, error } = await supabase
-                    .from("profiles")
-                    .select("name, address, contact")
-                    .eq("id", user.id)
-                    .single();
-
-                if (data) {
-                    setProfile({
-                        name: data.name || "",
-                        email: user.email || "",
-                        address: data.address || "",
-                        contact: data.contact || "",
-                    });
-                } else if (error && error.code === "PGRST116") {
-                    // No profile found, use user data
-                    setProfile({
-                        name: "",
-                        email: user.email || "",
-                        address: "",
-                        contact: "",
-                    });
-                }
-
-                // Mock stats - in real app, this would come from database
-                setStats({
-                    totalProducts: 12,
-                    totalOrders: 48,
-                    totalRevenue: 15750.0,
-                });
-            } catch (error) {
-                console.error("Unexpected error:", error);
-            } finally {
-                setLoading(false);
-            }
-        };
-
-        fetchProfile();
-    }, [user]);
-
-    const handleLogout = async () => {
-        try {
-            const { error } = await supabase.auth.signOut();
-            if (error) {
-                console.error("Error logging out:", error);
-            } else {
-                setUser(null);
-                navigate("/login");
-            }
-        } catch (error) {
-            console.error("Unexpected error during logout:", error);
-        }
-    };
 
     // Format phone number for display
     const displayPhoneNumber = (phoneNumber) => {
@@ -89,13 +26,61 @@ function ProducerProfile() {
         return phoneNumber;
     };
 
-    if (loading) {
-        return (
-            <div className="min-h-screen w-full flex items-center justify-center bg-background">
-                <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-primary"></div>
-            </div>
-        );
-    }
+    useEffect(() => {
+        const fetchProfile = async () => {
+            if (!user) return;
+            setLoading(true);
+            try {
+                const { data, error } = await supabase
+                    .from("profiles")
+                    .select("name, email, address, contact")
+                    .eq("id", user.id)
+                    .single();
+
+                if (data) {
+                    setProfile({
+                        name: data.name || "",
+                        email: data.email || user.email || "",
+                        address: data.address || "",
+                        contact: data.contact || "",
+                    });
+                } else if (error && error.code === "PGRST116") {
+                    // No profile found, create one with user's email
+                    const { error: insertError } = await supabase
+                        .from("profiles")
+                        .insert({
+                            id: user.id,
+                            email: user.email,
+                            name: "",
+                            address: "",
+                            contact: "",
+                            created_at: new Date().toISOString(),
+                            updated_at: new Date().toISOString(),
+                        });
+
+                    if (!insertError) {
+                        setProfile({
+                            name: "",
+                            email: user.email || "",
+                            address: "",
+                            contact: "",
+                        });
+                    }
+                }
+            } catch (error) {
+                console.error("Error fetching profile:", error);
+            } finally {
+                setLoading(false);
+            }
+        };
+        fetchProfile();
+    }, [user]);
+
+    const handleLogout = async () => {
+        await supabase.auth.signOut();
+        setUser(null);
+        navigate("/", { replace: true });
+    };
 
     return (
         <div className="min-h-screen w-full flex flex-col relative items-center scrollbar-hide bg-background overflow-x-hidden text-text pb-20">
@@ -114,8 +99,8 @@ function ProducerProfile() {
                             <div className="w-24 h-24 bg-white rounded-full p-1 shadow-lg">
                                 <img
                                     src="/assets/adel.jpg"
-                                    alt="profile"
-                                    className="w-full h-full object-cover rounded-full"
+                                    alt="Profile"
+                                    className="w-full h-full rounded-full object-cover"
                                 />
                             </div>
                         </div>
@@ -123,7 +108,7 @@ function ProducerProfile() {
 
                     <div className="pt-16 pb-6 px-6 text-center">
                         <h2 className="text-xl font-bold text-gray-800 mb-2">
-                            {profile.name || "Producer"}
+                            {profile.name || "Consumer"}
                         </h2>
                         <p className="text-gray-600 mb-4">
                             {profile.email || user?.email || "No Email"}
@@ -167,46 +152,6 @@ function ProducerProfile() {
                     </div>
                 </div>
 
-                {/* Statistics Cards */}
-                <div className="grid grid-cols-3 gap-4 mb-6">
-                    <div className="bg-white rounded-lg shadow-md p-4 text-center">
-                        <Icon
-                            icon="mingcute:box-line"
-                            width="24"
-                            height="24"
-                            className="mx-auto mb-2 text-blue-600"
-                        />
-                        <p className="text-2xl font-bold text-gray-800">
-                            {stats.totalProducts}
-                        </p>
-                        <p className="text-xs text-gray-600">Products</p>
-                    </div>
-                    <div className="bg-white rounded-lg shadow-md p-4 text-center">
-                        <Icon
-                            icon="mingcute:box-2-line"
-                            width="24"
-                            height="24"
-                            className="mx-auto mb-2 text-green-600"
-                        />
-                        <p className="text-2xl font-bold text-gray-800">
-                            {stats.totalOrders}
-                        </p>
-                        <p className="text-xs text-gray-600">Orders</p>
-                    </div>
-                    <div className="bg-white rounded-lg shadow-md p-4 text-center">
-                        <Icon
-                            icon="mingcute:currency-dollar-line"
-                            width="24"
-                            height="24"
-                            className="mx-auto mb-2 text-yellow-600"
-                        />
-                        <p className="text-lg font-bold text-gray-800">
-                            ₱{stats.totalRevenue.toLocaleString()}
-                        </p>
-                        <p className="text-xs text-gray-600">Revenue</p>
-                    </div>
-                </div>
-
                 {/* Menu Items */}
                 <div className="bg-white rounded-lg shadow-md overflow-hidden mb-6">
                     <h3 className="text-lg font-semibold text-gray-800 p-4 border-b border-gray-200">
@@ -239,45 +184,20 @@ function ProducerProfile() {
                         </Link>
 
                         <Link
-                            to="/business-settings"
-                            className="flex items-center justify-between p-4 hover:bg-gray-50 transition-colors"
+                            to="/seller-application"
+                            className="w-full flex items-center justify-between p-4 hover:bg-gray-50 transition-colors"
                         >
                             <div className="flex items-center gap-3">
                                 <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center">
                                     <Icon
-                                        icon="mingcute:store-line"
+                                        icon="mingcute:paper-line"
                                         width="20"
                                         height="20"
                                         className="text-purple-600"
                                     />
                                 </div>
                                 <span className="text-gray-800">
-                                    Business Settings
-                                </span>
-                            </div>
-                            <Icon
-                                icon="mingcute:right-line"
-                                width="16"
-                                height="16"
-                                className="text-gray-400"
-                            />
-                        </Link>
-
-                        <Link
-                            to="/sales-analytics"
-                            className="flex items-center justify-between p-4 hover:bg-gray-50 transition-colors"
-                        >
-                            <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
-                                    <Icon
-                                        icon="mingcute:chart-bar-line"
-                                        width="20"
-                                        height="20"
-                                        className="text-green-600"
-                                    />
-                                </div>
-                                <span className="text-gray-800">
-                                    Sales Analytics
+                                    Apply to be a Seller
                                 </span>
                             </div>
                             <Icon
@@ -290,16 +210,111 @@ function ProducerProfile() {
                     </div>
                 </div>
 
+                {/* Orders & Shopping */}
+                <div className="bg-white rounded-lg shadow-md overflow-hidden mb-6">
+                    <h3 className="text-lg font-semibold text-gray-800 p-4 border-b border-gray-200">
+                        My Shopping
+                    </h3>
+                    <div className="divide-y divide-gray-200">
+                        <Link
+                            to="/cart"
+                            className="flex items-center justify-between p-4 hover:bg-gray-50 transition-colors"
+                        >
+                            <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center">
+                                    <Icon
+                                        icon="mingcute:shopping-cart-1-line"
+                                        width="20"
+                                        height="20"
+                                        className="text-purple-600"
+                                    />
+                                </div>
+                                <span className="text-gray-800">My Cart</span>
+                            </div>
+                            <Icon
+                                icon="mingcute:right-line"
+                                width="16"
+                                height="16"
+                                className="text-gray-400"
+                            />
+                        </Link>
+
+                        <Link
+                            to="/favorites"
+                            className="flex items-center justify-between p-4 hover:bg-gray-50 transition-colors"
+                        >
+                            <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 bg-red-100 rounded-lg flex items-center justify-center">
+                                    <Icon
+                                        icon="mingcute:heart-line"
+                                        width="20"
+                                        height="20"
+                                        className="text-red-600"
+                                    />
+                                </div>
+                                <span className="text-gray-800">
+                                    Favorite Products
+                                </span>
+                            </div>
+                            <Icon
+                                icon="mingcute:right-line"
+                                width="16"
+                                height="16"
+                                className="text-gray-400"
+                            />
+                        </Link>
+
+                        <button className="w-full flex items-center justify-between p-4 hover:bg-gray-50 transition-colors">
+                            <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
+                                    <Icon
+                                        icon="mingcute:truck-line"
+                                        width="20"
+                                        height="20"
+                                        className="text-green-600"
+                                    />
+                                </div>
+                                <span className="text-gray-800">My Orders</span>
+                            </div>
+                            <Icon
+                                icon="mingcute:right-line"
+                                width="16"
+                                height="16"
+                                className="text-gray-400"
+                            />
+                        </button>
+
+                        <button className="w-full flex items-center justify-between p-4 hover:bg-gray-50 transition-colors">
+                            <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 bg-yellow-100 rounded-lg flex items-center justify-center">
+                                    <Icon
+                                        icon="mingcute:history-anticlockwise-line"
+                                        width="20"
+                                        height="20"
+                                        className="text-yellow-600"
+                                    />
+                                </div>
+                                <span className="text-gray-800">
+                                    Order History
+                                </span>
+                            </div>
+                            <Icon
+                                icon="mingcute:right-line"
+                                width="16"
+                                height="16"
+                                className="text-gray-400"
+                            />
+                        </button>
+                    </div>
+                </div>
+
                 {/* Support & Info */}
                 <div className="bg-white rounded-lg shadow-md overflow-hidden mb-6">
                     <h3 className="text-lg font-semibold text-gray-800 p-4 border-b border-gray-200">
                         Support & Information
                     </h3>
                     <div className="divide-y divide-gray-200">
-                        <Link
-                            to="/help"
-                            className="flex items-center justify-between p-4 hover:bg-gray-50 transition-colors"
-                        >
+                        <button className="w-full flex items-center justify-between p-4 hover:bg-gray-50 transition-colors">
                             <div className="flex items-center gap-3">
                                 <div className="w-10 h-10 bg-orange-100 rounded-lg flex items-center justify-center">
                                     <Icon
@@ -319,57 +334,7 @@ function ProducerProfile() {
                                 height="16"
                                 className="text-gray-400"
                             />
-                        </Link>
-
-                        <Link
-                            to="/farming-guides"
-                            className="flex items-center justify-between p-4 hover:bg-gray-50 transition-colors"
-                        >
-                            <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 bg-emerald-100 rounded-lg flex items-center justify-center">
-                                    <Icon
-                                        icon="mingcute:book-line"
-                                        width="20"
-                                        height="20"
-                                        className="text-emerald-600"
-                                    />
-                                </div>
-                                <span className="text-gray-800">
-                                    Farming Guides
-                                </span>
-                            </div>
-                            <Icon
-                                icon="mingcute:right-line"
-                                width="16"
-                                height="16"
-                                className="text-gray-400"
-                            />
-                        </Link>
-
-                        <Link
-                            to="/community"
-                            className="flex items-center justify-between p-4 hover:bg-gray-50 transition-colors"
-                        >
-                            <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 bg-indigo-100 rounded-lg flex items-center justify-center">
-                                    <Icon
-                                        icon="mingcute:group-line"
-                                        width="20"
-                                        height="20"
-                                        className="text-indigo-600"
-                                    />
-                                </div>
-                                <span className="text-gray-800">
-                                    Farmer Community
-                                </span>
-                            </div>
-                            <Icon
-                                icon="mingcute:right-line"
-                                width="16"
-                                height="16"
-                                className="text-gray-400"
-                            />
-                        </Link>
+                        </button>
                     </div>
                 </div>
 
@@ -388,9 +353,9 @@ function ProducerProfile() {
                     </button>
                 </div>
             </div>
-            <ProducerNavigationBar />
+            <NavigationBar />
         </div>
     );
 }
 
-export default ProducerProfile;
+export default Profile;
