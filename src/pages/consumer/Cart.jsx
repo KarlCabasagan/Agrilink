@@ -1,60 +1,71 @@
-import { useState } from "react";
+import { useState, useEffect, useContext } from "react";
 import { Icon } from "@iconify/react";
 import { Link, useNavigate } from "react-router-dom";
 import NavigationBar from "../../components/NavigationBar";
+import supabase from "../../SupabaseClient.jsx";
+import { AuthContext } from "../../App.jsx";
 
 function Cart() {
+    const { user } = useContext(AuthContext);
     const navigate = useNavigate();
+    const [cartItems, setCartItems] = useState([]);
+    const [loading, setLoading] = useState(true);
 
-    const [cartItems, setCartItems] = useState([
-        {
-            id: 1,
-            name: "Fresh Tomatoes",
-            price: 25.0,
-            quantity: 2.5,
-            image: "https://images.unsplash.com/photo-1546470427-e8357872b6d8",
-            farmerName: "Juan Santos",
-            farmerId: "farmer_1",
-            stock: 50,
-        },
-        {
-            id: 2,
-            name: "Green Lettuce",
-            price: 15.0,
-            quantity: 1.0,
-            image: "https://images.unsplash.com/photo-1622206151226-18ca2c9ab4a1",
-            farmerName: "Maria Cruz",
-            farmerId: "farmer_2",
-            stock: 30,
-        },
-        {
-            id: 3,
-            name: "Sweet Corn",
-            price: 18.5,
-            quantity: 0.8,
-            image: "https://images.unsplash.com/photo-1586313168876-870e85adc4d6",
-            farmerName: "Juan Santos", // Same farmer as tomatoes
-            farmerId: "farmer_1",
-            stock: 25,
-        },
-        {
-            id: 4,
-            name: "Premium Rice",
-            price: 55.0,
-            quantity: 3.0,
-            image: "https://images.unsplash.com/photo-1586201375761-83865001e31c",
-            farmerName: "Ana Garcia",
-            farmerId: "farmer_3",
-            stock: 100,
-        },
-    ]);
+    // Fetch cart items from database
+    useEffect(() => {
+        const fetchCartItems = async () => {
+            if (!user) return;
 
-    // Farmer minimum order quantities (would come from database in real app)
-    const farmerSettings = {
-        farmer_1: { minimumOrderQuantity: 3.0, deliveryCost: 50 }, // Juan Santos
-        farmer_2: { minimumOrderQuantity: 2.0, deliveryCost: 40 }, // Maria Cruz
-        farmer_3: { minimumOrderQuantity: 2.5, deliveryCost: 60 }, // Ana Garcia
-    };
+            setLoading(true);
+            try {
+                const { data, error } = await supabase
+                    .from("cart_items")
+                    .select(
+                        `
+                        *,
+                        products(
+                            *,
+                            profiles!farmer_id(name, address)
+                        )
+                    `
+                    )
+                    .eq("user_id", user.id)
+                    .order("created_at", { ascending: false });
+
+                if (error) {
+                    console.error("Error fetching cart items:", error);
+                    return;
+                }
+
+                const formattedCartItems = data.map((item) => ({
+                    id: item.product_id,
+                    cartItemId: item.id,
+                    name: item.products.name,
+                    price: parseFloat(item.products.price),
+                    quantity: parseFloat(item.quantity),
+                    image:
+                        item.products.image_url ||
+                        "https://via.placeholder.com/300x200?text=No+Image",
+                    farmerName:
+                        item.products.profiles?.name || "Unknown Farmer",
+                    farmerId: item.products.farmer_id,
+                    stock: parseFloat(item.products.stock),
+                    unit: item.products.unit || "kg",
+                    minimumOrderQuantity:
+                        parseFloat(item.products.minimum_order_quantity) || 1.0,
+                    deliveryCost: parseFloat(item.products.delivery_cost) || 50,
+                }));
+
+                setCartItems(formattedCartItems);
+            } catch (error) {
+                console.error("Error fetching cart items:", error);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchCartItems();
+    }, [user]);
 
     // Group cart items by farmer
     const groupedByFarmer = cartItems.reduce((groups, item) => {
@@ -66,9 +77,8 @@ function Cart() {
                 items: [],
                 totalQuantity: 0,
                 totalPrice: 0,
-                minimumOrderQuantity:
-                    farmerSettings[farmerId]?.minimumOrderQuantity || 2.0,
-                deliveryCost: farmerSettings[farmerId]?.deliveryCost || 50,
+                minimumOrderQuantity: item.minimumOrderQuantity,
+                deliveryCost: item.deliveryCost,
             };
         }
         groups[farmerId].items.push(item);
@@ -79,19 +89,36 @@ function Cart() {
 
     const farmerGroups = Object.values(groupedByFarmer);
 
-    const updateQuantity = (id, newQuantity) => {
+    const updateQuantity = async (id, newQuantity) => {
         const roundedQuantity = Math.round(newQuantity * 10) / 10;
         if (roundedQuantity < 0.1) return;
-        setCartItems((items) =>
-            items.map((item) =>
-                item.id === id
-                    ? {
-                          ...item,
-                          quantity: Math.min(roundedQuantity, item.stock),
-                      }
-                    : item
-            )
-        );
+
+        const item = cartItems.find((item) => item.id === id);
+        if (!item) return;
+
+        const finalQuantity = Math.min(roundedQuantity, item.stock);
+
+        try {
+            const { error } = await supabase
+                .from("cart_items")
+                .update({ quantity: finalQuantity })
+                .eq("id", item.cartItemId);
+
+            if (error) {
+                console.error("Error updating quantity:", error);
+                return;
+            }
+
+            setCartItems((items) =>
+                items.map((cartItem) =>
+                    cartItem.id === id
+                        ? { ...cartItem, quantity: finalQuantity }
+                        : cartItem
+                )
+            );
+        } catch (error) {
+            console.error("Error updating cart item:", error);
+        }
     };
 
     const handleQuantityChange = (id, value) => {
@@ -106,8 +133,27 @@ function Cart() {
         }
     };
 
-    const removeItem = (id) => {
-        setCartItems((items) => items.filter((item) => item.id !== id));
+    const removeItem = async (id) => {
+        const item = cartItems.find((item) => item.id === id);
+        if (!item) return;
+
+        try {
+            const { error } = await supabase
+                .from("cart_items")
+                .delete()
+                .eq("id", item.cartItemId);
+
+            if (error) {
+                console.error("Error removing item:", error);
+                return;
+            }
+
+            setCartItems((items) =>
+                items.filter((cartItem) => cartItem.id !== id)
+            );
+        } catch (error) {
+            console.error("Error removing cart item:", error);
+        }
     };
 
     const getTotalPrice = () => {
@@ -170,7 +216,30 @@ function Cart() {
             </div>
 
             <div className="w-full max-w-2xl mx-4 sm:mx-auto my-16">
-                {cartItems.length === 0 ? (
+                {loading ? (
+                    // Loading skeleton
+                    <div className="space-y-4">
+                        {Array.from({ length: 3 }).map((_, i) => (
+                            <div
+                                key={i}
+                                className="bg-white rounded-lg shadow-md p-4 animate-pulse"
+                            >
+                                <div className="flex items-center gap-3 mb-3">
+                                    <div className="w-4 h-4 bg-gray-300 rounded"></div>
+                                    <div className="h-4 bg-gray-300 rounded w-32"></div>
+                                </div>
+                                <div className="flex gap-3">
+                                    <div className="w-16 h-16 bg-gray-300 rounded-lg"></div>
+                                    <div className="flex-1">
+                                        <div className="h-4 bg-gray-300 rounded mb-2"></div>
+                                        <div className="h-3 bg-gray-300 rounded w-3/4 mb-2"></div>
+                                        <div className="h-4 bg-gray-300 rounded w-1/3"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                ) : cartItems.length === 0 ? (
                     <div className="flex flex-col items-center justify-center py-16">
                         <Icon
                             icon="mingcute:shopping-cart-1-line"

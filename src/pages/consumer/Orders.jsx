@@ -1,158 +1,100 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useContext } from "react";
 import { Icon } from "@iconify/react";
 import { Link, useNavigate } from "react-router-dom";
 import NavigationBar from "../../components/NavigationBar";
+import supabase from "../../SupabaseClient";
+import { AuthContext } from "../../App.jsx";
 
 function Orders() {
     const navigate = useNavigate();
+    const { user } = useContext(AuthContext);
     const [activeTab, setActiveTab] = useState("all");
     const [expandedOrders, setExpandedOrders] = useState({});
     const [expandedFarmers, setExpandedFarmers] = useState({});
-    const [orders, setOrders] = useState([
-        {
-            id: "ORD-2024-001",
-            date: "2024-12-15",
-            status: "delivered",
-            total: 115.25,
-            items: [
-                {
-                    id: 1,
-                    name: "Fresh Tomatoes",
-                    price: 25.0,
-                    quantity: 2.5,
-                    image: "https://images.unsplash.com/photo-1546470427-e8357872b6d8",
-                    farmerName: "Juan Santos",
-                    farmerId: "farmer_1",
+    const [orders, setOrders] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState("");
+
+    useEffect(() => {
+        if (!user) {
+            navigate("/login");
+            return;
+        }
+        fetchOrders();
+    }, [user, navigate]);
+
+    const fetchOrders = async () => {
+        try {
+            setLoading(true);
+            const { data: ordersData, error: ordersError } = await supabase
+                .from("orders")
+                .select(
+                    `
+                    *,
+                    order_items (
+                        *,
+                        products (
+                            *,
+                            categories (
+                                name
+                            ),
+                            profiles!products_farmer_id_fkey (
+                                full_name,
+                                address,
+                                phone
+                            )
+                        )
+                    )
+                `
+                )
+                .eq("consumer_id", user.id)
+                .order("created_at", { ascending: false });
+
+            if (ordersError) throw ordersError;
+
+            // Transform data to match expected format
+            const transformedOrders = ordersData.map((order) => ({
+                id: order.id,
+                date: order.created_at,
+                status: order.status,
+                total: order.total_amount,
+                deliveryMethod: order.delivery_method,
+                paymentMethod: order.payment_method,
+                deliveryAddress: order.delivery_address,
+                pickupLocation: order.pickup_location,
+                deliveryFee: order.delivery_fee,
+                orderNotes: order.notes,
+                estimatedDelivery: order.estimated_delivery,
+                estimatedPickup: order.estimated_pickup,
+                cancellationReason: order.cancellation_reason,
+                items: order.order_items.map((item) => ({
+                    id: item.id,
+                    name: item.products.name,
+                    price: item.unit_price,
+                    quantity: item.quantity,
+                    image: item.products.image_url,
+                    farmerName:
+                        item.products.profiles?.full_name || "Unknown Farmer",
+                    farmerId: item.products.farmer_id,
+                    farmerPhone: item.products.profiles?.phone,
+                    farmerAddress: item.products.profiles?.address,
+                    category: item.products.categories?.name || "Other",
+                })),
+                customerDetails: {
+                    name: order.customer_name,
+                    phone: order.customer_phone,
+                    email: order.customer_email,
                 },
-                {
-                    id: 2,
-                    name: "Green Lettuce",
-                    price: 15.0,
-                    quantity: 1.0,
-                    image: "https://images.unsplash.com/photo-1622206151226-18ca2c9ab4a1",
-                    farmerName: "Maria Cruz",
-                    farmerId: "farmer_2",
-                },
-            ],
-            deliveryMethod: "delivery",
-            paymentMethod: "cod",
-            deliveryAddress:
-                "123 Main St, Barangay San Miguel, Iligan City, Lanao del Norte 9200",
-            deliveryFee: 90.0,
-            customerDetails: {
-                name: "John Doe",
-                phone: "+63 912 345 6789",
-                email: "john.doe@example.com",
-            },
-            orderNotes: "Please deliver in the morning if possible",
-            estimatedDelivery: "2024-12-16",
-        },
-        {
-            id: "ORD-2024-002",
-            date: "2024-12-16",
-            status: "processing",
-            total: 77.75,
-            items: [
-                {
-                    id: 3,
-                    name: "Sweet Corn",
-                    price: 18.5,
-                    quantity: 1.5,
-                    image: "https://images.unsplash.com/photo-1586313168876-870e85adc4d6",
-                    farmerName: "Pedro Reyes",
-                    farmerId: "farmer_3",
-                },
-                {
-                    id: 4,
-                    name: "Premium Rice",
-                    price: 55.0,
-                    quantity: 1.0,
-                    image: "https://images.unsplash.com/photo-1586201375761-83865001e31c",
-                    farmerName: "Pedro Reyes",
-                    farmerId: "farmer_3",
-                },
-            ],
-            deliveryMethod: "pickup",
-            paymentMethod: "cod",
-            pickupLocation: "Reyes Farm, Barangay Poblacion, Iligan City",
-            deliveryFee: 0.0,
-            customerDetails: {
-                name: "John Doe",
-                phone: "+63 912 345 6789",
-                email: "john.doe@example.com",
-            },
-            orderNotes: "",
-            estimatedPickup: "2024-12-17",
-        },
-        {
-            id: "ORD-2024-003",
-            date: "2024-12-17",
-            status: "shipped",
-            total: 117.0,
-            items: [
-                {
-                    id: 5,
-                    name: "Organic Carrots",
-                    price: 20.0,
-                    quantity: 2.5,
-                    image: "https://images.unsplash.com/photo-1598170845058-32b9d6a5da37",
-                    farmerName: "Anna Garcia",
-                    farmerId: "farmer_4",
-                },
-                {
-                    id: 6,
-                    name: "Fresh Cabbage",
-                    price: 12.5,
-                    quantity: 1.0,
-                    image: "https://images.unsplash.com/photo-1594282942168-16ac7b7ba0f7",
-                    farmerName: "Roberto Martinez",
-                    farmerId: "farmer_5",
-                },
-            ],
-            deliveryMethod: "delivery",
-            paymentMethod: "cod",
-            deliveryAddress:
-                "789 Pine St, Barangay Tipanoy, Iligan City, Lanao del Norte 9200",
-            deliveryFee: 100.0,
-            customerDetails: {
-                name: "John Doe",
-                phone: "+63 912 345 6789",
-                email: "john.doe@example.com",
-            },
-            orderNotes: "Ring the doorbell twice",
-            estimatedDelivery: "2024-12-18",
-        },
-        {
-            id: "ORD-2024-004",
-            date: "2024-12-18",
-            status: "cancelled",
-            total: 85.0,
-            items: [
-                {
-                    id: 7,
-                    name: "Red Bell Peppers",
-                    price: 35.0,
-                    quantity: 1.0,
-                    image: "https://images.unsplash.com/photo-1563565375-f3fdfdbefa83",
-                    farmerName: "Carlos Dela Cruz",
-                    farmerId: "farmer_6",
-                },
-            ],
-            deliveryMethod: "delivery",
-            paymentMethod: "cod",
-            deliveryAddress:
-                "321 Elm St, Barangay Pala-o, Iligan City, Lanao del Norte 9200",
-            deliveryFee: 50.0,
-            customerDetails: {
-                name: "John Doe",
-                phone: "+63 912 345 6789",
-                email: "john.doe@example.com",
-            },
-            orderNotes: "",
-            estimatedDelivery: "2024-12-19",
-            cancellationReason: "Customer requested cancellation",
-        },
-    ]);
+            }));
+
+            setOrders(transformedOrders);
+        } catch (error) {
+            console.error("Error fetching orders:", error);
+            setError("Failed to fetch orders. Please try again.");
+        } finally {
+            setLoading(false);
+        }
+    };
 
     const tabs = [
         { id: "all", label: "All Orders", count: orders.length },
@@ -273,15 +215,37 @@ function Orders() {
         alert("Order tracking feature coming soon!");
     };
 
-    const handleCancelOrder = (orderId) => {
+    const handleCancelOrder = async (orderId) => {
         if (window.confirm("Are you sure you want to cancel this order?")) {
-            setOrders(
-                orders.map((order) =>
-                    order.id === orderId
-                        ? { ...order, status: "cancelled" }
-                        : order
-                )
-            );
+            try {
+                const { error } = await supabase
+                    .from("orders")
+                    .update({
+                        status: "cancelled",
+                        cancellation_reason: "Customer requested cancellation",
+                    })
+                    .eq("id", orderId)
+                    .eq("consumer_id", user.id);
+
+                if (error) throw error;
+
+                // Update local state
+                setOrders((prev) =>
+                    prev.map((order) =>
+                        order.id === orderId
+                            ? {
+                                  ...order,
+                                  status: "cancelled",
+                                  cancellationReason:
+                                      "Customer requested cancellation",
+                              }
+                            : order
+                    )
+                );
+            } catch (error) {
+                console.error("Error cancelling order:", error);
+                alert("Failed to cancel order. Please try again.");
+            }
         }
     };
 
@@ -340,7 +304,41 @@ function Orders() {
                 </div>
 
                 {/* Orders List */}
-                {filteredOrders.length === 0 ? (
+                {loading ? (
+                    <div className="bg-white rounded-lg shadow-md p-8 text-center">
+                        <Icon
+                            icon="mingcute:loading-line"
+                            width="40"
+                            height="40"
+                            className="text-primary mx-auto mb-4 animate-spin"
+                        />
+                        <p className="text-gray-600">Loading your orders...</p>
+                    </div>
+                ) : error ? (
+                    <div className="bg-white rounded-lg shadow-md p-8 text-center">
+                        <Icon
+                            icon="mingcute:alert-triangle-line"
+                            width="60"
+                            height="60"
+                            className="text-red-500 mx-auto mb-4"
+                        />
+                        <h3 className="text-xl font-semibold text-gray-700 mb-2">
+                            Error Loading Orders
+                        </h3>
+                        <p className="text-gray-500 mb-4">{error}</p>
+                        <button
+                            onClick={fetchOrders}
+                            className="bg-primary text-white px-6 py-3 rounded-lg hover:bg-primary-dark transition-colors font-medium inline-flex items-center gap-2"
+                        >
+                            <Icon
+                                icon="mingcute:refresh-1-line"
+                                width="20"
+                                height="20"
+                            />
+                            Try Again
+                        </button>
+                    </div>
+                ) : filteredOrders.length === 0 ? (
                     <div className="bg-white rounded-lg shadow-md p-8 text-center">
                         <Icon
                             icon="mingcute:package-line"

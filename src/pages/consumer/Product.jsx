@@ -1,18 +1,100 @@
 import { useParams } from "react-router-dom";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useContext } from "react";
 import { Icon } from "@iconify/react";
 import { Link } from "react-router-dom";
 import NavigationBar from "../../components/NavigationBar";
-import { findProductById } from "../../data/products.js";
+import supabase from "../../SupabaseClient.jsx";
+import { AuthContext } from "../../App.jsx";
+import { addToCart } from "../../utils/cartUtils.js";
 
 function Product() {
     const { id } = useParams();
+    const { user } = useContext(AuthContext);
     const [quantity, setQuantity] = useState(0.1);
+    const [product, setProduct] = useState(null);
+    const [loading, setLoading] = useState(true);
+    const [addingToCart, setAddingToCart] = useState(false);
 
-    const product = useMemo(() => findProductById(id), [id]);
+    // Fetch product details
+    useEffect(() => {
+        const fetchProduct = async () => {
+            setLoading(true);
+            try {
+                const { data, error } = await supabase
+                    .from("products")
+                    .select(
+                        `
+                        *,
+                        categories(name),
+                        profiles!farmer_id(name, address)
+                    `
+                    )
+                    .eq("id", id)
+                    .eq("status", "active")
+                    .single();
 
-    const handleAddToCart = () => {
-        alert(`Added ${quantity} kg of ${product.name} to cart!`);
+                if (error) {
+                    console.error("Error fetching product:", error);
+                    return;
+                }
+
+                const formattedProduct = {
+                    id: data.id,
+                    name: data.name,
+                    price: parseFloat(data.price),
+                    image:
+                        data.image_url ||
+                        "https://via.placeholder.com/300x200?text=No+Image",
+                    address: data.profiles?.address || "Location not available",
+                    category: data.categories?.name || "Other",
+                    farmerName: data.profiles?.name || "Unknown Farmer",
+                    description: data.description,
+                    stock: parseFloat(data.stock) || 0,
+                    rating: 4.5, // We'll implement real ratings later
+                    unit: data.unit || "kg",
+                    minimumOrderQuantity:
+                        parseFloat(data.minimum_order_quantity) || 1,
+                    deliveryCost: parseFloat(data.delivery_cost) || 50,
+                    pickupLocation: data.pickup_location,
+                    reviews: [], // We'll implement real reviews later
+                };
+
+                setProduct(formattedProduct);
+                setQuantity(
+                    Math.max(0.1, formattedProduct.minimumOrderQuantity)
+                );
+            } catch (error) {
+                console.error("Error fetching product:", error);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        if (id) {
+            fetchProduct();
+        }
+    }, [id]);
+
+    const handleAddToCart = async () => {
+        if (!user || !product) return;
+
+        setAddingToCart(true);
+        try {
+            const result = await addToCart(user.id, product.id, quantity);
+
+            if (result.success) {
+                alert(
+                    `Added ${quantity} ${product.unit} of ${product.name} to cart!`
+                );
+            } else {
+                alert(`Error: ${result.message}`);
+            }
+        } catch (error) {
+            console.error("Error adding to cart:", error);
+            alert("Error adding to cart. Please try again.");
+        } finally {
+            setAddingToCart(false);
+        }
     };
 
     const handleMessageFarmer = () => {
@@ -20,6 +102,7 @@ function Product() {
     };
 
     const increaseQuantity = () => {
+        if (!product) return;
         const newQuantity = Math.round((quantity + 0.1) * 10) / 10;
         if (newQuantity <= product.stock) {
             setQuantity(newQuantity);
@@ -27,6 +110,7 @@ function Product() {
     };
 
     const decreaseQuantity = () => {
+        if (!product) return;
         const newQuantity = Math.round((quantity - 0.1) * 10) / 10;
         if (newQuantity >= 0.1) {
             setQuantity(newQuantity);
@@ -34,6 +118,7 @@ function Product() {
     };
 
     const handleQuantityChange = (e) => {
+        if (!product) return;
         const value = parseFloat(e.target.value);
         if (!isNaN(value) && value >= 0.1 && value <= product.stock) {
             setQuantity(Math.round(value * 10) / 10);
@@ -41,6 +126,40 @@ function Product() {
             setQuantity(0.1);
         }
     };
+
+    if (loading) {
+        return (
+            <div className="min-h-screen w-full flex items-center justify-center bg-background">
+                <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-primary"></div>
+            </div>
+        );
+    }
+
+    if (!product) {
+        return (
+            <div className="min-h-screen w-full flex flex-col items-center justify-center bg-background text-center">
+                <Icon
+                    icon="mingcute:sad-line"
+                    width="80"
+                    height="80"
+                    className="text-gray-300 mb-4"
+                />
+                <h2 className="text-xl font-bold text-gray-600 mb-2">
+                    Product not found
+                </h2>
+                <p className="text-gray-500 mb-6">
+                    The product you're looking for doesn't exist or is no longer
+                    available.
+                </p>
+                <Link
+                    to="/"
+                    className="bg-primary text-white px-6 py-3 rounded-lg hover:bg-primary-dark transition-colors font-medium"
+                >
+                    Back to Home
+                </Link>
+            </div>
+        );
+    }
 
     const renderStars = (rating) => {
         const fullStars = Math.floor(rating);
@@ -203,9 +322,9 @@ function Product() {
                         <div className="flex flex-col sm:flex-row gap-3 mb-6">
                             <button
                                 onClick={handleAddToCart}
-                                disabled={product.stock === 0}
+                                disabled={product.stock === 0 || addingToCart}
                                 className={`flex-1 py-3 px-4 rounded-lg font-semibold flex items-center justify-center gap-2 ${
-                                    product.stock === 0
+                                    product.stock === 0 || addingToCart
                                         ? "bg-gray-300 text-gray-500 cursor-not-allowed"
                                         : "bg-primary text-white hover:bg-primary-dark"
                                 }`}
@@ -217,6 +336,8 @@ function Product() {
                                 />
                                 {product.stock === 0
                                     ? "Out of Stock"
+                                    : addingToCart
+                                    ? "Adding..."
                                     : "Add to Cart"}
                             </button>
                             <button

@@ -1,5 +1,6 @@
 import { Icon } from "@iconify/react";
 import NavigationBar from "../../components/NavigationBar";
+import ImageUpload from "../../components/ImageUpload";
 import { Link, useNavigate } from "react-router-dom";
 import { useContext, useEffect, useState } from "react";
 import { AuthContext } from "../../App.jsx";
@@ -13,8 +14,10 @@ function Profile() {
         email: "",
         address: "",
         contact: "",
+        avatar_url: "",
     });
     const [loading, setLoading] = useState(true);
+    const [showAvatarUpload, setShowAvatarUpload] = useState(false);
 
     // Format phone number for display
     const displayPhoneNumber = (phoneNumber) => {
@@ -33,7 +36,7 @@ function Profile() {
             try {
                 const { data, error } = await supabase
                     .from("profiles")
-                    .select("name, email, address, contact")
+                    .select("name, email, address, contact, avatar_url")
                     .eq("id", user.id)
                     .single();
 
@@ -43,6 +46,7 @@ function Profile() {
                         email: data.email || user.email || "",
                         address: data.address || "",
                         contact: data.contact || "",
+                        avatar_url: data.avatar_url || "",
                     });
                 } else if (error && error.code === "PGRST116") {
                     // No profile found, create one with user's email
@@ -64,6 +68,7 @@ function Profile() {
                             email: user.email || "",
                             address: "",
                             contact: "",
+                            avatar_url: "",
                         });
                     }
                 }
@@ -75,6 +80,23 @@ function Profile() {
         };
         fetchProfile();
     }, [user]);
+
+    const handleAvatarChange = async (newAvatarUrl) => {
+        try {
+            const { error } = await supabase
+                .from("profiles")
+                .update({ avatar_url: newAvatarUrl })
+                .eq("id", user.id);
+
+            if (error) throw error;
+
+            setProfile((prev) => ({ ...prev, avatar_url: newAvatarUrl }));
+            setShowAvatarUpload(false);
+        } catch (error) {
+            console.error("Error updating avatar:", error);
+            alert("Failed to update avatar. Please try again.");
+        }
+    };
 
     const handleLogout = async () => {
         await supabase.auth.signOut();
@@ -96,15 +118,53 @@ function Profile() {
                 <div className="bg-white rounded-lg shadow-md overflow-hidden mb-6">
                     <div className="relative h-32 bg-gradient-to-br from-primary to-primary-dark">
                         <div className="absolute bottom-0 left-1/2 transform -translate-x-1/2 translate-y-1/2">
-                            <div className="w-24 h-24 bg-white rounded-full p-1 shadow-lg">
+                            <div className="w-24 h-24 bg-white rounded-full p-1 shadow-lg relative">
                                 <img
-                                    src="/assets/adel.jpg"
+                                    src={
+                                        profile.avatar_url || "/assets/adel.jpg"
+                                    }
                                     alt="Profile"
                                     className="w-full h-full rounded-full object-cover"
                                 />
+                                <button
+                                    onClick={() =>
+                                        setShowAvatarUpload(!showAvatarUpload)
+                                    }
+                                    className="absolute bottom-0 right-0 bg-primary text-white rounded-full p-1.5 shadow-md hover:bg-primary-dark transition-colors"
+                                >
+                                    <Icon
+                                        icon="mingcute:camera-line"
+                                        width="14"
+                                        height="14"
+                                    />
+                                </button>
                             </div>
                         </div>
                     </div>
+
+                    {/* Avatar Upload Section */}
+                    {showAvatarUpload && (
+                        <div className="px-6 pb-4">
+                            <div className="bg-gray-50 rounded-lg p-4 mb-4">
+                                <h3 className="text-sm font-medium text-gray-700 mb-3">
+                                    Update Profile Picture
+                                </h3>
+                                <ImageUpload
+                                    currentImage={profile.avatar_url}
+                                    onImageChange={handleAvatarChange}
+                                    userId={user?.id}
+                                    bucket="avatars"
+                                    type="avatar"
+                                />
+                                <button
+                                    onClick={() => setShowAvatarUpload(false)}
+                                    className="mt-3 text-sm text-gray-500 hover:text-gray-700"
+                                >
+                                    Cancel
+                                </button>
+                            </div>
+                        </div>
+                    )}
 
                     <div className="pt-16 pb-6 px-6 text-center">
                         <h2 className="text-xl font-bold text-gray-800 mb-2">

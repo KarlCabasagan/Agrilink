@@ -11,6 +11,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { AuthContext } from "../../App.jsx";
 import ProducerNavigationBar from "../../components/ProducerNavigationBar";
 import ConfirmModal from "../../components/ConfirmModal";
+import ImageUpload from "../../components/ImageUpload";
 import supabase from "../../SupabaseClient.jsx";
 
 const categories = [
@@ -31,7 +32,6 @@ const ProductModal = memo(
         onClose,
         productForm,
         onInputChange,
-        onImageUpload,
         cropTypeSearch,
         onCropTypeSearch,
         showCropDropdown,
@@ -214,106 +214,18 @@ const ProductModal = memo(
                                         <label className="block text-sm font-medium text-gray-700 mb-3">
                                             Product Image
                                         </label>
-
-                                        {/* Image Preview Section */}
-                                        {productForm.imagePreview ? (
-                                            <div className="relative mb-4">
-                                                <div className="w-full h-48 bg-gray-100 rounded-lg overflow-hidden border-2 border-dashed border-gray-300">
-                                                    <img
-                                                        src={
-                                                            productForm.imagePreview
-                                                        }
-                                                        alt="Product Preview"
-                                                        className="w-full h-full object-cover rounded-lg"
-                                                    />
-                                                </div>
-                                                <button
-                                                    type="button"
-                                                    onClick={() => {
-                                                        onInputChange(
-                                                            "image",
-                                                            null
-                                                        );
-                                                        onInputChange(
-                                                            "imagePreview",
-                                                            ""
-                                                        );
-                                                    }}
-                                                    className="absolute top-2 right-2 bg-red-500 hover:bg-red-600 text-white rounded-full p-1.5 shadow-md transition-colors"
-                                                >
-                                                    <Icon
-                                                        icon="mingcute:close-line"
-                                                        width="16"
-                                                        height="16"
-                                                    />
-                                                </button>
-                                            </div>
-                                        ) : (
-                                            <div className="w-full h-48 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300 flex flex-col items-center justify-center mb-4">
-                                                <Icon
-                                                    icon="mingcute:image-line"
-                                                    width="48"
-                                                    height="48"
-                                                    className="text-gray-400 mb-2"
-                                                />
-                                                <p className="text-sm text-gray-500 text-center">
-                                                    No image selected
-                                                </p>
-                                                <p className="text-xs text-gray-400 mt-1">
-                                                    Upload an image to see
-                                                    preview
-                                                </p>
-                                            </div>
-                                        )}
-
-                                        {/* Compact File Input */}
-                                        <div className="flex items-center gap-3">
-                                            <label className="flex-1 cursor-pointer">
-                                                <div className="flex items-center justify-center gap-2 px-4 py-2.5 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
-                                                    <Icon
-                                                        icon="mingcute:upload-2-line"
-                                                        width="18"
-                                                        height="18"
-                                                        className="text-gray-600"
-                                                    />
-                                                    <span className="text-sm font-medium text-gray-700">
-                                                        {productForm.imagePreview
-                                                            ? "Change Image"
-                                                            : "Upload Image"}
-                                                    </span>
-                                                </div>
-                                                <input
-                                                    type="file"
-                                                    accept="image/*"
-                                                    onChange={onImageUpload}
-                                                    className="hidden"
-                                                />
-                                            </label>
-
-                                            {productForm.imagePreview && (
-                                                <button
-                                                    type="button"
-                                                    onClick={() => {
-                                                        onInputChange(
-                                                            "image",
-                                                            null
-                                                        );
-                                                        onInputChange(
-                                                            "imagePreview",
-                                                            ""
-                                                        );
-                                                    }}
-                                                    className="px-3 py-2.5 text-sm text-red-600 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors"
-                                                >
-                                                    Remove
-                                                </button>
-                                            )}
-                                        </div>
-
-                                        <p className="text-xs text-gray-500 mt-2">
-                                            Recommended: JPG, PNG or WebP
-                                            format, max 5MB
-                                        </p>
+                                        <ImageUpload
+                                            currentImage={
+                                                productForm.image_url ||
+                                                productForm.imagePreview
+                                            }
+                                            onImageChange={(url) =>
+                                                onInputChange("image_url", url)
+                                            }
+                                            userId={productForm.farmer_id}
+                                            bucket="products"
+                                            type="product"
+                                        />
                                     </div>
 
                                     <div className="md:col-span-2">
@@ -457,14 +369,37 @@ function ProducerHome() {
         try {
             const { data, error } = await supabase
                 .from("products")
-                .select("*")
+                .select(
+                    `
+                    *,
+                    categories(name)
+                `
+                )
                 .eq("farmer_id", user.id)
                 .order("created_at", { ascending: false });
 
             if (error) {
                 console.error("Error fetching products:", error);
             } else {
-                setProducts(data || []);
+                const formattedProducts = data.map((product) => ({
+                    id: product.id,
+                    name: product.name,
+                    price: parseFloat(product.price),
+                    category:
+                        product.categories?.name || product.category || "Other",
+                    description: product.description,
+                    stock: parseFloat(product.stock),
+                    image:
+                        product.image_url ||
+                        "https://via.placeholder.com/300x200?text=No+Image",
+                    cropType: product.crop_type_id,
+                    deliveryCost: parseFloat(product.delivery_cost) || 50,
+                    unit: product.unit || "kg",
+                    status: product.status,
+                    created_at: product.created_at,
+                    updated_at: product.updated_at,
+                }));
+                setProducts(formattedProducts);
             }
         } catch (error) {
             console.error("Unexpected error:", error);
@@ -501,59 +436,87 @@ function ProducerHome() {
         }
 
         try {
-            // For demo purposes, we'll add to local state instead of Supabase
-            const newProduct = {
-                id: Date.now(), // Simple ID generation for demo
-                name: productForm.name,
-                price: parseFloat(productForm.price),
-                category: productForm.category,
-                description: productForm.description,
-                stock: parseFloat(productForm.stock) || 0,
-                image:
-                    productForm.imagePreview ||
-                    "https://via.placeholder.com/300x200?text=No+Image",
-                cropType: productForm.cropType,
-                deliveryCost: deliveryCost,
-                created_at: new Date().toISOString(),
-                updated_at: new Date().toISOString(),
-            };
+            // Get category_id if category is selected
+            let category_id = null;
+            if (productForm.category && productForm.category !== "All") {
+                const { data: categoryData } = await supabase
+                    .from("categories")
+                    .select("id")
+                    .eq("name", productForm.category)
+                    .single();
+                category_id = categoryData?.id;
+            }
 
-            setProducts((prev) => [newProduct, ...prev]);
-            setShowAddModal(false);
-            resetForm();
+            // Get crop_type_id
+            let crop_type_id = null;
+            if (productForm.cropType) {
+                const { data: cropTypeData } = await supabase
+                    .from("crop_types")
+                    .select("id")
+                    .eq("name", productForm.cropType)
+                    .single();
+                crop_type_id = cropTypeData?.id;
+            }
 
-            // If you want to use Supabase, uncomment the code below:
-            /*
+            // Use the uploaded image URL
+            let image_url = productForm.image_url || null;
+
             const { data, error } = await supabase
                 .from("products")
                 .insert({
                     farmer_id: user.id,
                     name: productForm.name,
                     price: parseFloat(productForm.price),
-                    category: productForm.category,
+                    category_id: category_id,
+                    crop_type_id: crop_type_id,
                     description: productForm.description,
-                    stock: parseInt(productForm.stock) || 0,
-                    image:
-                        productForm.image ||
-                        "https://via.placeholder.com/300x200?text=No+Image",
-                    created_at: new Date().toISOString(),
-                    updated_at: new Date().toISOString(),
+                    stock: parseFloat(productForm.stock),
+                    image_url: image_url,
+                    minimum_order_quantity: 1.0,
+                    delivery_cost: deliveryCost,
+                    unit: "kg",
+                    status: "active",
                 })
-                .select()
+                .select(
+                    `
+                    *,
+                    categories(name),
+                    crop_types(name)
+                `
+                )
                 .single();
 
             if (error) {
                 console.error("Error adding product:", error);
+                alert("Error adding product. Please try again.");
             } else {
-                setProducts((prev) => [data, ...prev]);
+                const formattedProduct = {
+                    id: data.id,
+                    name: data.name,
+                    price: parseFloat(data.price),
+                    category: data.categories?.name || productForm.category,
+                    description: data.description,
+                    stock: parseFloat(data.stock),
+                    image:
+                        data.image_url ||
+                        "https://via.placeholder.com/300x200?text=No+Image",
+                    cropType: data.crop_types?.name || productForm.cropType,
+                    deliveryCost: parseFloat(data.delivery_cost),
+                    unit: data.unit,
+                    status: data.status,
+                    created_at: data.created_at,
+                    updated_at: data.updated_at,
+                };
+
+                setProducts((prev) => [formattedProduct, ...prev]);
                 setShowAddModal(false);
                 resetForm();
             }
-            */
         } catch (error) {
             console.error("Unexpected error:", error);
+            alert("Unexpected error occurred. Please try again.");
         }
-    }, [productForm, availableCrops, deliveryCost]);
+    }, [productForm, availableCrops, deliveryCost, user]);
 
     const handleEditProduct = useCallback(async () => {
         if (
@@ -565,56 +528,83 @@ function ProducerHome() {
             return;
 
         try {
-            // For demo purposes, we'll update local state instead of Supabase
-            const updatedProduct = {
-                ...selectedProduct,
-                name: productForm.name,
-                price: parseFloat(productForm.price),
-                category: productForm.category,
-                description: productForm.description,
-                stock: parseFloat(productForm.stock) || 0,
-                image: productForm.imagePreview || selectedProduct.image,
-                deliveryCost: deliveryCost,
-                updated_at: new Date().toISOString(),
-            };
+            // Get category_id if category is selected
+            let category_id = null;
+            if (productForm.category && productForm.category !== "All") {
+                const { data: categoryData } = await supabase
+                    .from("categories")
+                    .select("id")
+                    .eq("name", productForm.category)
+                    .single();
+                category_id = categoryData?.id;
+            }
 
-            setProducts((prev) =>
-                prev.map((p) =>
-                    p.id === selectedProduct.id ? updatedProduct : p
-                )
-            );
-            setShowEditModal(false);
-            resetForm();
+            // Get crop_type_id if cropType is provided
+            let crop_type_id = null;
+            if (productForm.cropType) {
+                const { data: cropTypeData } = await supabase
+                    .from("crop_types")
+                    .select("id")
+                    .eq("name", productForm.cropType)
+                    .single();
+                crop_type_id = cropTypeData?.id;
+            }
 
-            // If you want to use Supabase, uncomment the code below:
-            /*
+            let image_url = productForm.image_url || selectedProduct.image;
+
             const { data, error } = await supabase
                 .from("products")
                 .update({
                     name: productForm.name,
                     price: parseFloat(productForm.price),
-                    category: productForm.category,
+                    category_id: category_id,
+                    crop_type_id: crop_type_id,
                     description: productForm.description,
-                    stock: parseInt(productForm.stock) || 0,
-                    image: productForm.image || selectedProduct.image,
-                    updated_at: new Date().toISOString(),
+                    stock: parseFloat(productForm.stock),
+                    image_url: image_url,
+                    delivery_cost: deliveryCost,
                 })
                 .eq("id", selectedProduct.id)
-                .select()
+                .select(
+                    `
+                    *,
+                    categories(name),
+                    crop_types(name)
+                `
+                )
                 .single();
 
             if (error) {
                 console.error("Error updating product:", error);
+                alert("Error updating product. Please try again.");
             } else {
+                const updatedProduct = {
+                    id: data.id,
+                    name: data.name,
+                    price: parseFloat(data.price),
+                    category: data.categories?.name || productForm.category,
+                    description: data.description,
+                    stock: parseFloat(data.stock),
+                    image: data.image_url || selectedProduct.image,
+                    cropType: data.crop_types?.name || productForm.cropType,
+                    deliveryCost: parseFloat(data.delivery_cost),
+                    unit: data.unit,
+                    status: data.status,
+                    created_at: data.created_at,
+                    updated_at: data.updated_at,
+                };
+
                 setProducts((prev) =>
-                    prev.map((p) => (p.id === selectedProduct.id ? data : p))
+                    prev.map((p) =>
+                        p.id === selectedProduct.id ? updatedProduct : p
+                    )
                 );
                 setShowEditModal(false);
                 resetForm();
             }
-            */
         } catch (error) {
             console.error("Unexpected error:", error);
+            alert("Unexpected error occurred. Please try again.");
         }
     }, [selectedProduct, productForm, deliveryCost]);
 
@@ -622,15 +612,6 @@ function ProducerHome() {
         if (!selectedProduct) return;
 
         try {
-            // For demo purposes, we'll remove from local state instead of Supabase
-            setProducts((prev) =>
-                prev.filter((p) => p.id !== selectedProduct.id)
-            );
-            setShowDeleteModal(false);
-            setSelectedProduct(null);
-
-            // If you want to use Supabase, uncomment the code below:
-            /*
             const { error } = await supabase
                 .from("products")
                 .delete()
@@ -638,6 +619,7 @@ function ProducerHome() {
 
             if (error) {
                 console.error("Error deleting product:", error);
+                alert("Error deleting product. Please try again.");
             } else {
                 setProducts((prev) =>
                     prev.filter((p) => p.id !== selectedProduct.id)
@@ -645,9 +627,9 @@ function ProducerHome() {
                 setShowDeleteModal(false);
                 setSelectedProduct(null);
             }
-            */
         } catch (error) {
             console.error("Unexpected error:", error);
+            alert("Unexpected error occurred. Please try again.");
         }
     };
 
@@ -658,29 +640,18 @@ function ProducerHome() {
             category: "Vegetables",
             description: "",
             stock: "",
-            image: null,
-            imagePreview: "",
+            image_url: "",
             cropType: "",
+            farmer_id: user?.id || "",
         });
         setCropTypeSearch("");
         setShowCropDropdown(false);
         setSelectedProduct(null);
-    }, []);
+    }, [user]);
 
     // Memoized input handlers to prevent modal refresh
     const handleInputChange = useCallback((field, value) => {
         setProductForm((prev) => ({ ...prev, [field]: value }));
-    }, []);
-
-    const handleImageUpload = useCallback((e) => {
-        const file = e.target.files[0];
-        if (file && file.type.startsWith("image/")) {
-            setProductForm((prev) => ({
-                ...prev,
-                image: file,
-                imagePreview: URL.createObjectURL(file),
-            }));
-        }
     }, []);
 
     const handleCropTypeSelect = useCallback((cropType) => {
@@ -701,21 +672,24 @@ function ProducerHome() {
         }));
     }, []);
 
-    const openEditModal = useCallback((product) => {
-        setSelectedProduct(product);
-        setProductForm({
-            name: product.name,
-            price: product.price.toString(),
-            category: product.category,
-            description: product.description || "",
-            stock: product.stock?.toString() || "",
-            image: null,
-            imagePreview: product.image || "",
-            cropType: product.cropType || "",
-        });
-        setCropTypeSearch(product.cropType || "");
-        setShowEditModal(true);
-    }, []);
+    const openEditModal = useCallback(
+        (product) => {
+            setSelectedProduct(product);
+            setProductForm({
+                name: product.name,
+                price: product.price.toString(),
+                category: product.category,
+                description: product.description || "",
+                stock: product.stock?.toString() || "",
+                image_url: product.image || "",
+                cropType: product.cropType || "",
+                farmer_id: user?.id || "",
+            });
+            setCropTypeSearch(product.cropType || "");
+            setShowEditModal(true);
+        },
+        [user]
+    );
 
     const openDeleteModal = useCallback((product) => {
         setSelectedProduct(product);
@@ -742,7 +716,6 @@ function ProducerHome() {
                 onClose={handleCloseAddModal}
                 productForm={productForm}
                 onInputChange={handleInputChange}
-                onImageUpload={handleImageUpload}
                 cropTypeSearch={cropTypeSearch}
                 onCropTypeSearch={handleCropTypeSearch}
                 showCropDropdown={showCropDropdown}
@@ -758,7 +731,6 @@ function ProducerHome() {
                 onClose={handleCloseEditModal}
                 productForm={productForm}
                 onInputChange={handleInputChange}
-                onImageUpload={handleImageUpload}
                 cropTypeSearch={cropTypeSearch}
                 onCropTypeSearch={handleCropTypeSearch}
                 showCropDropdown={showCropDropdown}

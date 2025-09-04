@@ -61,196 +61,75 @@ function Orders() {
 
         setLoading(true);
         try {
-            // This would fetch orders for the producer's products
-            // For now, we'll use mock data since we don't have orders table structure
-            const mockOrders = [
-                {
-                    id: "ORD-2024-001",
-                    customer_name: "John Doe",
-                    customer_contact: "+63 912 345 6789",
-                    customer_address: "Poblacion, Iligan City",
-                    total_amount: 68.25,
-                    status: "pending",
-                    created_at: "2025-09-02T08:30:00Z",
-                    deliveryMethod: "delivery",
-                    paymentMethod: "cod",
-                    deliveryAddress:
-                        "123 Main St, Barangay Poblacion, Iligan City, Lanao del Norte 9200",
-                    deliveryFee: 50.0,
-                    customerDetails: {
-                        name: "John Doe",
-                        phone: "+63 912 345 6789",
-                        email: "john.doe@example.com",
-                    },
-                    orderNotes: "Please prepare the order early in the morning",
-                    estimatedDelivery: "2025-09-03",
-                    items: [
-                        {
-                            product_name: "Carrots",
-                            quantity: 2.5,
-                            price: 2.5,
-                            total: 6.25,
-                            image: "https://images.unsplash.com/photo-1598170845058-32b9d6a5da37",
-                        },
-                        {
-                            product_name: "Potatoes",
-                            quantity: 5.0,
-                            price: 1.5,
-                            total: 7.5,
-                            image: "https://images.unsplash.com/photo-1518977676601-b53f82aba655",
-                        },
-                        {
-                            product_name: "Onions",
-                            quantity: 1.5,
-                            price: 3.0,
-                            total: 4.5,
-                            image: "https://images.unsplash.com/photo-1587049352846-4a222e784d38",
-                        },
-                    ],
-                },
-                {
-                    id: "ORD-2024-002",
-                    customer_name: "Maria Santos",
-                    customer_contact: "+63 923 456 7890",
-                    customer_address: "Maria Cristina, Iligan City",
-                    total_amount: 42.75,
-                    status: "confirmed",
-                    created_at: "2025-09-01T14:15:00Z",
-                    deliveryMethod: "pickup",
-                    paymentMethod: "cod",
-                    pickupLocation:
-                        "Santos Farm, Barangay Maria Cristina, Iligan City",
-                    deliveryFee: 0.0,
-                    customerDetails: {
-                        name: "Maria Santos",
-                        phone: "+63 923 456 7890",
-                        email: "maria.santos@example.com",
-                    },
-                    orderNotes: "",
-                    estimatedPickup: "2025-09-02",
-                    items: [
-                        {
-                            product_name: "Rice",
-                            quantity: 2.0,
-                            price: 12.0,
-                            total: 24.0,
-                            image: "https://images.unsplash.com/photo-1586201375761-83865001e31c",
-                        },
-                        {
-                            product_name: "Monggo",
-                            quantity: 1.5,
-                            price: 12.5,
-                            total: 18.75,
-                            image: "https://images.unsplash.com/photo-1585314062340-f1a5a7c9328d",
-                        },
-                    ],
-                },
-                {
-                    id: "ORD-2024-003",
-                    customer_name: "Pedro Cruz",
-                    customer_contact: "+63 934 567 8901",
-                    customer_address: "Tibanga, Iligan City",
-                    total_amount: 17.0,
-                    status: "preparing",
-                    created_at: "2025-09-01T10:20:00Z",
-                    deliveryMethod: "delivery",
-                    paymentMethod: "cod",
-                    deliveryAddress:
-                        "789 Pine St, Barangay Tibanga, Iligan City, Lanao del Norte 9200",
-                    deliveryFee: 75.0,
-                    customerDetails: {
-                        name: "Pedro Cruz",
-                        phone: "+63 934 567 8901",
-                        email: "pedro.cruz@example.com",
-                    },
-                    orderNotes: "Call when arriving at the subdivision gate",
-                    estimatedDelivery: "2025-09-02",
-                    items: [
-                        {
-                            product_name: "Apples",
-                            quantity: 1.5,
-                            price: 8.0,
-                            total: 12.0,
-                            image: "https://images.unsplash.com/photo-1560806887-1e4cd0b6cbd6",
-                        },
-                        {
-                            product_name: "Carrots",
-                            quantity: 2.0,
-                            price: 2.5,
-                            total: 5.0,
-                            image: "https://images.unsplash.com/photo-1598170845058-32b9d6a5da37",
-                        },
-                    ],
-                },
-                {
-                    id: "ORD-2024-004",
-                    customer_name: "Ana Garcia",
-                    customer_contact: "+63 945 678 9012",
-                    customer_address: "Palao, Iligan City",
-                    total_amount: 15.0,
-                    status: "ready",
-                    created_at: "2025-08-31T16:45:00Z",
-                    deliveryMethod: "pickup",
-                    paymentMethod: "cod",
-                    pickupLocation: "Garcia Farm, Barangay Palao, Iligan City",
-                    deliveryFee: 0.0,
-                    customerDetails: {
-                        name: "Ana Garcia",
-                        phone: "+63 945 678 9012",
-                        email: "ana.garcia@example.com",
-                    },
-                    orderNotes: "Will pick up after 3 PM",
-                    estimatedPickup: "2025-09-01",
-                    items: [
-                        {
-                            product_name: "Potatoes",
-                            quantity: 5.0,
-                            price: 1.5,
-                            total: 7.5,
-                            image: "https://images.unsplash.com/photo-1518977676601-b53f82aba655",
-                        },
-                        {
-                            product_name: "Onions",
-                            quantity: 2.5,
-                            price: 3.0,
-                            total: 7.5,
-                            image: "https://images.unsplash.com/photo-1587049352846-4a222e784d38",
-                        },
-                    ],
-                },
-                {
-                    id: "ORD-2024-005",
-                    customer_name: "Carlos Lopez",
-                    customer_contact: "+63 956 789 0123",
-                    customer_address: "Buru-un, Iligan City",
-                    total_amount: 60.0,
-                    status: "completed",
-                    created_at: "2025-08-30T09:30:00Z",
-                    deliveryMethod: "delivery",
-                    paymentMethod: "cod",
-                    deliveryAddress:
-                        "456 Oak St, Barangay Buru-un, Iligan City, Lanao del Norte 9200",
-                    deliveryFee: 100.0,
-                    customerDetails: {
-                        name: "Carlos Lopez",
-                        phone: "+63 956 789 0123",
-                        email: "carlos.lopez@example.com",
-                    },
-                    orderNotes: "Ring the doorbell twice",
-                    estimatedDelivery: "2025-08-31",
-                    items: [
-                        {
-                            product_name: "Rice",
-                            quantity: 5.0,
-                            price: 12.0,
-                            total: 60.0,
-                            image: "https://images.unsplash.com/photo-1586201375761-83865001e31c",
-                        },
-                    ],
-                },
-            ];
+            // Fetch orders that contain products from this producer
+            const { data: ordersData, error: ordersError } = await supabase
+                .from("orders")
+                .select(
+                    `
+                    *,
+                    order_items!inner (
+                        *,
+                        products!inner (
+                            *,
+                            categories (
+                                name
+                            )
+                        )
+                    )
+                `
+                )
+                .eq("order_items.products.farmer_id", user.id)
+                .order("created_at", { ascending: false });
 
-            setOrders(mockOrders);
+            if (ordersError) throw ordersError;
+
+            // Transform and filter orders to only include items from this producer
+            const transformedOrders = ordersData.map((order) => {
+                // Filter items to only include this producer's products
+                const producerItems = order.order_items.filter(
+                    (item) => item.products.farmer_id === user.id
+                );
+
+                // Calculate producer's total for this order
+                const producerTotal = producerItems.reduce(
+                    (sum, item) => sum + item.unit_price * item.quantity,
+                    0
+                );
+
+                return {
+                    id: order.id,
+                    customer_name: order.customer_name,
+                    customer_contact: order.customer_phone,
+                    customer_address:
+                        order.delivery_address || order.pickup_location,
+                    total_amount: producerTotal,
+                    status: order.status,
+                    created_at: order.created_at,
+                    deliveryMethod: order.delivery_method,
+                    paymentMethod: order.payment_method,
+                    deliveryAddress: order.delivery_address,
+                    pickupLocation: order.pickup_location,
+                    deliveryFee: order.delivery_fee,
+                    orderNotes: order.notes,
+                    estimatedDelivery: order.estimated_delivery,
+                    estimatedPickup: order.estimated_pickup,
+                    customerDetails: {
+                        name: order.customer_name,
+                        phone: order.customer_phone,
+                        email: order.customer_email,
+                    },
+                    items: producerItems.map((item) => ({
+                        product_name: item.products.name,
+                        quantity: item.quantity,
+                        price: item.unit_price,
+                        total: item.unit_price * item.quantity,
+                        image: item.products.image_url,
+                        category: item.products.categories?.name || "Other",
+                    })),
+                };
+            });
+
+            setOrders(transformedOrders);
         } catch (error) {
             console.error("Error fetching orders:", error);
         } finally {
@@ -260,7 +139,14 @@ function Orders() {
 
     const updateOrderStatus = async (orderId, newStatus) => {
         try {
-            // In real app, this would update the database
+            const { error } = await supabase
+                .from("orders")
+                .update({ status: newStatus })
+                .eq("id", orderId);
+
+            if (error) throw error;
+
+            // Update local state
             setOrders((prev) =>
                 prev.map((order) =>
                     order.id === orderId
@@ -270,6 +156,7 @@ function Orders() {
             );
         } catch (error) {
             console.error("Error updating order status:", error);
+            alert("Failed to update order status. Please try again.");
         }
     };
 
