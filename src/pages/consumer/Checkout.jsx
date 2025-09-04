@@ -15,6 +15,43 @@ function Checkout() {
     const [profileLoading, setProfileLoading] = useState(true);
     const [orderPlaced, setOrderPlaced] = useState(false);
     const [orderId, setOrderId] = useState("");
+    const [currentCartItems, setCurrentCartItems] = useState(
+        cartItems.map((item) => ({
+            ...item,
+            farmerName: item.farmerName || "Unknown Farmer",
+            farmerId: item.farmerId || `farmer_${item.id}`,
+        }))
+    );
+
+    // Farmer minimum order quantities (would come from database in real app)
+    const farmerSettings = {
+        farmer_1: { minimumOrderQuantity: 3.0, deliveryCost: 50 }, // Juan Santos
+        farmer_2: { minimumOrderQuantity: 2.0, deliveryCost: 40 }, // Maria Cruz
+        farmer_3: { minimumOrderQuantity: 2.5, deliveryCost: 60 }, // Ana Garcia
+    };
+
+    // Group cart items by farmer
+    const groupedByFarmer = currentCartItems.reduce((groups, item) => {
+        const farmerId = item.farmerId;
+        if (!groups[farmerId]) {
+            groups[farmerId] = {
+                farmerName: item.farmerName,
+                farmerId: farmerId,
+                items: [],
+                totalQuantity: 0,
+                totalPrice: 0,
+                minimumOrderQuantity:
+                    farmerSettings[farmerId]?.minimumOrderQuantity || 2.0,
+                deliveryCost: farmerSettings[farmerId]?.deliveryCost || 50,
+            };
+        }
+        groups[farmerId].items.push(item);
+        groups[farmerId].totalQuantity += item.quantity;
+        groups[farmerId].totalPrice += item.price * item.quantity;
+        return groups;
+    }, {});
+
+    const farmerGroups = Object.values(groupedByFarmer);
 
     const [formData, setFormData] = useState({
         fullName: "",
@@ -24,15 +61,79 @@ function Checkout() {
         city: "Iligan City",
         province: "Lanao del Norte",
         postalCode: "9200",
-        deliveryMethod: "delivery", // "delivery" or "pickup"
+        deliveryMethod: "pickup", // "delivery" or "pickup" - pickup is now default
         paymentMethod: "cod",
         notes: "",
     });
 
     const [errors, setErrors] = useState({});
 
-    const deliveryFee = formData.deliveryMethod === "delivery" ? 50.0 : 0.0;
-    const finalTotal = totalAmount + deliveryFee;
+    // Helper functions to manage cart items and check delivery eligibility
+    const removeItemFromCart = (itemId) => {
+        const updatedItems = currentCartItems.filter(
+            (item) => item.id !== itemId
+        );
+        setCurrentCartItems(updatedItems);
+    };
+
+    const updateItemQuantity = (itemId, newQuantity) => {
+        const updatedItems = currentCartItems.map((item) =>
+            item.id === itemId
+                ? { ...item, quantity: Math.max(0.1, newQuantity) }
+                : item
+        );
+        setCurrentCartItems(updatedItems);
+    };
+
+    const autoAdjustQuantityForDelivery = (itemId, farmerId) => {
+        const farmerGroup = groupedByFarmer[farmerId];
+        if (!farmerGroup) return;
+
+        const shortage =
+            farmerGroup.minimumOrderQuantity - farmerGroup.totalQuantity;
+        if (shortage <= 0) return;
+
+        // Find the specific item and increase its quantity
+        const targetItem = farmerGroup.items.find((item) => item.id === itemId);
+        if (targetItem) {
+            const newQuantity = Math.min(
+                targetItem.quantity + shortage,
+                targetItem.stock || 999 // Use stock limit or fallback to 999
+            );
+            updateItemQuantity(itemId, newQuantity);
+        }
+    };
+
+    const getUpdatedTotalAmount = () => {
+        return currentCartItems.reduce(
+            (total, item) => total + item.price * item.quantity,
+            0
+        );
+    };
+
+    const getIneligibleFarmers = () => {
+        if (formData.deliveryMethod !== "delivery") return [];
+        return farmerGroups.filter(
+            (farmer) => farmer.totalQuantity < farmer.minimumOrderQuantity
+        );
+    };
+
+    const isCheckoutEnabled = () => {
+        if (currentCartItems.length === 0) return false;
+        if (formData.deliveryMethod === "delivery") {
+            return getIneligibleFarmers().length === 0;
+        }
+        return true; // Pickup doesn't have minimum quantity restrictions
+    };
+
+    const deliveryFee =
+        formData.deliveryMethod === "delivery"
+            ? farmerGroups.reduce(
+                  (total, farmer) => total + farmer.deliveryCost,
+                  0
+              )
+            : 0.0;
+    const finalTotal = getUpdatedTotalAmount() + deliveryFee;
 
     // Fetch user profile data
     useEffect(() => {
@@ -180,9 +281,20 @@ function Checkout() {
             return;
         }
 
-        if (!cartItems || cartItems.length === 0) {
+        if (!currentCartItems || currentCartItems.length === 0) {
             alert("No items to checkout");
             navigate("/cart");
+            return;
+        }
+
+        // Check for delivery eligibility
+        if (
+            formData.deliveryMethod === "delivery" &&
+            getIneligibleFarmers().length > 0
+        ) {
+            alert(
+                "Some farmers don't meet minimum quantity requirements for delivery. Please add more items or choose pickup instead."
+            );
             return;
         }
 
@@ -314,7 +426,7 @@ function Checkout() {
     }
 
     // Redirect if no cart items
-    if (!cartItems || cartItems.length === 0) {
+    if (!currentCartItems || currentCartItems.length === 0) {
         return (
             <div className="min-h-screen w-full flex flex-col relative items-center scrollbar-hide bg-background overflow-x-hidden text-text pb-20">
                 <div className="fixed top-0 left-0 w-full bg-white shadow-md z-50 px-4 py-3">
@@ -389,11 +501,11 @@ function Checkout() {
                 </div>
             </div>
 
-            <div className="w-full max-w-4xl mx-4 sm:mx-auto my-16">
+            <div className="w-full max-w-7xl mx-4 sm:mx-auto my-16">
                 <form onSubmit={handleSubmit} className="space-y-6">
-                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <div className="grid grid-cols-1 lg:grid-cols-5 gap-8">
                         {/* Checkout Form */}
-                        <div className="lg:col-span-2 space-y-6">
+                        <div className="lg:col-span-3 space-y-6">
                             {/* Delivery Method */}
                             <div className="bg-white rounded-lg shadow-md overflow-hidden">
                                 <div className="p-6 border-b border-gray-200">
@@ -408,40 +520,6 @@ function Checkout() {
                                     </h2>
                                 </div>
                                 <div className="p-6 space-y-3">
-                                    <label className="flex items-center p-4 border rounded-lg cursor-pointer hover:bg-gray-50 transition-colors">
-                                        <input
-                                            type="radio"
-                                            name="deliveryMethod"
-                                            value="delivery"
-                                            checked={
-                                                formData.deliveryMethod ===
-                                                "delivery"
-                                            }
-                                            onChange={handleInputChange}
-                                            className="mr-3 text-primary focus:ring-primary"
-                                        />
-                                        <div className="flex items-center gap-3 flex-1">
-                                            <Icon
-                                                icon="mingcute:home-line"
-                                                width="24"
-                                                height="24"
-                                                className="text-blue-600"
-                                            />
-                                            <div>
-                                                <span className="font-medium text-gray-800">
-                                                    Home Delivery
-                                                </span>
-                                                <p className="text-sm text-gray-600">
-                                                    Get your order delivered to
-                                                    your doorstep
-                                                </p>
-                                                <p className="text-sm text-primary font-medium">
-                                                    + ₱50.00 delivery fee
-                                                </p>
-                                            </div>
-                                        </div>
-                                    </label>
-
                                     <label className="flex items-center p-4 border rounded-lg cursor-pointer hover:bg-gray-50 transition-colors">
                                         <input
                                             type="radio"
@@ -471,6 +549,40 @@ function Checkout() {
                                                 </p>
                                                 <p className="text-sm text-green-600 font-medium">
                                                     Free pickup
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </label>
+
+                                    <label className="flex items-center p-4 border rounded-lg cursor-pointer hover:bg-gray-50 transition-colors">
+                                        <input
+                                            type="radio"
+                                            name="deliveryMethod"
+                                            value="delivery"
+                                            checked={
+                                                formData.deliveryMethod ===
+                                                "delivery"
+                                            }
+                                            onChange={handleInputChange}
+                                            className="mr-3 text-primary focus:ring-primary"
+                                        />
+                                        <div className="flex items-center gap-3 flex-1">
+                                            <Icon
+                                                icon="mingcute:home-line"
+                                                width="24"
+                                                height="24"
+                                                className="text-blue-600"
+                                            />
+                                            <div>
+                                                <span className="font-medium text-gray-800">
+                                                    Home Delivery
+                                                </span>
+                                                <p className="text-sm text-gray-600">
+                                                    Get your order delivered to
+                                                    your doorstep
+                                                </p>
+                                                <p className="text-sm text-primary font-medium">
+                                                    + ₱50.00 delivery fee
                                                 </p>
                                             </div>
                                         </div>
@@ -833,7 +945,7 @@ function Checkout() {
                         </div>
 
                         {/* Order Summary */}
-                        <div className="lg:col-span-1">
+                        <div className="lg:col-span-2">
                             <div className="bg-white rounded-lg shadow-md overflow-hidden sticky top-20">
                                 <div className="p-6 border-b border-gray-200">
                                     <h2 className="text-lg font-semibold text-gray-800">
@@ -841,36 +953,276 @@ function Checkout() {
                                     </h2>
                                 </div>
                                 <div className="p-6">
-                                    {/* Items */}
-                                    <div className="space-y-3 mb-4">
-                                        {cartItems.map((item) => (
-                                            <div
-                                                key={item.id}
-                                                className="flex items-center gap-3"
-                                            >
-                                                <img
-                                                    src={item.image}
-                                                    alt={item.name}
-                                                    className="w-12 h-12 object-cover rounded-lg"
-                                                />
-                                                <div className="flex-1">
-                                                    <h4 className="font-medium text-gray-800 text-sm line-clamp-1">
-                                                        {item.name}
-                                                    </h4>
-                                                    <p className="text-xs text-gray-500">
-                                                        ₱{item.price.toFixed(2)}
-                                                        /kg × {item.quantity} kg
-                                                    </p>
+                                    {/* Delivery Eligibility Warning */}
+                                    {formData.deliveryMethod === "delivery" &&
+                                        getIneligibleFarmers().length > 0 && (
+                                            <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
+                                                <div className="flex items-start gap-3">
+                                                    <Icon
+                                                        icon="mingcute:alert-triangle-line"
+                                                        width="20"
+                                                        height="20"
+                                                        className="text-red-600 mt-0.5"
+                                                    />
+                                                    <div className="flex-1">
+                                                        <h4 className="font-medium text-red-800 mb-1">
+                                                            Delivery
+                                                            Requirements Not Met
+                                                        </h4>
+                                                        <p className="text-red-700 text-sm mb-2">
+                                                            Some farmers require
+                                                            minimum order
+                                                            quantities for
+                                                            delivery. Use the
+                                                            quick-add buttons
+                                                            below or switch to
+                                                            pickup.
+                                                        </p>
+                                                        <div className="text-red-600 text-xs">
+                                                            {getIneligibleFarmers().map(
+                                                                (
+                                                                    farmer,
+                                                                    index
+                                                                ) => (
+                                                                    <p
+                                                                        key={
+                                                                            farmer.farmerId
+                                                                        }
+                                                                    >
+                                                                        •{" "}
+                                                                        <strong>
+                                                                            {
+                                                                                farmer.farmerName
+                                                                            }
+                                                                            :
+                                                                        </strong>{" "}
+                                                                        Need{" "}
+                                                                        {(
+                                                                            farmer.minimumOrderQuantity -
+                                                                            farmer.totalQuantity
+                                                                        ).toFixed(
+                                                                            1
+                                                                        )}
+                                                                        kg more
+                                                                    </p>
+                                                                )
+                                                            )}
+                                                        </div>
+                                                    </div>
                                                 </div>
-                                                <p className="text-sm font-medium text-gray-800">
-                                                    ₱
-                                                    {(
-                                                        item.price *
-                                                        item.quantity
-                                                    ).toFixed(2)}
-                                                </p>
                                             </div>
-                                        ))}
+                                        )}
+
+                                    {/* Items Grouped by Farmer */}
+                                    <div className="space-y-4 mb-4">
+                                        {farmerGroups.map((farmer) => {
+                                            const isIneligible =
+                                                formData.deliveryMethod ===
+                                                    "delivery" &&
+                                                farmer.totalQuantity <
+                                                    farmer.minimumOrderQuantity;
+
+                                            return (
+                                                <div
+                                                    key={farmer.farmerId}
+                                                    className={`border rounded-lg overflow-hidden ${
+                                                        isIneligible
+                                                            ? "border-red-200 bg-red-50"
+                                                            : "border-gray-200 bg-gray-50"
+                                                    }`}
+                                                >
+                                                    {/* Farmer Header */}
+                                                    <div
+                                                        className={`p-3 border-b ${
+                                                            isIneligible
+                                                                ? "border-red-200 bg-red-100"
+                                                                : "border-gray-200 bg-gray-100"
+                                                        }`}
+                                                    >
+                                                        <div className="flex items-center justify-between">
+                                                            <div className="flex items-center gap-2">
+                                                                <Icon
+                                                                    icon="mingcute:user-3-line"
+                                                                    width="16"
+                                                                    height="16"
+                                                                    className={
+                                                                        isIneligible
+                                                                            ? "text-red-600"
+                                                                            : "text-gray-600"
+                                                                    }
+                                                                />
+                                                                <h4 className="font-semibold text-sm text-gray-800">
+                                                                    {
+                                                                        farmer.farmerName
+                                                                    }
+                                                                </h4>
+                                                            </div>
+                                                            <div className="text-right">
+                                                                <p className="text-xs font-medium text-primary">
+                                                                    ₱
+                                                                    {farmer.totalPrice.toFixed(
+                                                                        2
+                                                                    )}
+                                                                </p>
+                                                                {isIneligible && (
+                                                                    <p className="text-xs text-red-600">
+                                                                        {(
+                                                                            farmer.minimumOrderQuantity -
+                                                                            farmer.totalQuantity
+                                                                        ).toFixed(
+                                                                            1
+                                                                        )}
+                                                                        kg
+                                                                        needed
+                                                                    </p>
+                                                                )}
+                                                            </div>
+                                                        </div>
+
+                                                        {/* Quick Add Info for Delivery */}
+                                                        {isIneligible && (
+                                                            <div className="mt-2 bg-orange-50 border border-orange-200 rounded-lg p-3">
+                                                                <div className="flex items-center gap-2 mb-2">
+                                                                    <Icon
+                                                                        icon="mingcute:information-line"
+                                                                        width="14"
+                                                                        height="14"
+                                                                        className="text-orange-600"
+                                                                    />
+                                                                    <span className="text-xs text-orange-700 font-medium">
+                                                                        Need{" "}
+                                                                        {(
+                                                                            farmer.minimumOrderQuantity -
+                                                                            farmer.totalQuantity
+                                                                        ).toFixed(
+                                                                            1
+                                                                        )}
+                                                                        kg more
+                                                                        for
+                                                                        delivery
+                                                                    </span>
+                                                                </div>
+                                                                <p className="text-xs text-orange-600">
+                                                                    Choose a
+                                                                    product
+                                                                    below to
+                                                                    auto-add the
+                                                                    required
+                                                                    quantity
+                                                                </p>
+                                                            </div>
+                                                        )}
+                                                    </div>
+
+                                                    {/* Farmer's Items */}
+                                                    <div className="divide-y divide-gray-100">
+                                                        {farmer.items.map(
+                                                            (item) => (
+                                                                <div
+                                                                    key={
+                                                                        item.id
+                                                                    }
+                                                                    className="p-3"
+                                                                >
+                                                                    <div className="flex items-center gap-3">
+                                                                        <img
+                                                                            src={
+                                                                                item.image
+                                                                            }
+                                                                            alt={
+                                                                                item.name
+                                                                            }
+                                                                            className="w-10 h-10 object-cover rounded-lg"
+                                                                        />
+                                                                        <div className="flex-1">
+                                                                            <h5 className="font-medium text-gray-800 text-sm line-clamp-1">
+                                                                                {
+                                                                                    item.name
+                                                                                }
+                                                                            </h5>
+                                                                            <p className="text-xs text-gray-500">
+                                                                                ₱
+                                                                                {item.price.toFixed(
+                                                                                    2
+                                                                                )}
+                                                                                /kg
+                                                                                ×{" "}
+                                                                                {
+                                                                                    item.quantity
+                                                                                }{" "}
+                                                                                kg
+                                                                            </p>
+                                                                        </div>
+                                                                        <div className="text-right flex flex-col items-end gap-2">
+                                                                            <p className="text-sm font-medium text-gray-800">
+                                                                                ₱
+                                                                                {(
+                                                                                    item.price *
+                                                                                    item.quantity
+                                                                                ).toFixed(
+                                                                                    2
+                                                                                )}
+                                                                            </p>
+                                                                            <div className="flex items-center gap-1">
+                                                                                {/* Auto-adjust button for ineligible farmers */}
+                                                                                {isIneligible && (
+                                                                                    <button
+                                                                                        onClick={() =>
+                                                                                            autoAdjustQuantityForDelivery(
+                                                                                                item.id,
+                                                                                                farmer.farmerId
+                                                                                            )
+                                                                                        }
+                                                                                        className="bg-primary text-white text-xs px-2 py-1 rounded-md hover:bg-primary-dark transition-colors flex items-center gap-1"
+                                                                                        title={`Add ${(
+                                                                                            farmer.minimumOrderQuantity -
+                                                                                            farmer.totalQuantity
+                                                                                        ).toFixed(
+                                                                                            1
+                                                                                        )}kg to this product for delivery`}
+                                                                                    >
+                                                                                        <Icon
+                                                                                            icon="mingcute:add-line"
+                                                                                            width="12"
+                                                                                            height="12"
+                                                                                        />
+
+                                                                                        +
+                                                                                        {(
+                                                                                            farmer.minimumOrderQuantity -
+                                                                                            farmer.totalQuantity
+                                                                                        ).toFixed(
+                                                                                            1
+                                                                                        )}
+                                                                                        kg
+                                                                                    </button>
+                                                                                )}
+                                                                                {/* Remove button */}
+                                                                                <button
+                                                                                    onClick={() =>
+                                                                                        removeItemFromCart(
+                                                                                            item.id
+                                                                                        )
+                                                                                    }
+                                                                                    className="text-gray-400 hover:text-red-500 transition-colors p-1"
+                                                                                    title="Remove item"
+                                                                                >
+                                                                                    <Icon
+                                                                                        icon="mingcute:delete-2-line"
+                                                                                        width="14"
+                                                                                        height="14"
+                                                                                    />
+                                                                                </button>
+                                                                            </div>
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+                                                            )
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
                                     </div>
 
                                     {/* Pricing */}
@@ -878,23 +1230,46 @@ function Checkout() {
                                         <div className="flex justify-between text-gray-600">
                                             <span>Subtotal</span>
                                             <span>
-                                                ₱{totalAmount.toFixed(2)}
+                                                ₱
+                                                {getUpdatedTotalAmount().toFixed(
+                                                    2
+                                                )}
                                             </span>
                                         </div>
-                                        <div className="flex justify-between text-gray-600">
-                                            <span>
-                                                {formData.deliveryMethod ===
-                                                "delivery"
-                                                    ? "Delivery Fee"
-                                                    : "Pickup Fee"}
-                                            </span>
-                                            <span>
-                                                {formData.deliveryMethod ===
-                                                "delivery"
-                                                    ? "₱50.00"
-                                                    : "Free"}
-                                            </span>
-                                        </div>
+
+                                        {formData.deliveryMethod ===
+                                            "delivery" && (
+                                            <div className="space-y-1">
+                                                {farmerGroups.map((farmer) => (
+                                                    <div
+                                                        key={farmer.farmerId}
+                                                        className="flex justify-between text-gray-600 text-sm"
+                                                    >
+                                                        <span>
+                                                            {farmer.farmerName}{" "}
+                                                            delivery
+                                                        </span>
+                                                        <span>
+                                                            {farmer.totalQuantity >=
+                                                            farmer.minimumOrderQuantity
+                                                                ? `₱${farmer.deliveryCost.toFixed(
+                                                                      2
+                                                                  )}`
+                                                                : "Not eligible"}
+                                                        </span>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
+
+                                        {formData.deliveryMethod ===
+                                            "pickup" && (
+                                            <div className="flex justify-between text-gray-600">
+                                                <span>Pickup Fee</span>
+                                                <span>Free</span>
+                                            </div>
+                                        )}
+
                                         <div className="flex justify-between font-bold text-lg text-gray-800 border-t border-gray-200 pt-2">
                                             <span>Total</span>
                                             <span>
@@ -906,13 +1281,30 @@ function Checkout() {
                                     {/* Place Order Button */}
                                     <button
                                         type="submit"
-                                        disabled={loading}
-                                        className="w-full bg-primary text-white py-3 rounded-lg font-semibold hover:bg-primary-dark transition-colors mt-6 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                                        disabled={
+                                            loading || !isCheckoutEnabled()
+                                        }
+                                        className={`w-full py-3 rounded-lg font-semibold transition-colors mt-6 flex items-center justify-center gap-2 ${
+                                            loading || !isCheckoutEnabled()
+                                                ? "bg-gray-300 text-gray-500 cursor-not-allowed"
+                                                : "bg-primary text-white hover:bg-primary-dark"
+                                        }`}
                                     >
                                         {loading ? (
                                             <>
                                                 <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
                                                 Placing Order...
+                                            </>
+                                        ) : !isCheckoutEnabled() ? (
+                                            <>
+                                                <Icon
+                                                    icon="mingcute:alert-triangle-line"
+                                                    width="20"
+                                                    height="20"
+                                                />
+                                                {currentCartItems.length === 0
+                                                    ? "Cart is Empty"
+                                                    : "Adjust Quantities for Delivery"}
                                             </>
                                         ) : (
                                             <>
@@ -925,6 +1317,15 @@ function Checkout() {
                                             </>
                                         )}
                                     </button>
+
+                                    {!isCheckoutEnabled() &&
+                                        currentCartItems.length > 0 && (
+                                            <p className="text-center text-red-600 text-xs mt-2">
+                                                Some farmers don't meet delivery
+                                                requirements. Use quick-add
+                                                buttons above or choose pickup.
+                                            </p>
+                                        )}
 
                                     <p className="text-center text-gray-500 text-xs mt-3">
                                         By placing this order, you agree to our

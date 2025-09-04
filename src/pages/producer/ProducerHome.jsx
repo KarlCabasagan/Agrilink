@@ -158,31 +158,6 @@ const ProductModal = memo(
                                         </select>
                                     </div>
 
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                                            Minimum Quantity for Delivery (kg) *
-                                        </label>
-                                        <input
-                                            type="number"
-                                            min="0.1"
-                                            step="0.1"
-                                            value={productForm.minimumQuantity}
-                                            onChange={(e) =>
-                                                onInputChange(
-                                                    "minimumQuantity",
-                                                    e.target.value
-                                                )
-                                            }
-                                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-primary focus:border-primary"
-                                            placeholder="1.0"
-                                            required
-                                        />
-                                        <p className="text-xs text-gray-500 mt-1">
-                                            Minimum quantity required for home
-                                            delivery option
-                                        </p>
-                                    </div>
-
                                     <div className="md:col-span-2">
                                         <label className="block text-sm font-medium text-gray-700 mb-1">
                                             Crop Type *
@@ -438,6 +413,9 @@ function ProducerHome() {
     const [selectedProduct, setSelectedProduct] = useState(null);
     const [deliveryCost, setDeliveryCost] = useState(50); // Default delivery cost for farmer
     const [originalDeliveryCost, setOriginalDeliveryCost] = useState(50); // Track original value
+    const [minimumOrderQuantity, setMinimumOrderQuantity] = useState(2.0); // Default minimum order quantity
+    const [originalMinimumOrderQuantity, setOriginalMinimumOrderQuantity] =
+        useState(2.0); // Track original value
     const [productForm, setProductForm] = useState({
         name: "",
         price: "",
@@ -447,7 +425,6 @@ function ProducerHome() {
         image: null,
         imagePreview: "",
         cropType: "",
-        minimumQuantity: "1.0", // Minimum quantity for home delivery
     });
     const [cropTypeSearch, setCropTypeSearch] = useState("");
     const [showCropDropdown, setShowCropDropdown] = useState(false);
@@ -513,8 +490,7 @@ function ProducerHome() {
             !productForm.name ||
             !productForm.price ||
             !productForm.stock ||
-            !productForm.cropType ||
-            !productForm.minimumQuantity
+            !productForm.cropType
         )
             return;
 
@@ -537,7 +513,6 @@ function ProducerHome() {
                     productForm.imagePreview ||
                     "https://via.placeholder.com/300x200?text=No+Image",
                 cropType: productForm.cropType,
-                minimumQuantity: parseFloat(productForm.minimumQuantity) || 1.0,
                 deliveryCost: deliveryCost,
                 created_at: new Date().toISOString(),
                 updated_at: new Date().toISOString(),
@@ -585,8 +560,7 @@ function ProducerHome() {
             !selectedProduct ||
             !productForm.name ||
             !productForm.price ||
-            !productForm.stock ||
-            !productForm.minimumQuantity
+            !productForm.stock
         )
             return;
 
@@ -600,7 +574,6 @@ function ProducerHome() {
                 description: productForm.description,
                 stock: parseFloat(productForm.stock) || 0,
                 image: productForm.imagePreview || selectedProduct.image,
-                minimumQuantity: parseFloat(productForm.minimumQuantity) || 1.0,
                 deliveryCost: deliveryCost,
                 updated_at: new Date().toISOString(),
             };
@@ -688,7 +661,6 @@ function ProducerHome() {
             image: null,
             imagePreview: "",
             cropType: "",
-            minimumQuantity: "1.0",
         });
         setCropTypeSearch("");
         setShowCropDropdown(false);
@@ -740,7 +712,6 @@ function ProducerHome() {
             image: null,
             imagePreview: product.image || "",
             cropType: product.cropType || "",
-            minimumQuantity: product.minimumQuantity?.toString() || "1.0",
         });
         setCropTypeSearch(product.cropType || "");
         setShowEditModal(true);
@@ -865,34 +836,71 @@ function ProducerHome() {
                                     This applies once per order from your farm
                                 </p>
                             </div>
-                            <div className="flex items-center">
-                                <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-                                    <div className="flex items-center gap-2 text-blue-700">
-                                        <Icon
-                                            icon="mingcute:information-line"
-                                            width="16"
-                                            height="16"
-                                        />
-                                        <span className="text-sm font-medium">
-                                            How it works
-                                        </span>
-                                    </div>
-                                    <p className="text-xs text-blue-600 mt-1">
-                                        If a customer orders from multiple
-                                        farmers, each farmer's delivery cost
-                                        will be added separately.
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">
+                                    Minimum Order Quantity (kg)
+                                </label>
+                                <input
+                                    type="number"
+                                    min="0.1"
+                                    step="0.1"
+                                    value={minimumOrderQuantity}
+                                    onChange={(e) =>
+                                        setMinimumOrderQuantity(
+                                            parseFloat(e.target.value) || 1.0
+                                        )
+                                    }
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-primary focus:border-primary"
+                                    placeholder="2.0"
+                                />
+                                <p className="text-xs text-gray-500 mt-1">
+                                    Total quantity required for home delivery
+                                </p>
+                            </div>
+                        </div>
+
+                        <div className="mb-4">
+                            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                                <div className="flex items-center gap-2 text-blue-700">
+                                    <Icon
+                                        icon="mingcute:information-line"
+                                        width="16"
+                                        height="16"
+                                    />
+                                    <span className="text-sm font-medium">
+                                        How it works
+                                    </span>
+                                </div>
+                                <div className="text-xs text-blue-600 mt-1 space-y-1">
+                                    <p>
+                                        • Delivery cost is charged once per
+                                        order from your farm
+                                    </p>
+                                    <p>
+                                        • Customers must order at least{" "}
+                                        {minimumOrderQuantity}kg total from your
+                                        farm for delivery
+                                    </p>
+                                    <p>
+                                        • Multiple products can be combined to
+                                        meet the minimum quantity
                                     </p>
                                 </div>
                             </div>
                         </div>
 
                         {/* Action buttons - only show when there are changes */}
-                        {deliveryCost !== originalDeliveryCost && (
+                        {(deliveryCost !== originalDeliveryCost ||
+                            minimumOrderQuantity !==
+                                originalMinimumOrderQuantity) && (
                             <div className="flex justify-end gap-3 pt-4 border-t border-gray-200">
                                 <button
-                                    onClick={() =>
-                                        setDeliveryCost(originalDeliveryCost)
-                                    }
+                                    onClick={() => {
+                                        setDeliveryCost(originalDeliveryCost);
+                                        setMinimumOrderQuantity(
+                                            originalMinimumOrderQuantity
+                                        );
+                                    }}
                                     className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
                                 >
                                     Cancel
@@ -901,10 +909,16 @@ function ProducerHome() {
                                     onClick={() => {
                                         // Here you would typically save to database
                                         console.log(
-                                            "Delivery cost saved:",
-                                            deliveryCost
+                                            "Delivery settings saved:",
+                                            {
+                                                deliveryCost,
+                                                minimumOrderQuantity,
+                                            }
                                         );
                                         setOriginalDeliveryCost(deliveryCost); // Update original value after saving
+                                        setOriginalMinimumOrderQuantity(
+                                            minimumOrderQuantity
+                                        );
                                         alert(
                                             "Delivery settings saved successfully!"
                                         );

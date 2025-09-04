@@ -190,6 +190,11 @@ function App() {
         }
 
         if (!allowedRoles.includes(userRole)) {
+            // If user is admin (role 3) and trying to access non-admin routes, redirect to admin dashboard
+            if (userRole === 3) {
+                return <Navigate to="/admin/dashboard" replace />;
+            }
+            // For other roles, redirect to home
             return <Navigate to="/" replace />;
         }
 
@@ -209,15 +214,21 @@ function App() {
     };
 
     const RoleBasedProfile = () => {
-        if (userRole === 2) {
+        if (userRole === 3) {
+            // Admin - redirect to admin dashboard instead of showing profile
+            return <Navigate to="/admin/dashboard" replace />;
+        } else if (userRole === 2) {
             // Producer
             return <ProducerProfile />;
         }
-        return <Profile />; // Consumer (role 1) or Admin default
+        return <Profile />; // Consumer (role 1) or default
     };
 
     const RoleBasedMessages = () => {
-        if (userRole === 2) {
+        if (userRole === 3) {
+            // Admin - redirect to admin dashboard instead of showing messages
+            return <Navigate to="/admin/dashboard" replace />;
+        } else if (userRole === 2) {
             // Producer
             return <ProducerMessages />;
         }
