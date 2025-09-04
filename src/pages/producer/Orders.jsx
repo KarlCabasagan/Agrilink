@@ -491,16 +491,34 @@ function Orders() {
                                             <p className="text-lg font-bold text-primary">
                                                 ₱{order.total_amount.toFixed(2)}
                                             </p>
-                                            <Icon
-                                                icon={
-                                                    isExpanded
-                                                        ? "mingcute:up-line"
-                                                        : "mingcute:down-line"
-                                                }
-                                                width="20"
-                                                height="20"
-                                                className="text-gray-400"
-                                            />
+                                            <div className="flex items-center gap-3">
+                                                <p className="text-xs text-primary bg-primary/10 px-2 py-1 rounded-full flex items-center gap-1">
+                                                    <Icon
+                                                        icon={
+                                                            order.deliveryMethod ===
+                                                            "delivery"
+                                                                ? "mingcute:truck-line"
+                                                                : "mingcute:location-line"
+                                                        }
+                                                        width="12"
+                                                        height="12"
+                                                    />
+                                                    {order.deliveryMethod ===
+                                                    "delivery"
+                                                        ? "Delivery"
+                                                        : "Pickup"}
+                                                </p>
+                                                <Icon
+                                                    icon={
+                                                        isExpanded
+                                                            ? "mingcute:up-line"
+                                                            : "mingcute:down-line"
+                                                    }
+                                                    width="20"
+                                                    height="20"
+                                                    className="text-gray-400"
+                                                />
+                                            </div>
                                         </div>
                                     </div>
 
