@@ -233,7 +233,7 @@ function Orders() {
         const key = `${orderId}_${farmerId}`;
         setExpandedFarmers((prev) => ({
             ...prev,
-            [key]: !prev[key],
+            [key]: prev[key] === false ? true : false,
         }));
     };
 
@@ -466,7 +466,9 @@ function Orders() {
                                                 {farmerGroups.map((farmer) => {
                                                     const farmerKey = `${order.id}_${farmer.farmerId}`;
                                                     const isFarmerExpanded =
-                                                        expandedFarmers[farmerKey] !== false;
+                                                        expandedFarmers[
+                                                            farmerKey
+                                                        ] !== false;
                                                     const hasMultipleItems =
                                                         farmer.items.length > 1;
 
