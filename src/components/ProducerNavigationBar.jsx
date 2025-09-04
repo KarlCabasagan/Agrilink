@@ -16,27 +16,27 @@ function ProducerNavigationBar() {
             label: "Products",
         },
         {
-            path: "/orders",
+            path: "/producer/orders",
             icon: "mingcute:box-2-line",
             activeIcon: "mingcute:box-2-line",
             label: "Orders",
             badge: 3, // Mock notification count
         },
         {
-            path: "/crop-recommendation",
+            path: "/producer/crop-recommendation",
             icon: "mingcute:chart-line-line",
             activeIcon: "mingcute:chart-line-fill",
             label: "Crops",
         },
         {
-            path: "/messages",
+            path: "/producer/messages",
             icon: "mingcute:message-3-line",
             activeIcon: "mingcute:message-3-fill",
             label: "Messages",
             badge: 2, // Mock notification count
         },
         {
-            path: "/profile",
+            path: "/producer/profile",
             icon: "mingcute:user-3-line",
             activeIcon: "mingcute:user-3-fill",
             label: "Profile",

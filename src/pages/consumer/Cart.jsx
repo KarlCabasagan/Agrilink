@@ -187,21 +187,7 @@ function Cart() {
                                             <span className="text-sm font-medium text-gray-700">
                                                 Quantity (kg):
                                             </span>
-                                            <div className="flex items-center border rounded-lg">
-                                                <button
-                                                    onClick={() =>
-                                                        updateQuantity(
-                                                            item.id,
-                                                            item.quantity - 0.1
-                                                        )
-                                                    }
-                                                    className="px-3 py-1 hover:bg-gray-100 rounded-l-lg"
-                                                    disabled={
-                                                        item.quantity <= 0.1
-                                                    }
-                                                >
-                                                    -
-                                                </button>
+                                            <div className="flex items-center">
                                                 <input
                                                     type="number"
                                                     value={item.quantity}
@@ -214,23 +200,8 @@ function Cart() {
                                                     step="0.1"
                                                     min="0.1"
                                                     max={item.stock}
-                                                    className="px-2 py-1 border-l border-r bg-gray-50 w-16 text-center focus:outline-none focus:bg-white"
+                                                    className="px-2 py-1 border border-gray-300 rounded-lg w-16 text-center focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary"
                                                 />
-                                                <button
-                                                    onClick={() =>
-                                                        updateQuantity(
-                                                            item.id,
-                                                            item.quantity + 0.1
-                                                        )
-                                                    }
-                                                    className="px-3 py-1 hover:bg-gray-100 rounded-r-lg"
-                                                    disabled={
-                                                        item.quantity >=
-                                                        item.stock
-                                                    }
-                                                >
-                                                    +
-                                                </button>
                                             </div>
                                         </div>
                                         <div className="text-right">

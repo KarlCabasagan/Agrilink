@@ -1,4 +1,11 @@
-import { useState, useMemo, useContext, useEffect } from "react";
+import {
+    useState,
+    useMemo,
+    useContext,
+    useEffect,
+    useCallback,
+    memo,
+} from "react";
 import { Icon } from "@iconify/react";
 import { Link, useNavigate } from "react-router-dom";
 import { AuthContext } from "../../App.jsx";
@@ -15,6 +22,286 @@ const categories = [
     { name: "Root and Tuber", icon: "twemoji:potato" },
     { name: "Legumes", icon: "twemoji:beans" },
 ];
+
+// Memoized ProductModal component to prevent unnecessary re-renders
+const ProductModal = memo(
+    ({
+        isEdit = false,
+        isOpen,
+        onClose,
+        productForm,
+        onInputChange,
+        onImageUpload,
+        cropTypeSearch,
+        onCropTypeSearch,
+        showCropDropdown,
+        setShowCropDropdown,
+        filteredCrops,
+        onCropTypeSelect,
+        onSubmit,
+        categories,
+    }) => {
+        if (!isOpen) return null;
+
+        return (
+            <>
+                <div
+                    className="fixed inset-0 z-40 bg-black bg-opacity-50"
+                    onClick={onClose}
+                ></div>
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+                    <div className="bg-white rounded-lg shadow-xl max-w-md w-full max-h-[90vh] overflow-y-auto">
+                        <div className="p-6">
+                            <div className="flex justify-between items-center mb-4">
+                                <h3 className="text-lg font-semibold">
+                                    {isEdit
+                                        ? "Edit Product"
+                                        : "Add New Product"}
+                                </h3>
+                                <button
+                                    onClick={onClose}
+                                    className="text-gray-400 hover:text-gray-600"
+                                >
+                                    <Icon
+                                        icon="mingcute:close-line"
+                                        width="24"
+                                        height="24"
+                                    />
+                                </button>
+                            </div>
+
+                            <div className="space-y-4">
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                                        Product Name *
+                                    </label>
+                                    <input
+                                        type="text"
+                                        value={productForm.name}
+                                        onChange={(e) =>
+                                            onInputChange(
+                                                "name",
+                                                e.target.value
+                                            )
+                                        }
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-primary focus:border-primary"
+                                        placeholder="Enter product name"
+                                        required
+                                    />
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                                            Price per kg (₱) *
+                                        </label>
+                                        <input
+                                            type="number"
+                                            step="0.01"
+                                            min="0"
+                                            value={productForm.price}
+                                            onChange={(e) =>
+                                                onInputChange(
+                                                    "price",
+                                                    e.target.value
+                                                )
+                                            }
+                                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-primary focus:border-primary"
+                                            placeholder="0.00"
+                                            required
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                                            Stock (kg) *
+                                        </label>
+                                        <input
+                                            type="number"
+                                            min="0"
+                                            step="0.1"
+                                            value={productForm.stock}
+                                            onChange={(e) =>
+                                                onInputChange(
+                                                    "stock",
+                                                    e.target.value
+                                                )
+                                            }
+                                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-primary focus:border-primary"
+                                            placeholder="0.0"
+                                            required
+                                        />
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                                        Minimum Quantity for Delivery (kg) *
+                                    </label>
+                                    <input
+                                        type="number"
+                                        min="0.1"
+                                        step="0.1"
+                                        value={productForm.minimumQuantity}
+                                        onChange={(e) =>
+                                            onInputChange(
+                                                "minimumQuantity",
+                                                e.target.value
+                                            )
+                                        }
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-primary focus:border-primary"
+                                        placeholder="1.0"
+                                        required
+                                    />
+                                    <p className="text-xs text-gray-500 mt-1">
+                                        Minimum quantity required for home
+                                        delivery option
+                                    </p>
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                                        Category *
+                                    </label>
+                                    <select
+                                        value={productForm.category}
+                                        onChange={(e) =>
+                                            onInputChange(
+                                                "category",
+                                                e.target.value
+                                            )
+                                        }
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-primary focus:border-primary"
+                                        required
+                                    >
+                                        {categories.slice(1).map((cat) => (
+                                            <option
+                                                key={cat.name}
+                                                value={cat.name}
+                                            >
+                                                {cat.name}
+                                            </option>
+                                        ))}
+                                    </select>
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                                        Crop Type *
+                                    </label>
+                                    <div className="relative">
+                                        <input
+                                            type="text"
+                                            value={cropTypeSearch}
+                                            onChange={(e) =>
+                                                onCropTypeSearch(e.target.value)
+                                            }
+                                            onFocus={() =>
+                                                setShowCropDropdown(true)
+                                            }
+                                            onBlur={() =>
+                                                setTimeout(
+                                                    () =>
+                                                        setShowCropDropdown(
+                                                            false
+                                                        ),
+                                                    200
+                                                )
+                                            }
+                                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-primary focus:border-primary"
+                                            placeholder="Search for crop type..."
+                                            required
+                                        />
+                                        {showCropDropdown &&
+                                            filteredCrops.length > 0 && (
+                                                <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-40 overflow-y-auto">
+                                                    {filteredCrops.map(
+                                                        (crop) => (
+                                                            <div
+                                                                key={crop}
+                                                                onClick={() =>
+                                                                    onCropTypeSelect(
+                                                                        crop
+                                                                    )
+                                                                }
+                                                                className="px-3 py-2 hover:bg-gray-100 cursor-pointer"
+                                                            >
+                                                                {crop}
+                                                            </div>
+                                                        )
+                                                    )}
+                                                </div>
+                                            )}
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                                        Product Image
+                                    </label>
+                                    <input
+                                        type="file"
+                                        accept="image/*"
+                                        onChange={onImageUpload}
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-primary focus:border-primary"
+                                    />
+                                    {productForm.imagePreview && (
+                                        <div className="mt-2">
+                                            <img
+                                                src={productForm.imagePreview}
+                                                alt="Preview"
+                                                className="w-full h-32 object-cover rounded-lg"
+                                            />
+                                        </div>
+                                    )}
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                                        Description
+                                    </label>
+                                    <textarea
+                                        value={productForm.description}
+                                        onChange={(e) =>
+                                            onInputChange(
+                                                "description",
+                                                e.target.value
+                                            )
+                                        }
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-primary focus:border-primary"
+                                        rows="3"
+                                        placeholder="Describe your product..."
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="flex gap-3 mt-6">
+                                <button
+                                    onClick={onClose}
+                                    className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    onClick={onSubmit}
+                                    disabled={
+                                        !productForm.name ||
+                                        !productForm.price ||
+                                        !productForm.stock
+                                    }
+                                    className="flex-1 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed"
+                                >
+                                    {isEdit ? "Update" : "Add"} Product
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </>
+        );
+    }
+);
+
+ProductModal.displayName = "ProductModal";
 
 function ProducerHome() {
     const { user } = useContext(AuthContext);
@@ -62,6 +349,7 @@ function ProducerHome() {
     const [showEditModal, setShowEditModal] = useState(false);
     const [showDeleteModal, setShowDeleteModal] = useState(false);
     const [selectedProduct, setSelectedProduct] = useState(null);
+    const [deliveryCost, setDeliveryCost] = useState(50); // Default delivery cost for farmer
     const [productForm, setProductForm] = useState({
         name: "",
         price: "",
@@ -71,6 +359,7 @@ function ProducerHome() {
         image: null,
         imagePreview: "",
         cropType: "",
+        minimumQuantity: "1.0", // Minimum quantity for home delivery
     });
     const [cropTypeSearch, setCropTypeSearch] = useState("");
     const [showCropDropdown, setShowCropDropdown] = useState(false);
@@ -131,28 +420,13 @@ function ProducerHome() {
             );
     }, [selectedCategory, search, products]);
 
-    // Handle file upload
-    const handleImageUpload = (e) => {
-        const file = e.target.files[0];
-        if (file && file.type.startsWith("image/")) {
-            const reader = new FileReader();
-            reader.onload = (event) => {
-                setProductForm((prev) => ({
-                    ...prev,
-                    image: file,
-                    imagePreview: event.target.result,
-                }));
-            };
-            reader.readAsDataURL(file);
-        }
-    };
-
-    const handleAddProduct = async () => {
+    const handleAddProduct = useCallback(async () => {
         if (
             !productForm.name ||
             !productForm.price ||
             !productForm.stock ||
-            !productForm.cropType
+            !productForm.cropType ||
+            !productForm.minimumQuantity
         )
             return;
 
@@ -170,11 +444,13 @@ function ProducerHome() {
                 price: parseFloat(productForm.price),
                 category: productForm.category,
                 description: productForm.description,
-                stock: parseInt(productForm.stock) || 0,
+                stock: parseFloat(productForm.stock) || 0,
                 image:
                     productForm.imagePreview ||
                     "https://via.placeholder.com/300x200?text=No+Image",
                 cropType: productForm.cropType,
+                minimumQuantity: parseFloat(productForm.minimumQuantity) || 1.0,
+                deliveryCost: deliveryCost,
                 created_at: new Date().toISOString(),
                 updated_at: new Date().toISOString(),
             };
@@ -214,14 +490,15 @@ function ProducerHome() {
         } catch (error) {
             console.error("Unexpected error:", error);
         }
-    };
+    }, [productForm, availableCrops, deliveryCost]);
 
-    const handleEditProduct = async () => {
+    const handleEditProduct = useCallback(async () => {
         if (
             !selectedProduct ||
             !productForm.name ||
             !productForm.price ||
-            !productForm.stock
+            !productForm.stock ||
+            !productForm.minimumQuantity
         )
             return;
 
@@ -233,8 +510,10 @@ function ProducerHome() {
                 price: parseFloat(productForm.price),
                 category: productForm.category,
                 description: productForm.description,
-                stock: parseInt(productForm.stock) || 0,
+                stock: parseFloat(productForm.stock) || 0,
                 image: productForm.imagePreview || selectedProduct.image,
+                minimumQuantity: parseFloat(productForm.minimumQuantity) || 1.0,
+                deliveryCost: deliveryCost,
                 updated_at: new Date().toISOString(),
             };
 
@@ -276,7 +555,7 @@ function ProducerHome() {
         } catch (error) {
             console.error("Unexpected error:", error);
         }
-    };
+    }, [selectedProduct, productForm, deliveryCost]);
 
     const handleDeleteProduct = async () => {
         if (!selectedProduct) return;
@@ -311,7 +590,7 @@ function ProducerHome() {
         }
     };
 
-    const resetForm = () => {
+    const resetForm = useCallback(() => {
         setProductForm({
             name: "",
             price: "",
@@ -321,13 +600,48 @@ function ProducerHome() {
             image: null,
             imagePreview: "",
             cropType: "",
+            minimumQuantity: "1.0",
         });
         setCropTypeSearch("");
         setShowCropDropdown(false);
         setSelectedProduct(null);
-    };
+    }, []);
 
-    const openEditModal = (product) => {
+    // Memoized input handlers to prevent modal refresh
+    const handleInputChange = useCallback((field, value) => {
+        setProductForm((prev) => ({ ...prev, [field]: value }));
+    }, []);
+
+    const handleImageUpload = useCallback((e) => {
+        const file = e.target.files[0];
+        if (file && file.type.startsWith("image/")) {
+            setProductForm((prev) => ({
+                ...prev,
+                image: file,
+                imagePreview: URL.createObjectURL(file),
+            }));
+        }
+    }, []);
+
+    const handleCropTypeSelect = useCallback((cropType) => {
+        setProductForm((prev) => ({
+            ...prev,
+            cropType: cropType,
+        }));
+        setCropTypeSearch(cropType);
+        setShowCropDropdown(false);
+    }, []);
+
+    const handleCropTypeSearch = useCallback((value) => {
+        setCropTypeSearch(value);
+        setShowCropDropdown(true);
+        setProductForm((prev) => ({
+            ...prev,
+            cropType: value,
+        }));
+    }, []);
+
+    const openEditModal = useCallback((product) => {
         setSelectedProduct(product);
         setProductForm({
             name: product.name,
@@ -338,274 +652,63 @@ function ProducerHome() {
             image: null,
             imagePreview: product.image || "",
             cropType: product.cropType || "",
+            minimumQuantity: product.minimumQuantity?.toString() || "1.0",
         });
         setCropTypeSearch(product.cropType || "");
         setShowEditModal(true);
-    };
+    }, []);
 
-    const openDeleteModal = (product) => {
+    const openDeleteModal = useCallback((product) => {
         setSelectedProduct(product);
         setShowDeleteModal(true);
-    };
+    }, []);
 
-    const ProductModal = ({ isEdit = false }) => (
-        <>
-            <div
-                className="fixed inset-0 z-40 bg-black bg-opacity-50"
-                onClick={() => {
-                    isEdit ? setShowEditModal(false) : setShowAddModal(false);
-                    resetForm();
-                }}
-            ></div>
-            <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-                <div className="bg-white rounded-lg shadow-xl max-w-md w-full max-h-[90vh] overflow-y-auto">
-                    <div className="p-6">
-                        <div className="flex justify-between items-center mb-4">
-                            <h3 className="text-lg font-semibold">
-                                {isEdit ? "Edit Product" : "Add New Product"}
-                            </h3>
-                            <button
-                                onClick={() => {
-                                    isEdit
-                                        ? setShowEditModal(false)
-                                        : setShowAddModal(false);
-                                    resetForm();
-                                }}
-                                className="text-gray-400 hover:text-gray-600"
-                            >
-                                <Icon
-                                    icon="mingcute:close-line"
-                                    width="24"
-                                    height="24"
-                                />
-                            </button>
-                        </div>
+    // Stable modal handlers
+    const handleCloseAddModal = useCallback(() => {
+        setShowAddModal(false);
+        resetForm();
+    }, [resetForm]);
 
-                        <div className="space-y-4">
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">
-                                    Product Name *
-                                </label>
-                                <input
-                                    type="text"
-                                    value={productForm.name}
-                                    onChange={(e) =>
-                                        setProductForm((prev) => ({
-                                            ...prev,
-                                            name: e.target.value,
-                                        }))
-                                    }
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-primary focus:border-primary"
-                                    placeholder="Enter product name"
-                                    required
-                                />
-                            </div>
-
-                            <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                                        Price per kg (₱) *
-                                    </label>
-                                    <input
-                                        type="number"
-                                        step="0.01"
-                                        min="0"
-                                        value={productForm.price}
-                                        onChange={(e) =>
-                                            setProductForm((prev) => ({
-                                                ...prev,
-                                                price: e.target.value,
-                                            }))
-                                        }
-                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-primary focus:border-primary"
-                                        placeholder="0.00"
-                                        required
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                                        Stock (kg) *
-                                    </label>
-                                    <input
-                                        type="number"
-                                        min="0"
-                                        value={productForm.stock}
-                                        onChange={(e) =>
-                                            setProductForm((prev) => ({
-                                                ...prev,
-                                                stock: e.target.value,
-                                            }))
-                                        }
-                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-primary focus:border-primary"
-                                        placeholder="0"
-                                        required
-                                    />
-                                </div>
-                            </div>
-
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">
-                                    Category *
-                                </label>
-                                <select
-                                    value={productForm.category}
-                                    onChange={(e) =>
-                                        setProductForm((prev) => ({
-                                            ...prev,
-                                            category: e.target.value,
-                                        }))
-                                    }
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-primary focus:border-primary"
-                                    required
-                                >
-                                    {categories.slice(1).map((cat) => (
-                                        <option key={cat.name} value={cat.name}>
-                                            {cat.name}
-                                        </option>
-                                    ))}
-                                </select>
-                            </div>
-
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">
-                                    Crop Type *
-                                </label>
-                                <div className="relative">
-                                    <input
-                                        type="text"
-                                        value={cropTypeSearch}
-                                        onChange={(e) => {
-                                            setCropTypeSearch(e.target.value);
-                                            setShowCropDropdown(true);
-                                            setProductForm((prev) => ({
-                                                ...prev,
-                                                cropType: e.target.value,
-                                            }));
-                                        }}
-                                        onFocus={() =>
-                                            setShowCropDropdown(true)
-                                        }
-                                        onBlur={() =>
-                                            setTimeout(
-                                                () =>
-                                                    setShowCropDropdown(false),
-                                                200
-                                            )
-                                        }
-                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-primary focus:border-primary"
-                                        placeholder="Search for crop type..."
-                                        required
-                                    />
-                                    {showCropDropdown &&
-                                        filteredCrops.length > 0 && (
-                                            <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-40 overflow-y-auto">
-                                                {filteredCrops.map((crop) => (
-                                                    <div
-                                                        key={crop}
-                                                        onClick={() => {
-                                                            setCropTypeSearch(
-                                                                crop
-                                                            );
-                                                            setProductForm(
-                                                                (prev) => ({
-                                                                    ...prev,
-                                                                    cropType:
-                                                                        crop,
-                                                                })
-                                                            );
-                                                            setShowCropDropdown(
-                                                                false
-                                                            );
-                                                        }}
-                                                        className="px-3 py-2 hover:bg-gray-100 cursor-pointer"
-                                                    >
-                                                        {crop}
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        )}
-                                </div>
-                            </div>
-
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">
-                                    Product Image
-                                </label>
-                                <input
-                                    type="file"
-                                    accept="image/*"
-                                    onChange={handleImageUpload}
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-primary focus:border-primary"
-                                />
-                                {productForm.imagePreview && (
-                                    <div className="mt-2">
-                                        <img
-                                            src={productForm.imagePreview}
-                                            alt="Preview"
-                                            className="w-full h-32 object-cover rounded-lg"
-                                        />
-                                    </div>
-                                )}
-                            </div>
-
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">
-                                    Description
-                                </label>
-                                <textarea
-                                    value={productForm.description}
-                                    onChange={(e) =>
-                                        setProductForm((prev) => ({
-                                            ...prev,
-                                            description: e.target.value,
-                                        }))
-                                    }
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-primary focus:border-primary"
-                                    rows="3"
-                                    placeholder="Describe your product..."
-                                />
-                            </div>
-                        </div>
-
-                        <div className="flex gap-3 mt-6">
-                            <button
-                                onClick={() => {
-                                    isEdit
-                                        ? setShowEditModal(false)
-                                        : setShowAddModal(false);
-                                    resetForm();
-                                }}
-                                className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
-                            >
-                                Cancel
-                            </button>
-                            <button
-                                onClick={
-                                    isEdit
-                                        ? handleEditProduct
-                                        : handleAddProduct
-                                }
-                                disabled={
-                                    !productForm.name ||
-                                    !productForm.price ||
-                                    !productForm.stock
-                                }
-                                className="flex-1 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed"
-                            >
-                                {isEdit ? "Update" : "Add"} Product
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </>
-    );
+    const handleCloseEditModal = useCallback(() => {
+        setShowEditModal(false);
+        resetForm();
+    }, [resetForm]);
 
     return (
         <div className="min-h-screen w-full flex flex-col relative items-center scrollbar-hide bg-background overflow-x-hidden text-text pb-20">
             {/* Modals */}
-            {showAddModal && <ProductModal />}
-            {showEditModal && <ProductModal isEdit={true} />}
+            <ProductModal
+                isOpen={showAddModal}
+                isEdit={false}
+                onClose={handleCloseAddModal}
+                productForm={productForm}
+                onInputChange={handleInputChange}
+                onImageUpload={handleImageUpload}
+                cropTypeSearch={cropTypeSearch}
+                onCropTypeSearch={handleCropTypeSearch}
+                showCropDropdown={showCropDropdown}
+                setShowCropDropdown={setShowCropDropdown}
+                filteredCrops={filteredCrops}
+                onCropTypeSelect={handleCropTypeSelect}
+                onSubmit={handleAddProduct}
+                categories={categories}
+            />
+            <ProductModal
+                isOpen={showEditModal}
+                isEdit={true}
+                onClose={handleCloseEditModal}
+                productForm={productForm}
+                onInputChange={handleInputChange}
+                onImageUpload={handleImageUpload}
+                cropTypeSearch={cropTypeSearch}
+                onCropTypeSearch={handleCropTypeSearch}
+                showCropDropdown={showCropDropdown}
+                setShowCropDropdown={setShowCropDropdown}
+                filteredCrops={filteredCrops}
+                onCropTypeSelect={handleCropTypeSelect}
+                onSubmit={handleEditProduct}
+                categories={categories}
+            />
             <ConfirmModal
                 isOpen={showDeleteModal}
                 onClose={() => setShowDeleteModal(false)}
@@ -689,14 +792,89 @@ function ProducerHome() {
                     </div>
                 </div>
 
+                {/* Delivery Settings */}
+                <div className="mb-6">
+                    <div className="bg-white rounded-lg shadow-md p-6">
+                        <div className="flex items-center justify-between mb-4">
+                            <div className="flex items-center gap-2">
+                                <Icon
+                                    icon="mingcute:truck-line"
+                                    width="24"
+                                    height="24"
+                                    className="text-primary"
+                                />
+                                <h3 className="text-lg font-semibold text-gray-800">
+                                    Delivery Settings
+                                </h3>
+                            </div>
+                        </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">
+                                    Delivery Cost
+                                </label>
+                                <div className="relative">
+                                    <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">
+                                        ₱
+                                    </span>
+                                    <input
+                                        type="number"
+                                        min="0"
+                                        step="0.01"
+                                        value={deliveryCost}
+                                        onChange={(e) =>
+                                            setDeliveryCost(
+                                                parseFloat(e.target.value) || 0
+                                            )
+                                        }
+                                        className="w-full pl-8 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-primary focus:border-primary"
+                                        placeholder="50.00"
+                                    />
+                                </div>
+                                <p className="text-xs text-gray-500 mt-1">
+                                    This applies once per order from your farm
+                                </p>
+                            </div>
+                            <div className="flex items-center">
+                                <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                                    <div className="flex items-center gap-2 text-blue-700">
+                                        <Icon
+                                            icon="mingcute:information-line"
+                                            width="16"
+                                            height="16"
+                                        />
+                                        <span className="text-sm font-medium">
+                                            How it works
+                                        </span>
+                                    </div>
+                                    <p className="text-xs text-blue-600 mt-1">
+                                        If a customer orders from multiple
+                                        farmers, each farmer's delivery cost
+                                        will be added separately.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 {/* Section Header */}
-                <div className="mb-4 px-2">
-                    <h2 className="text-xl font-bold text-gray-800">
-                        {selectedCategory} Products
-                    </h2>
-                    <p className="text-gray-600 text-sm">
-                        {filteredProducts.length} products found
-                    </p>
+                <div className="mb-4 px-2 flex items-center justify-between">
+                    <div>
+                        <h2 className="text-xl font-bold text-gray-800">
+                            {selectedCategory} Products
+                        </h2>
+                        <p className="text-gray-600 text-sm">
+                            {filteredProducts.length} products found
+                        </p>
+                    </div>
+                    <button
+                        onClick={() => setShowAddModal(true)}
+                        className="bg-primary text-white px-4 py-2 rounded-lg hover:bg-primary-dark transition-colors flex items-center gap-2"
+                    >
+                        <Icon icon="mingcute:add-line" width="20" height="20" />
+                        Add Product
+                    </button>
                 </div>
 
                 {/* Products Grid */}

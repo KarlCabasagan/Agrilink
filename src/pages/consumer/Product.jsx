@@ -184,14 +184,7 @@ function Product() {
                             <span className="font-semibold">
                                 Quantity (kg):
                             </span>
-                            <div className="flex items-center border rounded-lg">
-                                <button
-                                    onClick={decreaseQuantity}
-                                    className="px-4 py-2 hover:bg-gray-100 rounded-l-lg"
-                                    disabled={quantity <= 0.1}
-                                >
-                                    -
-                                </button>
+                            <div className="flex items-center">
                                 <input
                                     type="number"
                                     value={quantity}
@@ -199,15 +192,8 @@ function Product() {
                                     step="0.1"
                                     min="0.1"
                                     max={product.stock}
-                                    className="px-4 py-2 border-l border-r bg-gray-50 w-20 text-center focus:outline-none focus:bg-white"
+                                    className="px-4 py-2 border border-gray-300 rounded-lg w-24 text-center focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary"
                                 />
-                                <button
-                                    onClick={increaseQuantity}
-                                    className="px-4 py-2 hover:bg-gray-100 rounded-r-lg"
-                                    disabled={quantity >= product.stock}
-                                >
-                                    +
-                                </button>
                             </div>
                             <span className="text-sm text-gray-500">
                                 Max: {product.stock} kg
