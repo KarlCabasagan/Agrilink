@@ -1,0 +1,40 @@
+-- Policy 1: Allow authenticated users to upload to products bucket
+-- Name: "Allow authenticated users to upload product images"
+-- Operation: INSERT
+-- Target roles: authenticated
+-- USING expression: (leave empty)
+-- WITH CHECK expression:
+bucket_id = 'products'
+
+-- Policy 2: Allow authenticated users to upload to avatars bucket
+-- Name: "Allow authenticated users to upload avatar images"  
+-- Operation: INSERT
+-- Target roles: authenticated
+-- USING expression: (leave empty)
+-- WITH CHECK expression:
+bucket_id = 'avatars'
+
+-- Policy 3: Allow public read access to all images
+-- Name: "Allow public read access to all images"
+-- Operation: SELECT
+-- Target roles: public
+-- USING expression:
+bucket_id = 'products' OR bucket_id = 'avatars'
+-- WITH CHECK expression: (leave empty)
+
+-- Policy 4: Allow authenticated users to update their uploads
+-- Name: "Allow users to update their uploads"
+-- Operation: UPDATE
+-- Target roles: authenticated
+-- USING expression:
+(bucket_id = 'products' OR bucket_id = 'avatars')
+-- WITH CHECK expression:
+(bucket_id = 'products' OR bucket_id = 'avatars')
+
+-- Policy 5: Allow authenticated users to delete their uploads
+-- Name: "Allow users to delete their uploads"
+-- Operation: DELETE
+-- Target roles: authenticated
+-- USING expression:
+(bucket_id = 'products' OR bucket_id = 'avatars')
+-- WITH CHECK expression: (leave empty)

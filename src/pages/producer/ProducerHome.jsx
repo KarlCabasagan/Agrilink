@@ -12,6 +12,7 @@ import { AuthContext } from "../../App.jsx";
 import ProducerNavigationBar from "../../components/ProducerNavigationBar";
 import ConfirmModal from "../../components/ConfirmModal";
 import ImageUpload from "../../components/ImageUpload";
+import { deleteImageFromUrl } from "../../utils/imageUpload";
 import supabase from "../../SupabaseClient.jsx";
 
 const categories = [
@@ -219,9 +220,9 @@ const ProductModal = memo(
                                                 productForm.image_url ||
                                                 productForm.imagePreview
                                             }
-                                            onImageChange={(url) =>
-                                                onInputChange("image_url", url)
-                                            }
+                                            onImageChange={(url) => {
+                                                onInputChange("image_url", url);
+                                            }}
                                             userId={productForm.farmer_id}
                                             bucket="products"
                                             type="product"
@@ -337,6 +338,7 @@ function ProducerHome() {
         image: null,
         imagePreview: "",
         cropType: "",
+        farmer_id: user?.id || "",
     });
     const [cropTypeSearch, setCropTypeSearch] = useState("");
     const [showCropDropdown, setShowCropDropdown] = useState(false);
@@ -354,13 +356,23 @@ function ProducerHome() {
     ];
 
     const filteredCrops = availableCrops.filter((crop) =>
-        crop.toLowerCase().includes(cropTypeSearch.toLowerCase())
+        crop.toLowerCase().includes((cropTypeSearch || "").toLowerCase())
     );
 
     // Fetch user's products
     useEffect(() => {
         fetchProducts();
     }, [user]);
+
+    // Update productForm with user ID when user loads
+    useEffect(() => {
+        if (user?.id) {
+            setProductForm((prev) => ({
+                ...prev,
+                farmer_id: user.id,
+            }));
+        }
+    }, [user?.id]);
 
     const fetchProducts = async () => {
         if (!user) return;
@@ -399,6 +411,7 @@ function ProducerHome() {
                     created_at: product.created_at,
                     updated_at: product.updated_at,
                 }));
+                console.log("Formatted products with images:", formattedProducts.map(p => ({ name: p.name, image: p.image, image_url_raw: data.find(d => d.id === p.id)?.image_url })));
                 setProducts(formattedProducts);
             }
         } catch (error) {
@@ -550,7 +563,7 @@ function ProducerHome() {
                 crop_type_id = cropTypeData?.id;
             }
 
-            let image_url = productForm.image_url || selectedProduct.image;
+            let image_url = productForm.image_url || selectedProduct.image_url;
 
             const { data, error } = await supabase
                 .from("products")
@@ -585,7 +598,7 @@ function ProducerHome() {
                     category: data.categories?.name || productForm.category,
                     description: data.description,
                     stock: parseFloat(data.stock),
-                    image: data.image_url || selectedProduct.image,
+                    image: data.image_url || selectedProduct.image_url,
                     cropType: data.crop_types?.name || productForm.cropType,
                     deliveryCost: parseFloat(data.delivery_cost),
                     unit: data.unit,
@@ -612,6 +625,12 @@ function ProducerHome() {
         if (!selectedProduct) return;
 
         try {
+            // First, delete the image from storage if it exists
+            if (selectedProduct.image && !selectedProduct.image.includes('placeholder') && !selectedProduct.image.includes('gray-apple.png')) {
+                await deleteImageFromUrl(selectedProduct.image, 'products');
+            }
+
+            // Then delete the product from database
             const { error } = await supabase
                 .from("products")
                 .delete()
@@ -626,6 +645,7 @@ function ProducerHome() {
                 );
                 setShowDeleteModal(false);
                 setSelectedProduct(null);
+                alert("Product deleted successfully!");
             }
         } catch (error) {
             console.error("Unexpected error:", error);
@@ -657,18 +677,18 @@ function ProducerHome() {
     const handleCropTypeSelect = useCallback((cropType) => {
         setProductForm((prev) => ({
             ...prev,
-            cropType: cropType,
+            cropType: typeof cropType === "string" ? cropType : "",
         }));
-        setCropTypeSearch(cropType);
+        setCropTypeSearch(typeof cropType === "string" ? cropType : "");
         setShowCropDropdown(false);
     }, []);
 
     const handleCropTypeSearch = useCallback((value) => {
-        setCropTypeSearch(value);
+        setCropTypeSearch(typeof value === "string" ? value : "");
         setShowCropDropdown(true);
         setProductForm((prev) => ({
             ...prev,
-            cropType: value,
+            cropType: typeof value === "string" ? value : "",
         }));
     }, []);
 
@@ -681,11 +701,13 @@ function ProducerHome() {
                 category: product.category,
                 description: product.description || "",
                 stock: product.stock?.toString() || "",
-                image_url: product.image || "",
+                image_url: product.image_url || "",
                 cropType: product.cropType || "",
                 farmer_id: user?.id || "",
             });
-            setCropTypeSearch(product.cropType || "");
+            setCropTypeSearch(
+                typeof product.cropType === "string" ? product.cropType : ""
+            );
             setShowEditModal(true);
         },
         [user]
@@ -1025,12 +1047,18 @@ function ProducerHome() {
                                     >
                                         <div className="relative">
                                             <img
-                                                src={product.image}
+                                                src={
+                                                    product.image ||
+                                                    "/assets/gray-apple.png"
+                                                }
                                                 alt={product.name}
                                                 className="w-full h-40 sm:h-48 object-cover"
                                                 loading="lazy"
+                                                onError={(e) => {
+                                                    e.target.src =
+                                                        "/assets/gray-apple.png";
+                                                }}
                                             />
-                                            <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-10 transition-all duration-200"></div>
                                         </div>
 
                                         <div className="p-3">

@@ -4,6 +4,9 @@ import { useParams, useNavigate } from "react-router-dom";
 import { AuthContext } from "../../App.jsx";
 import ProducerNavigationBar from "../../components/ProducerNavigationBar";
 import ConfirmModal from "../../components/ConfirmModal";
+import ImageUpload from "../../components/ImageUpload";
+import { deleteImageFromUrl } from "../../utils/imageUpload";
+import supabase from "../../SupabaseClient.jsx";
 
 const categories = [
     "Vegetables",
@@ -63,7 +66,7 @@ function ProducerProduct() {
 
     // Filter crops based on search term
     const filteredCrops = availableCrops.filter((crop) =>
-        crop.toLowerCase().includes(cropSearchTerm.toLowerCase())
+        crop.toLowerCase().includes((cropSearchTerm || "").toLowerCase())
     );
 
     const [editForm, setEditForm] = useState({
@@ -274,8 +277,11 @@ function ProducerProduct() {
         }
     };
 
-    const handleSave = () => {
-        if (!editForm.name || !editForm.price || !editForm.stock) return;
+    const handleSave = async () => {
+        if (!editForm.name || !editForm.price || !editForm.stock) {
+            alert("Please fill in all required fields.");
+            return;
+        }
 
         // Validate crop type
         if (editForm.cropType && !availableCrops.includes(editForm.cropType)) {
@@ -285,29 +291,104 @@ function ProducerProduct() {
             return;
         }
 
-        const updatedProduct = {
-            ...product,
-            name: editForm.name,
-            price: parseFloat(editForm.price),
-            category: editForm.category,
-            cropType: editForm.cropType,
-            description: editForm.description,
-            stock: parseInt(editForm.stock),
-            image: editForm.imagePreview,
-            updated_at: new Date().toISOString(),
-        };
+        try {
+            // Get category_id if category is selected
+            let category_id = null;
+            if (editForm.category && editForm.category !== "All") {
+                const { data: categoryData } = await supabase
+                    .from("categories")
+                    .select("id")
+                    .eq("name", editForm.category)
+                    .single();
+                category_id = categoryData?.id;
+            }
 
-        setProduct(updatedProduct);
-        setIsEditing(false);
+            // Get crop_type_id
+            let crop_type_id = null;
+            if (editForm.cropType) {
+                const { data: cropTypeData } = await supabase
+                    .from("crop_types")
+                    .select("id")
+                    .eq("name", editForm.cropType)
+                    .single();
+                crop_type_id = cropTypeData?.id;
+            }
 
-        // Here you would typically make an API call to update the product
-        // await updateProduct(product.id, updatedProduct);
+            // Use the current image or uploaded image URL
+            let image_url = editForm.imagePreview || product.image;
+
+            const { data, error } = await supabase
+                .from("products")
+                .update({
+                    name: editForm.name,
+                    price: parseFloat(editForm.price),
+                    category_id: category_id,
+                    crop_type_id: crop_type_id,
+                    description: editForm.description,
+                    stock: parseFloat(editForm.stock),
+                    image_url: image_url,
+                })
+                .eq("id", product.id)
+                .select(`
+                    *,
+                    categories(name),
+                    crop_types(name)
+                `)
+                .single();
+
+            if (error) {
+                console.error("Error updating product:", error);
+                alert("Error updating product. Please try again.");
+            } else {
+                // Update the local product state
+                const updatedProduct = {
+                    ...product,
+                    name: data.name,
+                    price: parseFloat(data.price),
+                    category: data.categories?.name || editForm.category,
+                    description: data.description,
+                    stock: parseFloat(data.stock),
+                    image: data.image_url,
+                    cropType: data.crop_types?.name || editForm.cropType,
+                    updated_at: data.updated_at,
+                };
+
+                setProduct(updatedProduct);
+                setIsEditing(false);
+                alert("Product updated successfully!");
+            }
+        } catch (error) {
+            console.error("Unexpected error:", error);
+            alert("An unexpected error occurred. Please try again.");
+        }
     };
 
-    const handleDelete = () => {
-        // Here you would typically make an API call to delete the product
-        // await deleteProduct(product.id);
-        navigate("/");
+    const handleDelete = async () => {
+        if (!product) return;
+
+        try {
+            // First, delete the image from storage if it exists
+            if (product.image && !product.image.includes('placeholder') && !product.image.includes('gray-apple.png')) {
+                await deleteImageFromUrl(product.image, 'products');
+            }
+
+            // Then delete the product from database
+            const { error } = await supabase
+                .from("products")
+                .delete()
+                .eq("id", product.id);
+
+            if (error) {
+                console.error("Error deleting product:", error);
+                alert("Error deleting product. Please try again.");
+            } else {
+                alert("Product deleted successfully!");
+                navigate("/producer/home");
+            }
+        } catch (error) {
+            console.error("Unexpected error:", error);
+            alert("An unexpected error occurred. Please try again.");
+        }
     };
 
     const handleCancel = () => {

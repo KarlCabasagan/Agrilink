@@ -15,6 +15,11 @@ export const uploadImage = async (file, bucket, userId, oldImageUrl = null) => {
             return { success: false, error: "No file provided" };
         }
 
+        // Validate userId
+        if (!userId) {
+            return { success: false, error: "User ID is required for upload" };
+        }
+
         // Validate file type
         const allowedTypes = [
             "image/jpeg",
@@ -43,9 +48,11 @@ export const uploadImage = async (file, bucket, userId, oldImageUrl = null) => {
             await deleteImageFromUrl(oldImageUrl, bucket);
         }
 
-        // Generate unique filename
+        // Generate unique filename (simplified for RLS compatibility)
         const fileExt = file.name.split(".").pop();
-        const fileName = `${userId}/${Date.now()}.${fileExt}`;
+        const fileName = `${Date.now()}-${Math.random()
+            .toString(36)
+            .substr(2, 9)}.${fileExt}`;
 
         // Upload file
         const { data, error } = await supabase.storage
