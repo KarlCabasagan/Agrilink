@@ -46,11 +46,11 @@ const ProductModal = memo(
         return (
             <>
                 <div
-                    className="fixed inset-0 z-[9999] bg-black bg-opacity-50"
+                    className="fixed inset-0 z-[9999] bg-black opacity-50"
                     onClick={onClose}
                 ></div>
                 <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4">
-                    <div className="bg-white rounded-lg shadow-xl max-w-md w-full max-h-[90vh] overflow-y-auto">
+                    <div className="bg-white rounded-lg shadow-xl w-full max-w-md sm:max-w-lg md:max-w-2xl lg:max-w-3xl xl:max-w-4xl max-h-[90vh] overflow-y-auto">
                         <div className="p-6">
                             <div className="flex justify-between items-center mb-4">
                                 <h3 className="text-lg font-semibold">
@@ -71,26 +71,26 @@ const ProductModal = memo(
                             </div>
 
                             <div className="space-y-4">
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                                        Product Name *
-                                    </label>
-                                    <input
-                                        type="text"
-                                        value={productForm.name}
-                                        onChange={(e) =>
-                                            onInputChange(
-                                                "name",
-                                                e.target.value
-                                            )
-                                        }
-                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-primary focus:border-primary"
-                                        placeholder="Enter product name"
-                                        required
-                                    />
-                                </div>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div className="md:col-span-2">
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                                            Product Name *
+                                        </label>
+                                        <input
+                                            type="text"
+                                            value={productForm.name}
+                                            onChange={(e) =>
+                                                onInputChange(
+                                                    "name",
+                                                    e.target.value
+                                                )
+                                            }
+                                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-primary focus:border-primary"
+                                            placeholder="Enter product name"
+                                            required
+                                        />
+                                    </div>
 
-                                <div className="grid grid-cols-2 gap-4">
                                     <div>
                                         <label className="block text-sm font-medium text-gray-700 mb-1">
                                             Price per kg (₱) *
@@ -131,146 +131,233 @@ const ProductModal = memo(
                                             required
                                         />
                                     </div>
-                                </div>
 
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                                        Minimum Quantity for Delivery (kg) *
-                                    </label>
-                                    <input
-                                        type="number"
-                                        min="0.1"
-                                        step="0.1"
-                                        value={productForm.minimumQuantity}
-                                        onChange={(e) =>
-                                            onInputChange(
-                                                "minimumQuantity",
-                                                e.target.value
-                                            )
-                                        }
-                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-primary focus:border-primary"
-                                        placeholder="1.0"
-                                        required
-                                    />
-                                    <p className="text-xs text-gray-500 mt-1">
-                                        Minimum quantity required for home
-                                        delivery option
-                                    </p>
-                                </div>
-
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                                        Category *
-                                    </label>
-                                    <select
-                                        value={productForm.category}
-                                        onChange={(e) =>
-                                            onInputChange(
-                                                "category",
-                                                e.target.value
-                                            )
-                                        }
-                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-primary focus:border-primary"
-                                        required
-                                    >
-                                        {categories.slice(1).map((cat) => (
-                                            <option
-                                                key={cat.name}
-                                                value={cat.name}
-                                            >
-                                                {cat.name}
-                                            </option>
-                                        ))}
-                                    </select>
-                                </div>
-
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                                        Crop Type *
-                                    </label>
-                                    <div className="relative">
-                                        <input
-                                            type="text"
-                                            value={cropTypeSearch}
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                                            Category *
+                                        </label>
+                                        <select
+                                            value={productForm.category}
                                             onChange={(e) =>
-                                                onCropTypeSearch(e.target.value)
-                                            }
-                                            onFocus={() =>
-                                                setShowCropDropdown(true)
-                                            }
-                                            onBlur={() =>
-                                                setTimeout(
-                                                    () =>
-                                                        setShowCropDropdown(
-                                                            false
-                                                        ),
-                                                    200
+                                                onInputChange(
+                                                    "category",
+                                                    e.target.value
                                                 )
                                             }
                                             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-primary focus:border-primary"
-                                            placeholder="Search for crop type..."
+                                            required
+                                        >
+                                            {categories.slice(1).map((cat) => (
+                                                <option
+                                                    key={cat.name}
+                                                    value={cat.name}
+                                                >
+                                                    {cat.name}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                                            Minimum Quantity for Delivery (kg) *
+                                        </label>
+                                        <input
+                                            type="number"
+                                            min="0.1"
+                                            step="0.1"
+                                            value={productForm.minimumQuantity}
+                                            onChange={(e) =>
+                                                onInputChange(
+                                                    "minimumQuantity",
+                                                    e.target.value
+                                                )
+                                            }
+                                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-primary focus:border-primary"
+                                            placeholder="1.0"
                                             required
                                         />
-                                        {showCropDropdown &&
-                                            filteredCrops.length > 0 && (
-                                                <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-40 overflow-y-auto">
-                                                    {filteredCrops.map(
-                                                        (crop) => (
-                                                            <div
-                                                                key={crop}
-                                                                onClick={() =>
-                                                                    onCropTypeSelect(
-                                                                        crop
-                                                                    )
-                                                                }
-                                                                className="px-3 py-2 hover:bg-gray-100 cursor-pointer"
-                                                            >
-                                                                {crop}
-                                                            </div>
-                                                        )
-                                                    )}
-                                                </div>
-                                            )}
+                                        <p className="text-xs text-gray-500 mt-1">
+                                            Minimum quantity required for home
+                                            delivery option
+                                        </p>
                                     </div>
-                                </div>
 
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                                        Product Image
-                                    </label>
-                                    <input
-                                        type="file"
-                                        accept="image/*"
-                                        onChange={onImageUpload}
-                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-primary focus:border-primary"
-                                    />
-                                    {productForm.imagePreview && (
-                                        <div className="mt-2">
-                                            <img
-                                                src={productForm.imagePreview}
-                                                alt="Preview"
-                                                className="w-full h-32 object-cover rounded-lg"
+                                    <div className="md:col-span-2">
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                                            Crop Type *
+                                        </label>
+                                        <div className="relative">
+                                            <input
+                                                type="text"
+                                                value={cropTypeSearch}
+                                                onChange={(e) =>
+                                                    onCropTypeSearch(
+                                                        e.target.value
+                                                    )
+                                                }
+                                                onFocus={() =>
+                                                    setShowCropDropdown(true)
+                                                }
+                                                onBlur={() =>
+                                                    setTimeout(
+                                                        () =>
+                                                            setShowCropDropdown(
+                                                                false
+                                                            ),
+                                                        200
+                                                    )
+                                                }
+                                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-primary focus:border-primary"
+                                                placeholder="Search for crop type..."
+                                                required
                                             />
+                                            {showCropDropdown &&
+                                                filteredCrops.length > 0 && (
+                                                    <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-40 overflow-y-auto">
+                                                        {filteredCrops.map(
+                                                            (crop) => (
+                                                                <div
+                                                                    key={crop}
+                                                                    onClick={() =>
+                                                                        onCropTypeSelect(
+                                                                            crop
+                                                                        )
+                                                                    }
+                                                                    className="px-3 py-2 hover:bg-gray-100 cursor-pointer"
+                                                                >
+                                                                    {crop}
+                                                                </div>
+                                                            )
+                                                        )}
+                                                    </div>
+                                                )}
                                         </div>
-                                    )}
-                                </div>
+                                    </div>
 
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                                        Description
-                                    </label>
-                                    <textarea
-                                        value={productForm.description}
-                                        onChange={(e) =>
-                                            onInputChange(
-                                                "description",
-                                                e.target.value
-                                            )
-                                        }
-                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-primary focus:border-primary"
-                                        rows="3"
-                                        placeholder="Describe your product..."
-                                    />
+                                    <div className="md:col-span-2">
+                                        <label className="block text-sm font-medium text-gray-700 mb-3">
+                                            Product Image
+                                        </label>
+
+                                        {/* Image Preview Section */}
+                                        {productForm.imagePreview ? (
+                                            <div className="relative mb-4">
+                                                <div className="w-full h-48 bg-gray-100 rounded-lg overflow-hidden border-2 border-dashed border-gray-300">
+                                                    <img
+                                                        src={
+                                                            productForm.imagePreview
+                                                        }
+                                                        alt="Product Preview"
+                                                        className="w-full h-full object-cover rounded-lg"
+                                                    />
+                                                </div>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => {
+                                                        onInputChange(
+                                                            "image",
+                                                            null
+                                                        );
+                                                        onInputChange(
+                                                            "imagePreview",
+                                                            ""
+                                                        );
+                                                    }}
+                                                    className="absolute top-2 right-2 bg-red-500 hover:bg-red-600 text-white rounded-full p-1.5 shadow-md transition-colors"
+                                                >
+                                                    <Icon
+                                                        icon="mingcute:close-line"
+                                                        width="16"
+                                                        height="16"
+                                                    />
+                                                </button>
+                                            </div>
+                                        ) : (
+                                            <div className="w-full h-48 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300 flex flex-col items-center justify-center mb-4">
+                                                <Icon
+                                                    icon="mingcute:image-line"
+                                                    width="48"
+                                                    height="48"
+                                                    className="text-gray-400 mb-2"
+                                                />
+                                                <p className="text-sm text-gray-500 text-center">
+                                                    No image selected
+                                                </p>
+                                                <p className="text-xs text-gray-400 mt-1">
+                                                    Upload an image to see
+                                                    preview
+                                                </p>
+                                            </div>
+                                        )}
+
+                                        {/* Compact File Input */}
+                                        <div className="flex items-center gap-3">
+                                            <label className="flex-1 cursor-pointer">
+                                                <div className="flex items-center justify-center gap-2 px-4 py-2.5 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
+                                                    <Icon
+                                                        icon="mingcute:upload-2-line"
+                                                        width="18"
+                                                        height="18"
+                                                        className="text-gray-600"
+                                                    />
+                                                    <span className="text-sm font-medium text-gray-700">
+                                                        {productForm.imagePreview
+                                                            ? "Change Image"
+                                                            : "Upload Image"}
+                                                    </span>
+                                                </div>
+                                                <input
+                                                    type="file"
+                                                    accept="image/*"
+                                                    onChange={onImageUpload}
+                                                    className="hidden"
+                                                />
+                                            </label>
+
+                                            {productForm.imagePreview && (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => {
+                                                        onInputChange(
+                                                            "image",
+                                                            null
+                                                        );
+                                                        onInputChange(
+                                                            "imagePreview",
+                                                            ""
+                                                        );
+                                                    }}
+                                                    className="px-3 py-2.5 text-sm text-red-600 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors"
+                                                >
+                                                    Remove
+                                                </button>
+                                            )}
+                                        </div>
+
+                                        <p className="text-xs text-gray-500 mt-2">
+                                            Recommended: JPG, PNG or WebP
+                                            format, max 5MB
+                                        </p>
+                                    </div>
+
+                                    <div className="md:col-span-2">
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                                            Description
+                                        </label>
+                                        <textarea
+                                            value={productForm.description}
+                                            onChange={(e) =>
+                                                onInputChange(
+                                                    "description",
+                                                    e.target.value
+                                                )
+                                            }
+                                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-primary focus:border-primary"
+                                            rows="3"
+                                            placeholder="Describe your product..."
+                                        />
+                                    </div>
                                 </div>
                             </div>
 
@@ -350,6 +437,7 @@ function ProducerHome() {
     const [showDeleteModal, setShowDeleteModal] = useState(false);
     const [selectedProduct, setSelectedProduct] = useState(null);
     const [deliveryCost, setDeliveryCost] = useState(50); // Default delivery cost for farmer
+    const [originalDeliveryCost, setOriginalDeliveryCost] = useState(50); // Track original value
     const [productForm, setProductForm] = useState({
         name: "",
         price: "",
@@ -734,8 +822,97 @@ function ProducerHome() {
             </div>
 
             <div className="w-full max-w-6xl mx-4 sm:mx-auto my-16">
-                {/* Search Bar */}
+                {/* Delivery Settings */}
                 <div className="mb-6 mt-4">
+                    <div className="bg-white rounded-lg shadow-md p-6">
+                        <div className="flex items-center justify-between mb-4">
+                            <div className="flex items-center gap-2">
+                                <Icon
+                                    icon="mingcute:truck-line"
+                                    width="24"
+                                    height="24"
+                                    className="text-primary"
+                                />
+                                <h3 className="text-lg font-semibold text-gray-800">
+                                    Delivery Settings
+                                </h3>
+                            </div>
+                        </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">
+                                    Delivery Cost
+                                </label>
+                                <div className="relative">
+                                    <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">
+                                        ₱
+                                    </span>
+                                    <input
+                                        type="number"
+                                        min="0"
+                                        step="0.01"
+                                        value={deliveryCost}
+                                        onChange={(e) =>
+                                            setDeliveryCost(
+                                                parseFloat(e.target.value) || 0
+                                            )
+                                        }
+                                        className="w-full pl-8 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-primary focus:border-primary"
+                                        placeholder="50.00"
+                                    />
+                                </div>
+                                <p className="text-xs text-gray-500 mt-1">
+                                    This applies once per order from your farm
+                                </p>
+                            </div>
+                            <div className="flex items-center">
+                                <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                                    <div className="flex items-center gap-2 text-blue-700">
+                                        <Icon
+                                            icon="mingcute:information-line"
+                                            width="16"
+                                            height="16"
+                                        />
+                                        <span className="text-sm font-medium">
+                                            How it works
+                                        </span>
+                                    </div>
+                                    <p className="text-xs text-blue-600 mt-1">
+                                        If a customer orders from multiple
+                                        farmers, each farmer's delivery cost
+                                        will be added separately.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        {/* Action buttons - only show when there are changes */}
+                        {deliveryCost !== originalDeliveryCost && (
+                            <div className="flex justify-end gap-3 pt-4 border-t border-gray-200">
+                                <button
+                                    onClick={() => setDeliveryCost(originalDeliveryCost)}
+                                    className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    onClick={() => {
+                                        // Here you would typically save to database
+                                        console.log("Delivery cost saved:", deliveryCost);
+                                        setOriginalDeliveryCost(deliveryCost); // Update original value after saving
+                                        alert("Delivery settings saved successfully!");
+                                    }}
+                                    className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors"
+                                >
+                                    Save Settings
+                                </button>
+                            </div>
+                        )}
+                    </div>
+                </div>
+
+                {/* Search Bar */}
+                <div className="mb-6">
                     <div className="relative">
                         <Icon
                             icon="mingcute:search-line"
@@ -789,72 +966,6 @@ function ProducerHome() {
                                 </span>
                             </button>
                         ))}
-                    </div>
-                </div>
-
-                {/* Delivery Settings */}
-                <div className="mb-6">
-                    <div className="bg-white rounded-lg shadow-md p-6">
-                        <div className="flex items-center justify-between mb-4">
-                            <div className="flex items-center gap-2">
-                                <Icon
-                                    icon="mingcute:truck-line"
-                                    width="24"
-                                    height="24"
-                                    className="text-primary"
-                                />
-                                <h3 className="text-lg font-semibold text-gray-800">
-                                    Delivery Settings
-                                </h3>
-                            </div>
-                        </div>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">
-                                    Delivery Cost
-                                </label>
-                                <div className="relative">
-                                    <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">
-                                        ₱
-                                    </span>
-                                    <input
-                                        type="number"
-                                        min="0"
-                                        step="0.01"
-                                        value={deliveryCost}
-                                        onChange={(e) =>
-                                            setDeliveryCost(
-                                                parseFloat(e.target.value) || 0
-                                            )
-                                        }
-                                        className="w-full pl-8 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-primary focus:border-primary"
-                                        placeholder="50.00"
-                                    />
-                                </div>
-                                <p className="text-xs text-gray-500 mt-1">
-                                    This applies once per order from your farm
-                                </p>
-                            </div>
-                            <div className="flex items-center">
-                                <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-                                    <div className="flex items-center gap-2 text-blue-700">
-                                        <Icon
-                                            icon="mingcute:information-line"
-                                            width="16"
-                                            height="16"
-                                        />
-                                        <span className="text-sm font-medium">
-                                            How it works
-                                        </span>
-                                    </div>
-                                    <p className="text-xs text-blue-600 mt-1">
-                                        If a customer orders from multiple
-                                        farmers, each farmer's delivery cost
-                                        will be added separately.
-                                    </p>
-                                </div>
-                            </div>
-                        </div>
                     </div>
                 </div>
 
