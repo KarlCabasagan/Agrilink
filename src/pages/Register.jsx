@@ -56,21 +56,15 @@ function Register() {
             }
             const userId = data.user?.id;
             if (userId) {
-                const { error: insertError } = await supabase
+                // Update the profile with the user's name (profile is created automatically by trigger)
+                const { error: updateError } = await supabase
                     .from("profiles")
-                    .insert([
-                        {
-                            id: userId,
-                            user_id: userId,
-                            email: email,
-                            name: name,
-                        },
-                    ]);
-                if (insertError) {
-                    setError("User registered, but failed to save profile.");
-                    setLoading(false);
-                    console.log(insertError);
-                    return;
+                    .update({ name: name })
+                    .eq("id", userId);
+
+                if (updateError) {
+                    console.log("Profile update error:", updateError);
+                    // Don't fail registration if profile update fails
                 }
             }
             setUser(data.user || null);

@@ -41,7 +41,7 @@ function VerifyAccount() {
         <div className="min-h-screen w-full flex flex-col relative items-center scrollbar-hide bg-background overflow-x-hidden text-text">
             {/* Header */}
             <div className="fixed top-0 left-0 w-full bg-white shadow-md z-50 px-4 py-3 flex justify-between items-center">
-                <Link to="/login" className="text-gray-600 hover:text-primary">
+                <Link to="/" className="text-gray-600 hover:text-primary">
                     <Icon icon="mingcute:left-line" width="24" height="24" />
                 </Link>
                 <h1 className="text-lg font-semibold">Email Verification</h1>

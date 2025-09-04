@@ -1,9 +1,10 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useContext } from "react";
 import { Icon } from "@iconify/react";
 import { Link } from "react-router-dom";
 import NavigationBar from "../../components/NavigationBar";
 import ConsumerSearch from "../../components/ConsumerSearch.jsx";
-import { products } from "../../data/products.js";
+import supabase from "../../SupabaseClient.jsx";
+import { AuthContext } from "../../App.jsx";
 
 const categories = [
     { name: "All", icon: "mdi:apps-box" },
