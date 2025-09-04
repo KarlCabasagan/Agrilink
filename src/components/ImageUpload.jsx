@@ -1,4 +1,4 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { Icon } from "@iconify/react";
 import {
     uploadImage,
@@ -19,6 +19,11 @@ const ImageUpload = ({
     const [previewUrl, setPreviewUrl] = useState(currentImage || "");
     const [error, setError] = useState("");
     const fileInputRef = useRef(null);
+
+    // Update preview when currentImage prop changes
+    useEffect(() => {
+        setPreviewUrl(currentImage || "");
+    }, [currentImage]);
 
     const handleFileSelect = async (event) => {
         const file = event.target.files[0];

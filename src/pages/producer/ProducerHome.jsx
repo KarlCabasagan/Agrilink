@@ -12,7 +12,7 @@ import { AuthContext } from "../../App.jsx";
 import ProducerNavigationBar from "../../components/ProducerNavigationBar";
 import ConfirmModal from "../../components/ConfirmModal";
 import ImageUpload from "../../components/ImageUpload";
-import { deleteImageFromUrl } from "../../utils/imageUpload";
+import { deleteImageFromUrl, uploadImage } from "../../utils/imageUpload";
 import supabase from "../../SupabaseClient.jsx";
 
 const categories = [
@@ -41,6 +41,7 @@ const ProductModal = memo(
         onCropTypeSelect,
         onSubmit,
         categories,
+        isSubmitting = false,
     }) => {
         if (!isOpen) return null;
 
@@ -71,6 +72,216 @@ const ProductModal = memo(
                                 </button>
                             </div>
 
+                            {/* Image Section - Top, Full Width */}
+                            <div className="mb-6">
+                                <div className="relative group">
+                                    {productForm.imagePreview ||
+                                    productForm.image_url ? (
+                                        <div className="relative">
+                                            <img
+                                                src={
+                                                    productForm.imagePreview ||
+                                                    productForm.image_url
+                                                }
+                                                alt="Product preview"
+                                                className="w-full h-64 object-cover rounded-lg bg-gray-100"
+                                            />
+                                            {/* Camera Icon - Bottom Right */}
+                                            <div className="absolute bottom-3 right-3 flex gap-2">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => {
+                                                        onInputChange(
+                                                            "imageFile",
+                                                            null
+                                                        );
+                                                        onInputChange(
+                                                            "imagePreview",
+                                                            ""
+                                                        );
+                                                        if (isEdit) {
+                                                            onInputChange(
+                                                                "image_url",
+                                                                ""
+                                                            );
+                                                        }
+                                                    }}
+                                                    className="bg-red-500 hover:bg-red-600 text-white rounded-full p-2 shadow-lg transition-colors"
+                                                >
+                                                    <Icon
+                                                        icon="mingcute:delete-line"
+                                                        width="18"
+                                                        height="18"
+                                                    />
+                                                </button>
+                                                <label className="bg-primary hover:bg-primary-dark text-white rounded-full p-2 shadow-lg transition-colors cursor-pointer">
+                                                    <Icon
+                                                        icon="mingcute:camera-line"
+                                                        width="18"
+                                                        height="18"
+                                                    />
+                                                    <input
+                                                        type="file"
+                                                        className="hidden"
+                                                        accept="image/*"
+                                                        onChange={(e) => {
+                                                            const file =
+                                                                e.target
+                                                                    .files[0];
+                                                            if (file) {
+                                                                // Validate file type
+                                                                const allowedTypes =
+                                                                    [
+                                                                        "image/jpeg",
+                                                                        "image/jpg",
+                                                                        "image/png",
+                                                                        "image/webp",
+                                                                    ];
+                                                                if (
+                                                                    !allowedTypes.includes(
+                                                                        file.type
+                                                                    )
+                                                                ) {
+                                                                    alert(
+                                                                        "Invalid file type. Please select a JPEG, PNG, or WebP image."
+                                                                    );
+                                                                    return;
+                                                                }
+
+                                                                // Validate file size (5MB)
+                                                                if (
+                                                                    file.size >
+                                                                    5 *
+                                                                        1024 *
+                                                                        1024
+                                                                ) {
+                                                                    alert(
+                                                                        "File size too large. Maximum size is 5MB."
+                                                                    );
+                                                                    return;
+                                                                }
+
+                                                                // Create preview
+                                                                const reader =
+                                                                    new FileReader();
+                                                                reader.onload =
+                                                                    (e) => {
+                                                                        onInputChange(
+                                                                            "imagePreview",
+                                                                            e
+                                                                                .target
+                                                                                .result
+                                                                        );
+                                                                    };
+                                                                reader.readAsDataURL(
+                                                                    file
+                                                                );
+                                                                onInputChange(
+                                                                    "imageFile",
+                                                                    file
+                                                                );
+                                                            }
+                                                        }}
+                                                    />
+                                                </label>
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <div className="relative bg-gray-100 border-2 border-dashed border-gray-300 rounded-lg h-64 hover:border-primary hover:bg-gray-50 transition-colors cursor-pointer">
+                                            <label className="absolute inset-0 flex items-center justify-center cursor-pointer">
+                                                <div className="text-center">
+                                                    <div className="mx-auto w-16 h-16 bg-white rounded-full flex items-center justify-center shadow-sm mb-4">
+                                                        <Icon
+                                                            icon="mingcute:camera-line"
+                                                            width="24"
+                                                            height="24"
+                                                            className="text-primary"
+                                                        />
+                                                    </div>
+                                                    <p className="text-gray-700 font-medium mb-1">
+                                                        Add Product Image
+                                                    </p>
+                                                    <p className="text-sm text-gray-500">
+                                                        Click anywhere to select
+                                                        an image
+                                                    </p>
+                                                </div>
+                                                <input
+                                                    type="file"
+                                                    className="hidden"
+                                                    accept="image/*"
+                                                    onChange={(e) => {
+                                                        const file =
+                                                            e.target.files[0];
+                                                        if (file) {
+                                                            // Validate file type
+                                                            const allowedTypes =
+                                                                [
+                                                                    "image/jpeg",
+                                                                    "image/jpg",
+                                                                    "image/png",
+                                                                    "image/webp",
+                                                                ];
+                                                            if (
+                                                                !allowedTypes.includes(
+                                                                    file.type
+                                                                )
+                                                            ) {
+                                                                alert(
+                                                                    "Invalid file type. Please select a JPEG, PNG, or WebP image."
+                                                                );
+                                                                return;
+                                                            }
+
+                                                            // Validate file size (5MB)
+                                                            if (
+                                                                file.size >
+                                                                5 * 1024 * 1024
+                                                            ) {
+                                                                alert(
+                                                                    "File size too large. Maximum size is 5MB."
+                                                                );
+                                                                return;
+                                                            }
+
+                                                            // Create preview
+                                                            const reader =
+                                                                new FileReader();
+                                                            reader.onload = (
+                                                                e
+                                                            ) => {
+                                                                onInputChange(
+                                                                    "imagePreview",
+                                                                    e.target
+                                                                        .result
+                                                                );
+                                                            };
+                                                            reader.readAsDataURL(
+                                                                file
+                                                            );
+                                                            onInputChange(
+                                                                "imageFile",
+                                                                file
+                                                            );
+                                                        }
+                                                    }}
+                                                />
+                                            </label>
+                                        </div>
+                                    )}
+                                </div>
+                                <div className="mt-2 text-center">
+                                    <p className="text-xs text-gray-500">
+                                        {productForm.imageFile
+                                            ? "New image selected • PNG, JPG, or WebP (Max 5MB)"
+                                            : productForm.image_url
+                                            ? "Current product image"
+                                            : "PNG, JPG, or WebP (Max 5MB)"}
+                                    </p>
+                                </div>
+                            </div>
+
+                            {/* Product Information */}
                             <div className="space-y-4">
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <div className="md:col-span-2">
@@ -212,24 +423,6 @@ const ProductModal = memo(
                                     </div>
 
                                     <div className="md:col-span-2">
-                                        <label className="block text-sm font-medium text-gray-700 mb-3">
-                                            Product Image
-                                        </label>
-                                        <ImageUpload
-                                            currentImage={
-                                                productForm.image_url ||
-                                                productForm.imagePreview
-                                            }
-                                            onImageChange={(url) => {
-                                                onInputChange("image_url", url);
-                                            }}
-                                            userId={productForm.farmer_id}
-                                            bucket="products"
-                                            type="product"
-                                        />
-                                    </div>
-
-                                    <div className="md:col-span-2">
                                         <label className="block text-sm font-medium text-gray-700 mb-1">
                                             Description
                                         </label>
@@ -252,7 +445,8 @@ const ProductModal = memo(
                             <div className="flex gap-3 mt-6">
                                 <button
                                     onClick={onClose}
-                                    className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+                                    disabled={isSubmitting}
+                                    className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                                 >
                                     Cancel
                                 </button>
@@ -261,11 +455,21 @@ const ProductModal = memo(
                                     disabled={
                                         !productForm.name ||
                                         !productForm.price ||
-                                        !productForm.stock
+                                        !productForm.stock ||
+                                        isSubmitting
                                     }
-                                    className="flex-1 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed"
+                                    className="flex-1 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                                 >
-                                    {isEdit ? "Update" : "Add"} Product
+                                    {isSubmitting ? (
+                                        <>
+                                            <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                                            {isEdit
+                                                ? "Updating..."
+                                                : "Adding..."}
+                                        </>
+                                    ) : (
+                                        <>{isEdit ? "Update" : "Add"} Product</>
+                                    )}
                                 </button>
                             </div>
                         </div>
@@ -282,60 +486,29 @@ function ProducerHome() {
     const { user } = useContext(AuthContext);
     const [selectedCategory, setSelectedCategory] = useState("All");
     const [search, setSearch] = useState("");
-    const [products, setProducts] = useState([
-        // Sample product for demonstration
-        {
-            id: 1,
-            name: "Fresh Organic Tomatoes",
-            price: 45.0,
-            category: "Vegetables",
-            description:
-                "Locally grown organic tomatoes, perfect for cooking and salads",
-            stock: 50,
-            image: "https://images.unsplash.com/photo-1546470427-e70c6b9a5e9c?w=400&h=300&fit=crop",
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
-        },
-        {
-            id: 2,
-            name: "Premium Rice",
-            price: 55.0,
-            category: "Grains",
-            description: "High-quality jasmine rice from local farms",
-            stock: 100,
-            image: "https://images.unsplash.com/photo-1586201375761-83865001e31c?w=400&h=300&fit=crop",
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
-        },
-        {
-            id: 3,
-            name: "Sweet Mangoes",
-            price: 80.0,
-            category: "Fruits",
-            description: "Sweet and juicy mangoes, perfectly ripe",
-            stock: 25,
-            image: "https://images.unsplash.com/photo-1605027990121-cbae9d0541ba?w=400&h=300&fit=crop",
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
-        },
-    ]);
+    const [products, setProducts] = useState([]);
     const [loading, setLoading] = useState(false);
     const [showAddModal, setShowAddModal] = useState(false);
     const [showEditModal, setShowEditModal] = useState(false);
     const [showDeleteModal, setShowDeleteModal] = useState(false);
     const [selectedProduct, setSelectedProduct] = useState(null);
+    const [isSubmitting, setIsSubmitting] = useState(false);
     const [deliveryCost, setDeliveryCost] = useState(50); // Default delivery cost for farmer
     const [originalDeliveryCost, setOriginalDeliveryCost] = useState(50); // Track original value
     const [minimumOrderQuantity, setMinimumOrderQuantity] = useState(2.0); // Default minimum order quantity
     const [originalMinimumOrderQuantity, setOriginalMinimumOrderQuantity] =
         useState(2.0); // Track original value
+    const [isDeliverySettingsExpanded, setIsDeliverySettingsExpanded] =
+        useState(false);
+    const [isHowItWorksExpanded, setIsHowItWorksExpanded] = useState(false);
     const [productForm, setProductForm] = useState({
         name: "",
         price: "",
         category: "Vegetables",
         description: "",
         stock: "",
-        image: null,
+        image_url: "",
+        imageFile: null,
         imagePreview: "",
         cropType: "",
         farmer_id: user?.id || "",
@@ -404,6 +577,7 @@ function ProducerHome() {
                     image:
                         product.image_url ||
                         "https://via.placeholder.com/300x200?text=No+Image",
+                    image_url: product.image_url, // Keep the original field for delete function
                     cropType: product.crop_type_id,
                     deliveryCost: parseFloat(product.delivery_cost) || 50,
                     unit: product.unit || "kg",
@@ -411,7 +585,15 @@ function ProducerHome() {
                     created_at: product.created_at,
                     updated_at: product.updated_at,
                 }));
-                console.log("Formatted products with images:", formattedProducts.map(p => ({ name: p.name, image: p.image, image_url_raw: data.find(d => d.id === p.id)?.image_url })));
+                console.log(
+                    "Formatted products with images:",
+                    formattedProducts.map((p) => ({
+                        name: p.name,
+                        image: p.image,
+                        image_url_raw: data.find((d) => d.id === p.id)
+                            ?.image_url,
+                    }))
+                );
                 setProducts(formattedProducts);
             }
         } catch (error) {
@@ -448,6 +630,8 @@ function ProducerHome() {
             return;
         }
 
+        setIsSubmitting(true);
+
         try {
             // Get category_id if category is selected
             let category_id = null;
@@ -471,8 +655,21 @@ function ProducerHome() {
                 crop_type_id = cropTypeData?.id;
             }
 
-            // Use the uploaded image URL
-            let image_url = productForm.image_url || null;
+            // Upload image if provided
+            let image_url = null;
+            if (productForm.imageFile) {
+                const uploadResult = await uploadImage(
+                    productForm.imageFile,
+                    "products",
+                    user.id
+                );
+                if (uploadResult.success) {
+                    image_url = uploadResult.url;
+                } else {
+                    alert(`Image upload failed: ${uploadResult.error}`);
+                    return;
+                }
+            }
 
             const { data, error } = await supabase
                 .from("products")
@@ -528,6 +725,8 @@ function ProducerHome() {
         } catch (error) {
             console.error("Unexpected error:", error);
             alert("Unexpected error occurred. Please try again.");
+        } finally {
+            setIsSubmitting(false);
         }
     }, [productForm, availableCrops, deliveryCost, user]);
 
@@ -539,6 +738,8 @@ function ProducerHome() {
             !productForm.stock
         )
             return;
+
+        setIsSubmitting(true);
 
         try {
             // Get category_id if category is selected
@@ -563,7 +764,32 @@ function ProducerHome() {
                 crop_type_id = cropTypeData?.id;
             }
 
-            let image_url = productForm.image_url || selectedProduct.image_url;
+            // Handle image upload and deletion
+            let image_url = selectedProduct.image_url; // Keep existing image by default
+
+            // Check if user deleted the image (both imagePreview and image_url are empty/cleared)
+            const userDeletedImage =
+                !productForm.imagePreview && !productForm.image_url;
+
+            if (userDeletedImage && selectedProduct.image_url) {
+                // User deleted the image, delete from storage
+                await deleteImageFromUrl(selectedProduct.image_url, "products");
+                image_url = null;
+            } else if (productForm.imageFile) {
+                // If new image selected, upload it
+                const uploadResult = await uploadImage(
+                    productForm.imageFile,
+                    "products",
+                    user.id,
+                    selectedProduct.image_url // Pass old image URL for deletion
+                );
+                if (uploadResult.success) {
+                    image_url = uploadResult.url;
+                } else {
+                    alert(`Image upload failed: ${uploadResult.error}`);
+                    return;
+                }
+            }
 
             const { data, error } = await supabase
                 .from("products")
@@ -598,7 +824,8 @@ function ProducerHome() {
                     category: data.categories?.name || productForm.category,
                     description: data.description,
                     stock: parseFloat(data.stock),
-                    image: data.image_url || selectedProduct.image_url,
+                    image: data.image_url || "/assets/gray-apple.png",
+                    image_url: data.image_url, // Keep for future edit operations
                     cropType: data.crop_types?.name || productForm.cropType,
                     deliveryCost: parseFloat(data.delivery_cost),
                     unit: data.unit,
@@ -618,16 +845,22 @@ function ProducerHome() {
         } catch (error) {
             console.error("Unexpected error:", error);
             alert("Unexpected error occurred. Please try again.");
+        } finally {
+            setIsSubmitting(false);
         }
-    }, [selectedProduct, productForm, deliveryCost]);
+    }, [selectedProduct, productForm, deliveryCost, user]);
 
     const handleDeleteProduct = async () => {
         if (!selectedProduct) return;
 
         try {
             // First, delete the image from storage if it exists
-            if (selectedProduct.image && !selectedProduct.image.includes('placeholder') && !selectedProduct.image.includes('gray-apple.png')) {
-                await deleteImageFromUrl(selectedProduct.image, 'products');
+            if (
+                selectedProduct.image_url &&
+                !selectedProduct.image_url.includes("placeholder") &&
+                !selectedProduct.image_url.includes("gray-apple.png")
+            ) {
+                await deleteImageFromUrl(selectedProduct.image_url, "products");
             }
 
             // Then delete the product from database
@@ -645,7 +878,6 @@ function ProducerHome() {
                 );
                 setShowDeleteModal(false);
                 setSelectedProduct(null);
-                alert("Product deleted successfully!");
             }
         } catch (error) {
             console.error("Unexpected error:", error);
@@ -661,6 +893,8 @@ function ProducerHome() {
             description: "",
             stock: "",
             image_url: "",
+            imageFile: null,
+            imagePreview: "",
             cropType: "",
             farmer_id: user?.id || "",
         });
@@ -702,6 +936,8 @@ function ProducerHome() {
                 description: product.description || "",
                 stock: product.stock?.toString() || "",
                 image_url: product.image_url || "",
+                imageFile: null,
+                imagePreview: "",
                 cropType: product.cropType || "",
                 farmer_id: user?.id || "",
             });
@@ -746,6 +982,7 @@ function ProducerHome() {
                 onCropTypeSelect={handleCropTypeSelect}
                 onSubmit={handleAddProduct}
                 categories={categories}
+                isSubmitting={isSubmitting}
             />
             <ProductModal
                 isOpen={showEditModal}
@@ -761,9 +998,10 @@ function ProducerHome() {
                 onCropTypeSelect={handleCropTypeSelect}
                 onSubmit={handleEditProduct}
                 categories={categories}
+                isSubmitting={isSubmitting}
             />
             <ConfirmModal
-                isOpen={showDeleteModal}
+                open={showDeleteModal}
                 onClose={() => setShowDeleteModal(false)}
                 onConfirm={handleDeleteProduct}
                 title="Delete Product"
@@ -777,150 +1015,218 @@ function ProducerHome() {
                 <h1 className="text-lg font-semibold text-primary">
                     My Products
                 </h1>
-                <button
+                {/* <button
                     onClick={() => setShowAddModal(true)}
                     className="bg-primary text-white px-4 py-2 rounded-lg hover:bg-primary-dark transition-colors flex items-center gap-2"
                 >
                     <Icon icon="mingcute:add-line" width="20" height="20" />
                     Add Product
-                </button>
+                </button> */}
             </div>
 
             <div className="w-full max-w-6xl mx-4 sm:mx-auto my-16">
                 {/* Delivery Settings */}
                 <div className="mb-6 mt-4">
-                    <div className="bg-white rounded-lg shadow-md p-6">
-                        <div className="flex items-center justify-between mb-4">
-                            <div className="flex items-center gap-2">
-                                <Icon
-                                    icon="mingcute:truck-line"
-                                    width="24"
-                                    height="24"
-                                    className="text-primary"
-                                />
-                                <h3 className="text-lg font-semibold text-gray-800">
-                                    Delivery Settings
-                                </h3>
-                            </div>
-                        </div>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">
-                                    Delivery Cost
-                                </label>
-                                <div className="relative">
-                                    <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">
-                                        ₱
-                                    </span>
-                                    <input
-                                        type="number"
-                                        min="0"
-                                        step="0.01"
-                                        value={deliveryCost}
-                                        onChange={(e) =>
-                                            setDeliveryCost(
-                                                parseFloat(e.target.value) || 0
-                                            )
-                                        }
-                                        className="w-full pl-8 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-primary focus:border-primary"
-                                        placeholder="50.00"
-                                    />
-                                </div>
-                                <p className="text-xs text-gray-500 mt-1">
-                                    This applies once per order from your farm
-                                </p>
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">
-                                    Minimum Order Quantity (kg)
-                                </label>
-                                <input
-                                    type="number"
-                                    min="0.1"
-                                    step="0.1"
-                                    value={minimumOrderQuantity}
-                                    onChange={(e) =>
-                                        setMinimumOrderQuantity(
-                                            parseFloat(e.target.value) || 1.0
-                                        )
-                                    }
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-primary focus:border-primary"
-                                    placeholder="2.0"
-                                />
-                                <p className="text-xs text-gray-500 mt-1">
-                                    Total quantity required for home delivery
-                                </p>
-                            </div>
-                        </div>
-
-                        <div className="mb-4">
-                            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-                                <div className="flex items-center gap-2 text-blue-700">
+                    <div className="bg-white rounded-lg shadow-md">
+                        {/* Header - Always visible */}
+                        <div
+                            className="p-6 cursor-pointer hover:bg-gray-50 transition-colors"
+                            onClick={() =>
+                                setIsDeliverySettingsExpanded(
+                                    !isDeliverySettingsExpanded
+                                )
+                            }
+                        >
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-2">
                                     <Icon
-                                        icon="mingcute:information-line"
-                                        width="16"
-                                        height="16"
+                                        icon="mingcute:truck-line"
+                                        width="24"
+                                        height="24"
+                                        className="text-primary"
                                     />
-                                    <span className="text-sm font-medium">
-                                        How it works
-                                    </span>
+                                    <h3 className="text-lg font-semibold text-gray-800">
+                                        Delivery Settings
+                                    </h3>
                                 </div>
-                                <div className="text-xs text-blue-600 mt-1 space-y-1">
-                                    <p>
-                                        • Delivery cost is charged once per
-                                        order from your farm
-                                    </p>
-                                    <p>
-                                        • Customers must order at least{" "}
-                                        {minimumOrderQuantity}kg total from your
-                                        farm for delivery
-                                    </p>
-                                    <p>
-                                        • Multiple products can be combined to
-                                        meet the minimum quantity
-                                    </p>
-                                </div>
+                                <Icon
+                                    icon={
+                                        isDeliverySettingsExpanded
+                                            ? "mingcute:up-line"
+                                            : "mingcute:down-line"
+                                    }
+                                    width="20"
+                                    height="20"
+                                    className="text-gray-500 transition-transform"
+                                />
                             </div>
                         </div>
 
-                        {/* Action buttons - only show when there are changes */}
-                        {(deliveryCost !== originalDeliveryCost ||
-                            minimumOrderQuantity !==
-                                originalMinimumOrderQuantity) && (
-                            <div className="flex justify-end gap-3 pt-4 border-t border-gray-200">
-                                <button
-                                    onClick={() => {
-                                        setDeliveryCost(originalDeliveryCost);
-                                        setMinimumOrderQuantity(
-                                            originalMinimumOrderQuantity
-                                        );
-                                    }}
-                                    className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
-                                >
-                                    Cancel
-                                </button>
-                                <button
-                                    onClick={() => {
-                                        // Here you would typically save to database
-                                        console.log(
-                                            "Delivery settings saved:",
-                                            {
-                                                deliveryCost,
-                                                minimumOrderQuantity,
+                        {/* Expandable Content */}
+                        {isDeliverySettingsExpanded && (
+                            <div className="px-6 pb-6 pt-0">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                                            Delivery Cost
+                                        </label>
+                                        <div className="relative">
+                                            <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">
+                                                ₱
+                                            </span>
+                                            <input
+                                                type="number"
+                                                min="0"
+                                                step="0.01"
+                                                value={deliveryCost}
+                                                onChange={(e) =>
+                                                    setDeliveryCost(
+                                                        parseFloat(
+                                                            e.target.value
+                                                        ) || 0
+                                                    )
+                                                }
+                                                className="w-full pl-8 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-primary focus:border-primary"
+                                                placeholder="50.00"
+                                            />
+                                        </div>
+                                        <p className="text-xs text-gray-500 mt-1">
+                                            This applies once per order from
+                                            your farm
+                                        </p>
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                                            Minimum Order Quantity (kg)
+                                        </label>
+                                        <input
+                                            type="number"
+                                            min="0.1"
+                                            step="0.1"
+                                            value={minimumOrderQuantity}
+                                            onChange={(e) =>
+                                                setMinimumOrderQuantity(
+                                                    parseFloat(
+                                                        e.target.value
+                                                    ) || 1.0
+                                                )
                                             }
-                                        );
-                                        setOriginalDeliveryCost(deliveryCost); // Update original value after saving
-                                        setOriginalMinimumOrderQuantity(
-                                            minimumOrderQuantity
-                                        );
-                                        alert(
-                                            "Delivery settings saved successfully!"
-                                        );
-                                    }}
-                                    className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors"
-                                >
-                                    Save Settings
-                                </button>
+                                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-primary focus:border-primary"
+                                            placeholder="2.0"
+                                        />
+                                        <p className="text-xs text-gray-500 mt-1">
+                                            Total quantity required for home
+                                            delivery
+                                        </p>
+                                    </div>
+                                </div>
+
+                                <div className="mb-4">
+                                    <div className="bg-blue-50 border border-blue-200 rounded-lg">
+                                        {/* How it works header */}
+                                        <div
+                                            className="p-3 cursor-pointer hover:bg-blue-100 transition-colors"
+                                            onClick={() =>
+                                                setIsHowItWorksExpanded(
+                                                    !isHowItWorksExpanded
+                                                )
+                                            }
+                                        >
+                                            <div className="flex items-center justify-between">
+                                                <div className="flex items-center gap-2 text-blue-700">
+                                                    <Icon
+                                                        icon="mingcute:information-line"
+                                                        width="16"
+                                                        height="16"
+                                                    />
+                                                    <span className="text-sm font-medium">
+                                                        How it works
+                                                    </span>
+                                                </div>
+                                                <Icon
+                                                    icon={
+                                                        isHowItWorksExpanded
+                                                            ? "mingcute:up-line"
+                                                            : "mingcute:down-line"
+                                                    }
+                                                    width="16"
+                                                    height="16"
+                                                    className="text-blue-700 transition-transform"
+                                                />
+                                            </div>
+                                        </div>
+
+                                        {/* How it works content */}
+                                        {isHowItWorksExpanded && (
+                                            <div className="px-3 pb-3">
+                                                <div className="text-xs text-blue-600 space-y-1">
+                                                    <p>
+                                                        • Delivery cost is
+                                                        charged once per order
+                                                        from your farm
+                                                    </p>
+                                                    <p>
+                                                        • Customers must order
+                                                        at least{" "}
+                                                        {minimumOrderQuantity}kg
+                                                        total from your farm for
+                                                        delivery
+                                                    </p>
+                                                    <p>
+                                                        • Multiple products can
+                                                        be combined to meet the
+                                                        minimum quantity
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+
+                                {/* Action buttons - only show when there are changes */}
+                                {(deliveryCost !== originalDeliveryCost ||
+                                    minimumOrderQuantity !==
+                                        originalMinimumOrderQuantity) && (
+                                    <div className="flex justify-end gap-3 pt-4 border-t border-gray-200">
+                                        <button
+                                            onClick={() => {
+                                                setDeliveryCost(
+                                                    originalDeliveryCost
+                                                );
+                                                setMinimumOrderQuantity(
+                                                    originalMinimumOrderQuantity
+                                                );
+                                            }}
+                                            className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+                                        >
+                                            Cancel
+                                        </button>
+                                        <button
+                                            onClick={() => {
+                                                // Here you would typically save to database
+                                                console.log(
+                                                    "Delivery settings saved:",
+                                                    {
+                                                        deliveryCost,
+                                                        minimumOrderQuantity,
+                                                    }
+                                                );
+                                                setOriginalDeliveryCost(
+                                                    deliveryCost
+                                                ); // Update original value after saving
+                                                setOriginalMinimumOrderQuantity(
+                                                    minimumOrderQuantity
+                                                );
+                                                alert(
+                                                    "Delivery settings saved successfully!"
+                                                );
+                                            }}
+                                            className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors"
+                                        >
+                                            Save Settings
+                                        </button>
+                                    </div>
+                                )}
                             </div>
                         )}
                     </div>
@@ -1022,18 +1328,22 @@ function ProducerHome() {
                                     No products found
                                 </p>
                                 <p className="text-gray-400 text-sm mb-4">
-                                    {selectedCategory === "All"
+                                    {selectedCategory === "All" &&
+                                    products.length === 0
                                         ? "Start by adding your first product"
                                         : "Try adjusting your search or filters"}
                                 </p>
-                                {selectedCategory === "All" && (
-                                    <button
-                                        onClick={() => setShowAddModal(true)}
-                                        className="bg-primary text-white px-6 py-2 rounded-lg hover:bg-primary-dark transition-colors"
-                                    >
-                                        Add Product
-                                    </button>
-                                )}
+                                {selectedCategory === "All" &&
+                                    products.length === 0 && (
+                                        <button
+                                            onClick={() =>
+                                                setShowAddModal(true)
+                                            }
+                                            className="bg-primary text-white px-6 py-2 rounded-lg hover:bg-primary-dark transition-colors"
+                                        >
+                                            Add Product
+                                        </button>
+                                    )}
                             </div>
                         ) : (
                             filteredProducts.map((product) => (
