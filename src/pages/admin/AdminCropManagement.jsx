@@ -660,8 +660,8 @@ function AdminCropManagement() {
             {/* Add/Edit Modal */}
             {(showAddModal || showEditModal) && (
                 <>
-                    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black opacity-50"></div>
-                    <div className="bg-white rounded-lg shadow-xl p-6 max-w-4xl w-full max-h-[80vh] overflow-y-auto fixed top-1/12 left-1/2 transform -translate-x-1/2 -translate-y-1 z-50">
+                    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black opacity-50"></div>
+                    <div className="bg-white rounded-lg shadow-xl p-6 max-w-4xl w-full max-h-[80vh] overflow-y-auto fixed top-1/12 left-1/2 transform -translate-x-1/2 -translate-y-1 z-[10000]">
                         <div className="flex items-center justify-between mb-6">
                             <h2 className="text-xl font-semibold text-gray-800">
                                 {showAddModal ? "Add New Crop" : "Edit Crop"}
@@ -948,8 +948,8 @@ function AdminCropManagement() {
             {/* Add/Edit Guide Modal */}
             {(showAddGuideModal || showEditGuideModal) && (
                 <>
-                    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black opacity-50"></div>
-                    <div className="bg-white rounded-lg shadow-xl p-6 max-w-2xl w-full max-h-[80vh] overflow-y-auto fixed top-1/12 left-1/2 transform -translate-x-1/2 -translate-y-1 z-50">
+                    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black opacity-50"></div>
+                    <div className="bg-white rounded-lg shadow-xl p-6 max-w-2xl w-full max-h-[80vh] overflow-y-auto fixed top-1/12 left-1/2 transform -translate-x-1/2 -translate-y-1 z-[10000]">
                         <div className="flex items-center justify-between mb-6">
                             <h2 className="text-xl font-semibold text-gray-800">
                                 {showAddGuideModal

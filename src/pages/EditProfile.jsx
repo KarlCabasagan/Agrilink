@@ -317,8 +317,8 @@ function EditProfile() {
             {/* Modal */}
             {modalOpen && (
                 <>
-                    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black opacity-50"></div>
-                    <div className="bg-white rounded-lg shadow-xl p-6 max-w-sm w-full text-center fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-50">
+                    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black opacity-50"></div>
+                    <div className="bg-white rounded-lg shadow-xl p-6 max-w-sm w-full text-center fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-[10000]">
                         <div className="mb-4">
                             <Icon
                                 icon={
