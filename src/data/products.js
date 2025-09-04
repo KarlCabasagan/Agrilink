@@ -10,7 +10,7 @@ export const products = [
         farmerName: "Juan Dela Cruz",
         description:
             "Fresh organic carrots grown locally. Rich in beta-carotene and perfect for cooking or eating raw. These carrots are hand-picked and carefully selected for quality.",
-        stock: 25,
+        stock: 25.5,
         rating: 4.5,
         reviews: [
             {
@@ -43,7 +43,7 @@ export const products = [
         farmerName: "Maria Santos",
         description:
             "Crisp and sweet apples perfect for snacking. Locally grown with no harmful pesticides.",
-        stock: 18,
+        stock: 18.5,
         rating: 4.2,
         reviews: [
             {
@@ -64,7 +64,7 @@ export const products = [
         farmerName: "Carlos Rodriguez",
         description:
             "Premium quality rice, perfect for daily meals. Well-milled and clean.",
-        stock: 100,
+        stock: 100.0,
         rating: 4.8,
         reviews: [
             {
@@ -85,7 +85,7 @@ export const products = [
         farmerName: "Pedro Gonzales",
         description:
             "High-quality mung beans, perfect for soup and other dishes.",
-        stock: 12,
+        stock: 12.5,
         rating: 4.3,
         reviews: [],
     },
@@ -98,7 +98,7 @@ export const products = [
         category: "Spices",
         farmerName: "Ana Garcia",
         description: "Fresh onions with strong flavor, essential for cooking.",
-        stock: 30,
+        stock: 30.0,
         rating: 4.0,
         reviews: [],
     },
@@ -111,7 +111,7 @@ export const products = [
         category: "Root and Tuber",
         farmerName: "Roberto Fernandez",
         description: "Fresh potatoes perfect for frying, boiling, or baking.",
-        stock: 45,
+        stock: 45.0,
         rating: 4.6,
         reviews: [],
     },

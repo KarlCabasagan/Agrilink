@@ -404,7 +404,7 @@ function ProducerHome() {
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                                        Price (₱) *
+                                        Price per kg (₱) *
                                     </label>
                                     <input
                                         type="number"
@@ -424,7 +424,7 @@ function ProducerHome() {
                                 </div>
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                                        Stock *
+                                        Stock (kg) *
                                     </label>
                                     <input
                                         type="number"
@@ -759,6 +759,7 @@ function ProducerHome() {
                                             <div className="flex items-center justify-between mb-2">
                                                 <p className="text-primary font-bold text-lg">
                                                     ₱{product.price?.toFixed(2)}
+                                                    /kg
                                                 </p>
                                                 <span className="text-xs text-gray-500">
                                                     {product.stock || 0}kg in

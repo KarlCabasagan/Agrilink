@@ -24,9 +24,11 @@ import SellerApplication from "./pages/consumer/SellerApplication";
 import ProducerProfile from "./pages/producer/ProducerProfile";
 import Product from "./pages/consumer/Product";
 import Cart from "./pages/consumer/Cart";
+import Orders from "./pages/consumer/Orders";
+import Checkout from "./pages/consumer/Checkout";
 import Messages from "./pages/consumer/Messages";
 import ProducerMessages from "./pages/producer/ProducerMessages";
-import Orders from "./pages/producer/Orders";
+import ProducerOrders from "./pages/producer/Orders";
 import CropRecommendation from "./pages/producer/CropRecommendation";
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import AdminUserManagement from "./pages/admin/AdminUserManagement";
@@ -304,6 +306,22 @@ function App() {
                         }
                     />
                     <Route
+                        path="/orders"
+                        element={
+                            <RoleGuard allowedRoles={[1]}>
+                                <Orders />
+                            </RoleGuard>
+                        }
+                    />
+                    <Route
+                        path="/checkout"
+                        element={
+                            <RoleGuard allowedRoles={[1]}>
+                                <Checkout />
+                            </RoleGuard>
+                        }
+                    />
+                    <Route
                         path="/seller-application"
                         element={
                             <RoleGuard allowedRoles={[1]}>
@@ -330,10 +348,10 @@ function App() {
                         }
                     />
                     <Route
-                        path="/orders"
+                        path="/producer/orders"
                         element={
                             <RoleGuard allowedRoles={[2]}>
-                                <Orders />
+                                <ProducerOrders />
                             </RoleGuard>
                         }
                     />

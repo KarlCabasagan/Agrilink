@@ -7,12 +7,12 @@ import { findProductById } from "../../data/products.js";
 
 function Product() {
     const { id } = useParams();
-    const [quantity, setQuantity] = useState(1);
+    const [quantity, setQuantity] = useState(0.1);
 
     const product = useMemo(() => findProductById(id), [id]);
 
     const handleAddToCart = () => {
-        alert(`Added ${quantity} ${product.name}(s) to cart!`);
+        alert(`Added ${quantity} kg of ${product.name} to cart!`);
     };
 
     const handleMessageFarmer = () => {
@@ -20,14 +20,25 @@ function Product() {
     };
 
     const increaseQuantity = () => {
-        if (quantity < product.stock) {
-            setQuantity(quantity + 1);
+        const newQuantity = Math.round((quantity + 0.1) * 10) / 10;
+        if (newQuantity <= product.stock) {
+            setQuantity(newQuantity);
         }
     };
 
     const decreaseQuantity = () => {
-        if (quantity > 1) {
-            setQuantity(quantity - 1);
+        const newQuantity = Math.round((quantity - 0.1) * 10) / 10;
+        if (newQuantity >= 0.1) {
+            setQuantity(newQuantity);
+        }
+    };
+
+    const handleQuantityChange = (e) => {
+        const value = parseFloat(e.target.value);
+        if (!isNaN(value) && value >= 0.1 && value <= product.stock) {
+            setQuantity(Math.round(value * 10) / 10);
+        } else if (e.target.value === "") {
+            setQuantity(0.1);
         }
     };
 
@@ -138,7 +149,7 @@ function Product() {
                         </div>
 
                         <p className="text-3xl sm:text-4xl font-bold text-primary mb-3">
-                            ₱{product.price.toFixed(2)}
+                            ₱{product.price.toFixed(2)}/kg
                         </p>
 
                         <p className="text-gray-600 mb-4">
@@ -150,7 +161,7 @@ function Product() {
                                         : "text-red-600"
                                 }
                             >
-                                {product.stock} available
+                                {product.stock} kg available
                             </span>
                         </p>
 
@@ -170,18 +181,26 @@ function Product() {
                         </div>
 
                         <div className="flex items-center gap-4 mb-6">
-                            <span className="font-semibold">Quantity:</span>
+                            <span className="font-semibold">
+                                Quantity (kg):
+                            </span>
                             <div className="flex items-center border rounded-lg">
                                 <button
                                     onClick={decreaseQuantity}
                                     className="px-4 py-2 hover:bg-gray-100 rounded-l-lg"
-                                    disabled={quantity <= 1}
+                                    disabled={quantity <= 0.1}
                                 >
                                     -
                                 </button>
-                                <span className="px-4 py-2 border-l border-r bg-gray-50">
-                                    {quantity}
-                                </span>
+                                <input
+                                    type="number"
+                                    value={quantity}
+                                    onChange={handleQuantityChange}
+                                    step="0.1"
+                                    min="0.1"
+                                    max={product.stock}
+                                    className="px-4 py-2 border-l border-r bg-gray-50 w-20 text-center focus:outline-none focus:bg-white"
+                                />
                                 <button
                                     onClick={increaseQuantity}
                                     className="px-4 py-2 hover:bg-gray-100 rounded-r-lg"
@@ -190,6 +209,9 @@ function Product() {
                                     +
                                 </button>
                             </div>
+                            <span className="text-sm text-gray-500">
+                                Max: {product.stock} kg
+                            </span>
                         </div>
 
                         <div className="flex flex-col sm:flex-row gap-3 mb-6">

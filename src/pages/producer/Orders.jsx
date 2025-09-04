@@ -69,27 +69,27 @@ function Orders() {
                     customer_name: "John Doe",
                     customer_contact: "+63 912 345 6789",
                     customer_address: "Poblacion, Iligan City",
-                    total_amount: 150.5,
+                    total_amount: 68.25,
                     status: "pending",
                     created_at: "2025-09-02T08:30:00Z",
                     items: [
                         {
                             product_name: "Carrots",
-                            quantity: 5,
+                            quantity: 2.5,
                             price: 2.5,
-                            total: 12.5,
+                            total: 6.25,
                         },
                         {
                             product_name: "Potatoes",
-                            quantity: 10,
+                            quantity: 5.0,
                             price: 1.5,
-                            total: 15.0,
+                            total: 7.5,
                         },
                         {
                             product_name: "Onions",
-                            quantity: 2,
+                            quantity: 1.5,
                             price: 3.0,
-                            total: 6.0,
+                            total: 4.5,
                         },
                     ],
                 },
@@ -98,21 +98,21 @@ function Orders() {
                     customer_name: "Maria Santos",
                     customer_contact: "+63 923 456 7890",
                     customer_address: "Maria Cristina, Iligan City",
-                    total_amount: 85.0,
+                    total_amount: 42.75,
                     status: "confirmed",
                     created_at: "2025-09-01T14:15:00Z",
                     items: [
                         {
                             product_name: "Rice",
-                            quantity: 5,
+                            quantity: 2.0,
                             price: 12.0,
-                            total: 60.0,
+                            total: 24.0,
                         },
                         {
                             product_name: "Monggo",
-                            quantity: 2,
+                            quantity: 1.5,
                             price: 12.5,
-                            total: 25.0,
+                            total: 18.75,
                         },
                     ],
                 },
@@ -121,21 +121,21 @@ function Orders() {
                     customer_name: "Pedro Cruz",
                     customer_contact: "+63 934 567 8901",
                     customer_address: "Tibanga, Iligan City",
-                    total_amount: 45.0,
+                    total_amount: 17.0,
                     status: "preparing",
                     created_at: "2025-09-01T10:20:00Z",
                     items: [
                         {
                             product_name: "Apples",
-                            quantity: 3,
+                            quantity: 1.5,
                             price: 8.0,
-                            total: 24.0,
+                            total: 12.0,
                         },
                         {
                             product_name: "Carrots",
-                            quantity: 4,
+                            quantity: 2.0,
                             price: 2.5,
-                            total: 10.0,
+                            total: 5.0,
                         },
                     ],
                 },
@@ -144,21 +144,21 @@ function Orders() {
                     customer_name: "Ana Garcia",
                     customer_contact: "+63 945 678 9012",
                     customer_address: "Palao, Iligan City",
-                    total_amount: 75.0,
+                    total_amount: 15.0,
                     status: "ready",
                     created_at: "2025-08-31T16:45:00Z",
                     items: [
                         {
                             product_name: "Potatoes",
-                            quantity: 20,
+                            quantity: 5.0,
                             price: 1.5,
-                            total: 30.0,
+                            total: 7.5,
                         },
                         {
                             product_name: "Onions",
-                            quantity: 5,
+                            quantity: 2.5,
                             price: 3.0,
-                            total: 15.0,
+                            total: 7.5,
                         },
                     ],
                 },
@@ -167,15 +167,15 @@ function Orders() {
                     customer_name: "Carlos Lopez",
                     customer_contact: "+63 956 789 0123",
                     customer_address: "Buru-un, Iligan City",
-                    total_amount: 120.0,
+                    total_amount: 60.0,
                     status: "completed",
                     created_at: "2025-08-30T09:30:00Z",
                     items: [
                         {
                             product_name: "Rice",
-                            quantity: 10,
+                            quantity: 5.0,
                             price: 12.0,
-                            total: 120.0,
+                            total: 60.0,
                         },
                     ],
                 },
@@ -489,7 +489,8 @@ function Orders() {
                                                                     x{" "}
                                                                     {
                                                                         item.quantity
-                                                                    }
+                                                                    }{" "}
+                                                                    kg
                                                                 </span>
                                                                 <span className="font-medium">
                                                                     ₱

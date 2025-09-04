@@ -220,10 +220,10 @@ function Favorites() {
 
                                     <div className="flex items-center justify-between">
                                         <p className="text-primary font-bold text-lg">
-                                            ₱{product.price.toFixed(2)}
+                                            ₱{product.price.toFixed(2)}/kg
                                         </p>
                                         <span className="text-xs text-gray-500">
-                                            {product.stock} left
+                                            {product.stock} kg left
                                         </span>
                                     </div>
                                 </div>

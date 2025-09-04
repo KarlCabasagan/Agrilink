@@ -1,15 +1,16 @@
 import { useState } from "react";
 import { Icon } from "@iconify/react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import NavigationBar from "../../components/NavigationBar";
 
 function Cart() {
+    const navigate = useNavigate();
     const [cartItems, setCartItems] = useState([
         {
             id: 1,
             name: "Fresh Tomatoes",
             price: 25.0,
-            quantity: 2,
+            quantity: 2.5,
             image: "https://images.unsplash.com/photo-1546470427-e8357872b6d8",
             farmerName: "Juan Santos",
             stock: 50,
@@ -18,7 +19,7 @@ function Cart() {
             id: 2,
             name: "Green Lettuce",
             price: 15.0,
-            quantity: 1,
+            quantity: 1.0,
             image: "https://images.unsplash.com/photo-1622206151226-18ca2c9ab4a1",
             farmerName: "Maria Cruz",
             stock: 30,
@@ -27,7 +28,7 @@ function Cart() {
             id: 3,
             name: "Sweet Corn",
             price: 18.5,
-            quantity: 3,
+            quantity: 1.5,
             image: "https://images.unsplash.com/photo-1586313168876-870e85adc4d6",
             farmerName: "Pedro Reyes",
             stock: 25,
@@ -35,14 +36,30 @@ function Cart() {
     ]);
 
     const updateQuantity = (id, newQuantity) => {
-        if (newQuantity < 1) return;
+        const roundedQuantity = Math.round(newQuantity * 10) / 10;
+        if (roundedQuantity < 0.1) return;
         setCartItems((items) =>
             items.map((item) =>
                 item.id === id
-                    ? { ...item, quantity: Math.min(newQuantity, item.stock) }
+                    ? {
+                          ...item,
+                          quantity: Math.min(roundedQuantity, item.stock),
+                      }
                     : item
             )
         );
+    };
+
+    const handleQuantityChange = (id, value) => {
+        const numValue = parseFloat(value);
+        if (!isNaN(numValue) && numValue >= 0.1) {
+            const item = cartItems.find((item) => item.id === id);
+            if (numValue <= item.stock) {
+                updateQuantity(id, numValue);
+            }
+        } else if (value === "") {
+            updateQuantity(id, 0.1);
+        }
     };
 
     const removeItem = (id) => {
@@ -61,7 +78,18 @@ function Cart() {
     };
 
     const handleCheckout = () => {
-        alert("Checkout functionality coming soon!");
+        if (cartItems.length === 0) {
+            alert("Your cart is empty!");
+            return;
+        }
+
+        // Navigate to checkout page with cart data
+        navigate("/checkout", {
+            state: {
+                cartItems: cartItems,
+                totalAmount: getTotalPrice(),
+            },
+        });
     };
 
     return (
@@ -80,7 +108,7 @@ function Cart() {
                         className="text-primary"
                     />
                     <span className="text-primary font-medium">
-                        {getTotalItems()}
+                        {getTotalItems().toFixed(1)} kg
                     </span>
                 </div>
             </div>
@@ -139,7 +167,7 @@ function Cart() {
                                                 </span>
                                             </div>
                                             <p className="text-primary font-bold text-lg">
-                                                ₱{item.price.toFixed(2)}
+                                                ₱{item.price.toFixed(2)}/kg
                                             </p>
                                         </div>
                                         <button
@@ -157,31 +185,42 @@ function Cart() {
                                     <div className="flex items-center justify-between mt-4 pt-4 border-t border-gray-200">
                                         <div className="flex items-center gap-3">
                                             <span className="text-sm font-medium text-gray-700">
-                                                Quantity:
+                                                Quantity (kg):
                                             </span>
                                             <div className="flex items-center border rounded-lg">
                                                 <button
                                                     onClick={() =>
                                                         updateQuantity(
                                                             item.id,
-                                                            item.quantity - 1
+                                                            item.quantity - 0.1
                                                         )
                                                     }
                                                     className="px-3 py-1 hover:bg-gray-100 rounded-l-lg"
                                                     disabled={
-                                                        item.quantity <= 1
+                                                        item.quantity <= 0.1
                                                     }
                                                 >
                                                     -
                                                 </button>
-                                                <span className="px-3 py-1 border-l border-r bg-gray-50 min-w-[40px] text-center">
-                                                    {item.quantity}
-                                                </span>
+                                                <input
+                                                    type="number"
+                                                    value={item.quantity}
+                                                    onChange={(e) =>
+                                                        handleQuantityChange(
+                                                            item.id,
+                                                            e.target.value
+                                                        )
+                                                    }
+                                                    step="0.1"
+                                                    min="0.1"
+                                                    max={item.stock}
+                                                    className="px-2 py-1 border-l border-r bg-gray-50 w-16 text-center focus:outline-none focus:bg-white"
+                                                />
                                                 <button
                                                     onClick={() =>
                                                         updateQuantity(
                                                             item.id,
-                                                            item.quantity + 1
+                                                            item.quantity + 0.1
                                                         )
                                                     }
                                                     className="px-3 py-1 hover:bg-gray-100 rounded-r-lg"
@@ -217,7 +256,9 @@ function Cart() {
                             </h3>
                             <div className="space-y-2 mb-4">
                                 <div className="flex justify-between text-gray-600">
-                                    <span>Items ({getTotalItems()})</span>
+                                    <span>
+                                        Items ({getTotalItems().toFixed(1)} kg)
+                                    </span>
                                     <span>₱{getTotalPrice().toFixed(2)}</span>
                                 </div>
                                 <div className="flex justify-between text-gray-600">
