@@ -537,6 +537,42 @@ function ProducerHome() {
         fetchProducts();
     }, [user]);
 
+    // Load farmer's delivery settings
+    useEffect(() => {
+        const loadDeliverySettings = async () => {
+            if (!user?.id) return;
+
+            try {
+                const { data, error } = await supabase
+                    .from("profiles")
+                    .select("delivery_cost, minimum_order_quantity")
+                    .eq("id", user.id)
+                    .single();
+
+                if (error) {
+                    console.error("Error loading delivery settings:", error);
+                } else if (data) {
+                    const deliveryCostValue =
+                        parseFloat(data.delivery_cost) || 50;
+                    const minOrderValue =
+                        parseFloat(data.minimum_order_quantity) || 2.0;
+
+                    setDeliveryCost(deliveryCostValue);
+                    setOriginalDeliveryCost(deliveryCostValue);
+                    setMinimumOrderQuantity(minOrderValue);
+                    setOriginalMinimumOrderQuantity(minOrderValue);
+                }
+            } catch (error) {
+                console.error(
+                    "Unexpected error loading delivery settings:",
+                    error
+                );
+            }
+        };
+
+        loadDeliverySettings();
+    }, [user?.id]);
+
     // Update productForm with user ID when user loads
     useEffect(() => {
         if (user?.id) {
@@ -579,7 +615,6 @@ function ProducerHome() {
                         "https://via.placeholder.com/300x200?text=No+Image",
                     image_url: product.image_url, // Keep the original field for delete function
                     cropType: product.crop_type_id,
-                    deliveryCost: parseFloat(product.delivery_cost) || 50,
                     unit: product.unit || "kg",
                     status: product.status,
                     created_at: product.created_at,
@@ -682,8 +717,6 @@ function ProducerHome() {
                     description: productForm.description,
                     stock: parseFloat(productForm.stock),
                     image_url: image_url,
-                    minimum_order_quantity: 1.0,
-                    delivery_cost: deliveryCost,
                     unit: "kg",
                     status: "active",
                 })
@@ -711,7 +744,6 @@ function ProducerHome() {
                         data.image_url ||
                         "https://via.placeholder.com/300x200?text=No+Image",
                     cropType: data.crop_types?.name || productForm.cropType,
-                    deliveryCost: parseFloat(data.delivery_cost),
                     unit: data.unit,
                     status: data.status,
                     created_at: data.created_at,
@@ -801,7 +833,6 @@ function ProducerHome() {
                     description: productForm.description,
                     stock: parseFloat(productForm.stock),
                     image_url: image_url,
-                    delivery_cost: deliveryCost,
                 })
                 .eq("id", selectedProduct.id)
                 .select(
@@ -827,7 +858,6 @@ function ProducerHome() {
                     image: data.image_url || "/assets/gray-apple.png",
                     image_url: data.image_url, // Keep for future edit operations
                     cropType: data.crop_types?.name || productForm.cropType,
-                    deliveryCost: parseFloat(data.delivery_cost),
                     unit: data.unit,
                     status: data.status,
                     created_at: data.created_at,
@@ -1202,24 +1232,48 @@ function ProducerHome() {
                                             Cancel
                                         </button>
                                         <button
-                                            onClick={() => {
-                                                // Here you would typically save to database
-                                                console.log(
-                                                    "Delivery settings saved:",
-                                                    {
-                                                        deliveryCost,
-                                                        minimumOrderQuantity,
+                                            onClick={async () => {
+                                                try {
+                                                    // Save delivery settings to farmer's profile
+                                                    const { error } =
+                                                        await supabase
+                                                            .from("profiles")
+                                                            .update({
+                                                                delivery_cost:
+                                                                    deliveryCost,
+                                                                minimum_order_quantity:
+                                                                    minimumOrderQuantity,
+                                                            })
+                                                            .eq("id", user.id);
+
+                                                    if (error) {
+                                                        console.error(
+                                                            "Error saving delivery settings:",
+                                                            error
+                                                        );
+                                                        alert(
+                                                            "Error saving delivery settings. Please try again."
+                                                        );
+                                                    } else {
+                                                        setOriginalDeliveryCost(
+                                                            deliveryCost
+                                                        );
+                                                        setOriginalMinimumOrderQuantity(
+                                                            minimumOrderQuantity
+                                                        );
+                                                        alert(
+                                                            "Delivery settings saved successfully!"
+                                                        );
                                                     }
-                                                );
-                                                setOriginalDeliveryCost(
-                                                    deliveryCost
-                                                ); // Update original value after saving
-                                                setOriginalMinimumOrderQuantity(
-                                                    minimumOrderQuantity
-                                                );
-                                                alert(
-                                                    "Delivery settings saved successfully!"
-                                                );
+                                                } catch (error) {
+                                                    console.error(
+                                                        "Unexpected error:",
+                                                        error
+                                                    );
+                                                    alert(
+                                                        "An unexpected error occurred. Please try again."
+                                                    );
+                                                }
                                             }}
                                             className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors"
                                         >

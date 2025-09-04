@@ -270,7 +270,6 @@ function ProducerProduct() {
                         stock: parseFloat(data.stock),
                         image_url: data.image_url || "",
                         cropType: data.crop_types?.name || "",
-                        deliveryCost: parseFloat(data.delivery_cost) || 50,
                         unit: data.unit || "kg",
                         status: data.status,
                         created_at: data.created_at,
