@@ -762,8 +762,7 @@ function ProducerHome() {
                                                     /kg
                                                 </p>
                                                 <span className="text-xs text-gray-500">
-                                                    {product.stock || 0}kg in
-                                                    stock
+                                                    {product.stock || 0} kg left
                                                 </span>
                                             </div>
 
