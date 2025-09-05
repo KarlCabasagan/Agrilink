@@ -4,6 +4,7 @@ import supabase from "../SupabaseClient.jsx";
 import { AuthContext } from "../App.jsx";
 import { Link } from "react-router-dom";
 import { ilignanBarangays } from "../data/barangays.js";
+import ImageUpload from "../components/ImageUpload.jsx";
 
 function EditProfile() {
     const { user } = useContext(AuthContext);
@@ -12,10 +13,12 @@ function EditProfile() {
         name: "",
         address: "",
         contact: "",
+        avatar_url: "",
     });
     const [loading, setLoading] = useState(true);
     const [modalOpen, setModalOpen] = useState(false);
     const [modalMessage, setModalMessage] = useState("");
+    const [showAvatarUpload, setShowAvatarUpload] = useState(false);
 
     // Autocomplete state for address
     const [addressInput, setAddressInput] = useState("");
@@ -32,7 +35,7 @@ function EditProfile() {
         try {
             const { data, error } = await supabase
                 .from("profiles")
-                .select("name, address, contact")
+                .select("name, address, contact, avatar_url")
                 .eq("id", user.id)
                 .single();
 
@@ -45,6 +48,7 @@ function EditProfile() {
                     name: data.name || "",
                     address: data.address || "",
                     contact: contactDigits,
+                    avatar_url: data.avatar_url || "",
                 });
                 setAddressInput(data.address || "");
             } else if (error && error.code === "PGRST116") {
@@ -66,6 +70,7 @@ function EditProfile() {
                         name: "",
                         address: "",
                         contact: "",
+                        avatar_url: "",
                     });
                     setAddressInput("");
                 }
@@ -303,14 +308,27 @@ function EditProfile() {
         setModalOpen(true);
     };
 
-    const handleProfilePictureChange = useCallback((e) => {
-        const file = e.target.files?.[0];
-        if (file) {
-            // For now, just show a message since we don't have storage setup
-            setModalMessage("Profile picture upload feature coming soon!");
+    const handleAvatarChange = async (newAvatarUrl) => {
+        try {
+            const { error } = await supabase
+                .from("profiles")
+                .update({ avatar_url: newAvatarUrl })
+                .eq("id", user.id);
+
+            if (error) throw error;
+
+            setFormData((prev) => ({ ...prev, avatar_url: newAvatarUrl }));
+            setShowAvatarUpload(false);
+            setModalMessage("Profile picture updated successfully!");
+            setModalOpen(true);
+        } catch (error) {
+            console.error("Error updating avatar:", error);
+            setModalMessage(
+                "Failed to update profile picture. Please try again."
+            );
             setModalOpen(true);
         }
-    }, []);
+    };
 
     return (
         <div className="min-h-screen w-full flex flex-col relative items-center scrollbar-hide bg-background overflow-x-hidden text-text">
@@ -359,258 +377,446 @@ function EditProfile() {
             </div>
 
             {/* Content */}
-            <div className="flex-1 flex items-center justify-center px-4 mt-16 w-full">
-                <div className="w-full max-w-md bg-white rounded-lg shadow-md overflow-hidden">
-                    {/* Profile Header */}
-                    <div className="relative bg-gradient-to-br from-primary to-primary-dark p-6 text-white">
-                        <div className="text-center">
-                            <div className="w-24 h-24 mx-auto mb-4 relative">
-                                <img
-                                    src="/assets/adel.jpg"
-                                    alt="profile"
-                                    className="w-full h-full object-cover rounded-full border-4 border-white shadow-lg"
-                                />
-                                <label
-                                    htmlFor="profilePicture"
-                                    className="absolute bottom-0 right-0 bg-white text-primary p-2 rounded-full shadow-lg cursor-pointer hover:bg-gray-50 transition-colors"
-                                >
-                                    <Icon
-                                        icon="mingcute:camera-line"
-                                        width="16"
-                                        height="16"
-                                    />
-                                </label>
-                                <input
-                                    type="file"
-                                    id="profilePicture"
-                                    className="hidden"
-                                    accept="image/*"
-                                    onChange={handleProfilePictureChange}
-                                />
-                            </div>
-                            <h2 className="text-xl font-bold">
-                                Update Your Profile
-                            </h2>
-                            <p className="text-primary-light text-sm">
-                                Keep your information up to date
-                            </p>
-                        </div>
-                    </div>
+            <div className="flex-1 w-full px-4 mt-16 pb-8">
+                <div className="max-w-2xl mx-auto">
+                    {/* Profile Header Card */}
+                    <div className="bg-white rounded-2xl shadow-lg overflow-hidden mb-6">
+                        <div className="relative bg-gradient-to-br from-primary via-primary-dark to-purple-600 p-8 text-white">
+                            <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -translate-y-16 translate-x-16"></div>
+                            <div className="absolute bottom-0 left-0 w-24 h-24 bg-white/5 rounded-full translate-y-12 -translate-x-12"></div>
 
-                    {/* Form */}
-                    <form className="p-6" onSubmit={handleSubmit}>
-                        <div className="space-y-4">
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
-                                    Full Name
-                                </label>
-                                <input
-                                    type="text"
-                                    placeholder="Enter your full name"
-                                    className={`w-full px-3 py-3 border rounded-lg text-base outline-none focus:outline-none focus:ring-2 transition-all ${
-                                        nameError
-                                            ? "border-red-500 focus:ring-red-200 focus:border-red-500"
-                                            : "border-gray-300 focus:ring-primary focus:border-transparent"
-                                    }`}
-                                    value={formData.name}
-                                    onChange={(e) =>
-                                        handleInputChange(
-                                            "name",
-                                            e.target.value
-                                        )
-                                    }
-                                    disabled={loading}
-                                />
-                                {nameError && (
-                                    <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
-                                        <Icon
-                                            icon="mingcute:alert-circle-fill"
-                                            width="12"
-                                            height="12"
-                                        />
-                                        {nameError}
-                                    </p>
-                                )}
-                            </div>
-
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
-                                    Address
-                                </label>
-                                <div className="relative">
-                                    <input
-                                        type="text"
-                                        placeholder="Search for your barangay in Iligan City..."
-                                        className={`w-full px-3 py-3 border rounded-lg text-base outline-none focus:outline-none focus:ring-2 transition-all ${
-                                            addressError
-                                                ? "border-red-500 focus:ring-red-200 focus:border-red-500"
-                                                : "border-gray-300 focus:ring-primary focus:border-transparent"
-                                        }`}
-                                        value={addressInput}
-                                        onChange={(e) =>
-                                            handleAddressChange(e.target.value)
+                            <div className="relative z-10 text-center">
+                                <div className="w-24 h-24 mx-auto mb-4 relative">
+                                    <img
+                                        src={
+                                            formData.avatar_url ||
+                                            "/assets/blank-profile.jpg"
                                         }
-                                        onFocus={() => {
-                                            if (filteredBarangays.length > 0) {
-                                                setShowSuggestions(true);
-                                            }
-                                        }}
-                                        onBlur={() => {
-                                            // Delay hiding suggestions to allow clicking
-                                            setTimeout(
-                                                () => setShowSuggestions(false),
-                                                200
-                                            );
-                                        }}
-                                        disabled={loading}
+                                        alt="profile"
+                                        className="w-full h-full object-cover rounded-full border-4 border-white shadow-xl"
                                     />
-
-                                    {/* Autocomplete Suggestions */}
-                                    {showSuggestions &&
-                                        filteredBarangays.length > 0 && (
-                                            <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto">
-                                                {filteredBarangays
-                                                    .slice(0, 8)
-                                                    .map((barangay, index) => (
-                                                        <div
-                                                            key={index}
-                                                            className="px-4 py-3 hover:bg-gray-50 cursor-pointer border-b border-gray-100 last:border-b-0 transition-colors"
-                                                            onClick={() =>
-                                                                handleSuggestionClick(
-                                                                    barangay
-                                                                )
-                                                            }
-                                                        >
-                                                            <div className="flex items-center gap-2">
-                                                                <Icon
-                                                                    icon="mingcute:location-line"
-                                                                    width="16"
-                                                                    height="16"
-                                                                    className="text-primary"
-                                                                />
-                                                                <div>
-                                                                    <div className="font-medium text-gray-800">
-                                                                        {
-                                                                            barangay
-                                                                        }
-                                                                    </div>
-                                                                    <div className="text-sm text-gray-500">
-                                                                        Iligan
-                                                                        City,
-                                                                        Lanao
-                                                                        del
-                                                                        Norte
-                                                                    </div>
-                                                                </div>
-                                                            </div>
-                                                        </div>
-                                                    ))}
-                                            </div>
-                                        )}
-                                </div>
-                                {addressError ? (
-                                    <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
-                                        <Icon
-                                            icon="mingcute:alert-circle-fill"
-                                            width="12"
-                                            height="12"
-                                        />
-                                        {addressError}
-                                    </p>
-                                ) : (
-                                    <p className="text-xs text-gray-500 mt-1">
-                                        Start typing to search for barangays in
-                                        Iligan City
-                                    </p>
-                                )}
-                            </div>
-
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
-                                    Contact Number
-                                </label>
-                                <div className="relative">
-                                    <div className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-600 font-medium bg-gray-100 px-2 py-1 rounded text-sm">
-                                        +63
-                                    </div>
-                                    <input
-                                        type="tel"
-                                        placeholder="912 345 6789"
-                                        className="w-full pl-16 pr-3 py-3 border border-gray-300 rounded-lg text-base outline-none focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
-                                        value={displayPhoneNumber(
-                                            formData.contact
-                                        )}
-                                        onChange={(e) =>
-                                            handleInputChange(
-                                                "contact",
-                                                e.target.value
+                                    <button
+                                        type="button"
+                                        onClick={() =>
+                                            setShowAvatarUpload(
+                                                !showAvatarUpload
                                             )
                                         }
-                                        disabled={loading}
-                                        maxLength={13} // "912 345 6789"
-                                    />
+                                        className="absolute bottom-0 right-0 bg-white text-primary p-2.5 rounded-full shadow-lg hover:bg-gray-50 transition-colors"
+                                    >
+                                        <Icon
+                                            icon="mingcute:camera-line"
+                                            width="18"
+                                            height="18"
+                                        />
+                                    </button>
                                 </div>
-                                <p className="text-xs text-gray-500 mt-1">
-                                    Enter your 10-digit mobile number (without
-                                    +63)
+                                <h2 className="text-2xl font-bold mb-2">
+                                    {formData.name || "Complete Your Profile"}
+                                </h2>
+                                <p className="text-white/90 text-sm">
+                                    Keep your information up to date for the
+                                    best experience
                                 </p>
                             </div>
                         </div>
+                    </div>
 
-                        {/* Password Reset */}
-                        <div className="mt-6 pt-6 border-t border-gray-200">
-                            <div className="flex items-center justify-between mb-4">
-                                <div>
-                                    <h3 className="font-medium text-gray-800">
-                                        Password
-                                    </h3>
-                                    <p className="text-gray-500 text-xs">
-                                        Change your account password
-                                    </p>
+                    {/* Avatar Upload Section */}
+                    {showAvatarUpload && (
+                        <div className="bg-white rounded-2xl shadow-lg overflow-hidden mb-6">
+                            <div className="p-6">
+                                <div className="flex items-center gap-3 mb-4">
+                                    <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center">
+                                        <Icon
+                                            icon="mingcute:camera-line"
+                                            width="20"
+                                            height="20"
+                                            className="text-primary"
+                                        />
+                                    </div>
+                                    <div>
+                                        <h3 className="text-lg font-semibold text-gray-800">
+                                            Update Profile Picture
+                                        </h3>
+                                        <p className="text-gray-600 text-sm">
+                                            Choose a new profile picture
+                                        </p>
+                                    </div>
                                 </div>
-                                <button
-                                    type="button"
-                                    onClick={handlePasswordReset}
-                                    className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg text-sm transition-colors"
-                                >
-                                    Reset Password
-                                </button>
+
+                                <div className="bg-gray-50 rounded-xl p-4">
+                                    <ImageUpload
+                                        currentImage={formData.avatar_url}
+                                        onImageChange={handleAvatarChange}
+                                        userId={user?.id}
+                                        bucket="avatars"
+                                        type="avatar"
+                                    />
+                                </div>
+
+                                <div className="flex gap-3 mt-4">
+                                    <button
+                                        type="button"
+                                        onClick={() =>
+                                            setShowAvatarUpload(false)
+                                        }
+                                        className="flex-1 bg-gray-100 text-gray-700 px-4 py-2.5 rounded-lg hover:bg-gray-200 transition-colors text-sm font-medium"
+                                    >
+                                        Cancel
+                                    </button>
+                                </div>
                             </div>
                         </div>
+                    )}
 
-                        {/* Action Buttons */}
-                        <div className="flex flex-col sm:flex-row gap-3 mt-6">
-                            <Link
-                                to="/profile"
-                                className="flex-1 text-center bg-gray-100 text-gray-700 px-4 py-3 rounded-lg hover:bg-gray-200 transition-colors"
-                            >
-                                Cancel
-                            </Link>
-                            <button
-                                type="submit"
-                                disabled={loading}
-                                className={`flex-1 px-4 py-3 rounded-lg font-medium transition-colors ${
-                                    loading
-                                        ? "bg-gray-300 text-gray-500 cursor-not-allowed"
-                                        : "bg-primary text-white hover:bg-primary-dark"
-                                }`}
-                            >
-                                {loading ? (
-                                    <div className="flex items-center justify-center gap-2">
+                    {/* Form Card */}
+                    <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
+                        <form onSubmit={handleSubmit}>
+                            {/* Form Header */}
+                            <div className="border-b border-gray-100 p-6">
+                                <h3 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
+                                    <Icon
+                                        icon="mingcute:edit-3-line"
+                                        width="20"
+                                        height="20"
+                                        className="text-primary"
+                                    />
+                                    Personal Information
+                                </h3>
+                                <p className="text-gray-600 text-sm mt-1">
+                                    Update your personal details below
+                                </p>
+                            </div>
+
+                            <div className="p-6 space-y-6">
+                                {/* Full Name */}
+                                <div className="space-y-2">
+                                    <label className="flex items-center gap-2 text-sm font-semibold text-gray-700">
                                         <Icon
-                                            icon="mingcute:loading-line"
+                                            icon="mingcute:user-3-line"
                                             width="16"
                                             height="16"
-                                            className="animate-spin"
+                                            className="text-primary"
                                         />
-                                        Saving...
+                                        Full Name
+                                    </label>
+                                    <div className="relative">
+                                        <input
+                                            type="text"
+                                            placeholder="Enter your full name"
+                                            className={`w-full px-4 py-3.5 border rounded-xl text-base outline-none transition-all duration-200 ${
+                                                nameError
+                                                    ? "border-red-300 bg-red-50 focus:border-red-500 focus:ring-4 focus:ring-red-100"
+                                                    : "border-gray-200 bg-gray-50 focus:bg-white focus:border-primary focus:ring-4 focus:ring-primary/10"
+                                            }`}
+                                            value={formData.name}
+                                            onChange={(e) =>
+                                                handleInputChange(
+                                                    "name",
+                                                    e.target.value
+                                                )
+                                            }
+                                            disabled={loading}
+                                        />
+                                        <div className="absolute right-4 top-1/2 transform -translate-y-1/2">
+                                            <Icon
+                                                icon="mingcute:user-3-line"
+                                                width="18"
+                                                height="18"
+                                                className="text-gray-400"
+                                            />
+                                        </div>
                                     </div>
-                                ) : (
-                                    "Save Changes"
-                                )}
-                            </button>
-                        </div>
-                    </form>
+                                    {nameError && (
+                                        <div className="flex items-center gap-2 text-red-600 text-sm bg-red-50 p-3 rounded-lg">
+                                            <Icon
+                                                icon="mingcute:alert-circle-fill"
+                                                width="16"
+                                                height="16"
+                                            />
+                                            {nameError}
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* Address */}
+                                <div className="space-y-2">
+                                    <label className="flex items-center gap-2 text-sm font-semibold text-gray-700">
+                                        <Icon
+                                            icon="mingcute:location-line"
+                                            width="16"
+                                            height="16"
+                                            className="text-primary"
+                                        />
+                                        Address
+                                    </label>
+                                    <div className="relative">
+                                        <input
+                                            type="text"
+                                            placeholder="Search for your barangay in Iligan City..."
+                                            className={`w-full px-4 py-3.5 pr-12 border rounded-xl text-base outline-none transition-all duration-200 ${
+                                                addressError
+                                                    ? "border-red-300 bg-red-50 focus:border-red-500 focus:ring-4 focus:ring-red-100"
+                                                    : "border-gray-200 bg-gray-50 focus:bg-white focus:border-primary focus:ring-4 focus:ring-primary/10"
+                                            }`}
+                                            value={addressInput}
+                                            onChange={(e) =>
+                                                handleAddressChange(
+                                                    e.target.value
+                                                )
+                                            }
+                                            onFocus={() => {
+                                                if (
+                                                    filteredBarangays.length > 0
+                                                ) {
+                                                    setShowSuggestions(true);
+                                                }
+                                            }}
+                                            onBlur={() => {
+                                                setTimeout(
+                                                    () =>
+                                                        setShowSuggestions(
+                                                            false
+                                                        ),
+                                                    200
+                                                );
+                                            }}
+                                            disabled={loading}
+                                        />
+                                        <div className="absolute right-4 top-1/2 transform -translate-y-1/2">
+                                            <Icon
+                                                icon="mingcute:search-line"
+                                                width="18"
+                                                height="18"
+                                                className="text-gray-400"
+                                            />
+                                        </div>
+
+                                        {/* Autocomplete Suggestions */}
+                                        {showSuggestions &&
+                                            filteredBarangays.length > 0 && (
+                                                <div className="absolute z-20 w-full mt-2 bg-white border border-gray-200 rounded-xl shadow-xl max-h-60 overflow-y-auto">
+                                                    {filteredBarangays
+                                                        .slice(0, 8)
+                                                        .map(
+                                                            (
+                                                                barangay,
+                                                                index
+                                                            ) => (
+                                                                <div
+                                                                    key={index}
+                                                                    className="px-4 py-3 hover:bg-primary/5 cursor-pointer border-b border-gray-100 last:border-b-0 transition-colors"
+                                                                    onClick={() =>
+                                                                        handleSuggestionClick(
+                                                                            barangay
+                                                                        )
+                                                                    }
+                                                                >
+                                                                    <div className="flex items-center gap-3">
+                                                                        <div className="w-8 h-8 bg-primary/10 rounded-lg flex items-center justify-center">
+                                                                            <Icon
+                                                                                icon="mingcute:location-line"
+                                                                                width="16"
+                                                                                height="16"
+                                                                                className="text-primary"
+                                                                            />
+                                                                        </div>
+                                                                        <div>
+                                                                            <div className="font-medium text-gray-800">
+                                                                                {
+                                                                                    barangay
+                                                                                }
+                                                                            </div>
+                                                                            <div className="text-sm text-gray-500">
+                                                                                Iligan
+                                                                                City,
+                                                                                Lanao
+                                                                                del
+                                                                                Norte
+                                                                            </div>
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+                                                            )
+                                                        )}
+                                                </div>
+                                            )}
+                                    </div>
+                                    {addressError ? (
+                                        <div className="flex items-center gap-2 text-red-600 text-sm bg-red-50 p-3 rounded-lg">
+                                            <Icon
+                                                icon="mingcute:alert-circle-fill"
+                                                width="16"
+                                                height="16"
+                                            />
+                                            {addressError}
+                                        </div>
+                                    ) : (
+                                        <div className="flex items-center gap-2 text-gray-500 text-sm bg-blue-50 p-3 rounded-lg">
+                                            <Icon
+                                                icon="mingcute:information-line"
+                                                width="16"
+                                                height="16"
+                                                className="text-blue-500"
+                                            />
+                                            Start typing to search for barangays
+                                            in Iligan City
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* Contact Number */}
+                                <div className="space-y-2">
+                                    <label className="flex items-center gap-2 text-sm font-semibold text-gray-700">
+                                        <Icon
+                                            icon="mingcute:phone-line"
+                                            width="16"
+                                            height="16"
+                                            className="text-primary"
+                                        />
+                                        Contact Number
+                                    </label>
+                                    <div className="relative">
+                                        <div className="absolute left-4 top-1/2 transform -translate-y-1/2 flex items-center gap-2">
+                                            <div className="flex items-center gap-1 text-gray-600 font-semibold bg-gray-100 px-3 py-1.5 rounded-lg text-sm">
+                                                <Icon
+                                                    icon="emojione:flag-for-philippines"
+                                                    width="16"
+                                                    height="16"
+                                                />
+                                                +63
+                                            </div>
+                                        </div>
+                                        <input
+                                            type="tel"
+                                            placeholder="912 345 6789"
+                                            className="w-full pl-24 pr-4 py-3.5 border border-gray-200 bg-gray-50 rounded-xl text-base outline-none focus:bg-white focus:border-primary focus:ring-4 focus:ring-primary/10 transition-all duration-200"
+                                            value={displayPhoneNumber(
+                                                formData.contact
+                                            )}
+                                            onChange={(e) =>
+                                                handleInputChange(
+                                                    "contact",
+                                                    e.target.value
+                                                )
+                                            }
+                                            disabled={loading}
+                                            maxLength={13}
+                                        />
+                                    </div>
+                                    <div className="flex items-center gap-2 text-gray-500 text-sm bg-gray-50 p-3 rounded-lg">
+                                        <Icon
+                                            icon="mingcute:information-line"
+                                            width="16"
+                                            height="16"
+                                            className="text-gray-400"
+                                        />
+                                        Enter your 10-digit mobile number
+                                        (without +63)
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Security Section */}
+                            <div className="border-t border-gray-100">
+                                <div className="p-6">
+                                    <h3 className="text-lg font-semibold text-gray-800 flex items-center gap-2 mb-4">
+                                        <Icon
+                                            icon="mingcute:shield-line"
+                                            width="20"
+                                            height="20"
+                                            className="text-primary"
+                                        />
+                                        Security Settings
+                                    </h3>
+
+                                    <div className="bg-gradient-to-r from-red-50 to-orange-50 border border-red-200 rounded-xl p-4">
+                                        <div className="flex items-center justify-between">
+                                            <div className="flex items-start gap-3">
+                                                <div className="w-10 h-10 bg-red-100 rounded-lg flex items-center justify-center mt-1">
+                                                    <Icon
+                                                        icon="mingcute:lock-line"
+                                                        width="18"
+                                                        height="18"
+                                                        className="text-red-600"
+                                                    />
+                                                </div>
+                                                <div>
+                                                    <h4 className="font-semibold text-gray-800 mb-1">
+                                                        Password Reset
+                                                    </h4>
+                                                    <p className="text-gray-600 text-sm">
+                                                        Send a password reset
+                                                        link to your email
+                                                    </p>
+                                                </div>
+                                            </div>
+                                            <button
+                                                type="button"
+                                                onClick={handlePasswordReset}
+                                                className="bg-red-500 hover:bg-red-600 text-white px-4 py-2.5 rounded-lg text-sm font-medium transition-colors flex items-center gap-2"
+                                            >
+                                                <Icon
+                                                    icon="mingcute:mail-send-line"
+                                                    width="16"
+                                                    height="16"
+                                                />
+                                                Reset Password
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Action Buttons */}
+                            <div className="border-t border-gray-100 p-6">
+                                <div className="flex flex-col sm:flex-row gap-3">
+                                    <Link
+                                        to="/profile"
+                                        className="flex-1 text-center bg-gray-100 text-gray-700 px-6 py-3.5 rounded-xl hover:bg-gray-200 transition-colors font-medium flex items-center justify-center gap-2"
+                                    >
+                                        <Icon
+                                            icon="mingcute:close-line"
+                                            width="18"
+                                            height="18"
+                                        />
+                                        Cancel
+                                    </Link>
+                                    <button
+                                        type="submit"
+                                        disabled={loading}
+                                        className={`flex-1 px-6 py-3.5 rounded-xl font-medium transition-colors flex items-center justify-center gap-2 ${
+                                            loading
+                                                ? "bg-gray-300 text-gray-500 cursor-not-allowed"
+                                                : "bg-primary text-white hover:bg-primary-dark"
+                                        }`}
+                                    >
+                                        {loading ? (
+                                            <>
+                                                <Icon
+                                                    icon="mingcute:loading-line"
+                                                    width="18"
+                                                    height="18"
+                                                    className="animate-spin"
+                                                />
+                                                Saving Changes...
+                                            </>
+                                        ) : (
+                                            <>
+                                                <Icon
+                                                    icon="mingcute:check-line"
+                                                    width="18"
+                                                    height="18"
+                                                />
+                                                Save Changes
+                                            </>
+                                        )}
+                                    </button>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
                 </div>
             </div>
         </div>
