@@ -26,7 +26,7 @@ function Cart() {
                         products(
                             *,
                             categories(name),
-                            farmer_profile:profiles(name, address)
+                            farmer_profile:profiles(name, address, delivery_cost, minimum_order_quantity)
                         )
                     `
                     )
@@ -58,8 +58,13 @@ function Cart() {
                     stock: parseFloat(item.products.stock),
                     unit: item.products.unit || "kg",
                     minimumOrderQuantity:
-                        parseFloat(item.products.minimum_order_quantity) || 1.0,
-                    deliveryCost: parseFloat(item.products.delivery_cost) || 50,
+                        parseFloat(
+                            item.products.farmer_profile?.minimum_order_quantity
+                        ) || 1.0,
+                    deliveryCost:
+                        parseFloat(
+                            item.products.farmer_profile?.delivery_cost
+                        ) || 50.0,
                     category: item.products.categories?.name || "Other",
                 }));
 

@@ -771,6 +771,29 @@ function Checkout() {
                                             <label className="block text-sm font-medium text-gray-700 mb-2">
                                                 Complete Address *
                                             </label>
+                                            <div className="mb-2 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                                                <div className="flex items-start gap-2">
+                                                    <Icon
+                                                        icon="mingcute:information-line"
+                                                        width="16"
+                                                        height="16"
+                                                        className="text-blue-600 mt-0.5 flex-shrink-0"
+                                                    />
+                                                    <div className="text-sm text-blue-800">
+                                                        <strong>
+                                                            Please be specific
+                                                            with your address:
+                                                        </strong>{" "}
+                                                        Include your house
+                                                        number, street name,
+                                                        subdivision/village
+                                                        name, and other
+                                                        landmarks to help our
+                                                        farmers find your
+                                                        location easily.
+                                                    </div>
+                                                </div>
+                                            </div>
                                             <textarea
                                                 name="address"
                                                 value={formData.address}
@@ -781,7 +804,7 @@ function Checkout() {
                                                         ? "border-red-300"
                                                         : "border-gray-300"
                                                 }`}
-                                                placeholder="Street, Building, Unit Number, Barangay"
+                                                placeholder="e.g. House #123, Mabuhay Street, Green Valley Subdivision, near SM Mall"
                                             />
                                             {errors.address && (
                                                 <p className="text-red-600 text-sm mt-1">
