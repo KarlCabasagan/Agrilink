@@ -1,12 +1,50 @@
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Icon } from "@iconify/react";
+import { useContext, useEffect } from "react";
+import { AuthContext } from "../App.jsx";
+import supabase from "../SupabaseClient.jsx";
 
 function AccountVerified() {
+    const { user } = useContext(AuthContext);
+    const navigate = useNavigate();
+
+    useEffect(() => {
+        const updateEmailVerificationStatus = async () => {
+            if (user && user.id) {
+                try {
+                    // Update the profiles table to set email_verified to true
+                    const { error } = await supabase
+                        .from("profiles")
+                        .update({ email_verified: true })
+                        .eq("id", user.id);
+
+                    if (error) {
+                        console.error(
+                            "Error updating email verification status:",
+                            error
+                        );
+                    }
+                } catch (error) {
+                    console.error(
+                        "Error updating email verification status:",
+                        error
+                    );
+                }
+            }
+        };
+
+        updateEmailVerificationStatus();
+    }, [user]);
+
+    const handleStartShopping = () => {
+        // Navigate to home, which will redirect appropriately based on user authentication
+        navigate("/");
+    };
     return (
         <div className="min-h-screen w-full flex flex-col relative items-center scrollbar-hide bg-background overflow-x-hidden text-text">
             {/* Header */}
             <div className="fixed top-0 left-0 w-full bg-white shadow-md z-50 px-4 py-3 flex justify-between items-center">
-                <Link to="/login" className="text-gray-600 hover:text-primary">
+                <Link to="/" className="text-gray-600 hover:text-primary">
                     <Icon icon="mingcute:left-line" width="24" height="24" />
                 </Link>
                 <h1 className="text-lg font-semibold">Account Verification</h1>
@@ -51,8 +89,8 @@ function AccountVerified() {
                     </div>
 
                     <div className="space-y-3">
-                        <Link
-                            to="/"
+                        <button
+                            onClick={handleStartShopping}
                             className="w-full bg-primary hover:bg-primary-dark text-white py-3 px-6 rounded-lg font-medium transition-colors flex items-center justify-center gap-2"
                         >
                             <Icon
@@ -61,7 +99,7 @@ function AccountVerified() {
                                 height="20"
                             />
                             Start Shopping
-                        </Link>
+                        </button>
 
                         <Link
                             to="/profile"

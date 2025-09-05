@@ -10,6 +10,8 @@ import {
     Routes,
     Route,
     Navigate,
+    useLocation,
+    useNavigate,
 } from "react-router-dom";
 
 import Home from "./pages/consumer/Home";
@@ -50,6 +52,31 @@ export const AuthContext = createContext({
     userRole: null,
     setUserRole: () => {},
 });
+
+// Component to handle email verification redirect
+function EmailVerificationHandler() {
+    const location = useLocation();
+    const navigate = useNavigate();
+
+    useEffect(() => {
+        const handleEmailVerification = async () => {
+            const hashParams = new URLSearchParams(location.hash.substring(1));
+            const type = hashParams.get("type");
+            const accessToken = hashParams.get("access_token");
+
+            if (type === "signup" && accessToken) {
+                // Wait a moment for Supabase to process the session
+                setTimeout(() => {
+                    navigate("/account-verified", { replace: true });
+                }, 500);
+            }
+        };
+
+        handleEmailVerification();
+    }, [location, navigate]);
+
+    return null;
+}
 
 function App() {
     const [user, setUser] = useState(null);
@@ -238,6 +265,7 @@ function App() {
     return (
         <AuthContext.Provider value={authContextValue}>
             <Router>
+                <EmailVerificationHandler />
                 <Routes>
                     <Route
                         path="/login"
