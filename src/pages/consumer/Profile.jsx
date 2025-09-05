@@ -99,9 +99,12 @@ function Profile() {
                 <div className="bg-white rounded-lg shadow-md overflow-hidden mb-6">
                     <div className="relative h-32 bg-gradient-to-br from-primary to-primary-dark">
                         <div className="absolute bottom-0 left-1/2 transform -translate-x-1/2 translate-y-1/2">
-                            <div className="w-24 h-24 bg-white rounded-full p-1 shadow-lg">
+                            <div className="w-32 h-32 bg-white rounded-full p-1 shadow-lg">
                                 <img
-                                    src="/assets/blank-profile.jpg"
+                                    src={
+                                        profile.avatar_url ||
+                                        "/assets/blank-profile.jpg"
+                                    }
                                     alt="Profile"
                                     className="w-full h-full rounded-full object-cover"
                                 />
@@ -109,7 +112,7 @@ function Profile() {
                         </div>
                     </div>
 
-                    <div className="pt-16 pb-6 px-6 text-center">
+                    <div className="pt-20 pb-6 px-6 text-center">
                         <h2 className="text-xl font-bold text-gray-800 mb-2">
                             {profile.name || "Consumer"}
                         </h2>

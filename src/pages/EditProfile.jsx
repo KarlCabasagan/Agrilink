@@ -2,12 +2,17 @@ import { Icon } from "@iconify/react/dist/iconify.js";
 import { useState, useEffect, useContext, useCallback } from "react";
 import supabase from "../SupabaseClient.jsx";
 import { AuthContext } from "../App.jsx";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { ilignanBarangays } from "../data/barangays.js";
-import ImageUpload from "../components/ImageUpload.jsx";
+import {
+    uploadImage,
+    compressImage,
+    validateImageFile,
+} from "../utils/imageUpload.js";
 
 function EditProfile() {
     const { user } = useContext(AuthContext);
+    const navigate = useNavigate();
     const [passwordVisible, setPasswordVisible] = useState(false);
     const [formData, setFormData] = useState({
         name: "",
@@ -18,7 +23,11 @@ function EditProfile() {
     const [loading, setLoading] = useState(true);
     const [modalOpen, setModalOpen] = useState(false);
     const [modalMessage, setModalMessage] = useState("");
-    const [showAvatarUpload, setShowAvatarUpload] = useState(false);
+
+    // Avatar preview state
+    const [avatarPreview, setAvatarPreview] = useState("");
+    const [selectedAvatarFile, setSelectedAvatarFile] = useState(null);
+    const [avatarChanged, setAvatarChanged] = useState(false);
 
     // Autocomplete state for address
     const [addressInput, setAddressInput] = useState("");
@@ -50,6 +59,10 @@ function EditProfile() {
                     contact: contactDigits,
                     avatar_url: data.avatar_url || "",
                 });
+                // Set avatar preview to show current avatar or blank profile
+                setAvatarPreview(
+                    data.avatar_url || "/assets/blank-profile.jpg"
+                );
                 setAddressInput(data.address || "");
             } else if (error && error.code === "PGRST116") {
                 // No profile found, create one
@@ -235,12 +248,31 @@ function EditProfile() {
 
         setLoading(true);
         try {
+            let avatarUrl = formData.avatar_url; // Keep existing avatar by default
+
+            // Handle avatar upload if changed
+            if (avatarChanged) {
+                if (selectedAvatarFile) {
+                    // Upload new avatar
+                    const uploadResult = await uploadImage(
+                        selectedAvatarFile,
+                        user.id,
+                        "avatars",
+                        "avatar"
+                    );
+                    avatarUrl = uploadResult;
+                } else if (avatarPreview === "/assets/blank-profile.jpg") {
+                    // Remove avatar (set to empty)
+                    avatarUrl = "";
+                }
+            }
+
             // Format the contact number before saving
             const formattedContact = formData.contact
                 ? formatPhoneNumber(formData.contact)
                 : "";
 
-            // Only update the profiles table - this is the single source of truth
+            // Update the profiles table with all data including avatar
             const { error: profileError } = await supabase
                 .from("profiles")
                 .upsert(
@@ -249,6 +281,7 @@ function EditProfile() {
                         name: formData.name,
                         address: formData.address,
                         contact: formattedContact,
+                        avatar_url: avatarUrl,
                         email: user.email,
                         updated_at: new Date().toISOString(),
                     },
@@ -261,18 +294,32 @@ function EditProfile() {
                 setModalMessage(
                     `Failed to update profile: ${profileError.message}`
                 );
+                setLoading(false);
+                setModalOpen(true);
             } else {
-                setModalMessage("Profile updated successfully!");
-                // Update local state to reflect changes immediately
+                // Update local state
                 setFormData({
                     name: formData.name,
                     address: formData.address,
                     contact: formData.contact,
+                    avatar_url: avatarUrl,
                 });
+                setAvatarChanged(false);
+                setSelectedAvatarFile(null);
+
+                // Clean up preview URL if it was a blob
+                if (avatarPreview && avatarPreview.startsWith("blob:")) {
+                    URL.revokeObjectURL(avatarPreview);
+                }
+                // Set final avatar preview (either uploaded URL or blank profile)
+                setAvatarPreview(avatarUrl || "/assets/blank-profile.jpg");
+
+                setLoading(false);
+                // Redirect to profile page
+                navigate("/profile");
             }
         } catch (error) {
             setModalMessage(`An unexpected error occurred: ${error.message}`);
-        } finally {
             setLoading(false);
             setModalOpen(true);
         }
@@ -308,25 +355,47 @@ function EditProfile() {
         setModalOpen(true);
     };
 
-    const handleAvatarChange = async (newAvatarUrl) => {
+    // Handle file selection for avatar
+    const handleAvatarFileSelect = async (event) => {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        // Validate file
+        const validation = validateImageFile(file);
+        if (!validation.valid) {
+            setModalMessage(validation.error);
+            setModalOpen(true);
+            return;
+        }
+
         try {
-            const { error } = await supabase
-                .from("profiles")
-                .update({ avatar_url: newAvatarUrl })
-                .eq("id", user.id);
+            // Create preview URL immediately from original file
+            const previewUrl = URL.createObjectURL(file);
+            setAvatarPreview(previewUrl);
+            setAvatarChanged(true);
 
-            if (error) throw error;
-
-            setFormData((prev) => ({ ...prev, avatar_url: newAvatarUrl }));
-            setShowAvatarUpload(false);
-            setModalMessage("Profile picture updated successfully!");
-            setModalOpen(true);
+            // Compress the image in background for later upload
+            const compressedFile = await compressImage(file, 0.8, 400, 400);
+            setSelectedAvatarFile(compressedFile);
         } catch (error) {
-            console.error("Error updating avatar:", error);
-            setModalMessage(
-                "Failed to update profile picture. Please try again."
-            );
-            setModalOpen(true);
+            console.error("Error processing image:", error);
+            // Still set preview even if compression fails
+            const previewUrl = URL.createObjectURL(file);
+            setAvatarPreview(previewUrl);
+            setSelectedAvatarFile(file); // Use original file if compression fails
+            setAvatarChanged(true);
+        }
+    };
+
+    // Remove avatar (reset to blank)
+    const handleRemoveAvatar = () => {
+        setAvatarPreview("/assets/blank-profile.jpg");
+        setSelectedAvatarFile(null);
+        setAvatarChanged(true);
+
+        // Clean up the preview URL if it exists
+        if (avatarPreview && avatarPreview.startsWith("blob:")) {
+            URL.revokeObjectURL(avatarPreview);
         }
     };
 
@@ -386,30 +455,51 @@ function EditProfile() {
                             <div className="absolute bottom-0 left-0 w-24 h-24 bg-white/5 rounded-full translate-y-12 -translate-x-12"></div>
 
                             <div className="relative z-10 text-center">
-                                <div className="w-24 h-24 mx-auto mb-4 relative">
+                                <div className="w-32 h-32 mx-auto mb-4 relative">
                                     <img
                                         src={
-                                            formData.avatar_url ||
+                                            avatarPreview ||
                                             "/assets/blank-profile.jpg"
                                         }
                                         alt="profile"
                                         className="w-full h-full object-cover rounded-full border-4 border-white shadow-xl"
                                     />
-                                    <button
-                                        type="button"
-                                        onClick={() =>
-                                            setShowAvatarUpload(
-                                                !showAvatarUpload
-                                            )
-                                        }
-                                        className="absolute bottom-0 right-0 bg-white text-primary p-2.5 rounded-full shadow-lg hover:bg-gray-50 transition-colors"
+                                    {/* Hidden file input */}
+                                    <input
+                                        type="file"
+                                        id="avatar-file-input"
+                                        accept="image/*"
+                                        onChange={handleAvatarFileSelect}
+                                        className="hidden"
+                                    />
+                                    {/* Camera button - opens file browser directly */}
+                                    <label
+                                        htmlFor="avatar-file-input"
+                                        className="absolute bottom-0 right-0 bg-white text-primary p-2.5 rounded-full shadow-lg hover:bg-gray-50 transition-colors cursor-pointer"
                                     >
                                         <Icon
                                             icon="mingcute:camera-line"
                                             width="18"
                                             height="18"
                                         />
-                                    </button>
+                                    </label>
+                                    {/* Remove Avatar Button - only show when avatar exists */}
+                                    {avatarPreview &&
+                                        avatarPreview !==
+                                            "/assets/blank-profile.jpg" && (
+                                            <button
+                                                type="button"
+                                                onClick={handleRemoveAvatar}
+                                                className="absolute top-0 right-0 bg-red-500 text-white p-1.5 rounded-full shadow-lg hover:bg-red-600 transition-colors"
+                                                title="Remove avatar"
+                                            >
+                                                <Icon
+                                                    icon="mingcute:close-line"
+                                                    width="14"
+                                                    height="14"
+                                                />
+                                            </button>
+                                        )}
                                 </div>
                                 <h2 className="text-2xl font-bold mb-2">
                                     {formData.name || "Complete Your Profile"}
@@ -421,54 +511,6 @@ function EditProfile() {
                             </div>
                         </div>
                     </div>
-
-                    {/* Avatar Upload Section */}
-                    {showAvatarUpload && (
-                        <div className="bg-white rounded-2xl shadow-lg overflow-hidden mb-6">
-                            <div className="p-6">
-                                <div className="flex items-center gap-3 mb-4">
-                                    <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center">
-                                        <Icon
-                                            icon="mingcute:camera-line"
-                                            width="20"
-                                            height="20"
-                                            className="text-primary"
-                                        />
-                                    </div>
-                                    <div>
-                                        <h3 className="text-lg font-semibold text-gray-800">
-                                            Update Profile Picture
-                                        </h3>
-                                        <p className="text-gray-600 text-sm">
-                                            Choose a new profile picture
-                                        </p>
-                                    </div>
-                                </div>
-
-                                <div className="bg-gray-50 rounded-xl p-4">
-                                    <ImageUpload
-                                        currentImage={formData.avatar_url}
-                                        onImageChange={handleAvatarChange}
-                                        userId={user?.id}
-                                        bucket="avatars"
-                                        type="avatar"
-                                    />
-                                </div>
-
-                                <div className="flex gap-3 mt-4">
-                                    <button
-                                        type="button"
-                                        onClick={() =>
-                                            setShowAvatarUpload(false)
-                                        }
-                                        className="flex-1 bg-gray-100 text-gray-700 px-4 py-2.5 rounded-lg hover:bg-gray-200 transition-colors text-sm font-medium"
-                                    >
-                                        Cancel
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    )}
 
                     {/* Form Card */}
                     <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
@@ -786,10 +828,10 @@ function EditProfile() {
                                     <button
                                         type="submit"
                                         disabled={loading}
-                                        className={`flex-1 px-6 py-3.5 rounded-xl font-medium transition-colors flex items-center justify-center gap-2 ${
+                                        className={`flex-1 px-6 py-3.5 rounded-xl font-medium transition-all duration-200 flex items-center justify-center gap-2 transform ${
                                             loading
                                                 ? "bg-gray-300 text-gray-500 cursor-not-allowed"
-                                                : "bg-primary text-white hover:bg-primary-dark"
+                                                : "bg-primary text-white hover:bg-primary-dark hover:shadow-lg hover:-translate-y-0.5"
                                         }`}
                                     >
                                         {loading ? (
