@@ -253,14 +253,34 @@ function EditProfile() {
             // Handle avatar upload if changed
             if (avatarChanged) {
                 if (selectedAvatarFile) {
+                    console.log("Uploading avatar file:", {
+                        name: selectedAvatarFile.name,
+                        size: selectedAvatarFile.size,
+                        type: selectedAvatarFile.type,
+                    });
+
                     // Upload new avatar
                     const uploadResult = await uploadImage(
                         selectedAvatarFile,
+                        "avatars", // Use correct avatars bucket
                         user.id,
-                        "avatars",
-                        "avatar"
+                        formData.avatar_url // Pass old avatar URL for deletion
                     );
-                    avatarUrl = uploadResult;
+
+                    console.log("Upload result:", uploadResult);
+
+                    if (uploadResult.success) {
+                        avatarUrl = uploadResult.url;
+                        console.log("Avatar uploaded successfully:", avatarUrl);
+                    } else {
+                        console.error(
+                            "Avatar upload failed:",
+                            uploadResult.error
+                        );
+                        alert(uploadResult.error || "Failed to upload avatar");
+                        setIsSubmitting(false);
+                        return;
+                    }
                 } else if (avatarPreview === "/assets/blank-profile.jpg") {
                     // Remove avatar (set to empty)
                     avatarUrl = "";
@@ -369,14 +389,31 @@ function EditProfile() {
         }
 
         try {
-            // Create preview URL immediately from original file
+            // Create preview immediately using original file
             const previewUrl = URL.createObjectURL(file);
             setAvatarPreview(previewUrl);
             setAvatarChanged(true);
 
             // Compress the image in background for later upload
-            const compressedFile = await compressImage(file, 0.8, 400, 400);
-            setSelectedAvatarFile(compressedFile);
+            console.log("Original file:", {
+                name: file.name,
+                size: file.size,
+                type: file.type,
+            });
+            const compressedFile = await compressImage(file, 400, 0.8);
+            console.log("Compressed file:", {
+                name: compressedFile.name,
+                size: compressedFile.size,
+                type: compressedFile.type,
+            });
+
+            // Validate the compressed file has content
+            if (compressedFile.size === 0) {
+                console.warn("Compressed file is empty, using original file");
+                setSelectedAvatarFile(file);
+            } else {
+                setSelectedAvatarFile(compressedFile);
+            }
         } catch (error) {
             console.error("Error processing image:", error);
             // Still set preview even if compression fails

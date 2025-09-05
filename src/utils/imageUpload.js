@@ -124,35 +124,67 @@ export const deleteImageFromUrl = async (imageUrl, bucket) => {
  * @returns {Promise<File>} - Compressed file
  */
 export const compressImage = (file, maxWidth = 800, quality = 0.8) => {
-    return new Promise((resolve) => {
+    return new Promise((resolve, reject) => {
         const canvas = document.createElement("canvas");
         const ctx = canvas.getContext("2d");
         const img = new Image();
 
         img.onload = () => {
-            // Calculate new dimensions
-            const ratio = Math.min(maxWidth / img.width, maxWidth / img.height);
-            const width = img.width * ratio;
-            const height = img.height * ratio;
+            try {
+                // Calculate new dimensions
+                const ratio = Math.min(
+                    maxWidth / img.width,
+                    maxWidth / img.height
+                );
+                const width = img.width * ratio;
+                const height = img.height * ratio;
 
-            // Set canvas dimensions
-            canvas.width = width;
-            canvas.height = height;
+                // Set canvas dimensions
+                canvas.width = width;
+                canvas.height = height;
 
-            // Draw and compress
-            ctx.drawImage(img, 0, 0, width, height);
+                // Draw and compress
+                ctx.drawImage(img, 0, 0, width, height);
 
-            canvas.toBlob(
-                (blob) => {
-                    const compressedFile = new File([blob], file.name, {
-                        type: file.type,
-                        lastModified: Date.now(),
-                    });
-                    resolve(compressedFile);
-                },
-                file.type,
-                quality
-            );
+                canvas.toBlob(
+                    (blob) => {
+                        if (!blob || blob.size === 0) {
+                            console.warn(
+                                "Compression resulted in empty blob, using original file"
+                            );
+                            resolve(file);
+                            return;
+                        }
+
+                        const compressedFile = new File([blob], file.name, {
+                            type: file.type,
+                            lastModified: Date.now(),
+                        });
+
+                        console.log("Compression successful:", {
+                            original: file.size,
+                            compressed: compressedFile.size,
+                            ratio:
+                                (
+                                    (compressedFile.size / file.size) *
+                                    100
+                                ).toFixed(2) + "%",
+                        });
+
+                        resolve(compressedFile);
+                    },
+                    file.type,
+                    quality
+                );
+            } catch (error) {
+                console.error("Error during compression:", error);
+                resolve(file); // Return original file if compression fails
+            }
+        };
+
+        img.onerror = () => {
+            console.error("Failed to load image for compression");
+            resolve(file); // Return original file if image load fails
         };
 
         img.src = URL.createObjectURL(file);

@@ -146,11 +146,23 @@ function Profile() {
                                 <div className="w-32 h-32 bg-white rounded-full p-1 shadow-lg">
                                     <img
                                         src={
-                                            profile.avatar_url ||
-                                            "/assets/blank-profile.jpg"
+                                            profile.avatar_url &&
+                                            profile.avatar_url !== "" &&
+                                            !profile.avatar_url.includes(
+                                                '"success":false'
+                                            )
+                                                ? profile.avatar_url
+                                                : "/assets/blank-profile.jpg"
                                         }
                                         alt="Profile"
                                         className="w-full h-full rounded-full object-cover"
+                                        onError={(e) => {
+                                            console.log(
+                                                "Avatar load error, using fallback"
+                                            );
+                                            e.target.src =
+                                                "/assets/blank-profile.jpg";
+                                        }}
                                     />
                                 </div>
                             </div>
