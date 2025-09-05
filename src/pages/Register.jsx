@@ -32,6 +32,10 @@ function Register() {
             setError("All fields are required.");
             return;
         }
+        if (!name.trim()) {
+            setError("Please enter a valid name.");
+            return;
+        }
         if (password !== confirmPassword) {
             setError("Passwords do not match.");
             return;
@@ -45,7 +49,10 @@ function Register() {
                 email,
                 password,
                 options: {
-                    data: { display_name: name },
+                    data: { 
+                        display_name: name.trim(),
+                        full_name: name.trim() // Store name in user metadata
+                    },
                     emailRedirectTo: `${window.location.origin}/account-verified`,
                 },
             });
@@ -54,19 +61,10 @@ function Register() {
                 setLoading(false);
                 return;
             }
-            const userId = data.user?.id;
-            if (userId) {
-                // Update the profile with the user's name (profile is created automatically by trigger)
-                const { error: updateError } = await supabase
-                    .from("profiles")
-                    .update({ name: name })
-                    .eq("id", userId);
-
-                if (updateError) {
-                    console.log("Profile update error:", updateError);
-                    // Don't fail registration if profile update fails
-                }
-            }
+            
+            // Don't try to update profiles table here since user is unverified
+            // The name will be saved to the profile when they verify their email
+            
             setUser(data.user || null);
             setLoading(false);
             navigate("/verify-account");

@@ -84,11 +84,11 @@ function App() {
     const [loading, setLoading] = useState(true);
 
     // Fetch user role from profiles table and handle deleted users
-    const fetchUserRole = useCallback(async (userId) => {
+    const fetchUserRole = useCallback(async (userId, currentUser = null) => {
         try {
             const { data, error } = await supabase
                 .from("profiles")
-                .select("role_id, status")
+                .select("role_id, status, name")
                 .eq("id", userId)
                 .single();
 
@@ -103,6 +103,38 @@ function App() {
                     setUserRole(null);
                     return;
                 }
+
+                // Check if name is missing but exists in user metadata
+                if (
+                    !data.name &&
+                    currentUser &&
+                    currentUser.email_confirmed_at
+                ) {
+                    const userName =
+                        currentUser.user_metadata?.full_name ||
+                        currentUser.user_metadata?.display_name;
+                    if (userName && userName.trim()) {
+                        console.log(
+                            "Transferring name from metadata to profile..."
+                        );
+                        // Transfer name from metadata to profile
+                        const { error: updateError } = await supabase
+                            .from("profiles")
+                            .update({
+                                name: userName.trim(),
+                                updated_at: new Date().toISOString(),
+                            })
+                            .eq("id", userId);
+
+                        if (updateError) {
+                            console.error(
+                                "Error updating profile with name:",
+                                updateError
+                            );
+                        }
+                    }
+                }
+
                 setUserRole(data.role_id);
             } else if (error && error.code === "PGRST116") {
                 // No profile found - user might be deleted from database
@@ -139,7 +171,7 @@ function App() {
             setUser(sessionUser);
 
             if (sessionUser) {
-                fetchUserRole(sessionUser.id);
+                fetchUserRole(sessionUser.id, sessionUser);
             } else {
                 setLoading(false);
             }
@@ -155,7 +187,7 @@ function App() {
             setUser(sessionUser);
 
             if (sessionUser) {
-                fetchUserRole(sessionUser.id);
+                fetchUserRole(sessionUser.id, sessionUser);
             } else {
                 setUserRole(null);
                 setLoading(false);

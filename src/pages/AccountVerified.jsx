@@ -12,17 +12,49 @@ function AccountVerified() {
         const updateEmailVerificationStatus = async () => {
             if (user && user.id) {
                 try {
-                    // Update the profiles table to set email_verified to true
-                    const { error } = await supabase
-                        .from("profiles")
-                        .update({ email_verified: true })
-                        .eq("id", user.id);
+                    // Get the name from user metadata
+                    const userName =
+                        user.user_metadata?.full_name ||
+                        user.user_metadata?.display_name ||
+                        "";
+
+                    // Update the profiles table with email verification and name
+                    const updateData = {
+                        email_verified: true,
+                        updated_at: new Date().toISOString(),
+                    };
+
+                    // Add name to update if it exists in metadata
+                    if (userName && userName.trim()) {
+                        updateData.name = userName.trim();
+                    }
+
+                    const { error } = await supabase.from("profiles").upsert(
+                        {
+                            id: user.id,
+                            email: user.email,
+                            ...updateData,
+                            created_at: new Date().toISOString(),
+                        },
+                        {
+                            onConflict: "id",
+                        }
+                    );
 
                     if (error) {
-                        console.error(
-                            "Error updating email verification status:",
-                            error
-                        );
+                        console.error("Error updating profile:", error);
+                        // Try a simple update as fallback
+                        const { error: fallbackError } = await supabase
+                            .from("profiles")
+                            .update(updateData)
+                            .eq("id", user.id);
+
+                        if (fallbackError) {
+                            console.error(
+                                "Fallback update error:",
+                                fallbackError
+                            );
+                        }
                     }
                 } catch (error) {
                     console.error(
