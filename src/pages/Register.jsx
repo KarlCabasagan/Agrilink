@@ -106,7 +106,7 @@ function Register() {
                             <input
                                 type="text"
                                 className="bg-white w-full max-w-sm p-3 rounded-md mb-4 text-base outline-none focus:outline-none focus:ring-0 shadow-sm"
-                                placeholder="Name"
+                                placeholder="Full Name"
                                 value={name}
                                 onChange={(e) => setName(e.target.value)}
                                 autoComplete="name"

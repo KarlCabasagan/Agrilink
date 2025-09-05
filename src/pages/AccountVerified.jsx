@@ -102,7 +102,7 @@ function AccountVerified() {
                         </button>
 
                         <Link
-                            to="/profile"
+                            to="/edit-profile"
                             className="w-full bg-gray-100 hover:bg-gray-200 text-gray-700 py-3 px-6 rounded-lg font-medium transition-colors flex items-center justify-center gap-2"
                         >
                             <Icon

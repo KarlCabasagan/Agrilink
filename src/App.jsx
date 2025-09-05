@@ -83,24 +83,48 @@ function App() {
     const [userRole, setUserRole] = useState(null);
     const [loading, setLoading] = useState(true);
 
-    // Fetch user role from profiles table
+    // Fetch user role from profiles table and handle deleted users
     const fetchUserRole = useCallback(async (userId) => {
         try {
             const { data, error } = await supabase
                 .from("profiles")
-                .select("role_id")
+                .select("role_id, status")
                 .eq("id", userId)
                 .single();
 
             if (data) {
+                // Check if user is active
+                if (data.status === "suspended" || data.status === "deleted") {
+                    console.log(
+                        "User account is suspended/deleted, logging out..."
+                    );
+                    await supabase.auth.signOut();
+                    setUser(null);
+                    setUserRole(null);
+                    return;
+                }
                 setUserRole(data.role_id);
             } else if (error && error.code === "PGRST116") {
-                // No profile found, default to Consumer role
-                setUserRole(1);
+                // No profile found - user might be deleted from database
+                console.log(
+                    "User profile not found in database, logging out..."
+                );
+                await supabase.auth.signOut();
+                setUser(null);
+                setUserRole(null);
+                return;
             }
         } catch (error) {
             console.error("Error fetching user role:", error);
-            setUserRole(1); // Default to Consumer role
+            // If there's a persistent error, logout the user
+            if (error.code === "PGRST301" || error.message.includes("JWT")) {
+                console.log("Authentication error, logging out...");
+                await supabase.auth.signOut();
+                setUser(null);
+                setUserRole(null);
+                return;
+            }
+            setUserRole(1); // Default to Consumer role for other errors
         }
     }, []);
 
@@ -205,19 +229,9 @@ function App() {
         );
 
     const AuthRoute = ({ children, allowUnverified = false }) => {
-        // If no user, show the auth pages (login/register)
         if (!user) return children;
-        
-        // If user exists but not verified, allow access to verify account page
-        if (user && !isVerified && allowUnverified) return children;
-        
-        // If user exists and is verified, redirect to home
-        if (user && isVerified) return <Navigate to="/" replace />;
-        
-        // If user exists but not verified and this is not the verify page, redirect to verify
-        if (user && !isVerified && !allowUnverified) return <Navigate to="/verify-account" replace />;
-        
-        return children;
+        if (allowUnverified && !isVerified) return children;
+        return <Navigate to="/" replace />;
     };
 
     // Role-based access control

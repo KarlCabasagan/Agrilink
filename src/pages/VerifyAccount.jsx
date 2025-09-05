@@ -10,6 +10,24 @@ function VerifyAccount() {
     const [resendLoading, setResendLoading] = useState(false);
     const [resendMessage, setResendMessage] = useState("");
     const [logoutLoading, setLogoutLoading] = useState(false);
+    const [resendCooldown, setResendCooldown] = useState(60); // 60 seconds cooldown
+    const [canResend, setCanResend] = useState(false);
+
+    // Start cooldown timer when component mounts
+    useEffect(() => {
+        const timer = setInterval(() => {
+            setResendCooldown((prev) => {
+                if (prev <= 1) {
+                    setCanResend(true);
+                    clearInterval(timer);
+                    return 0;
+                }
+                return prev - 1;
+            });
+        }, 1000);
+
+        return () => clearInterval(timer);
+    }, []);
 
     useEffect(() => {
         // Check if user is already verified and redirect
@@ -19,6 +37,8 @@ function VerifyAccount() {
     }, [user, navigate]);
 
     const handleResendEmail = async () => {
+        if (!canResend) return; // Prevent resend during cooldown
+
         if (!user?.email) {
             setResendMessage("No email found. Please try logging in again.");
             return;
@@ -45,6 +65,21 @@ function VerifyAccount() {
                 setResendMessage(
                     "Verification email sent! Please check your inbox."
                 );
+                // Reset cooldown timer
+                setCanResend(false);
+                setResendCooldown(60);
+
+                // Start new timer
+                const timer = setInterval(() => {
+                    setResendCooldown((prev) => {
+                        if (prev <= 1) {
+                            setCanResend(true);
+                            clearInterval(timer);
+                            return 0;
+                        }
+                        return prev - 1;
+                    });
+                }, 1000);
             }
         } catch (error) {
             setResendMessage(
@@ -184,13 +219,22 @@ function VerifyAccount() {
                         <div className="flex flex-col sm:flex-row gap-3">
                             <button
                                 onClick={handleResendEmail}
-                                disabled={resendLoading}
+                                disabled={resendLoading || !canResend}
                                 className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 py-2 px-4 rounded-lg text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                             >
                                 {resendLoading ? (
                                     <>
                                         <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current"></div>
                                         Sending...
+                                    </>
+                                ) : !canResend ? (
+                                    <>
+                                        <Icon
+                                            icon="mingcute:time-line"
+                                            width="16"
+                                            height="16"
+                                        />
+                                        Resend in {resendCooldown}s
                                     </>
                                 ) : (
                                     <>
