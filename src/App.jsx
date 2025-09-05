@@ -205,9 +205,19 @@ function App() {
         );
 
     const AuthRoute = ({ children, allowUnverified = false }) => {
+        // If no user, show the auth pages (login/register)
         if (!user) return children;
-        if (allowUnverified && !isVerified) return children;
-        return <Navigate to="/" replace />;
+        
+        // If user exists but not verified, allow access to verify account page
+        if (user && !isVerified && allowUnverified) return children;
+        
+        // If user exists and is verified, redirect to home
+        if (user && isVerified) return <Navigate to="/" replace />;
+        
+        // If user exists but not verified and this is not the verify page, redirect to verify
+        if (user && !isVerified && !allowUnverified) return <Navigate to="/verify-account" replace />;
+        
+        return children;
     };
 
     // Role-based access control
