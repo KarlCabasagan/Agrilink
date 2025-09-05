@@ -75,6 +75,13 @@ function Home() {
 
                 if (error) {
                     console.error("Error fetching products:", error);
+                    setProducts([]);
+                    return;
+                }
+
+                if (!data || data.length === 0) {
+                    console.log("No products found in database");
+                    setProducts([]);
                     return;
                 }
 
@@ -102,6 +109,7 @@ function Home() {
                 setProducts(formattedProducts);
             } catch (error) {
                 console.error("Error fetching products:", error);
+                setProducts([]);
             } finally {
                 setLoading(false);
             }
@@ -111,6 +119,10 @@ function Home() {
     }, []);
 
     const filteredProducts = useMemo(() => {
+        if (!products || products.length === 0) {
+            return [];
+        }
+
         return products
             .filter(
                 (product) =>
@@ -122,7 +134,7 @@ function Home() {
                     product.name.toLowerCase().includes(search.toLowerCase()) ||
                     product.address.toLowerCase().includes(search.toLowerCase())
             );
-    }, [selectedCategory, search]);
+    }, [products, selectedCategory, search]);
 
     const renderStars = (rating) => {
         const fullStars = Math.floor(rating);
@@ -252,6 +264,21 @@ function Home() {
                                 </div>
                             </div>
                         ))
+                    ) : !products || products.length === 0 ? (
+                        <div className="col-span-full flex flex-col items-center justify-center py-16">
+                            <Icon
+                                icon="mingcute:inbox-line"
+                                width="64"
+                                height="64"
+                                className="text-gray-300 mb-4"
+                            />
+                            <p className="text-gray-400 text-lg">
+                                No products available
+                            </p>
+                            <p className="text-gray-400 text-sm">
+                                Products will appear here when farmers add them
+                            </p>
+                        </div>
                     ) : filteredProducts.length === 0 ? (
                         <div className="col-span-full flex flex-col items-center justify-center py-16">
                             <Icon
