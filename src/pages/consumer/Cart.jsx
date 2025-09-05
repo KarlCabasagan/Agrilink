@@ -25,7 +25,8 @@ function Cart() {
                         *,
                         products(
                             *,
-                            profiles!farmer_id(name, address)
+                            categories(name),
+                            farmer_profile:profiles(name, address)
                         )
                     `
                     )
@@ -37,6 +38,8 @@ function Cart() {
                     return;
                 }
 
+                console.log("Raw cart data:", data); // Debug log
+
                 const formattedCartItems = data.map((item) => ({
                     id: item.product_id,
                     cartItemId: item.id,
@@ -47,15 +50,20 @@ function Cart() {
                         item.products.image_url ||
                         "https://via.placeholder.com/300x200?text=No+Image",
                     farmerName:
-                        item.products.profiles?.name || "Unknown Farmer",
+                        item.products.farmer_profile?.name || "Unknown Farmer",
                     farmerId: item.products.farmer_id,
+                    farmerAddress:
+                        item.products.farmer_profile?.address ||
+                        "Location not available",
                     stock: parseFloat(item.products.stock),
                     unit: item.products.unit || "kg",
                     minimumOrderQuantity:
                         parseFloat(item.products.minimum_order_quantity) || 1.0,
                     deliveryCost: parseFloat(item.products.delivery_cost) || 50,
+                    category: item.products.categories?.name || "Other",
                 }));
 
+                console.log("Formatted cart items:", formattedCartItems); // Debug log
                 setCartItems(formattedCartItems);
             } catch (error) {
                 console.error("Error fetching cart items:", error);
@@ -210,7 +218,7 @@ function Cart() {
                         className="text-primary"
                     />
                     <span className="text-primary font-medium">
-                        {getTotalItems().toFixed(1)} kg
+                        {getTotalItems().toFixed(1)} items
                     </span>
                 </div>
             </div>
@@ -354,6 +362,16 @@ function Cart() {
                                                         <h3 className="font-semibold text-gray-800">
                                                             {group.farmerName}
                                                         </h3>
+                                                        <p className="text-xs text-gray-600 flex items-center gap-1 mt-0.5">
+                                                            <Icon
+                                                                icon="mingcute:location-line"
+                                                                width="12"
+                                                                height="12"
+                                                            />
+                                                            {group.items[0]
+                                                                ?.farmerAddress ||
+                                                                "Location not available"}
+                                                        </p>
                                                         <div className="bg-primary/10 px-2 py-1 rounded-md inline-block mt-1">
                                                             <p className="text-sm font-bold text-primary">
                                                                 ₱
@@ -418,7 +436,7 @@ function Cart() {
                                                                 {item.price.toFixed(
                                                                     2
                                                                 )}
-                                                                /kg
+                                                                /{item.unit}
                                                             </p>
                                                         </div>
                                                         <button
@@ -440,7 +458,8 @@ function Cart() {
                                                     <div className="flex items-center justify-between mt-4 pt-4 border-t border-gray-100">
                                                         <div className="flex items-center gap-3">
                                                             <span className="text-sm font-medium text-gray-700">
-                                                                Quantity (kg):
+                                                                Quantity (
+                                                                {item.unit}):
                                                             </span>
                                                             <input
                                                                 type="number"
@@ -457,7 +476,7 @@ function Cart() {
                                                                 step="0.1"
                                                                 min="0.1"
                                                                 max={item.stock}
-                                                                className="px-2 py-1 border border-gray-300 rounded-lg w-16 text-center focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary"
+                                                                className="px-2 py-1 border border-gray-300 rounded-lg w-20 text-center focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary"
                                                             />
                                                         </div>
                                                         <div className="text-right">
@@ -470,6 +489,11 @@ function Cart() {
                                                                     item.price *
                                                                     item.quantity
                                                                 ).toFixed(2)}
+                                                            </p>
+                                                            <p className="text-xs text-gray-500">
+                                                                Stock:{" "}
+                                                                {item.stock}{" "}
+                                                                {item.unit}
                                                             </p>
                                                         </div>
                                                     </div>
@@ -530,7 +554,8 @@ function Cart() {
                             <div className="space-y-2 mb-4">
                                 <div className="flex justify-between text-gray-600">
                                     <span>
-                                        Items ({getTotalItems().toFixed(1)} kg)
+                                        Total Items:{" "}
+                                        {getTotalItems().toFixed(1)} kg
                                     </span>
                                     <span>₱{getTotalPrice().toFixed(2)}</span>
                                 </div>

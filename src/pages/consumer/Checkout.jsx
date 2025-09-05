@@ -20,15 +20,11 @@ function Checkout() {
             ...item,
             farmerName: item.farmerName || "Unknown Farmer",
             farmerId: item.farmerId || `farmer_${item.id}`,
+            farmerAddress: item.farmerAddress || "Location not available",
+            minimumOrderQuantity: item.minimumOrderQuantity || 1.0,
+            deliveryCost: item.deliveryCost || 50,
         }))
     );
-
-    // Farmer minimum order quantities (would come from database in real app)
-    const farmerSettings = {
-        farmer_1: { minimumOrderQuantity: 3.0, deliveryCost: 50 }, // Juan Santos
-        farmer_2: { minimumOrderQuantity: 2.0, deliveryCost: 40 }, // Maria Cruz
-        farmer_3: { minimumOrderQuantity: 2.5, deliveryCost: 60 }, // Ana Garcia
-    };
 
     // Group cart items by farmer
     const groupedByFarmer = currentCartItems.reduce((groups, item) => {
@@ -37,12 +33,12 @@ function Checkout() {
             groups[farmerId] = {
                 farmerName: item.farmerName,
                 farmerId: farmerId,
+                farmerAddress: item.farmerAddress || "Location not available",
                 items: [],
                 totalQuantity: 0,
                 totalPrice: 0,
-                minimumOrderQuantity:
-                    farmerSettings[farmerId]?.minimumOrderQuantity || 2.0,
-                deliveryCost: farmerSettings[farmerId]?.deliveryCost || 50,
+                minimumOrderQuantity: item.minimumOrderQuantity || 1.0,
+                deliveryCost: item.deliveryCost || 50,
             };
         }
         groups[farmerId].items.push(item);
@@ -303,27 +299,99 @@ function Checkout() {
         try {
             // Format contact number before submission
             const formattedContact = formatPhoneNumber(formData.phone);
-            const submissionData = {
-                ...formData,
-                phone: formattedContact,
+
+            // Create the main order record
+            const orderData = {
+                user_id: user.id,
+                total_amount: finalTotal,
+                delivery_method: formData.deliveryMethod,
+                payment_method: formData.paymentMethod,
+                status: "pending",
+                delivery_address:
+                    formData.deliveryMethod === "delivery"
+                        ? `${formData.address}, ${formData.city}, ${formData.province} ${formData.postalCode}`
+                        : null,
+                customer_name: formData.fullName,
+                customer_email: formData.email,
+                customer_phone: formattedContact,
+                notes: formData.notes,
+                created_at: new Date().toISOString(),
             };
 
-            // Simulate order placement
-            await new Promise((resolve) => setTimeout(resolve, 2000));
+            console.log("Creating order:", orderData);
 
-            // Generate order ID
-            const newOrderId = `ORD-${Date.now()}`;
-            setOrderId(newOrderId);
+            const { data: orderResult, error: orderError } = await supabase
+                .from("orders")
+                .insert(orderData)
+                .select()
+                .single();
+
+            if (orderError) {
+                console.error("Error creating order:", orderError);
+                throw orderError;
+            }
+
+            const orderId = orderResult.id;
+            console.log("Order created with ID:", orderId);
+
+            // Create order items for each cart item
+            const orderItems = currentCartItems.map((item) => ({
+                order_id: orderId,
+                product_id: item.id,
+                quantity: item.quantity,
+                price_per_unit: item.price,
+                subtotal: item.price * item.quantity,
+                farmer_id: item.farmerId,
+            }));
+
+            const { error: itemsError } = await supabase
+                .from("order_items")
+                .insert(orderItems);
+
+            if (itemsError) {
+                console.error("Error creating order items:", itemsError);
+                // Try to cleanup the order if items failed
+                await supabase.from("orders").delete().eq("id", orderId);
+                throw itemsError;
+            }
+
+            // Clear the cart after successful order
+            const { error: cartClearError } = await supabase
+                .from("cart_items")
+                .delete()
+                .eq("user_id", user.id);
+
+            if (cartClearError) {
+                console.error("Error clearing cart:", cartClearError);
+                // Don't throw error here, order was successful
+            }
+
+            // Update product stock
+            for (const item of currentCartItems) {
+                const { error: stockError } = await supabase
+                    .from("products")
+                    .update({ stock: item.stock - item.quantity })
+                    .eq("id", item.id);
+
+                if (stockError) {
+                    console.error(
+                        "Error updating stock for product",
+                        item.id,
+                        ":",
+                        stockError
+                    );
+                    // Don't throw error, order was successful
+                }
+            }
+
+            // Set order success
+            setOrderId(`ORD-${orderId}`);
             setOrderPlaced(true);
-
-            // Here you would typically:
-            // 1. Create order in database
-            // 2. Clear cart
-            // 3. Send confirmation email
-            // 4. Process payment if not COD
         } catch (error) {
             console.error("Error placing order:", error);
-            alert("Failed to place order. Please try again.");
+            alert(
+                `Failed to place order: ${error.message || "Please try again."}`
+            );
         } finally {
             setLoading(false);
         }
@@ -1051,11 +1119,23 @@ function Checkout() {
                                                                             : "text-gray-600"
                                                                     }
                                                                 />
-                                                                <h4 className="font-semibold text-sm text-gray-800">
-                                                                    {
-                                                                        farmer.farmerName
-                                                                    }
-                                                                </h4>
+                                                                <div>
+                                                                    <h4 className="font-semibold text-sm text-gray-800">
+                                                                        {
+                                                                            farmer.farmerName
+                                                                        }
+                                                                    </h4>
+                                                                    <p className="text-xs text-gray-600 flex items-center gap-1">
+                                                                        <Icon
+                                                                            icon="mingcute:location-line"
+                                                                            width="10"
+                                                                            height="10"
+                                                                        />
+                                                                        {
+                                                                            farmer.farmerAddress
+                                                                        }
+                                                                    </p>
+                                                                </div>
                                                             </div>
                                                             <div className="text-right">
                                                                 <p className="text-xs font-medium text-primary">
@@ -1063,6 +1143,16 @@ function Checkout() {
                                                                     {farmer.totalPrice.toFixed(
                                                                         2
                                                                     )}
+                                                                </p>
+                                                                <p className="text-xs text-gray-500">
+                                                                    Min:{" "}
+                                                                    {
+                                                                        farmer.minimumOrderQuantity
+                                                                    }{" "}
+                                                                    | Fee: ₱
+                                                                    {
+                                                                        farmer.deliveryCost
+                                                                    }
                                                                 </p>
                                                                 {isIneligible && (
                                                                     <p className="text-xs text-red-600">
@@ -1145,12 +1235,17 @@ function Checkout() {
                                                                                 {item.price.toFixed(
                                                                                     2
                                                                                 )}
-                                                                                /kg
+
+                                                                                /
+                                                                                {item.unit ||
+                                                                                    "kg"}
+
                                                                                 ×{" "}
                                                                                 {
                                                                                     item.quantity
                                                                                 }{" "}
-                                                                                kg
+                                                                                {item.unit ||
+                                                                                    "kg"}
                                                                             </p>
                                                                         </div>
                                                                         <div className="text-right flex flex-col items-end gap-2">
