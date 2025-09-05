@@ -29,14 +29,23 @@ function Profile() {
 
     useEffect(() => {
         const fetchProfile = async () => {
-            if (!user) return;
+            if (!user) {
+                setLoading(false);
+                return;
+            }
+
+            console.log("Fetching profile for user:", user.id); // Debug log
             setLoading(true);
+
             try {
                 const { data, error } = await supabase
                     .from("profiles")
                     .select("name, email, address, contact, avatar_url")
                     .eq("id", user.id)
                     .single();
+
+                console.log("Profile data received:", data); // Debug log
+                console.log("Profile error:", error); // Debug log
 
                 if (data) {
                     setProfile({
@@ -48,6 +57,7 @@ function Profile() {
                     });
                 } else if (error && error.code === "PGRST116") {
                     // No profile found, create one with user's email
+                    console.log("Creating new profile for user");
                     const { error: insertError } = await supabase
                         .from("profiles")
                         .insert({
@@ -68,10 +78,30 @@ function Profile() {
                             contact: "",
                             avatar_url: "",
                         });
+                    } else {
+                        console.error("Error creating profile:", insertError);
                     }
+                } else if (error) {
+                    console.error("Error fetching profile:", error);
+                    // Set profile with user email even if there's an error
+                    setProfile({
+                        name: "",
+                        email: user.email || "",
+                        address: "",
+                        contact: "",
+                        avatar_url: "",
+                    });
                 }
             } catch (error) {
                 console.error("Error fetching profile:", error);
+                // Fallback to user email
+                setProfile({
+                    name: "",
+                    email: user.email || "",
+                    address: "",
+                    contact: "",
+                    avatar_url: "",
+                });
             } finally {
                 setLoading(false);
             }
@@ -94,274 +124,297 @@ function Profile() {
                 </h1>
             </div>
 
-            <div className="w-full max-w-2xl mx-4 sm:mx-auto my-16">
-                {/* Profile Card */}
-                <div className="bg-white rounded-lg shadow-md overflow-hidden mb-6">
-                    <div className="relative h-32 bg-gradient-to-br from-primary to-primary-dark">
-                        <div className="absolute bottom-0 left-1/2 transform -translate-x-1/2 translate-y-1/2">
-                            <div className="w-32 h-32 bg-white rounded-full p-1 shadow-lg">
-                                <img
-                                    src={
-                                        profile.avatar_url ||
-                                        "/assets/blank-profile.jpg"
-                                    }
-                                    alt="Profile"
-                                    className="w-full h-full rounded-full object-cover"
-                                />
-                            </div>
-                        </div>
-                    </div>
-
-                    <div className="pt-20 pb-6 px-6 text-center">
-                        <h2 className="text-xl font-bold text-gray-800 mb-2">
-                            {profile.name || "Consumer"}
-                        </h2>
-                        <p className="text-gray-600 mb-4">
-                            {profile.email || user?.email || "No Email"}
-                        </p>
-
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
-                            <div className="bg-gray-50 p-3 rounded-lg">
-                                <div className="flex items-center gap-2 mb-1">
-                                    <Icon
-                                        icon="mingcute:location-line"
-                                        width="16"
-                                        height="16"
-                                        className="text-gray-500"
-                                    />
-                                    <span className="text-gray-500 font-medium">
-                                        Address
-                                    </span>
-                                </div>
-                                <p className="text-gray-700">
-                                    {profile.address || "No Address"}
-                                </p>
-                            </div>
-                            <div className="bg-gray-50 p-3 rounded-lg">
-                                <div className="flex items-center gap-2 mb-1">
-                                    <Icon
-                                        icon="mingcute:phone-line"
-                                        width="16"
-                                        height="16"
-                                        className="text-gray-500"
-                                    />
-                                    <span className="text-gray-500 font-medium">
-                                        Contact
-                                    </span>
-                                </div>
-                                <p className="text-gray-700">
-                                    {displayPhoneNumber(profile.contact) ||
-                                        "No Contact"}
-                                </p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                {/* Menu Items */}
-                <div className="bg-white rounded-lg shadow-md overflow-hidden mb-6">
-                    <h3 className="text-lg font-semibold text-gray-800 p-4 border-b border-gray-200">
-                        Account Settings
-                    </h3>
-                    <div className="divide-y divide-gray-200">
-                        <Link
-                            to="/edit-profile"
-                            className="flex items-center justify-between p-4 hover:bg-gray-50 transition-colors"
-                        >
-                            <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
-                                    <Icon
-                                        icon="mingcute:edit-line"
-                                        width="20"
-                                        height="20"
-                                        className="text-blue-600"
-                                    />
-                                </div>
-                                <span className="text-gray-800">
-                                    Edit Profile
-                                </span>
-                            </div>
-                            <Icon
-                                icon="mingcute:right-line"
-                                width="16"
-                                height="16"
-                                className="text-gray-400"
-                            />
-                        </Link>
-
-                        <Link
-                            to="/seller-application"
-                            className="w-full flex items-center justify-between p-4 hover:bg-gray-50 transition-colors"
-                        >
-                            <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center">
-                                    <Icon
-                                        icon="mingcute:paper-line"
-                                        width="20"
-                                        height="20"
-                                        className="text-purple-600"
-                                    />
-                                </div>
-                                <span className="text-gray-800">
-                                    Apply to be a Seller
-                                </span>
-                            </div>
-                            <Icon
-                                icon="mingcute:right-line"
-                                width="16"
-                                height="16"
-                                className="text-gray-400"
-                            />
-                        </Link>
-                    </div>
-                </div>
-
-                {/* Orders & Shopping */}
-                <div className="bg-white rounded-lg shadow-md overflow-hidden mb-6">
-                    <h3 className="text-lg font-semibold text-gray-800 p-4 border-b border-gray-200">
-                        My Shopping
-                    </h3>
-                    <div className="divide-y divide-gray-200">
-                        <Link
-                            to="/cart"
-                            className="flex items-center justify-between p-4 hover:bg-gray-50 transition-colors"
-                        >
-                            <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center">
-                                    <Icon
-                                        icon="mingcute:shopping-cart-1-line"
-                                        width="20"
-                                        height="20"
-                                        className="text-purple-600"
-                                    />
-                                </div>
-                                <span className="text-gray-800">My Cart</span>
-                            </div>
-                            <Icon
-                                icon="mingcute:right-line"
-                                width="16"
-                                height="16"
-                                className="text-gray-400"
-                            />
-                        </Link>
-
-                        <Link
-                            to="/favorites"
-                            className="flex items-center justify-between p-4 hover:bg-gray-50 transition-colors"
-                        >
-                            <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 bg-red-100 rounded-lg flex items-center justify-center">
-                                    <Icon
-                                        icon="mingcute:heart-line"
-                                        width="20"
-                                        height="20"
-                                        className="text-red-600"
-                                    />
-                                </div>
-                                <span className="text-gray-800">
-                                    Favorite Products
-                                </span>
-                            </div>
-                            <Icon
-                                icon="mingcute:right-line"
-                                width="16"
-                                height="16"
-                                className="text-gray-400"
-                            />
-                        </Link>
-
-                        <Link
-                            to="/orders"
-                            className="flex items-center justify-between p-4 hover:bg-gray-50 transition-colors"
-                        >
-                            <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
-                                    <Icon
-                                        icon="mingcute:truck-line"
-                                        width="20"
-                                        height="20"
-                                        className="text-green-600"
-                                    />
-                                </div>
-                                <span className="text-gray-800">My Orders</span>
-                            </div>
-                            <Icon
-                                icon="mingcute:right-line"
-                                width="16"
-                                height="16"
-                                className="text-gray-400"
-                            />
-                        </Link>
-
-                        <button className="w-full flex items-center justify-between p-4 hover:bg-gray-50 transition-colors">
-                            <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 bg-yellow-100 rounded-lg flex items-center justify-center">
-                                    <Icon
-                                        icon="mingcute:history-anticlockwise-line"
-                                        width="20"
-                                        height="20"
-                                        className="text-yellow-600"
-                                    />
-                                </div>
-                                <span className="text-gray-800">
-                                    Order History
-                                </span>
-                            </div>
-                            <Icon
-                                icon="mingcute:right-line"
-                                width="16"
-                                height="16"
-                                className="text-gray-400"
-                            />
-                        </button>
-                    </div>
-                </div>
-
-                {/* Support & Info */}
-                <div className="bg-white rounded-lg shadow-md overflow-hidden mb-6">
-                    <h3 className="text-lg font-semibold text-gray-800 p-4 border-b border-gray-200">
-                        Support & Information
-                    </h3>
-                    <div className="divide-y divide-gray-200">
-                        <button className="w-full flex items-center justify-between p-4 hover:bg-gray-50 transition-colors">
-                            <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 bg-orange-100 rounded-lg flex items-center justify-center">
-                                    <Icon
-                                        icon="mingcute:question-line"
-                                        width="20"
-                                        height="20"
-                                        className="text-orange-600"
-                                    />
-                                </div>
-                                <span className="text-gray-800">
-                                    Help & Support
-                                </span>
-                            </div>
-                            <Icon
-                                icon="mingcute:right-line"
-                                width="16"
-                                height="16"
-                                className="text-gray-400"
-                            />
-                        </button>
-                    </div>
-                </div>
-
-                {/* Logout */}
-                <div className="bg-white rounded-lg shadow-md overflow-hidden">
-                    <button
-                        onClick={handleLogout}
-                        className="w-full flex items-center justify-center gap-3 p-4 text-red-600 hover:bg-red-50 transition-colors"
-                    >
+            {loading ? (
+                // Loading State
+                <div className="flex-1 flex items-center justify-center mt-16">
+                    <div className="text-center">
                         <Icon
-                            icon="mingcute:exit-line"
-                            width="20"
-                            height="20"
+                            icon="mingcute:loading-line"
+                            width="48"
+                            height="48"
+                            className="animate-spin text-primary mx-auto mb-4"
                         />
-                        <span className="font-medium">Log Out</span>
-                    </button>
+                        <p className="text-gray-600">Loading profile...</p>
+                    </div>
                 </div>
-            </div>
+            ) : (
+                <div className="w-full max-w-2xl mx-4 sm:mx-auto my-16">
+                    {/* Profile Card */}
+                    <div className="bg-white rounded-lg shadow-md overflow-hidden mb-6">
+                        <div className="relative h-32 bg-gradient-to-br from-primary to-primary-dark">
+                            <div className="absolute bottom-0 left-1/2 transform -translate-x-1/2 translate-y-1/2">
+                                <div className="w-32 h-32 bg-white rounded-full p-1 shadow-lg">
+                                    <img
+                                        src={
+                                            profile.avatar_url ||
+                                            "/assets/blank-profile.jpg"
+                                        }
+                                        alt="Profile"
+                                        className="w-full h-full rounded-full object-cover"
+                                    />
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="pt-20 pb-6 px-6 text-center">
+                            <h2 className="text-xl font-bold text-gray-800 mb-2">
+                                {profile.name ||
+                                    user?.user_metadata?.full_name ||
+                                    user?.user_metadata?.display_name ||
+                                    "Consumer"}
+                            </h2>
+                            <p className="text-gray-600 mb-4">
+                                {profile.email || user?.email || "No Email"}
+                            </p>
+
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
+                                <div className="bg-gray-50 p-3 rounded-lg">
+                                    <div className="flex items-center gap-2 mb-1">
+                                        <Icon
+                                            icon="mingcute:location-line"
+                                            width="16"
+                                            height="16"
+                                            className="text-gray-500"
+                                        />
+                                        <span className="text-gray-500 font-medium">
+                                            Address
+                                        </span>
+                                    </div>
+                                    <p className="text-gray-700">
+                                        {profile.address || "No Address"}
+                                    </p>
+                                </div>
+                                <div className="bg-gray-50 p-3 rounded-lg">
+                                    <div className="flex items-center gap-2 mb-1">
+                                        <Icon
+                                            icon="mingcute:phone-line"
+                                            width="16"
+                                            height="16"
+                                            className="text-gray-500"
+                                        />
+                                        <span className="text-gray-500 font-medium">
+                                            Contact
+                                        </span>
+                                    </div>
+                                    <p className="text-gray-700">
+                                        {displayPhoneNumber(profile.contact) ||
+                                            "No Contact"}
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Menu Items */}
+                    <div className="bg-white rounded-lg shadow-md overflow-hidden mb-6">
+                        <h3 className="text-lg font-semibold text-gray-800 p-4 border-b border-gray-200">
+                            Account Settings
+                        </h3>
+                        <div className="divide-y divide-gray-200">
+                            <Link
+                                to="/edit-profile"
+                                className="flex items-center justify-between p-4 hover:bg-gray-50 transition-colors"
+                            >
+                                <div className="flex items-center gap-3">
+                                    <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
+                                        <Icon
+                                            icon="mingcute:edit-line"
+                                            width="20"
+                                            height="20"
+                                            className="text-blue-600"
+                                        />
+                                    </div>
+                                    <span className="text-gray-800">
+                                        Edit Profile
+                                    </span>
+                                </div>
+                                <Icon
+                                    icon="mingcute:right-line"
+                                    width="16"
+                                    height="16"
+                                    className="text-gray-400"
+                                />
+                            </Link>
+
+                            <Link
+                                to="/seller-application"
+                                className="w-full flex items-center justify-between p-4 hover:bg-gray-50 transition-colors"
+                            >
+                                <div className="flex items-center gap-3">
+                                    <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center">
+                                        <Icon
+                                            icon="mingcute:paper-line"
+                                            width="20"
+                                            height="20"
+                                            className="text-purple-600"
+                                        />
+                                    </div>
+                                    <span className="text-gray-800">
+                                        Apply to be a Seller
+                                    </span>
+                                </div>
+                                <Icon
+                                    icon="mingcute:right-line"
+                                    width="16"
+                                    height="16"
+                                    className="text-gray-400"
+                                />
+                            </Link>
+                        </div>
+                    </div>
+
+                    {/* Orders & Shopping */}
+                    <div className="bg-white rounded-lg shadow-md overflow-hidden mb-6">
+                        <h3 className="text-lg font-semibold text-gray-800 p-4 border-b border-gray-200">
+                            My Shopping
+                        </h3>
+                        <div className="divide-y divide-gray-200">
+                            <Link
+                                to="/cart"
+                                className="flex items-center justify-between p-4 hover:bg-gray-50 transition-colors"
+                            >
+                                <div className="flex items-center gap-3">
+                                    <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center">
+                                        <Icon
+                                            icon="mingcute:shopping-cart-1-line"
+                                            width="20"
+                                            height="20"
+                                            className="text-purple-600"
+                                        />
+                                    </div>
+                                    <span className="text-gray-800">
+                                        My Cart
+                                    </span>
+                                </div>
+                                <Icon
+                                    icon="mingcute:right-line"
+                                    width="16"
+                                    height="16"
+                                    className="text-gray-400"
+                                />
+                            </Link>
+
+                            <Link
+                                to="/favorites"
+                                className="flex items-center justify-between p-4 hover:bg-gray-50 transition-colors"
+                            >
+                                <div className="flex items-center gap-3">
+                                    <div className="w-10 h-10 bg-red-100 rounded-lg flex items-center justify-center">
+                                        <Icon
+                                            icon="mingcute:heart-line"
+                                            width="20"
+                                            height="20"
+                                            className="text-red-600"
+                                        />
+                                    </div>
+                                    <span className="text-gray-800">
+                                        Favorite Products
+                                    </span>
+                                </div>
+                                <Icon
+                                    icon="mingcute:right-line"
+                                    width="16"
+                                    height="16"
+                                    className="text-gray-400"
+                                />
+                            </Link>
+
+                            <Link
+                                to="/orders"
+                                className="flex items-center justify-between p-4 hover:bg-gray-50 transition-colors"
+                            >
+                                <div className="flex items-center gap-3">
+                                    <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
+                                        <Icon
+                                            icon="mingcute:truck-line"
+                                            width="20"
+                                            height="20"
+                                            className="text-green-600"
+                                        />
+                                    </div>
+                                    <span className="text-gray-800">
+                                        My Orders
+                                    </span>
+                                </div>
+                                <Icon
+                                    icon="mingcute:right-line"
+                                    width="16"
+                                    height="16"
+                                    className="text-gray-400"
+                                />
+                            </Link>
+
+                            <button className="w-full flex items-center justify-between p-4 hover:bg-gray-50 transition-colors">
+                                <div className="flex items-center gap-3">
+                                    <div className="w-10 h-10 bg-yellow-100 rounded-lg flex items-center justify-center">
+                                        <Icon
+                                            icon="mingcute:history-anticlockwise-line"
+                                            width="20"
+                                            height="20"
+                                            className="text-yellow-600"
+                                        />
+                                    </div>
+                                    <span className="text-gray-800">
+                                        Order History
+                                    </span>
+                                </div>
+                                <Icon
+                                    icon="mingcute:right-line"
+                                    width="16"
+                                    height="16"
+                                    className="text-gray-400"
+                                />
+                            </button>
+                        </div>
+                    </div>
+
+                    {/* Support & Info */}
+                    <div className="bg-white rounded-lg shadow-md overflow-hidden mb-6">
+                        <h3 className="text-lg font-semibold text-gray-800 p-4 border-b border-gray-200">
+                            Support & Information
+                        </h3>
+                        <div className="divide-y divide-gray-200">
+                            <button className="w-full flex items-center justify-between p-4 hover:bg-gray-50 transition-colors">
+                                <div className="flex items-center gap-3">
+                                    <div className="w-10 h-10 bg-orange-100 rounded-lg flex items-center justify-center">
+                                        <Icon
+                                            icon="mingcute:question-line"
+                                            width="20"
+                                            height="20"
+                                            className="text-orange-600"
+                                        />
+                                    </div>
+                                    <span className="text-gray-800">
+                                        Help & Support
+                                    </span>
+                                </div>
+                                <Icon
+                                    icon="mingcute:right-line"
+                                    width="16"
+                                    height="16"
+                                    className="text-gray-400"
+                                />
+                            </button>
+                        </div>
+                    </div>
+
+                    {/* Logout */}
+                    <div className="bg-white rounded-lg shadow-md overflow-hidden">
+                        <button
+                            onClick={handleLogout}
+                            className="w-full flex items-center justify-center gap-3 p-4 text-red-600 hover:bg-red-50 transition-colors"
+                        >
+                            <Icon
+                                icon="mingcute:exit-line"
+                                width="20"
+                                height="20"
+                            />
+                            <span className="font-medium">Log Out</span>
+                        </button>
+                    </div>
+                </div>
+            )}
+
             <NavigationBar />
         </div>
     );
