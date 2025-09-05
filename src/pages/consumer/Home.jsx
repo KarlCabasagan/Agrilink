@@ -15,6 +15,7 @@ function Home() {
         { name: "All", icon: "mdi:apps-box" },
     ]);
     const [loading, setLoading] = useState(true);
+    const [favorites, setFavorites] = useState(new Set()); // Track favorite product IDs
 
     // Fetch categories from database
     useEffect(() => {
@@ -55,6 +56,78 @@ function Home() {
 
         fetchCategories();
     }, []);
+
+    // Fetch user's favorites from database
+    useEffect(() => {
+        const fetchFavorites = async () => {
+            if (!user) return;
+
+            try {
+                const { data, error } = await supabase
+                    .from("favorites")
+                    .select("product_id")
+                    .eq("user_id", user.id);
+
+                if (error) {
+                    console.error("Error fetching favorites:", error);
+                    return;
+                }
+
+                const favoriteIds = new Set(data.map((fav) => fav.product_id));
+                setFavorites(favoriteIds);
+            } catch (error) {
+                console.error("Error fetching favorites:", error);
+            }
+        };
+
+        fetchFavorites();
+    }, [user]);
+
+    // Handle adding/removing favorites
+    const toggleFavorite = async (productId, event) => {
+        event.preventDefault();
+        event.stopPropagation();
+
+        if (!user) {
+            alert("Please log in to add favorites");
+            return;
+        }
+
+        const isFavorite = favorites.has(productId);
+
+        try {
+            if (isFavorite) {
+                // Remove from favorites
+                const { error } = await supabase
+                    .from("favorites")
+                    .delete()
+                    .eq("user_id", user.id)
+                    .eq("product_id", productId);
+
+                if (error) throw error;
+
+                setFavorites((prev) => {
+                    const newFavorites = new Set(prev);
+                    newFavorites.delete(productId);
+                    return newFavorites;
+                });
+            } else {
+                // Add to favorites
+                const { error } = await supabase.from("favorites").insert({
+                    user_id: user.id,
+                    product_id: productId,
+                    created_at: new Date().toISOString(),
+                });
+
+                if (error) throw error;
+
+                setFavorites((prev) => new Set([...prev, productId]));
+            }
+        } catch (error) {
+            console.error("Error toggling favorite:", error);
+            alert("Failed to update favorites. Please try again.");
+        }
+    };
 
     // Fetch products from database
     useEffect(() => {
@@ -315,14 +388,27 @@ function Home() {
                                     <div className="absolute top-2 left-2 bg-primary text-white px-2 py-1 rounded-full text-xs font-medium">
                                         {product.category}
                                     </div>
-                                    <div className="absolute top-2 right-2 bg-white rounded-full p-1 shadow-md">
+                                    <button
+                                        onClick={(e) =>
+                                            toggleFavorite(product.id, e)
+                                        }
+                                        className="absolute top-2 right-2 bg-white rounded-full p-1 shadow-md hover:bg-gray-50 transition-colors"
+                                    >
                                         <Icon
-                                            icon="mingcute:heart-line"
+                                            icon={
+                                                favorites.has(product.id)
+                                                    ? "mingcute:heart-fill"
+                                                    : "mingcute:heart-line"
+                                            }
                                             width="16"
                                             height="16"
-                                            className="text-gray-400"
+                                            className={
+                                                favorites.has(product.id)
+                                                    ? "text-red-500"
+                                                    : "text-gray-400"
+                                            }
                                         />
-                                    </div>
+                                    </button>
                                 </div>
 
                                 <div className="p-3">
