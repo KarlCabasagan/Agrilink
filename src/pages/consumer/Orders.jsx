@@ -51,11 +51,6 @@ function Orders() {
                             *,
                             categories (
                                 name
-                            ),
-                            profiles!products_user_id_fkey (
-                                name,
-                                address,
-                                contact
                             )
                         )
                     )

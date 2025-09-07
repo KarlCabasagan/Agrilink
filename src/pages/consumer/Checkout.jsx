@@ -281,8 +281,27 @@ function Checkout() {
                 // Calculate delivery fee for this farmer
                 const deliveryFee =
                     formData.deliveryMethod === "delivery"
-                        ? farmerGroup.deliveryCost
+                        ? parseFloat(farmerGroup.deliveryCost || 0)
                         : 0;
+
+                // Validate all data before creating order
+                console.log("Farmer Group Data:", {
+                    farmerId: farmerGroup.farmerId,
+                    farmerName: farmerGroup.farmerName,
+                    deliveryCost: farmerGroup.deliveryCost,
+                    calculatedDeliveryFee: deliveryFee,
+                });
+
+                // Validate required fields
+                if (!farmerGroup.farmerId) {
+                    throw new Error(
+                        `Invalid farmer ID for ${farmerGroup.farmerName}`
+                    );
+                }
+
+                if (isNaN(deliveryFee) || deliveryFee < 0) {
+                    throw new Error(`Invalid delivery fee: ${deliveryFee}`);
+                }
 
                 // Create the main order record with new schema
                 const orderData = {
@@ -340,15 +359,17 @@ function Checkout() {
 
             console.log("All orders created successfully:", createdOrders);
 
-            // Clear the cart after successful order - need to go through carts table
-            // First get the user's cart
-            const { data: userCart } = await supabase
+            // Clear the cart after successful order
+            const { data: userCart, error: cartFetchError } = await supabase
                 .from("carts")
                 .select("id")
                 .eq("user_id", user.id)
                 .single();
 
-            if (userCart) {
+            if (cartFetchError) {
+                console.error("Error fetching user cart:", cartFetchError);
+                // Don't throw error here, order was successful
+            } else if (userCart) {
                 const { error: cartClearError } = await supabase
                     .from("cart_items")
                     .delete()
@@ -358,6 +379,11 @@ function Checkout() {
                     console.error("Error clearing cart:", cartClearError);
                     // Don't throw error here, order was successful
                 }
+
+                console.log(
+                    "Cart cleared successfully for cart ID:",
+                    userCart.id
+                );
             }
 
             // Update product stock
