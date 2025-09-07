@@ -13,16 +13,40 @@ export const addToCart = async (userId, productId, quantity = 1.0) => {
     }
 
     try {
-        // First check if item already exists in cart
+        // First ensure user has a cart
+        let { data: userCart, error: cartError } = await supabase
+            .from("carts")
+            .select("id")
+            .eq("user_id", userId)
+            .single();
+
+        if (cartError && cartError.code === "PGRST116") {
+            // No cart exists, create one
+            const { data: newCart, error: createError } = await supabase
+                .from("carts")
+                .insert({ user_id: userId, status_id: 1 })
+                .select()
+                .single();
+
+            if (createError) {
+                console.error("Error creating cart:", createError);
+                return { success: false, message: "Error creating cart" };
+            }
+            userCart = newCart;
+        } else if (cartError) {
+            console.error("Error fetching cart:", cartError);
+            return { success: false, message: "Error checking cart" };
+        }
+
+        // Check if item already exists in cart
         const { data: existingItem, error: fetchError } = await supabase
             .from("cart_items")
             .select("*")
-            .eq("user_id", userId)
+            .eq("cart_id", userCart.id)
             .eq("product_id", productId)
             .single();
 
         if (fetchError && fetchError.code !== "PGRST116") {
-            // PGRST116 means no rows found, which is fine
             console.error("Error checking existing cart item:", fetchError);
             return { success: false, message: "Error checking cart" };
         }
@@ -48,7 +72,7 @@ export const addToCart = async (userId, productId, quantity = 1.0) => {
             const { error: insertError } = await supabase
                 .from("cart_items")
                 .insert({
-                    user_id: userId,
+                    cart_id: userCart.id,
                     product_id: productId,
                     quantity: parseFloat(quantity),
                 });
@@ -69,26 +93,34 @@ export const addToCart = async (userId, productId, quantity = 1.0) => {
 /**
  * Get cart items count for a user
  * @param {string} userId - The user's ID
- * @returns {Promise<number>} - Total quantity in cart
+ * @returns {Promise<number>} - Number of distinct items in cart
  */
 export const getCartCount = async (userId) => {
     if (!userId) return 0;
 
     try {
+        // Get user's cart first
+        const { data: userCart, error: cartError } = await supabase
+            .from("carts")
+            .select("id")
+            .eq("user_id", userId)
+            .single();
+
+        if (cartError || !userCart) {
+            return 0; // No cart means no items
+        }
+
         const { data, error } = await supabase
             .from("cart_items")
-            .select("quantity")
-            .eq("user_id", userId);
+            .select("id")
+            .eq("cart_id", userCart.id);
 
         if (error) {
             console.error("Error fetching cart count:", error);
             return 0;
         }
 
-        return data.reduce(
-            (total, item) => total + parseFloat(item.quantity),
-            0
-        );
+        return data.length; // Count number of distinct items, not quantity
     } catch (error) {
         console.error("Error calculating cart count:", error);
         return 0;
@@ -106,10 +138,21 @@ export const clearCart = async (userId) => {
     }
 
     try {
+        // Get user's cart first
+        const { data: userCart, error: cartError } = await supabase
+            .from("carts")
+            .select("id")
+            .eq("user_id", userId)
+            .single();
+
+        if (cartError || !userCart) {
+            return { success: true, message: "No cart to clear" }; // Already empty
+        }
+
         const { error } = await supabase
             .from("cart_items")
             .delete()
-            .eq("user_id", userId);
+            .eq("cart_id", userCart.id);
 
         if (error) {
             console.error("Error clearing cart:", error);

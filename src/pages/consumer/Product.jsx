@@ -3,6 +3,7 @@ import { useState, useMemo, useEffect, useContext } from "react";
 import { Icon } from "@iconify/react";
 import { Link } from "react-router-dom";
 import NavigationBar from "../../components/NavigationBar";
+import Modal from "../../components/Modal";
 import supabase from "../../SupabaseClient.jsx";
 import { AuthContext } from "../../App.jsx";
 import { addToCart } from "../../utils/cartUtils.js";
@@ -14,6 +15,17 @@ function Product() {
     const [product, setProduct] = useState(null);
     const [loading, setLoading] = useState(true);
     const [addingToCart, setAddingToCart] = useState(false);
+    const [modal, setModal] = useState({
+        open: false,
+        type: "",
+        title: "",
+        message: "",
+        onConfirm: null,
+    });
+
+    const showModal = (type, title, message, onConfirm = null) => {
+        setModal({ open: true, type, title, message, onConfirm });
+    };
 
     // Fetch product details
     useEffect(() => {
@@ -26,11 +38,12 @@ function Product() {
                         `
                         *,
                         categories(name),
-                        profiles!farmer_id(name, address)
+                        profiles!user_id(name, address, delivery_cost, minimum_order_quantity),
+                        statuses(name)
                     `
                     )
                     .eq("id", id)
-                    .eq("status", "active")
+                    .eq("statuses.name", "active")
                     .single();
 
                 if (error) {
@@ -51,11 +64,13 @@ function Product() {
                     description: data.description,
                     stock: parseFloat(data.stock) || 0,
                     rating: 4.5, // We'll implement real ratings later
-                    unit: data.unit || "kg",
+                    unit: "kg", // Default unit since not in new schema
                     minimumOrderQuantity:
-                        parseFloat(data.minimum_order_quantity) || 1,
-                    deliveryCost: parseFloat(data.delivery_cost) || 50,
-                    pickupLocation: data.pickup_location,
+                        parseFloat(data.profiles?.minimum_order_quantity) || 1,
+                    deliveryCost:
+                        parseFloat(data.profiles?.delivery_cost) || 50,
+                    pickupLocation: data.profiles?.address || "Farm location",
+                    farmerId: data.user_id, // Updated to use user_id
                     reviews: [], // We'll implement real reviews later
                 };
 
@@ -83,22 +98,37 @@ function Product() {
             const result = await addToCart(user.id, product.id, quantity);
 
             if (result.success) {
-                alert(
-                    `Added ${quantity} ${product.unit} of ${product.name} to cart!`
+                showModal(
+                    "success",
+                    "Item Added to Cart!",
+                    `Successfully added ${quantity} kg of ${product.name} to your cart. You can continue shopping or go to cart to checkout.`,
+                    () => setModal((prev) => ({ ...prev, open: false }))
                 );
             } else {
-                alert(`Error: ${result.message}`);
+                showModal("error", "Error", `Error: ${result.message}`, () =>
+                    setModal((prev) => ({ ...prev, open: false }))
+                );
             }
         } catch (error) {
             console.error("Error adding to cart:", error);
-            alert("Error adding to cart. Please try again.");
+            showModal(
+                "error",
+                "Error",
+                "Error adding to cart. Please try again.",
+                () => setModal((prev) => ({ ...prev, open: false }))
+            );
         } finally {
             setAddingToCart(false);
         }
     };
 
     const handleMessageFarmer = () => {
-        alert(`Messaging ${product.farmerName} about ${product.name}`);
+        showModal(
+            "info",
+            "Message Farmer",
+            `Messaging ${product.farmerName} about ${product.name}`,
+            () => setModal((prev) => ({ ...prev, open: false }))
+        );
     };
 
     const increaseQuantity = () => {
@@ -391,6 +421,14 @@ function Product() {
                 </div>
             )}
             <NavigationBar />
+            <Modal
+                open={modal.open}
+                type={modal.type}
+                title={modal.title}
+                message={modal.message}
+                onConfirm={modal.onConfirm}
+                onClose={() => setModal((prev) => ({ ...prev, open: false }))}
+            />
         </div>
     );
 }

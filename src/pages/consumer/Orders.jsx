@@ -31,6 +31,20 @@ function Orders() {
                 .select(
                     `
                     *,
+                    statuses!orders_status_id_fkey (
+                        name
+                    ),
+                    delivery_methods!orders_delivery_method_id_fkey (
+                        name
+                    ),
+                    payment_methods!orders_payment_method_id_fkey (
+                        name
+                    ),
+                    profiles!orders_seller_id_fkey (
+                        name,
+                        address,
+                        contact
+                    ),
                     order_items (
                         *,
                         products (
@@ -38,54 +52,58 @@ function Orders() {
                             categories (
                                 name
                             ),
-                            profiles!products_farmer_id_fkey (
-                                full_name,
+                            profiles!products_user_id_fkey (
+                                name,
                                 address,
-                                phone
+                                contact
                             )
                         )
                     )
                 `
                 )
-                .eq("consumer_id", user.id)
+                .eq("user_id", user.id)
                 .order("created_at", { ascending: false });
 
             if (ordersError) throw ordersError;
 
             // Transform data to match expected format
-            const transformedOrders = ordersData.map((order) => ({
-                id: order.id,
-                date: order.created_at,
-                status: order.status,
-                total: order.total_amount,
-                deliveryMethod: order.delivery_method,
-                paymentMethod: order.payment_method,
-                deliveryAddress: order.delivery_address,
-                pickupLocation: order.pickup_location,
-                deliveryFee: order.delivery_fee,
-                orderNotes: order.notes,
-                estimatedDelivery: order.estimated_delivery,
-                estimatedPickup: order.estimated_pickup,
-                cancellationReason: order.cancellation_reason,
-                items: order.order_items.map((item) => ({
-                    id: item.id,
-                    name: item.products.name,
-                    price: item.unit_price,
-                    quantity: item.quantity,
-                    image: item.products.image_url,
-                    farmerName:
-                        item.products.profiles?.full_name || "Unknown Farmer",
-                    farmerId: item.products.farmer_id,
-                    farmerPhone: item.products.profiles?.phone,
-                    farmerAddress: item.products.profiles?.address,
-                    category: item.products.categories?.name || "Other",
-                })),
-                customerDetails: {
-                    name: order.customer_name,
-                    phone: order.customer_phone,
-                    email: order.customer_email,
-                },
-            }));
+            const transformedOrders = ordersData.map((order) => {
+                // Calculate total from order items (no total_amount field in new schema)
+                const itemsTotal = order.order_items.reduce(
+                    (sum, item) => sum + item.price_at_purchase * item.quantity,
+                    0
+                );
+                const total = itemsTotal + (order.delivery_fee_at_order || 0);
+
+                return {
+                    id: order.id,
+                    date: order.created_at,
+                    status: order.statuses?.name || "unknown",
+                    total: total,
+                    deliveryMethod: order.delivery_methods?.name || "unknown",
+                    paymentMethod: order.payment_methods?.name || "unknown",
+                    deliveryFee: order.delivery_fee_at_order || 0,
+                    sellerName: order.profiles?.name || "Unknown Seller",
+                    sellerAddress:
+                        order.profiles?.address || "Location not available",
+                    sellerContact: order.profiles?.contact || "",
+                    items: order.order_items.map((item) => ({
+                        id: item.id,
+                        name: item.name_at_purchase, // Use name_at_purchase from new schema
+                        price: item.price_at_purchase, // Use price_at_purchase from new schema
+                        quantity: item.quantity,
+                        image:
+                            item.products?.image_url ||
+                            "https://via.placeholder.com/300x200?text=No+Image",
+                        farmerName: order.profiles?.name || "Unknown Seller", // Single seller per order now
+                        farmerId: order.seller_id,
+                        farmerPhone: order.profiles?.contact || "",
+                        farmerAddress:
+                            order.profiles?.address || "Location not available",
+                        category: item.products?.categories?.name || "Other",
+                    })),
+                };
+            });
 
             setOrders(transformedOrders);
         } catch (error) {
@@ -99,19 +117,29 @@ function Orders() {
     const tabs = [
         { id: "all", label: "All Orders", count: orders.length },
         {
-            id: "processing",
-            label: "Processing",
-            count: orders.filter((o) => o.status === "processing").length,
+            id: "pending",
+            label: "Pending",
+            count: orders.filter((o) => o.status === "pending").length,
         },
         {
-            id: "shipped",
-            label: "Shipped",
-            count: orders.filter((o) => o.status === "shipped").length,
+            id: "confirmed",
+            label: "Confirmed",
+            count: orders.filter((o) => o.status === "confirmed").length,
         },
         {
-            id: "delivered",
-            label: "Delivered",
-            count: orders.filter((o) => o.status === "delivered").length,
+            id: "preparing",
+            label: "Preparing",
+            count: orders.filter((o) => o.status === "preparing").length,
+        },
+        {
+            id: "ready for pickup",
+            label: "Ready",
+            count: orders.filter((o) => o.status === "ready for pickup").length,
+        },
+        {
+            id: "completed",
+            label: "Completed",
+            count: orders.filter((o) => o.status === "completed").length,
         },
         {
             id: "cancelled",
@@ -122,11 +150,15 @@ function Orders() {
 
     const getStatusColor = (status) => {
         switch (status) {
-            case "processing":
+            case "pending":
                 return "text-yellow-600 bg-yellow-100";
-            case "shipped":
+            case "confirmed":
                 return "text-blue-600 bg-blue-100";
-            case "delivered":
+            case "preparing":
+                return "text-orange-600 bg-orange-100";
+            case "ready for pickup":
+                return "text-purple-600 bg-purple-100";
+            case "completed":
                 return "text-green-600 bg-green-100";
             case "cancelled":
                 return "text-red-600 bg-red-100";
@@ -137,12 +169,16 @@ function Orders() {
 
     const getStatusIcon = (status) => {
         switch (status) {
-            case "processing":
+            case "pending":
                 return "mingcute:time-line";
-            case "shipped":
-                return "mingcute:truck-line";
-            case "delivered":
+            case "confirmed":
                 return "mingcute:check-circle-line";
+            case "preparing":
+                return "mingcute:box-line";
+            case "ready for pickup":
+                return "mingcute:truck-line";
+            case "completed":
+                return "mingcute:check-circle-fill";
             case "cancelled":
                 return "mingcute:close-circle-line";
             default:
@@ -221,11 +257,10 @@ function Orders() {
                 const { error } = await supabase
                     .from("orders")
                     .update({
-                        status: "cancelled",
-                        cancellation_reason: "Customer requested cancellation",
+                        status_id: 8, // "cancelled" status ID from statuses table
                     })
                     .eq("id", orderId)
-                    .eq("consumer_id", user.id);
+                    .eq("user_id", user.id);
 
                 if (error) throw error;
 
@@ -236,8 +271,6 @@ function Orders() {
                             ? {
                                   ...order,
                                   status: "cancelled",
-                                  cancellationReason:
-                                      "Customer requested cancellation",
                               }
                             : order
                     )
@@ -658,32 +691,14 @@ function Orders() {
                                                     <div className="ml-5">
                                                         <p className="text-sm text-gray-600 mb-1">
                                                             {order.deliveryMethod ===
-                                                            "delivery"
-                                                                ? order.deliveryAddress
-                                                                : order.pickupLocation}
+                                                            "Home Delivery"
+                                                                ? "Delivery to your address"
+                                                                : `Pickup from: ${order.sellerAddress}`}
                                                         </p>
-                                                        {order.deliveryMethod ===
-                                                            "delivery" &&
-                                                            order.estimatedDelivery && (
-                                                                <p className="text-xs text-green-600">
-                                                                    Est.
-                                                                    delivery:{" "}
-                                                                    {formatDate(
-                                                                        order.estimatedDelivery
-                                                                    )}
-                                                                </p>
-                                                            )}
-                                                        {order.deliveryMethod ===
-                                                            "pickup" &&
-                                                            order.estimatedPickup && (
-                                                                <p className="text-xs text-green-600">
-                                                                    Available
-                                                                    from:{" "}
-                                                                    {formatDate(
-                                                                        order.estimatedPickup
-                                                                    )}
-                                                                </p>
-                                                            )}
+                                                        <p className="text-xs text-blue-600">
+                                                            Seller:{" "}
+                                                            {order.sellerName}
+                                                        </p>
                                                     </div>
                                                 </div>
 
@@ -799,85 +814,38 @@ function Orders() {
                                                         className="text-gray-500"
                                                     />
                                                     <span className="text-sm font-medium text-gray-700">
-                                                        Customer Information
+                                                        Seller Information
                                                     </span>
                                                 </div>
                                                 <div className="ml-5 space-y-1">
                                                     <p className="text-sm text-gray-600">
-                                                        <strong>Name:</strong>{" "}
-                                                        {
-                                                            order
-                                                                .customerDetails
-                                                                .name
-                                                        }
+                                                        <strong>Seller:</strong>{" "}
+                                                        {order.sellerName}
                                                     </p>
                                                     <p className="text-sm text-gray-600">
-                                                        <strong>Phone:</strong>{" "}
-                                                        {
-                                                            order
-                                                                .customerDetails
-                                                                .phone
-                                                        }
+                                                        <strong>
+                                                            Address:
+                                                        </strong>{" "}
+                                                        {order.sellerAddress}
                                                     </p>
-                                                    <p className="text-sm text-gray-600">
-                                                        <strong>Email:</strong>{" "}
-                                                        {
-                                                            order
-                                                                .customerDetails
-                                                                .email
-                                                        }
-                                                    </p>
+                                                    {order.sellerContact && (
+                                                        <p className="text-sm text-gray-600">
+                                                            <strong>
+                                                                Contact:
+                                                            </strong>{" "}
+                                                            {
+                                                                order.sellerContact
+                                                            }
+                                                        </p>
+                                                    )}
                                                 </div>
                                             </div>
 
-                                            {/* Order Notes */}
-                                            {order.orderNotes && (
-                                                <div className="bg-yellow-50 rounded-lg p-3 mb-4">
-                                                    <div className="flex items-center gap-2 mb-1">
-                                                        <Icon
-                                                            icon="mingcute:edit-line"
-                                                            width="16"
-                                                            height="16"
-                                                            className="text-yellow-600"
-                                                        />
-                                                        <span className="text-sm font-medium text-yellow-800">
-                                                            Order Notes
-                                                        </span>
-                                                    </div>
-                                                    <p className="text-sm text-yellow-700 ml-5">
-                                                        "{order.orderNotes}"
-                                                    </p>
-                                                </div>
-                                            )}
-
-                                            {/* Cancellation Reason */}
-                                            {order.status === "cancelled" &&
-                                                order.cancellationReason && (
-                                                    <div className="bg-red-50 rounded-lg p-3 mb-4">
-                                                        <div className="flex items-center gap-2 mb-1">
-                                                            <Icon
-                                                                icon="mingcute:close-circle-line"
-                                                                width="16"
-                                                                height="16"
-                                                                className="text-red-600"
-                                                            />
-                                                            <span className="text-sm font-medium text-red-800">
-                                                                Cancellation
-                                                                Reason
-                                                            </span>
-                                                        </div>
-                                                        <p className="text-sm text-red-700 ml-5">
-                                                            {
-                                                                order.cancellationReason
-                                                            }
-                                                        </p>
-                                                    </div>
-                                                )}
-
                                             {/* Order Actions */}
                                             <div className="flex flex-wrap gap-2">
-                                                {order.status ===
-                                                    "processing" && (
+                                                {(order.status === "pending" ||
+                                                    order.status ===
+                                                        "confirmed") && (
                                                     <button
                                                         onClick={(e) => {
                                                             e.stopPropagation();
@@ -892,9 +860,9 @@ function Orders() {
                                                 )}
 
                                                 {(order.status ===
-                                                    "processing" ||
+                                                    "preparing" ||
                                                     order.status ===
-                                                        "shipped") && (
+                                                        "ready for pickup") && (
                                                     <button
                                                         onClick={(e) => {
                                                             e.stopPropagation();
@@ -909,7 +877,7 @@ function Orders() {
                                                 )}
 
                                                 {order.status ===
-                                                    "delivered" && (
+                                                    "completed" && (
                                                     <>
                                                         <button
                                                             onClick={(e) => {

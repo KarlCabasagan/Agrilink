@@ -30,7 +30,7 @@ function Favorites() {
                         products (
                             *,
                             categories(name),
-                            profiles!farmer_id(name, address)
+                            profiles!products_user_id_fkey(name, address)
                         )
                     `
                     )

@@ -3,8 +3,10 @@ import { Icon } from "@iconify/react";
 import { Link } from "react-router-dom";
 import NavigationBar from "../../components/NavigationBar";
 import ConsumerSearch from "../../components/ConsumerSearch.jsx";
+import Modal from "../../components/Modal";
 import supabase from "../../SupabaseClient.jsx";
 import { AuthContext } from "../../App.jsx";
+import { getCartCount } from "../../utils/cartUtils.js";
 
 function Home() {
     const { user } = useContext(AuthContext);
@@ -16,6 +18,18 @@ function Home() {
     ]);
     const [loading, setLoading] = useState(true);
     const [favorites, setFavorites] = useState(new Set()); // Track favorite product IDs
+    const [cartCount, setCartCount] = useState(0);
+    const [modal, setModal] = useState({
+        open: false,
+        type: "",
+        title: "",
+        message: "",
+        onConfirm: null,
+    });
+
+    const showModal = (type, title, message, onConfirm = null) => {
+        setModal({ open: true, type, title, message, onConfirm });
+    };
 
     // Fetch categories from database
     useEffect(() => {
@@ -83,13 +97,35 @@ function Home() {
         fetchFavorites();
     }, [user]);
 
+    // Fetch cart count
+    useEffect(() => {
+        const fetchCartCount = async () => {
+            if (user) {
+                const count = await getCartCount(user.id);
+                setCartCount(count);
+            }
+        };
+
+        fetchCartCount();
+
+        // Optional: Set up interval to refresh cart count every 30 seconds
+        const interval = setInterval(fetchCartCount, 30000);
+
+        return () => clearInterval(interval);
+    }, [user]);
+
     // Handle adding/removing favorites
     const toggleFavorite = async (productId, event) => {
         event.preventDefault();
         event.stopPropagation();
 
         if (!user) {
-            alert("Please log in to add favorites");
+            showModal(
+                "warning",
+                "Login Required",
+                "Please log in to add favorites",
+                () => setModal((prev) => ({ ...prev, open: false }))
+            );
             return;
         }
 
@@ -125,7 +161,12 @@ function Home() {
             }
         } catch (error) {
             console.error("Error toggling favorite:", error);
-            alert("Failed to update favorites. Please try again.");
+            showModal(
+                "error",
+                "Error",
+                "Failed to update favorites. Please try again.",
+                () => setModal((prev) => ({ ...prev, open: false }))
+            );
         }
     };
 
@@ -140,10 +181,11 @@ function Home() {
                         `
                         *,
                         categories(name),
-                        profiles!farmer_id(name, address)
+                        profiles!user_id(name, address, delivery_cost, minimum_order_quantity),
+                        statuses(name)
                     `
                     )
-                    .eq("status", "active")
+                    .eq("statuses.name", "active")
                     .order("created_at", { ascending: false });
 
                 if (error) {
@@ -172,11 +214,15 @@ function Home() {
                     description: product.description,
                     stock: parseFloat(product.stock) || 0,
                     rating: 4.5, // We'll implement real ratings later
-                    unit: product.unit || "kg",
+                    unit: "kg", // Default unit since it's not in new schema
                     minimumOrderQuantity:
-                        parseFloat(product.minimum_order_quantity) || 1,
-                    deliveryCost: parseFloat(product.delivery_cost) || 50,
-                    pickupLocation: product.pickup_location,
+                        parseFloat(product.profiles?.minimum_order_quantity) ||
+                        1,
+                    deliveryCost:
+                        parseFloat(product.profiles?.delivery_cost) || 50,
+                    pickupLocation:
+                        product.profiles?.address || "Farm location",
+                    farmerId: product.user_id, // Updated to use user_id
                 }));
 
                 setProducts(formattedProducts);
@@ -473,6 +519,14 @@ function Home() {
                 </div>
             </div>
             <NavigationBar />
+            <Modal
+                isOpen={modal.open}
+                type={modal.type}
+                title={modal.title}
+                message={modal.message}
+                onConfirm={modal.onConfirm}
+                onCancel={() => setModal((prev) => ({ ...prev, open: false }))}
+            />
         </div>
     );
 }

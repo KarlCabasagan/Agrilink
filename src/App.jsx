@@ -88,16 +88,20 @@ function App() {
         try {
             const { data, error } = await supabase
                 .from("profiles")
-                .select("role_id, status, name")
+                .select(
+                    `
+                    role_id, 
+                    name,
+                    statuses(name)
+                `
+                )
                 .eq("id", userId)
                 .single();
 
             if (data) {
-                // Check if user is active
-                if (data.status === "suspended" || data.status === "deleted") {
-                    console.log(
-                        "User account is suspended/deleted, logging out..."
-                    );
+                // Check if user is active using the new status structure
+                if (data.statuses?.name === "suspended") {
+                    console.log("User account is suspended, logging out...");
                     await supabase.auth.signOut();
                     setUser(null);
                     setUserRole(null);

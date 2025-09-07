@@ -3,6 +3,7 @@ import { Icon } from "@iconify/react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { AuthContext } from "../../App";
 import NavigationBar from "../../components/NavigationBar";
+import Modal from "../../components/Modal";
 import supabase from "../../SupabaseClient";
 
 function Checkout() {
@@ -15,6 +16,15 @@ function Checkout() {
     const [profileLoading, setProfileLoading] = useState(true);
     const [orderPlaced, setOrderPlaced] = useState(false);
     const [orderId, setOrderId] = useState("");
+
+    // Modal state
+    const [modal, setModal] = useState({
+        open: false,
+        type: "info",
+        title: "",
+        message: "",
+        onConfirm: () => setModal((prev) => ({ ...prev, open: false })),
+    });
     const [currentCartItems, setCurrentCartItems] = useState(
         cartItems.map((item) => ({
             ...item,
@@ -50,9 +60,6 @@ function Checkout() {
     const farmerGroups = Object.values(groupedByFarmer);
 
     const [formData, setFormData] = useState({
-        fullName: "",
-        email: user?.email || "",
-        phone: "",
         address: "",
         city: "Iligan City",
         province: "Lanao del Norte",
@@ -63,6 +70,19 @@ function Checkout() {
     });
 
     const [errors, setErrors] = useState({});
+
+    // Modal helper function
+    const showModal = (type, title, message, onConfirm = null) => {
+        setModal({
+            open: true,
+            type,
+            title,
+            message,
+            onConfirm:
+                onConfirm ||
+                (() => setModal((prev) => ({ ...prev, open: false }))),
+        });
+    };
 
     // Helper functions to manage cart items and check delivery eligibility
     const removeItemFromCart = (itemId) => {
@@ -122,20 +142,23 @@ function Checkout() {
         return true; // Pickup doesn't have minimum quantity restrictions
     };
 
+    const totalPossibleDeliveryFee = farmerGroups.reduce(
+        (total, farmer) => total + farmer.deliveryCost,
+        0
+    );
+
     const deliveryFee =
-        formData.deliveryMethod === "delivery"
-            ? farmerGroups.reduce(
-                  (total, farmer) => total + farmer.deliveryCost,
-                  0
-              )
-            : 0.0;
+        formData.deliveryMethod === "delivery" ? totalPossibleDeliveryFee : 0.0;
+
+    const hasIneligibleFarmers = getIneligibleFarmers().length > 0;
     const finalTotal = getUpdatedTotalAmount() + deliveryFee;
 
-    // Fetch user profile data
+    // Fetch user profile data and validate completeness
     useEffect(() => {
         const fetchUserProfile = async () => {
             if (!user) {
                 setProfileLoading(false);
+                navigate("/login");
                 return;
             }
 
@@ -147,86 +170,56 @@ function Checkout() {
                     .single();
 
                 if (data) {
-                    // Extract just the digits from the formatted contact number for editing
-                    const contactDigits = data.contact
-                        ? data.contact.replace(/\D/g, "").slice(2) // Remove +63 prefix
-                        : "";
+                    // Check if profile is complete
+                    const isProfileComplete =
+                        data.name && data.contact && data.address;
 
+                    if (!isProfileComplete) {
+                        showModal(
+                            "warning",
+                            "Profile Incomplete",
+                            "Please complete your profile information (name, contact, and address) before proceeding to checkout.",
+                            () => {
+                                setModal((prev) => ({ ...prev, open: false }));
+                                navigate("/profile");
+                            }
+                        );
+                        return;
+                    }
+
+                    // Profile is complete, no need to populate form fields since we're removing the contact section
+                    // Just store the profile data for order processing
                     setFormData((prev) => ({
                         ...prev,
-                        fullName: data.name || "",
-                        phone: contactDigits,
-                        address: data.address || "",
+                        // Remove the form field population since we're removing the contact section
                     }));
                 }
             } catch (error) {
                 console.error("Error fetching profile:", error);
+                showModal(
+                    "error",
+                    "Profile Error",
+                    "Error checking profile information. Please try again.",
+                    () => {
+                        setModal((prev) => ({ ...prev, open: false }));
+                        navigate("/profile");
+                    }
+                );
             } finally {
                 setProfileLoading(false);
             }
         };
 
         fetchUserProfile();
-    }, [user]);
-
-    // Phone number formatting functions (universal format from EditProfile)
-    const formatPhoneNumber = (phoneNumber) => {
-        if (!phoneNumber) return "";
-        // Remove all non-digits
-        const cleaned = phoneNumber.replace(/\D/g, "");
-
-        // Format as: +63 912 345 6789
-        if (cleaned.length >= 10) {
-            return `+63 ${cleaned.slice(0, 3)} ${cleaned.slice(
-                3,
-                6
-            )} ${cleaned.slice(6, 10)}`;
-        } else if (cleaned.length >= 6) {
-            return `+63 ${cleaned.slice(0, 3)} ${cleaned.slice(
-                3,
-                6
-            )} ${cleaned.slice(6)}`;
-        } else if (cleaned.length >= 3) {
-            return `+63 ${cleaned.slice(0, 3)} ${cleaned.slice(3)}`;
-        } else if (cleaned.length > 0) {
-            return `+63 ${cleaned}`;
-        }
-        return "+63 ";
-    };
-
-    const displayPhoneNumber = (phoneNumber) => {
-        if (!phoneNumber) return "";
-        const cleaned = phoneNumber.replace(/\D/g, "");
-
-        if (cleaned.length >= 7) {
-            return `${cleaned.slice(0, 3)} ${cleaned.slice(
-                3,
-                6
-            )} ${cleaned.slice(6)}`;
-        } else if (cleaned.length >= 3) {
-            return `${cleaned.slice(0, 3)} ${cleaned.slice(3)}`;
-        }
-        return cleaned;
-    };
+    }, [user, navigate]);
 
     const handleInputChange = (e) => {
         const { name, value } = e.target;
 
-        if (name === "phone") {
-            // Remove all non-digits
-            const cleanValue = value.replace(/\D/g, "");
-            // Limit to 10 digits (excluding +63)
-            const limitedValue = cleanValue.slice(0, 10);
-            setFormData((prev) => ({
-                ...prev,
-                [name]: limitedValue,
-            }));
-        } else {
-            setFormData((prev) => ({
-                ...prev,
-                [name]: value,
-            }));
-        }
+        setFormData((prev) => ({
+            ...prev,
+            [name]: value,
+        }));
 
         // Clear error when user starts typing
         if (errors[name]) {
@@ -240,31 +233,8 @@ function Checkout() {
     const validateForm = () => {
         const newErrors = {};
 
-        if (!formData.fullName.trim())
-            newErrors.fullName = "Full name is required";
-        if (!formData.email.trim()) newErrors.email = "Email is required";
-        if (!formData.phone.trim())
-            newErrors.phone = "Phone number is required";
-
-        if (formData.deliveryMethod === "delivery") {
-            if (!formData.address.trim())
-                newErrors.address = "Address is required for delivery";
-        }
-
-        // Email validation
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        if (formData.email && !emailRegex.test(formData.email)) {
-            newErrors.email = "Please enter a valid email address";
-        }
-
-        // Phone validation (Philippine format) - check for 10 digits
-        if (formData.phone) {
-            const cleanedPhone = formData.phone.replace(/\D/g, "");
-            if (cleanedPhone.length !== 10 || !cleanedPhone.startsWith("9")) {
-                newErrors.phone =
-                    "Please enter a valid 10-digit Philippine mobile number starting with 9";
-            }
-        }
+        // Since we're using user's profile address, no validation needed for delivery address
+        // All delivery method selections are valid
 
         setErrors(newErrors);
         return Object.keys(newErrors).length === 0;
@@ -278,8 +248,10 @@ function Checkout() {
         }
 
         if (!currentCartItems || currentCartItems.length === 0) {
-            alert("No items to checkout");
-            navigate("/cart");
+            showModal("warning", "Empty Cart", "No items to checkout", () => {
+                setModal((prev) => ({ ...prev, open: false }));
+                navigate("/cart");
+            });
             return;
         }
 
@@ -288,8 +260,11 @@ function Checkout() {
             formData.deliveryMethod === "delivery" &&
             getIneligibleFarmers().length > 0
         ) {
-            alert(
-                "Some farmers don't meet minimum quantity requirements for delivery. Please add more items or choose pickup instead."
+            showModal(
+                "warning",
+                "Delivery Requirements",
+                "Some farmers don't meet minimum quantity requirements for delivery. Please add more items or choose pickup instead.",
+                () => setModal((prev) => ({ ...prev, open: false }))
             );
             return;
         }
@@ -297,73 +272,92 @@ function Checkout() {
         setLoading(true);
 
         try {
-            // Format contact number before submission
-            const formattedContact = formatPhoneNumber(formData.phone);
+            const createdOrders = [];
 
-            // Create the main order record
-            const orderData = {
-                user_id: user.id,
-                total_amount: finalTotal,
-                delivery_method: formData.deliveryMethod,
-                payment_method: formData.paymentMethod,
-                status: "pending",
-                delivery_address:
+            // Create separate orders for each farmer/seller
+            for (const farmerGroup of farmerGroups) {
+                const farmerItems = farmerGroup.items;
+
+                // Calculate delivery fee for this farmer
+                const deliveryFee =
                     formData.deliveryMethod === "delivery"
-                        ? `${formData.address}, ${formData.city}, ${formData.province} ${formData.postalCode}`
-                        : null,
-                customer_name: formData.fullName,
-                customer_email: formData.email,
-                customer_phone: formattedContact,
-                notes: formData.notes,
-                created_at: new Date().toISOString(),
-            };
+                        ? farmerGroup.deliveryCost
+                        : 0;
 
-            console.log("Creating order:", orderData);
+                // Create the main order record with new schema
+                const orderData = {
+                    user_id: user.id,
+                    seller_id: farmerGroup.farmerId,
+                    delivery_method_id:
+                        formData.deliveryMethod === "delivery" ? 2 : 1, // Map to delivery_methods table
+                    payment_method_id: formData.paymentMethod === "cod" ? 1 : 2, // Map to payment_methods table
+                    status_id: 3, // "pending" status from statuses table
+                    delivery_fee_at_order: deliveryFee,
+                };
 
-            const { data: orderResult, error: orderError } = await supabase
-                .from("orders")
-                .insert(orderData)
-                .select()
+                console.log(
+                    "Creating order for farmer:",
+                    farmerGroup.farmerName,
+                    orderData
+                );
+
+                const { data: orderResult, error: orderError } = await supabase
+                    .from("orders")
+                    .insert(orderData)
+                    .select()
+                    .single();
+
+                if (orderError) {
+                    console.error("Error creating order:", orderError);
+                    throw orderError;
+                }
+
+                const orderId = orderResult.id;
+                console.log("Order created with ID:", orderId);
+
+                // Create order items for this farmer's items
+                const orderItems = farmerItems.map((item) => ({
+                    order_id: orderId,
+                    product_id: item.id,
+                    name_at_purchase: item.name,
+                    quantity: item.quantity,
+                    price_at_purchase: item.price,
+                }));
+
+                const { error: itemsError } = await supabase
+                    .from("order_items")
+                    .insert(orderItems);
+
+                if (itemsError) {
+                    console.error("Error creating order items:", itemsError);
+                    // Clean up the order if items creation fails
+                    await supabase.from("orders").delete().eq("id", orderId);
+                    throw itemsError;
+                }
+
+                createdOrders.push(orderId);
+            }
+
+            console.log("All orders created successfully:", createdOrders);
+
+            // Clear the cart after successful order - need to go through carts table
+            // First get the user's cart
+            const { data: userCart } = await supabase
+                .from("carts")
+                .select("id")
+                .eq("user_id", user.id)
                 .single();
 
-            if (orderError) {
-                console.error("Error creating order:", orderError);
-                throw orderError;
-            }
+            if (userCart) {
+                const { error: cartClearError } = await supabase
+                    .from("cart_items")
+                    .delete()
+                    .eq("cart_id", userCart.id);
 
-            const orderId = orderResult.id;
-            console.log("Order created with ID:", orderId);
-
-            // Create order items for each cart item
-            const orderItems = currentCartItems.map((item) => ({
-                order_id: orderId,
-                product_id: item.id,
-                quantity: item.quantity,
-                price_per_unit: item.price,
-                subtotal: item.price * item.quantity,
-                farmer_id: item.farmerId,
-            }));
-
-            const { error: itemsError } = await supabase
-                .from("order_items")
-                .insert(orderItems);
-
-            if (itemsError) {
-                console.error("Error creating order items:", itemsError);
-                // Try to cleanup the order if items failed
-                await supabase.from("orders").delete().eq("id", orderId);
-                throw itemsError;
-            }
-
-            // Clear the cart after successful order
-            const { error: cartClearError } = await supabase
-                .from("cart_items")
-                .delete()
-                .eq("user_id", user.id);
-
-            if (cartClearError) {
-                console.error("Error clearing cart:", cartClearError);
-                // Don't throw error here, order was successful
+                if (cartClearError) {
+                    console.error("Error clearing cart:", cartClearError);
+                    // Don't throw error here, order was successful
+                }
             }
 
             // Update product stock
@@ -389,8 +383,13 @@ function Checkout() {
             setOrderPlaced(true);
         } catch (error) {
             console.error("Error placing order:", error);
-            alert(
-                `Failed to place order: ${error.message || "Please try again."}`
+            showModal(
+                "error",
+                "Order Failed",
+                `Failed to place order: ${
+                    error.message || "Please try again."
+                }`,
+                () => setModal((prev) => ({ ...prev, open: false }))
             );
         } finally {
             setLoading(false);
@@ -650,7 +649,17 @@ function Checkout() {
                                                     your doorstep
                                                 </p>
                                                 <p className="text-sm text-primary font-medium">
-                                                    + ₱50.00 delivery fee
+                                                    + ₱
+                                                    {totalPossibleDeliveryFee.toFixed(
+                                                        2
+                                                    )}{" "}
+                                                    delivery fee
+                                                    {hasIneligibleFarmers && (
+                                                        <span className="text-orange-600 text-xs ml-1">
+                                                            (TBD - min. order
+                                                            not met)
+                                                        </span>
+                                                    )}
                                                 </p>
                                             </div>
                                         </div>
@@ -658,101 +667,8 @@ function Checkout() {
                                 </div>
                             </div>
 
-                            {/* Contact Information */}
-                            <div className="bg-white rounded-lg shadow-md overflow-hidden">
-                                <div className="p-6 border-b border-gray-200">
-                                    <h2 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
-                                        <Icon
-                                            icon="mingcute:user-line"
-                                            width="20"
-                                            height="20"
-                                            className="text-primary"
-                                        />
-                                        Contact Information
-                                    </h2>
-                                </div>
-                                <div className="p-6 space-y-4">
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                        <div>
-                                            <label className="block text-sm font-medium text-gray-700 mb-2">
-                                                Full Name *
-                                            </label>
-                                            <input
-                                                type="text"
-                                                name="fullName"
-                                                value={formData.fullName}
-                                                onChange={handleInputChange}
-                                                className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent ${
-                                                    errors.fullName
-                                                        ? "border-red-300"
-                                                        : "border-gray-300"
-                                                }`}
-                                                placeholder="Enter your full name"
-                                            />
-                                            {errors.fullName && (
-                                                <p className="text-red-600 text-sm mt-1">
-                                                    {errors.fullName}
-                                                </p>
-                                            )}
-                                        </div>
-
-                                        <div>
-                                            <label className="block text-sm font-medium text-gray-700 mb-2">
-                                                Email Address *
-                                            </label>
-                                            <input
-                                                type="email"
-                                                name="email"
-                                                value={formData.email}
-                                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent bg-gray-100"
-                                                placeholder="Enter your email"
-                                                readOnly
-                                            />
-                                            <p className="text-xs text-gray-500 mt-1">
-                                                Email cannot be changed during
-                                                checkout
-                                            </p>
-                                        </div>
-                                    </div>
-
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                                            Phone Number *
-                                        </label>
-                                        <div className="relative">
-                                            <div className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-600 font-medium bg-gray-100 px-2 py-1 rounded text-sm">
-                                                +63
-                                            </div>
-                                            <input
-                                                type="tel"
-                                                name="phone"
-                                                value={displayPhoneNumber(
-                                                    formData.phone
-                                                )}
-                                                onChange={handleInputChange}
-                                                className={`w-full pl-16 pr-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent ${
-                                                    errors.phone
-                                                        ? "border-red-300"
-                                                        : "border-gray-300"
-                                                }`}
-                                                placeholder="912 345 6789"
-                                                maxLength={13} // "912 345 6789"
-                                            />
-                                        </div>
-                                        <p className="text-xs text-gray-500 mt-1">
-                                            Enter your 10-digit mobile number
-                                            (without +63)
-                                        </p>
-                                        {errors.phone && (
-                                            <p className="text-red-600 text-sm mt-1">
-                                                {errors.phone}
-                                            </p>
-                                        )}
-                                    </div>
-                                </div>
-                            </div>
-
                             {/* Address Information - Only show for delivery */}
+                            {/* COMMENTED OUT: Using user's profile address instead of collecting it here
                             {formData.deliveryMethod === "delivery" && (
                                 <div className="bg-white rounded-lg shadow-md overflow-hidden">
                                     <div className="p-6 border-b border-gray-200">
@@ -866,6 +782,7 @@ function Checkout() {
                                     </div>
                                 </div>
                             )}
+                            */}
 
                             {/* Pickup Information - Only show for pickup */}
                             {formData.deliveryMethod === "pickup" && (

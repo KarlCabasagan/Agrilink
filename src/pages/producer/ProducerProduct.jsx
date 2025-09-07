@@ -254,12 +254,12 @@ function ProducerProduct() {
                     `
                     )
                     .eq("id", parseInt(id))
-                    .eq("farmer_id", user.id)
+                    .eq("user_id", user.id)
                     .single();
 
                 if (error) {
                     console.error("Error fetching product:", error);
-                    navigate("/producer/home");
+                    navigate("/");
                 } else {
                     const productData = {
                         id: data.id,
@@ -291,7 +291,7 @@ function ProducerProduct() {
                 }
             } catch (error) {
                 console.error("Unexpected error:", error);
-                navigate("/producer/home");
+                navigate("/");
             } finally {
                 setLoading(false);
             }

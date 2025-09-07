@@ -511,7 +511,7 @@ function ProducerHome() {
         imageFile: null,
         imagePreview: "",
         cropType: "",
-        farmer_id: user?.id || "",
+        user_id: user?.id || "",
     });
     const [cropTypeSearch, setCropTypeSearch] = useState("");
     const [showCropDropdown, setShowCropDropdown] = useState(false);
@@ -578,7 +578,7 @@ function ProducerHome() {
         if (user?.id) {
             setProductForm((prev) => ({
                 ...prev,
-                farmer_id: user.id,
+                user_id: user.id,
             }));
         }
     }, [user?.id]);
@@ -596,7 +596,7 @@ function ProducerHome() {
                     categories(name)
                 `
                 )
-                .eq("farmer_id", user.id)
+                .eq("user_id", user.id)
                 .order("created_at", { ascending: false });
 
             if (error) {
@@ -709,7 +709,7 @@ function ProducerHome() {
             const { data, error } = await supabase
                 .from("products")
                 .insert({
-                    farmer_id: user.id,
+                    user_id: user.id,
                     name: productForm.name,
                     price: parseFloat(productForm.price),
                     category_id: category_id,
@@ -926,7 +926,7 @@ function ProducerHome() {
             imageFile: null,
             imagePreview: "",
             cropType: "",
-            farmer_id: user?.id || "",
+            user_id: user?.id || "",
         });
         setCropTypeSearch("");
         setShowCropDropdown(false);
@@ -969,7 +969,7 @@ function ProducerHome() {
                 imageFile: null,
                 imagePreview: "",
                 cropType: product.cropType || "",
-                farmer_id: user?.id || "",
+                user_id: user?.id || "",
             });
             setCropTypeSearch(
                 typeof product.cropType === "string" ? product.cropType : ""

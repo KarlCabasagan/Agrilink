@@ -61,15 +61,29 @@ function Orders() {
 
         setLoading(true);
         try {
-            // Fetch orders that contain products from this producer
+            // Fetch orders where this user is the seller
             const { data: ordersData, error: ordersError } = await supabase
                 .from("orders")
                 .select(
                     `
                     *,
-                    order_items!inner (
+                    statuses!orders_status_id_fkey (
+                        name
+                    ),
+                    delivery_methods!orders_delivery_method_id_fkey (
+                        name
+                    ),
+                    payment_methods!orders_payment_method_id_fkey (
+                        name
+                    ),
+                    profiles!orders_user_id_fkey (
+                        name,
+                        address,
+                        contact
+                    ),
+                    order_items (
                         *,
-                        products!inner (
+                        products (
                             *,
                             categories (
                                 name
@@ -78,53 +92,45 @@ function Orders() {
                     )
                 `
                 )
-                .eq("order_items.products.farmer_id", user.id)
+                .eq("seller_id", user.id)
                 .order("created_at", { ascending: false });
 
             if (ordersError) throw ordersError;
 
-            // Transform and filter orders to only include items from this producer
+            // Transform orders - no need to filter since all orders are for this seller
             const transformedOrders = ordersData.map((order) => {
-                // Filter items to only include this producer's products
-                const producerItems = order.order_items.filter(
-                    (item) => item.products.farmer_id === user.id
-                );
-
-                // Calculate producer's total for this order
-                const producerTotal = producerItems.reduce(
-                    (sum, item) => sum + item.unit_price * item.quantity,
+                // Calculate total from order items
+                const orderTotal = order.order_items.reduce(
+                    (sum, item) => sum + item.price_at_purchase * item.quantity,
                     0
                 );
 
                 return {
                     id: order.id,
-                    customer_name: order.customer_name,
-                    customer_contact: order.customer_phone,
-                    customer_address:
-                        order.delivery_address || order.pickup_location,
-                    total_amount: producerTotal,
-                    status: order.status,
+                    customer_name: order.profiles?.name || "Unknown Customer",
+                    customer_contact: order.profiles?.contact || "",
+                    customer_address: order.profiles?.address || "",
+                    total_amount:
+                        orderTotal + (order.delivery_fee_at_order || 0),
+                    status: order.statuses?.name || "unknown",
                     created_at: order.created_at,
-                    deliveryMethod: order.delivery_method,
-                    paymentMethod: order.payment_method,
-                    deliveryAddress: order.delivery_address,
-                    pickupLocation: order.pickup_location,
-                    deliveryFee: order.delivery_fee,
-                    orderNotes: order.notes,
-                    estimatedDelivery: order.estimated_delivery,
-                    estimatedPickup: order.estimated_pickup,
+                    deliveryMethod: order.delivery_methods?.name || "Unknown",
+                    paymentMethod: order.payment_methods?.name || "Unknown",
+                    deliveryFee: order.delivery_fee_at_order || 0,
                     customerDetails: {
-                        name: order.customer_name,
-                        phone: order.customer_phone,
-                        email: order.customer_email,
+                        name: order.profiles?.name || "Unknown Customer",
+                        phone: order.profiles?.contact || "",
+                        address: order.profiles?.address || "",
                     },
-                    items: producerItems.map((item) => ({
-                        product_name: item.products.name,
+                    items: order.order_items.map((item) => ({
+                        id: item.id,
+                        product_id: item.product_id,
+                        name: item.name_at_purchase,
                         quantity: item.quantity,
-                        price: item.unit_price,
-                        total: item.unit_price * item.quantity,
-                        image: item.products.image_url,
-                        category: item.products.categories?.name || "Other",
+                        unit_price: item.price_at_purchase,
+                        subtotal: item.price_at_purchase * item.quantity,
+                        category: item.products?.categories?.name || "Other",
+                        image_url: item.products?.image_url || "",
                     })),
                 };
             });
@@ -139,9 +145,25 @@ function Orders() {
 
     const updateOrderStatus = async (orderId, newStatus) => {
         try {
+            // Map status names to IDs from the statuses table
+            const statusMap = {
+                pending: 3,
+                confirmed: 4,
+                preparing: 5,
+                "ready for pickup": 6,
+                completed: 7,
+                cancelled: 8,
+            };
+
+            const statusId = statusMap[newStatus];
+            if (!statusId) {
+                console.error("Unknown status:", newStatus);
+                return;
+            }
+
             const { error } = await supabase
                 .from("orders")
-                .update({ status: newStatus })
+                .update({ status_id: statusId })
                 .eq("id", orderId);
 
             if (error) throw error;

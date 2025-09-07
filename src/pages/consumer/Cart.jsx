@@ -2,6 +2,7 @@ import { useState, useEffect, useContext } from "react";
 import { Icon } from "@iconify/react";
 import { Link, useNavigate } from "react-router-dom";
 import NavigationBar from "../../components/NavigationBar";
+import Modal from "../../components/Modal";
 import supabase from "../../SupabaseClient.jsx";
 import { AuthContext } from "../../App.jsx";
 
@@ -10,6 +11,17 @@ function Cart() {
     const navigate = useNavigate();
     const [cartItems, setCartItems] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [modal, setModal] = useState({
+        open: false,
+        type: "",
+        title: "",
+        message: "",
+        onConfirm: null,
+    });
+
+    const showModal = (type, title, message, onConfirm = null) => {
+        setModal({ open: true, type, title, message, onConfirm });
+    };
 
     // Fetch cart items from database
     useEffect(() => {
@@ -23,14 +35,15 @@ function Cart() {
                     .select(
                         `
                         *,
+                        carts!cart_id(user_id),
                         products(
                             *,
                             categories(name),
-                            farmer_profile:profiles(name, address, delivery_cost, minimum_order_quantity)
+                            profiles!user_id(name, address, delivery_cost, minimum_order_quantity)
                         )
                     `
                     )
-                    .eq("user_id", user.id)
+                    .eq("carts.user_id", user.id)
                     .order("created_at", { ascending: false });
 
                 if (error) {
@@ -50,21 +63,20 @@ function Cart() {
                         item.products.image_url ||
                         "https://via.placeholder.com/300x200?text=No+Image",
                     farmerName:
-                        item.products.farmer_profile?.name || "Unknown Farmer",
-                    farmerId: item.products.farmer_id,
+                        item.products.profiles?.name || "Unknown Farmer",
+                    farmerId: item.products.user_id, // Updated to use user_id
                     farmerAddress:
-                        item.products.farmer_profile?.address ||
+                        item.products.profiles?.address ||
                         "Location not available",
                     stock: parseFloat(item.products.stock),
-                    unit: item.products.unit || "kg",
+                    unit: "kg", // Default unit since not in new schema
                     minimumOrderQuantity:
                         parseFloat(
-                            item.products.farmer_profile?.minimum_order_quantity
+                            item.products.profiles?.minimum_order_quantity
                         ) || 1.0,
                     deliveryCost:
-                        parseFloat(
-                            item.products.farmer_profile?.delivery_cost
-                        ) || 50.0,
+                        parseFloat(item.products.profiles?.delivery_cost) ||
+                        50.0,
                     category: item.products.categories?.name || "Other",
                 }));
 
@@ -191,20 +203,67 @@ function Cart() {
         return getDeliveryIneligibleFarmers().length === 0;
     };
 
-    const handleCheckout = () => {
+    const handleCheckout = async () => {
         if (cartItems.length === 0) {
-            alert("Your cart is empty!");
+            showModal("warning", "Empty Cart", "Your cart is empty!", () =>
+                setModal((prev) => ({ ...prev, open: false }))
+            );
             return;
         }
 
-        // Navigate to checkout page with cart data
-        navigate("/checkout", {
-            state: {
-                cartItems: cartItems,
-                totalAmount: getTotalPrice(),
-                farmerGroups: farmerGroups,
-            },
-        });
+        // Check if user profile is complete before checkout
+        try {
+            const { data, error } = await supabase
+                .from("profiles")
+                .select("name, contact, address")
+                .eq("id", user.id)
+                .single();
+
+            if (error) {
+                console.error("Error checking profile:", error);
+                showModal(
+                    "error",
+                    "Profile Error",
+                    "Error checking profile information. Please try again.",
+                    () => setModal((prev) => ({ ...prev, open: false }))
+                );
+                return;
+            }
+
+            // Validate profile completeness
+            const isProfileComplete =
+                data && data.name && data.contact && data.address;
+
+            if (!isProfileComplete) {
+                showModal(
+                    "warning",
+                    "Profile Incomplete",
+                    "Please complete your profile information (name, contact, and address) before proceeding to checkout.",
+                    () => {
+                        setModal((prev) => ({ ...prev, open: false }));
+                        navigate("/profile");
+                    }
+                );
+                return;
+            }
+
+            // Profile is complete, proceed to checkout
+            navigate("/checkout", {
+                state: {
+                    cartItems: cartItems,
+                    totalAmount: getTotalPrice(),
+                    farmerGroups: farmerGroups,
+                },
+            });
+        } catch (error) {
+            console.error("Error validating profile:", error);
+            showModal(
+                "error",
+                "Profile Error",
+                "Error checking profile information. Please try again.",
+                () => setModal((prev) => ({ ...prev, open: false }))
+            );
+        }
     };
 
     return (
@@ -643,6 +702,14 @@ function Cart() {
                 )}
             </div>
             <NavigationBar />
+            <Modal
+                isOpen={modal.open}
+                type={modal.type}
+                title={modal.title}
+                message={modal.message}
+                onConfirm={modal.onConfirm}
+                onCancel={() => setModal((prev) => ({ ...prev, open: false }))}
+            />
         </div>
     );
 }
