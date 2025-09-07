@@ -2,6 +2,7 @@ import { Icon } from "@iconify/react";
 import { Link, useNavigate } from "react-router-dom";
 import { useContext, useEffect, useState } from "react";
 import { AuthContext } from "../../App.jsx";
+import ImageUpload from "../../components/ImageUpload";
 import supabase from "../../SupabaseClient.jsx";
 import ProducerNavigationBar from "../../components/ProducerNavigationBar";
 
@@ -13,8 +14,10 @@ function ProducerProfile() {
         email: "",
         address: "",
         contact: "",
+        avatar_url: "",
     });
     const [loading, setLoading] = useState(true);
+    const [showAvatarUpload, setShowAvatarUpload] = useState(false);
     const [stats, setStats] = useState({
         totalProducts: 0,
         totalOrders: 0,
@@ -28,7 +31,7 @@ function ProducerProfile() {
             try {
                 const { data, error } = await supabase
                     .from("profiles")
-                    .select("name, address, contact")
+                    .select("name, address, contact, avatar_url")
                     .eq("id", user.id)
                     .single();
 
@@ -38,6 +41,7 @@ function ProducerProfile() {
                         email: user.email || "",
                         address: data.address || "",
                         contact: data.contact || "",
+                        avatar_url: data.avatar_url || "",
                     });
                 } else if (error && error.code === "PGRST116") {
                     // No profile found, use user data
@@ -46,6 +50,7 @@ function ProducerProfile() {
                         email: user.email || "",
                         address: "",
                         contact: "",
+                        avatar_url: "",
                     });
                 }
 
@@ -64,6 +69,23 @@ function ProducerProfile() {
 
         fetchProfile();
     }, [user]);
+
+    const handleAvatarChange = async (newAvatarUrl) => {
+        try {
+            const { error } = await supabase
+                .from("profiles")
+                .update({ avatar_url: newAvatarUrl })
+                .eq("id", user.id);
+
+            if (error) throw error;
+
+            setProfile((prev) => ({ ...prev, avatar_url: newAvatarUrl }));
+            setShowAvatarUpload(false);
+        } catch (error) {
+            console.error("Error updating avatar:", error);
+            alert("Failed to update avatar. Please try again.");
+        }
+    };
 
     const handleLogout = async () => {
         try {
@@ -111,13 +133,84 @@ function ProducerProfile() {
                 <div className="bg-white rounded-lg shadow-md overflow-hidden mb-6">
                     <div className="relative h-32 bg-gradient-to-br from-primary to-primary-dark">
                         <div className="absolute bottom-0 left-1/2 transform -translate-x-1/2 translate-y-1/2">
-                            <div className="w-24 h-24 bg-white rounded-full p-1 shadow-lg">
+                            <div className="w-24 h-24 bg-white rounded-full p-1 shadow-lg relative">
                                 <img
-                                    src="/assets/adel.jpg"
+                                    src={
+                                        profile.avatar_url || "/assets/adel.jpg"
+                                    }
                                     alt="profile"
                                     className="w-full h-full object-cover rounded-full"
                                 />
+                                <button
+                                    onClick={() =>
+                                        setShowAvatarUpload(!showAvatarUpload)
+                                    }
+                                    className="absolute bottom-0 right-0 bg-primary text-white rounded-full p-1.5 shadow-md hover:bg-primary-dark transition-colors"
+                                >
+                                    <svg
+                                        className="w-3 h-3"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        viewBox="0 0 24 24"
+                                    >
+                                        <path
+                                            strokeLinecap="round"
+                                            strokeLinejoin="round"
+                                            strokeWidth="2"
+                                            d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"
+                                        ></path>
+                                        <path
+                                            strokeLinecap="round"
+                                            strokeLinejoin="round"
+                                            strokeWidth="2"
+                                            d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"
+                                        ></path>
+                                    </svg>
+                                </button>
+                                {showAvatarUpload && (
+                                    <div className="absolute inset-0 bg-black bg-opacity-50 rounded-full flex items-center justify-center">
+                                        <svg
+                                            className="w-6 h-6 text-white"
+                                            fill="none"
+                                            stroke="currentColor"
+                                            viewBox="0 0 24 24"
+                                        >
+                                            <path
+                                                strokeLinecap="round"
+                                                strokeLinejoin="round"
+                                                strokeWidth="2"
+                                                d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"
+                                            ></path>
+                                            <path
+                                                strokeLinecap="round"
+                                                strokeLinejoin="round"
+                                                strokeWidth="2"
+                                                d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"
+                                            ></path>
+                                        </svg>
+                                    </div>
+                                )}
                             </div>
+                            {showAvatarUpload && (
+                                <button
+                                    onClick={() => setShowAvatarUpload(false)}
+                                    className="absolute -top-2 -right-2 bg-white rounded-full p-1 shadow-md hover:bg-gray-50"
+                                >
+                                    <svg
+                                        className="w-4 h-4 text-gray-600"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        viewBox="0 0 24 24"
+                                    >
+                                        <path
+                                            strokeLinecap="round"
+                                            strokeLinejoin="round"
+                                            strokeWidth="2"
+                                            d="M6 18L18 6M6 6l12 12"
+                                        ></path>
+                                    </svg>
+                                </button>
+                            )}
                         </div>
                     </div>
 
@@ -166,6 +259,23 @@ function ProducerProfile() {
                         </div>
                     </div>
                 </div>
+
+                {/* Avatar Upload Section */}
+                {showAvatarUpload && (
+                    <div className="bg-white rounded-lg shadow-md overflow-hidden mb-6">
+                        <div className="p-6">
+                            <h3 className="text-lg font-semibold text-gray-800 mb-4">
+                                Update Avatar
+                            </h3>
+                            <ImageUpload
+                                currentImageUrl={profile.avatar_url}
+                                onImageChange={handleAvatarChange}
+                                bucket="avatars"
+                                maxSizeMessage="Maximum file size: 5MB"
+                            />
+                        </div>
+                    </div>
+                )}
 
                 {/* Statistics Cards */}
                 <div className="grid grid-cols-3 gap-4 mb-6">

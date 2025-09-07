@@ -1,12 +1,82 @@
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Icon } from "@iconify/react";
+import { useContext, useEffect } from "react";
+import { AuthContext } from "../App.jsx";
+import supabase from "../SupabaseClient.jsx";
 
 function AccountVerified() {
+    const { user } = useContext(AuthContext);
+    const navigate = useNavigate();
+
+    useEffect(() => {
+        const updateEmailVerificationStatus = async () => {
+            if (user && user.id) {
+                try {
+                    // Get the name from user metadata
+                    const userName =
+                        user.user_metadata?.full_name ||
+                        user.user_metadata?.display_name ||
+                        "";
+
+                    // Update the profiles table with email verification and name
+                    const updateData = {
+                        email_verified: true,
+                        updated_at: new Date().toISOString(),
+                    };
+
+                    // Add name to update if it exists in metadata
+                    if (userName && userName.trim()) {
+                        updateData.name = userName.trim();
+                    }
+
+                    const { error } = await supabase.from("profiles").upsert(
+                        {
+                            id: user.id,
+                            email: user.email,
+                            ...updateData,
+                            created_at: new Date().toISOString(),
+                        },
+                        {
+                            onConflict: "id",
+                        }
+                    );
+
+                    if (error) {
+                        console.error("Error updating profile:", error);
+                        // Try a simple update as fallback
+                        const { error: fallbackError } = await supabase
+                            .from("profiles")
+                            .update(updateData)
+                            .eq("id", user.id);
+
+                        if (fallbackError) {
+                            console.error(
+                                "Fallback update error:",
+                                fallbackError
+                            );
+                        }
+                    }
+                } catch (error) {
+                    console.error(
+                        "Error updating email verification status:",
+                        error
+                    );
+                }
+            }
+        };
+
+        updateEmailVerificationStatus();
+    }, [user]);
+
+    const handleStartShopping = () => {
+        // Navigate to home, which will redirect appropriately based on user authentication
+        navigate("/");
+    };
     return (
         <div className="min-h-screen w-full flex flex-col relative items-center scrollbar-hide bg-background overflow-x-hidden text-text">
             {/* Header */}
             <div className="fixed top-0 left-0 w-full bg-white shadow-md z-50 px-4 py-3 flex justify-between items-center">
-                <Link to="/login" className="text-gray-600 hover:text-primary">
+                <Link to="/" className="text-gray-600 hover:text-primary">
                     <Icon icon="mingcute:left-line" width="24" height="24" />
                 </Link>
                 <h1 className="text-lg font-semibold">Account Verification</h1>
@@ -51,8 +121,8 @@ function AccountVerified() {
                     </div>
 
                     <div className="space-y-3">
-                        <Link
-                            to="/"
+                        <button
+                            onClick={handleStartShopping}
                             className="w-full bg-primary hover:bg-primary-dark text-white py-3 px-6 rounded-lg font-medium transition-colors flex items-center justify-center gap-2"
                         >
                             <Icon
@@ -61,10 +131,10 @@ function AccountVerified() {
                                 height="20"
                             />
                             Start Shopping
-                        </Link>
+                        </button>
 
                         <Link
-                            to="/profile"
+                            to="/edit-profile"
                             className="w-full bg-gray-100 hover:bg-gray-200 text-gray-700 py-3 px-6 rounded-lg font-medium transition-colors flex items-center justify-center gap-2"
                         >
                             <Icon

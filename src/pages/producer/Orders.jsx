@@ -61,127 +61,85 @@ function Orders() {
 
         setLoading(true);
         try {
-            // This would fetch orders for the producer's products
-            // For now, we'll use mock data since we don't have orders table structure
-            const mockOrders = [
-                {
-                    id: 1,
-                    customer_name: "John Doe",
-                    customer_contact: "+63 912 345 6789",
-                    customer_address: "Poblacion, Iligan City",
-                    total_amount: 150.5,
-                    status: "pending",
-                    created_at: "2025-09-02T08:30:00Z",
-                    items: [
-                        {
-                            product_name: "Carrots",
-                            quantity: 5,
-                            price: 2.5,
-                            total: 12.5,
-                        },
-                        {
-                            product_name: "Potatoes",
-                            quantity: 10,
-                            price: 1.5,
-                            total: 15.0,
-                        },
-                        {
-                            product_name: "Onions",
-                            quantity: 2,
-                            price: 3.0,
-                            total: 6.0,
-                        },
-                    ],
-                },
-                {
-                    id: 2,
-                    customer_name: "Maria Santos",
-                    customer_contact: "+63 923 456 7890",
-                    customer_address: "Maria Cristina, Iligan City",
-                    total_amount: 85.0,
-                    status: "confirmed",
-                    created_at: "2025-09-01T14:15:00Z",
-                    items: [
-                        {
-                            product_name: "Rice",
-                            quantity: 5,
-                            price: 12.0,
-                            total: 60.0,
-                        },
-                        {
-                            product_name: "Monggo",
-                            quantity: 2,
-                            price: 12.5,
-                            total: 25.0,
-                        },
-                    ],
-                },
-                {
-                    id: 3,
-                    customer_name: "Pedro Cruz",
-                    customer_contact: "+63 934 567 8901",
-                    customer_address: "Tibanga, Iligan City",
-                    total_amount: 45.0,
-                    status: "preparing",
-                    created_at: "2025-09-01T10:20:00Z",
-                    items: [
-                        {
-                            product_name: "Apples",
-                            quantity: 3,
-                            price: 8.0,
-                            total: 24.0,
-                        },
-                        {
-                            product_name: "Carrots",
-                            quantity: 4,
-                            price: 2.5,
-                            total: 10.0,
-                        },
-                    ],
-                },
-                {
-                    id: 4,
-                    customer_name: "Ana Garcia",
-                    customer_contact: "+63 945 678 9012",
-                    customer_address: "Palao, Iligan City",
-                    total_amount: 75.0,
-                    status: "ready",
-                    created_at: "2025-08-31T16:45:00Z",
-                    items: [
-                        {
-                            product_name: "Potatoes",
-                            quantity: 20,
-                            price: 1.5,
-                            total: 30.0,
-                        },
-                        {
-                            product_name: "Onions",
-                            quantity: 5,
-                            price: 3.0,
-                            total: 15.0,
-                        },
-                    ],
-                },
-                {
-                    id: 5,
-                    customer_name: "Carlos Lopez",
-                    customer_contact: "+63 956 789 0123",
-                    customer_address: "Buru-un, Iligan City",
-                    total_amount: 120.0,
-                    status: "completed",
-                    created_at: "2025-08-30T09:30:00Z",
-                    items: [
-                        {
-                            product_name: "Rice",
-                            quantity: 10,
-                            price: 12.0,
-                            total: 120.0,
-                        },
-                    ],
-                },
-            ];
+            // Fetch orders where this user is the seller
+            const { data: ordersData, error: ordersError } = await supabase
+                .from("orders")
+                .select(
+                    `
+                    *,
+                    statuses!orders_status_id_fkey (
+                        name
+                    ),
+                    delivery_methods!orders_delivery_method_id_fkey (
+                        name
+                    ),
+                    payment_methods!orders_payment_method_id_fkey (
+                        name
+                    ),
+                    profiles!orders_user_id_fkey (
+                        name,
+                        address,
+                        contact
+                    ),
+                    order_items (
+                        *,
+                        products (
+                            *,
+                            categories (
+                                name
+                            )
+                        )
+                    )
+                `
+                )
+                .eq("seller_id", user.id)
+                .order("created_at", { ascending: false });
 
-            setOrders(mockOrders);
+            if (ordersError) throw ordersError;
+
+            // Transform orders - no need to filter since all orders are for this seller
+            const transformedOrders = ordersData.map((order) => {
+                // Calculate total from order items with safety checks
+                const orderTotal = order.order_items.reduce((sum, item) => {
+                    const price = parseFloat(item.price_at_purchase) || 0;
+                    const quantity = parseFloat(item.quantity) || 0;
+                    return sum + price * quantity;
+                }, 0);
+
+                return {
+                    id: order.id,
+                    customer_name: order.profiles?.name || "Unknown Customer",
+                    customer_contact: order.profiles?.contact || "",
+                    customer_address: order.profiles?.address || "",
+                    total_amount:
+                        orderTotal +
+                        (parseFloat(order.delivery_fee_at_order) || 0),
+                    status: order.statuses?.name || "unknown",
+                    created_at: order.created_at,
+                    deliveryMethod: order.delivery_methods?.name || "Unknown",
+                    paymentMethod: order.payment_methods?.name || "Unknown",
+                    deliveryFee: parseFloat(order.delivery_fee_at_order) || 0,
+                    customerDetails: {
+                        name: order.profiles?.name || "Unknown Customer",
+                        phone: order.profiles?.contact || "",
+                        address: order.profiles?.address || "",
+                    },
+                    items: order.order_items.map((item) => ({
+                        id: item.id,
+                        product_id: item.product_id,
+                        name: item.name_at_purchase || "Unknown Product",
+                        quantity: parseFloat(item.quantity) || 0,
+                        unit_price: parseFloat(item.price_at_purchase) || 0,
+                        subtotal:
+                            (parseFloat(item.price_at_purchase) || 0) *
+                            (parseFloat(item.quantity) || 0),
+                        category: item.products?.categories?.name || "Other",
+                        image_url: item.products?.image_url || "",
+                    })),
+                };
+            });
+
+            setOrders(transformedOrders);
         } catch (error) {
             console.error("Error fetching orders:", error);
         } finally {
@@ -191,7 +149,30 @@ function Orders() {
 
     const updateOrderStatus = async (orderId, newStatus) => {
         try {
-            // In real app, this would update the database
+            // Map status names to IDs from the statuses table
+            const statusMap = {
+                pending: 3,
+                confirmed: 4,
+                preparing: 5,
+                "ready for pickup": 6,
+                completed: 7,
+                cancelled: 8,
+            };
+
+            const statusId = statusMap[newStatus];
+            if (!statusId) {
+                console.error("Unknown status:", newStatus);
+                return;
+            }
+
+            const { error } = await supabase
+                .from("orders")
+                .update({ status_id: statusId })
+                .eq("id", orderId);
+
+            if (error) throw error;
+
+            // Update local state
             setOrders((prev) =>
                 prev.map((order) =>
                     order.id === orderId
@@ -201,6 +182,7 @@ function Orders() {
             );
         } catch (error) {
             console.error("Error updating order status:", error);
+            alert("Failed to update order status. Please try again.");
         }
     };
 
@@ -219,9 +201,7 @@ function Orders() {
                     .includes(searchTerm.toLowerCase()) ||
                 order.id.toString().includes(searchTerm) ||
                 order.items.some((item) =>
-                    item.product_name
-                        .toLowerCase()
-                        .includes(searchTerm.toLowerCase())
+                    item.name.toLowerCase().includes(searchTerm.toLowerCase())
                 )
         );
     };
@@ -264,6 +244,7 @@ function Orders() {
         return new Date(dateString).toLocaleDateString("en-US", {
             month: "short",
             day: "numeric",
+            year: "numeric",
             hour: "2-digit",
             minute: "2-digit",
         });
@@ -419,60 +400,54 @@ function Orders() {
 
                                         <div className="flex justify-between items-center">
                                             <p className="text-lg font-bold text-primary">
-                                                ₱{order.total_amount.toFixed(2)}
+                                                ₱
+                                                {(
+                                                    order.total_amount || 0
+                                                ).toFixed(2)}
                                             </p>
-                                            <Icon
-                                                icon={
-                                                    isExpanded
-                                                        ? "mingcute:up-line"
-                                                        : "mingcute:down-line"
-                                                }
-                                                width="20"
-                                                height="20"
-                                                className="text-gray-400"
-                                            />
+                                            <div className="flex items-center gap-3">
+                                                <p className="text-xs text-primary bg-primary/10 px-2 py-1 rounded-full flex items-center gap-1">
+                                                    <Icon
+                                                        icon={
+                                                            order.deliveryMethod ===
+                                                            "delivery"
+                                                                ? "mingcute:truck-line"
+                                                                : "mingcute:location-line"
+                                                        }
+                                                        width="12"
+                                                        height="12"
+                                                    />
+                                                    {order.deliveryMethod ===
+                                                    "delivery"
+                                                        ? "Delivery"
+                                                        : "Pickup"}
+                                                </p>
+                                                <Icon
+                                                    icon={
+                                                        isExpanded
+                                                            ? "mingcute:up-line"
+                                                            : "mingcute:down-line"
+                                                    }
+                                                    width="20"
+                                                    height="20"
+                                                    className="text-gray-400"
+                                                />
+                                            </div>
                                         </div>
                                     </div>
 
                                     {/* Expanded Order Details */}
                                     {isExpanded && (
                                         <div className="border-t border-gray-200 p-4 bg-gray-50">
-                                            {/* Customer Info */}
-                                            <div className="mb-4">
-                                                <h4 className="font-medium text-gray-800 mb-2">
-                                                    Customer Information
-                                                </h4>
-                                                <div className="space-y-1 text-sm text-gray-600">
-                                                    <p className="flex items-center gap-2">
-                                                        <Icon
-                                                            icon="mingcute:user-line"
-                                                            width="16"
-                                                            height="16"
-                                                        />
-                                                        {order.customer_name}
-                                                    </p>
-                                                    <p className="flex items-center gap-2">
-                                                        <Icon
-                                                            icon="mingcute:phone-line"
-                                                            width="16"
-                                                            height="16"
-                                                        />
-                                                        {order.customer_contact}
-                                                    </p>
-                                                    <p className="flex items-center gap-2">
-                                                        <Icon
-                                                            icon="mingcute:location-line"
-                                                            width="16"
-                                                            height="16"
-                                                        />
-                                                        {order.customer_address}
-                                                    </p>
-                                                </div>
-                                            </div>
-
                                             {/* Order Items */}
-                                            <div className="mb-4">
-                                                <h4 className="font-medium text-gray-800 mb-2">
+                                            <div className="mb-6">
+                                                <h4 className="font-semibold text-gray-800 text-sm mb-3 flex items-center gap-2">
+                                                    <Icon
+                                                        icon="mingcute:shopping-bag-1-line"
+                                                        width="16"
+                                                        height="16"
+                                                        className="text-primary"
+                                                    />
                                                     Order Items
                                                 </h4>
                                                 <div className="space-y-2">
@@ -480,28 +455,294 @@ function Orders() {
                                                         (item, index) => (
                                                             <div
                                                                 key={index}
-                                                                className="flex justify-between items-center text-sm"
+                                                                className="flex items-center gap-3 p-3 bg-white rounded-lg"
                                                             >
-                                                                <span className="text-gray-700">
-                                                                    {
-                                                                        item.product_name
-                                                                    }{" "}
-                                                                    x{" "}
-                                                                    {
-                                                                        item.quantity
+                                                                <img
+                                                                    src={
+                                                                        item.image_url
                                                                     }
-                                                                </span>
-                                                                <span className="font-medium">
-                                                                    ₱
-                                                                    {item.total.toFixed(
-                                                                        2
-                                                                    )}
-                                                                </span>
+                                                                    alt={
+                                                                        item.name
+                                                                    }
+                                                                    className="w-12 h-12 object-cover rounded-lg"
+                                                                />
+                                                                <div className="flex-1">
+                                                                    <h6 className="font-medium text-gray-800 text-sm">
+                                                                        {
+                                                                            item.name
+                                                                        }
+                                                                    </h6>
+                                                                    <p className="text-xs text-gray-500">
+                                                                        ₱
+                                                                        {(
+                                                                            item.unit_price ||
+                                                                            0
+                                                                        ).toFixed(
+                                                                            2
+                                                                        )}
+                                                                        /kg ×{" "}
+                                                                        {item.quantity ||
+                                                                            0}
+                                                                        kg
+                                                                    </p>
+                                                                </div>
+                                                                <div className="text-right">
+                                                                    <p className="text-sm font-medium text-gray-800">
+                                                                        ₱
+                                                                        {(
+                                                                            item.subtotal ||
+                                                                            0
+                                                                        ).toFixed(
+                                                                            2
+                                                                        )}
+                                                                    </p>
+                                                                </div>
                                                             </div>
                                                         )
                                                     )}
                                                 </div>
                                             </div>
+
+                                            {/* Order Details */}
+                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
+                                                {/* Delivery/Pickup Method */}
+                                                <div className="bg-gray-50 rounded-lg p-3">
+                                                    <div className="flex items-center gap-2 mb-1">
+                                                        <Icon
+                                                            icon={
+                                                                order.deliveryMethod ===
+                                                                "delivery"
+                                                                    ? "mingcute:truck-line"
+                                                                    : "mingcute:location-line"
+                                                            }
+                                                            width="16"
+                                                            height="16"
+                                                            className="text-gray-500"
+                                                        />
+                                                        <span className="text-sm font-medium text-gray-700">
+                                                            {order.deliveryMethod ===
+                                                            "delivery"
+                                                                ? "Home Delivery"
+                                                                : "Farm Pickup"}
+                                                        </span>
+                                                    </div>
+                                                    <div className="ml-5">
+                                                        <p className="text-sm text-gray-600 mb-1">
+                                                            {order.deliveryMethod ===
+                                                            "delivery"
+                                                                ? order.deliveryAddress
+                                                                : order.pickupLocation}
+                                                        </p>
+                                                        {order.deliveryMethod ===
+                                                            "delivery" &&
+                                                            order.estimatedDelivery && (
+                                                                <p className="text-xs text-green-600">
+                                                                    Est.
+                                                                    delivery:{" "}
+                                                                    {new Date(
+                                                                        order.estimatedDelivery
+                                                                    ).toLocaleDateString(
+                                                                        "en-US",
+                                                                        {
+                                                                            month: "short",
+                                                                            day: "numeric",
+                                                                            year: "numeric",
+                                                                        }
+                                                                    )}
+                                                                </p>
+                                                            )}
+                                                        {order.deliveryMethod ===
+                                                            "pickup" &&
+                                                            order.estimatedPickup && (
+                                                                <p className="text-xs text-green-600">
+                                                                    Available
+                                                                    from:{" "}
+                                                                    {new Date(
+                                                                        order.estimatedPickup
+                                                                    ).toLocaleDateString(
+                                                                        "en-US",
+                                                                        {
+                                                                            month: "short",
+                                                                            day: "numeric",
+                                                                            year: "numeric",
+                                                                        }
+                                                                    )}
+                                                                </p>
+                                                            )}
+                                                    </div>
+                                                </div>
+
+                                                {/* Payment Method */}
+                                                <div className="bg-gray-50 rounded-lg p-3">
+                                                    <div className="flex items-center gap-2 mb-1">
+                                                        <Icon
+                                                            icon={
+                                                                order.paymentMethod ===
+                                                                "cod"
+                                                                    ? "mingcute:cash-line"
+                                                                    : "mingcute:credit-card-line"
+                                                            }
+                                                            width="16"
+                                                            height="16"
+                                                            className="text-gray-500"
+                                                        />
+                                                        <span className="text-sm font-medium text-gray-700">
+                                                            Payment Method
+                                                        </span>
+                                                    </div>
+                                                    <div className="ml-5">
+                                                        <p className="text-sm text-gray-600">
+                                                            {order.paymentMethod ===
+                                                            "cod"
+                                                                ? `Cash on ${
+                                                                      order.deliveryMethod ===
+                                                                      "delivery"
+                                                                          ? "Delivery"
+                                                                          : "Pickup"
+                                                                  }`
+                                                                : "Online Payment"}
+                                                        </p>
+                                                        {order.status !==
+                                                            "cancelled" &&
+                                                            order.status !==
+                                                                "completed" &&
+                                                            order.paymentMethod ===
+                                                                "cod" && (
+                                                                <p className="text-xs text-orange-600">
+                                                                    Payment due:
+                                                                    ₱
+                                                                    {(
+                                                                        order.total_amount ||
+                                                                        0
+                                                                    ).toFixed(
+                                                                        2
+                                                                    )}
+                                                                </p>
+                                                            )}
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            {/* Order Breakdown */}
+                                            <div className="bg-blue-50 rounded-lg p-3 mb-4">
+                                                <div className="flex items-center gap-2 mb-2">
+                                                    <Icon
+                                                        icon="mingcute:receipt-line"
+                                                        width="16"
+                                                        height="16"
+                                                        className="text-blue-600"
+                                                    />
+                                                    <span className="text-sm font-medium text-blue-800">
+                                                        Order Breakdown
+                                                    </span>
+                                                </div>
+                                                <div className="ml-5 space-y-1">
+                                                    <div className="flex justify-between text-sm">
+                                                        <span className="text-gray-600">
+                                                            Subtotal
+                                                        </span>
+                                                        <span className="text-gray-800">
+                                                            ₱
+                                                            {(
+                                                                (order.total_amount ||
+                                                                    0) -
+                                                                (order.deliveryFee ||
+                                                                    0)
+                                                            ).toFixed(2)}
+                                                        </span>
+                                                    </div>
+                                                    <div className="flex justify-between text-sm">
+                                                        <span className="text-gray-600">
+                                                            {order.deliveryMethod ===
+                                                            "delivery"
+                                                                ? "Delivery Fee"
+                                                                : "Pickup Fee"}
+                                                        </span>
+                                                        <span className="text-gray-800">
+                                                            {(order.deliveryFee ||
+                                                                0) > 0
+                                                                ? `₱${(
+                                                                      order.deliveryFee ||
+                                                                      0
+                                                                  ).toFixed(2)}`
+                                                                : "Free"}
+                                                        </span>
+                                                    </div>
+                                                    <div className="flex justify-between text-sm font-semibold border-t border-blue-200 pt-1">
+                                                        <span className="text-blue-800">
+                                                            Total
+                                                        </span>
+                                                        <span className="text-blue-800">
+                                                            ₱
+                                                            {(
+                                                                order.total_amount ||
+                                                                0
+                                                            ).toFixed(2)}
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            {/* Customer Information */}
+                                            <div className="bg-gray-50 rounded-lg p-3 mb-4">
+                                                <div className="flex items-center gap-2 mb-1">
+                                                    <Icon
+                                                        icon="mingcute:user-line"
+                                                        width="16"
+                                                        height="16"
+                                                        className="text-gray-500"
+                                                    />
+                                                    <span className="text-sm font-medium text-gray-700">
+                                                        Customer Information
+                                                    </span>
+                                                </div>
+                                                <div className="ml-5 space-y-1">
+                                                    <p className="text-sm text-gray-600">
+                                                        <strong>Name:</strong>{" "}
+                                                        {
+                                                            order
+                                                                .customerDetails
+                                                                .name
+                                                        }
+                                                    </p>
+                                                    <p className="text-sm text-gray-600">
+                                                        <strong>Phone:</strong>{" "}
+                                                        {
+                                                            order
+                                                                .customerDetails
+                                                                .phone
+                                                        }
+                                                    </p>
+                                                    <p className="text-sm text-gray-600">
+                                                        <strong>Email:</strong>{" "}
+                                                        {
+                                                            order
+                                                                .customerDetails
+                                                                .email
+                                                        }
+                                                    </p>
+                                                </div>
+                                            </div>
+
+                                            {/* Order Notes */}
+                                            {order.orderNotes && (
+                                                <div className="bg-yellow-50 rounded-lg p-3 mb-4">
+                                                    <div className="flex items-center gap-2 mb-1">
+                                                        <Icon
+                                                            icon="mingcute:edit-line"
+                                                            width="16"
+                                                            height="16"
+                                                            className="text-yellow-600"
+                                                        />
+                                                        <span className="text-sm font-medium text-yellow-800">
+                                                            Order Notes
+                                                        </span>
+                                                    </div>
+                                                    <p className="text-sm text-yellow-700 ml-5">
+                                                        "{order.orderNotes}"
+                                                    </p>
+                                                </div>
+                                            )}
 
                                             {/* Status Update Actions */}
                                             <div className="flex flex-wrap gap-2">
@@ -514,9 +755,15 @@ function Orders() {
                                                                     "confirmed"
                                                                 )
                                                             }
-                                                            className="px-3 py-1 bg-blue-600 text-white rounded text-sm hover:bg-blue-700"
+                                                            className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700 transition-colors"
                                                         >
-                                                            Confirm
+                                                            <Icon
+                                                                icon="mingcute:check-line"
+                                                                width="16"
+                                                                height="16"
+                                                                className="inline mr-1"
+                                                            />
+                                                            Confirm Order
                                                         </button>
                                                         <button
                                                             onClick={() =>
@@ -525,9 +772,15 @@ function Orders() {
                                                                     "cancelled"
                                                                 )
                                                             }
-                                                            className="px-3 py-1 bg-red-600 text-white rounded text-sm hover:bg-red-700"
+                                                            className="px-4 py-2 bg-red-600 text-white rounded-lg text-sm hover:bg-red-700 transition-colors"
                                                         >
-                                                            Cancel
+                                                            <Icon
+                                                                icon="mingcute:close-line"
+                                                                width="16"
+                                                                height="16"
+                                                                className="inline mr-1"
+                                                            />
+                                                            Cancel Order
                                                         </button>
                                                     </>
                                                 )}
@@ -541,8 +794,14 @@ function Orders() {
                                                                     "preparing"
                                                                 )
                                                             }
-                                                            className="px-3 py-1 bg-orange-600 text-white rounded text-sm hover:bg-orange-700"
+                                                            className="px-4 py-2 bg-orange-600 text-white rounded-lg text-sm hover:bg-orange-700 transition-colors"
                                                         >
+                                                            <Icon
+                                                                icon="mingcute:box-line"
+                                                                width="16"
+                                                                height="16"
+                                                                className="inline mr-1"
+                                                            />
                                                             Start Preparing
                                                         </button>
                                                         <button
@@ -552,9 +811,9 @@ function Orders() {
                                                                     "cancelled"
                                                                 )
                                                             }
-                                                            className="px-3 py-1 bg-red-600 text-white rounded text-sm hover:bg-red-700"
+                                                            className="px-4 py-2 border border-red-300 text-red-600 rounded-lg text-sm hover:bg-red-50 transition-colors"
                                                         >
-                                                            Cancel
+                                                            Cancel Order
                                                         </button>
                                                     </>
                                                 )}
@@ -567,8 +826,14 @@ function Orders() {
                                                                 "ready"
                                                             )
                                                         }
-                                                        className="px-3 py-1 bg-purple-600 text-white rounded text-sm hover:bg-purple-700"
+                                                        className="px-4 py-2 bg-purple-600 text-white rounded-lg text-sm hover:bg-purple-700 transition-colors"
                                                     >
+                                                        <Icon
+                                                            icon="mingcute:truck-line"
+                                                            width="16"
+                                                            height="16"
+                                                            className="inline mr-1"
+                                                        />
                                                         Mark as Ready
                                                     </button>
                                                 )}
@@ -580,8 +845,14 @@ function Orders() {
                                                                 "completed"
                                                             )
                                                         }
-                                                        className="px-3 py-1 bg-green-600 text-white rounded text-sm hover:bg-green-700"
+                                                        className="px-4 py-2 bg-green-600 text-white rounded-lg text-sm hover:bg-green-700 transition-colors"
                                                     >
+                                                        <Icon
+                                                            icon="mingcute:check-circle-fill"
+                                                            width="16"
+                                                            height="16"
+                                                            className="inline mr-1"
+                                                        />
                                                         Complete Order
                                                     </button>
                                                 )}

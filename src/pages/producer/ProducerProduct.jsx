@@ -4,6 +4,8 @@ import { useParams, useNavigate } from "react-router-dom";
 import { AuthContext } from "../../App.jsx";
 import ProducerNavigationBar from "../../components/ProducerNavigationBar";
 import ConfirmModal from "../../components/ConfirmModal";
+import { deleteImageFromUrl, uploadImage } from "../../utils/imageUpload";
+import supabase from "../../SupabaseClient.jsx";
 
 const categories = [
     "Vegetables",
@@ -63,7 +65,7 @@ function ProducerProduct() {
 
     // Filter crops based on search term
     const filteredCrops = availableCrops.filter((crop) =>
-        crop.toLowerCase().includes(cropSearchTerm.toLowerCase())
+        crop.toLowerCase().includes((cropSearchTerm || "").toLowerCase())
     );
 
     const [editForm, setEditForm] = useState({
@@ -72,7 +74,8 @@ function ProducerProduct() {
         category: "Vegetables",
         description: "",
         stock: "",
-        image: null,
+        image_url: "",
+        imageFile: null,
         imagePreview: "",
         cropType: "",
     });
@@ -236,46 +239,72 @@ function ProducerProduct() {
     };
 
     useEffect(() => {
-        // Simulate loading and finding product
-        setLoading(true);
-        setTimeout(() => {
-            const foundProduct = sampleProducts.find(
-                (p) => p.id === parseInt(id)
-            );
-            if (foundProduct) {
-                setProduct(foundProduct);
-                setEditForm({
-                    name: foundProduct.name,
-                    price: foundProduct.price.toString(),
-                    category: foundProduct.category,
-                    cropType: foundProduct.cropType || "",
-                    description: foundProduct.description,
-                    stock: foundProduct.stock.toString(),
-                    image: null,
-                    imagePreview: foundProduct.image,
-                });
+        const fetchProduct = async () => {
+            if (!id || !user) return;
+
+            setLoading(true);
+            try {
+                const { data, error } = await supabase
+                    .from("products")
+                    .select(
+                        `
+                        *,
+                        categories(name),
+                        crop_types(name)
+                    `
+                    )
+                    .eq("id", parseInt(id))
+                    .eq("user_id", user.id)
+                    .single();
+
+                if (error) {
+                    console.error("Error fetching product:", error);
+                    navigate("/");
+                } else {
+                    const productData = {
+                        id: data.id,
+                        name: data.name,
+                        price: parseFloat(data.price),
+                        category: data.categories?.name || "Other",
+                        description: data.description,
+                        stock: parseFloat(data.stock),
+                        image_url: data.image_url || "",
+                        cropType: data.crop_types?.name || "",
+                        unit: data.unit || "kg",
+                        status: data.status,
+                        created_at: data.created_at,
+                        updated_at: data.updated_at,
+                        reviews: [], // TODO: Fetch reviews separately if needed
+                    };
+                    setProduct(productData);
+                    setEditForm({
+                        name: productData.name,
+                        price: productData.price.toString(),
+                        category: productData.category,
+                        cropType: productData.cropType || "",
+                        description: productData.description,
+                        stock: productData.stock.toString(),
+                        image_url: data.image_url || "",
+                        imageFile: null,
+                        imagePreview: data.image_url || "",
+                    });
+                }
+            } catch (error) {
+                console.error("Unexpected error:", error);
+                navigate("/");
+            } finally {
+                setLoading(false);
             }
-            setLoading(false);
-        }, 500);
-    }, [id]);
+        };
 
-    const handleImageUpload = (e) => {
-        const file = e.target.files[0];
-        if (file && file.type.startsWith("image/")) {
-            const reader = new FileReader();
-            reader.onload = (event) => {
-                setEditForm((prev) => ({
-                    ...prev,
-                    image: file,
-                    imagePreview: event.target.result,
-                }));
-            };
-            reader.readAsDataURL(file);
+        fetchProduct();
+    }, [id, user, navigate]);
+
+    const handleSave = async () => {
+        if (!editForm.name || !editForm.price || !editForm.stock) {
+            alert("Please fill in all required fields.");
+            return;
         }
-    };
-
-    const handleSave = () => {
-        if (!editForm.name || !editForm.price || !editForm.stock) return;
 
         // Validate crop type
         if (editForm.cropType && !availableCrops.includes(editForm.cropType)) {
@@ -285,29 +314,133 @@ function ProducerProduct() {
             return;
         }
 
-        const updatedProduct = {
-            ...product,
-            name: editForm.name,
-            price: parseFloat(editForm.price),
-            category: editForm.category,
-            cropType: editForm.cropType,
-            description: editForm.description,
-            stock: parseInt(editForm.stock),
-            image: editForm.imagePreview,
-            updated_at: new Date().toISOString(),
-        };
+        try {
+            // Get category_id if category is selected
+            let category_id = null;
+            if (editForm.category && editForm.category !== "All") {
+                const { data: categoryData } = await supabase
+                    .from("categories")
+                    .select("id")
+                    .eq("name", editForm.category)
+                    .single();
+                category_id = categoryData?.id;
+            }
 
-        setProduct(updatedProduct);
-        setIsEditing(false);
+            // Get crop_type_id
+            let crop_type_id = null;
+            if (editForm.cropType) {
+                const { data: cropTypeData } = await supabase
+                    .from("crop_types")
+                    .select("id")
+                    .eq("name", editForm.cropType)
+                    .single();
+                crop_type_id = cropTypeData?.id;
+            }
 
-        // Here you would typically make an API call to update the product
-        // await updateProduct(product.id, updatedProduct);
+            // Handle image upload and deletion
+            let image_url = product.image_url; // Keep existing image by default
+
+            // Check if user deleted the image (both imagePreview and image_url are empty/cleared)
+            const userDeletedImage =
+                !editForm.imagePreview && !editForm.image_url;
+
+            if (userDeletedImage && product.image_url) {
+                // User deleted the image, delete from storage
+                await deleteImageFromUrl(product.image_url, "products");
+                image_url = null;
+            } else if (editForm.imageFile) {
+                // If new image selected, upload it
+                const uploadResult = await uploadImage(
+                    editForm.imageFile,
+                    "products",
+                    user.id,
+                    product.image_url // Pass old image URL for deletion
+                );
+                if (uploadResult.success) {
+                    image_url = uploadResult.url;
+                } else {
+                    alert(`Image upload failed: ${uploadResult.error}`);
+                    return;
+                }
+            }
+
+            const { data, error } = await supabase
+                .from("products")
+                .update({
+                    name: editForm.name,
+                    price: parseFloat(editForm.price),
+                    category_id: category_id,
+                    crop_type_id: crop_type_id,
+                    description: editForm.description,
+                    stock: parseFloat(editForm.stock),
+                    image_url: image_url,
+                })
+                .eq("id", product.id)
+                .select(
+                    `
+                    *,
+                    categories(name),
+                    crop_types(name)
+                `
+                )
+                .single();
+
+            if (error) {
+                console.error("Error updating product:", error);
+                alert("Error updating product. Please try again.");
+            } else {
+                // Update the local product state
+                const updatedProduct = {
+                    ...product,
+                    name: data.name,
+                    price: parseFloat(data.price),
+                    category: data.categories?.name || editForm.category,
+                    description: data.description,
+                    stock: parseFloat(data.stock),
+                    image_url: data.image_url,
+                    cropType: data.crop_types?.name || editForm.cropType,
+                    updated_at: data.updated_at,
+                };
+
+                setProduct(updatedProduct);
+                setIsEditing(false);
+            }
+        } catch (error) {
+            console.error("Unexpected error:", error);
+            alert("An unexpected error occurred. Please try again.");
+        }
     };
 
-    const handleDelete = () => {
-        // Here you would typically make an API call to delete the product
-        // await deleteProduct(product.id);
-        navigate("/");
+    const handleDelete = async () => {
+        if (!product) return;
+
+        try {
+            // First, delete the image from storage if it exists
+            if (
+                product.image_url &&
+                !product.image_url.includes("placeholder") &&
+                !product.image_url.includes("gray-apple.png")
+            ) {
+                await deleteImageFromUrl(product.image_url, "products");
+            }
+
+            // Then delete the product from database
+            const { error } = await supabase
+                .from("products")
+                .delete()
+                .eq("id", product.id);
+
+            if (error) {
+                console.error("Error deleting product:", error);
+                alert("Error deleting product. Please try again.");
+            } else {
+                alert("Product deleted successfully!");
+                navigate("/");
+            }
+        } catch (error) {
+            console.error("Unexpected error:", error);
+            alert("An unexpected error occurred. Please try again.");
+        }
     };
 
     const handleCancel = () => {
@@ -318,8 +451,9 @@ function ProducerProduct() {
             cropType: product.cropType || "",
             description: product.description,
             stock: product.stock.toString(),
-            image: null,
-            imagePreview: product.image,
+            image_url: product.image_url || "",
+            imageFile: null,
+            imagePreview: product.image_url || "",
         });
         setCropSearchTerm("");
         setShowCropDropdown(false);
@@ -443,33 +577,239 @@ function ProducerProduct() {
             <div className="w-full max-w-4xl mx-4 sm:mx-auto my-16">
                 <div className="bg-white rounded-lg shadow-md overflow-hidden mt-4">
                     {/* Product Image */}
-                    <div className="relative h-64 sm:h-80 bg-gray-200">
-                        <img
-                            src={
-                                isEditing
-                                    ? editForm.imagePreview
-                                    : product.image
-                            }
-                            alt={isEditing ? editForm.name : product.name}
-                            className="w-full h-full object-cover"
-                        />
-                        {isEditing && (
-                            <div className="absolute bottom-4 right-4">
-                                <label className="bg-white rounded-lg px-3 py-2 shadow-md cursor-pointer hover:bg-gray-50 transition-colors">
-                                    <Icon
-                                        icon="mingcute:camera-line"
-                                        width="20"
-                                        height="20"
-                                        className="inline mr-2"
-                                    />
-                                    Change Image
-                                    <input
-                                        type="file"
-                                        accept="image/*"
-                                        onChange={handleImageUpload}
-                                        className="hidden"
-                                    />
+                    <div className="relative">
+                        {isEditing ? (
+                            <div className="mb-6">
+                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    Product Image
                                 </label>
+                                {/* Image Section - Full Width with Camera Icon */}
+                                <div className="relative group">
+                                    {editForm.imagePreview ||
+                                    editForm.image_url ? (
+                                        <div className="relative">
+                                            <img
+                                                src={
+                                                    editForm.imagePreview ||
+                                                    editForm.image_url
+                                                }
+                                                alt="Product preview"
+                                                className="w-full h-64 object-cover rounded-lg bg-gray-100"
+                                            />
+                                            {/* Camera and Delete Icons - Bottom Right */}
+                                            <div className="absolute bottom-3 right-3 flex gap-2">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => {
+                                                        setEditForm((prev) => ({
+                                                            ...prev,
+                                                            imageFile: null,
+                                                            imagePreview: "",
+                                                            image_url: "",
+                                                        }));
+                                                    }}
+                                                    className="bg-red-500 hover:bg-red-600 text-white rounded-full p-2 shadow-lg transition-colors"
+                                                >
+                                                    <Icon
+                                                        icon="mingcute:delete-line"
+                                                        width="18"
+                                                        height="18"
+                                                    />
+                                                </button>
+                                                <label className="bg-primary hover:bg-primary-dark text-white rounded-full p-2 shadow-lg transition-colors cursor-pointer">
+                                                    <Icon
+                                                        icon="mingcute:camera-line"
+                                                        width="18"
+                                                        height="18"
+                                                    />
+                                                    <input
+                                                        type="file"
+                                                        className="hidden"
+                                                        accept="image/*"
+                                                        onChange={(e) => {
+                                                            const file =
+                                                                e.target
+                                                                    .files[0];
+                                                            if (file) {
+                                                                // Validate file type
+                                                                const allowedTypes =
+                                                                    [
+                                                                        "image/jpeg",
+                                                                        "image/jpg",
+                                                                        "image/png",
+                                                                        "image/webp",
+                                                                    ];
+                                                                if (
+                                                                    !allowedTypes.includes(
+                                                                        file.type
+                                                                    )
+                                                                ) {
+                                                                    alert(
+                                                                        "Invalid file type. Please select a JPEG, PNG, or WebP image."
+                                                                    );
+                                                                    return;
+                                                                }
+
+                                                                // Validate file size (5MB)
+                                                                if (
+                                                                    file.size >
+                                                                    5 *
+                                                                        1024 *
+                                                                        1024
+                                                                ) {
+                                                                    alert(
+                                                                        "File size too large. Maximum size is 5MB."
+                                                                    );
+                                                                    return;
+                                                                }
+
+                                                                // Create preview
+                                                                const reader =
+                                                                    new FileReader();
+                                                                reader.onload =
+                                                                    (e) => {
+                                                                        setEditForm(
+                                                                            (
+                                                                                prev
+                                                                            ) => ({
+                                                                                ...prev,
+                                                                                imagePreview:
+                                                                                    e
+                                                                                        .target
+                                                                                        .result,
+                                                                            })
+                                                                        );
+                                                                    };
+                                                                reader.readAsDataURL(
+                                                                    file
+                                                                );
+                                                                setEditForm(
+                                                                    (prev) => ({
+                                                                        ...prev,
+                                                                        imageFile:
+                                                                            file,
+                                                                    })
+                                                                );
+                                                            }
+                                                        }}
+                                                    />
+                                                </label>
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <div className="relative bg-gray-100 border-2 border-dashed border-gray-300 rounded-lg h-64 hover:border-primary hover:bg-gray-50 transition-colors cursor-pointer">
+                                            <label className="absolute inset-0 flex items-center justify-center cursor-pointer">
+                                                <div className="text-center">
+                                                    <div className="mx-auto w-16 h-16 bg-white rounded-full flex items-center justify-center shadow-sm mb-4">
+                                                        <Icon
+                                                            icon="mingcute:camera-line"
+                                                            width="24"
+                                                            height="24"
+                                                            className="text-primary"
+                                                        />
+                                                    </div>
+                                                    <p className="text-gray-700 font-medium mb-1">
+                                                        Add Product Image
+                                                    </p>
+                                                    <p className="text-sm text-gray-500">
+                                                        Click anywhere to select
+                                                        an image
+                                                    </p>
+                                                </div>
+                                                <input
+                                                    type="file"
+                                                    className="hidden"
+                                                    accept="image/*"
+                                                    onChange={(e) => {
+                                                        const file =
+                                                            e.target.files[0];
+                                                        if (file) {
+                                                            // Validate file type
+                                                            const allowedTypes =
+                                                                [
+                                                                    "image/jpeg",
+                                                                    "image/jpg",
+                                                                    "image/png",
+                                                                    "image/webp",
+                                                                ];
+                                                            if (
+                                                                !allowedTypes.includes(
+                                                                    file.type
+                                                                )
+                                                            ) {
+                                                                alert(
+                                                                    "Invalid file type. Please select a JPEG, PNG, or WebP image."
+                                                                );
+                                                                return;
+                                                            }
+
+                                                            // Validate file size (5MB)
+                                                            if (
+                                                                file.size >
+                                                                5 * 1024 * 1024
+                                                            ) {
+                                                                alert(
+                                                                    "File size too large. Maximum size is 5MB."
+                                                                );
+                                                                return;
+                                                            }
+
+                                                            // Create preview
+                                                            const reader =
+                                                                new FileReader();
+                                                            reader.onload = (
+                                                                e
+                                                            ) => {
+                                                                setEditForm(
+                                                                    (prev) => ({
+                                                                        ...prev,
+                                                                        imagePreview:
+                                                                            e
+                                                                                .target
+                                                                                .result,
+                                                                    })
+                                                                );
+                                                            };
+                                                            reader.readAsDataURL(
+                                                                file
+                                                            );
+                                                            setEditForm(
+                                                                (prev) => ({
+                                                                    ...prev,
+                                                                    imageFile:
+                                                                        file,
+                                                                })
+                                                            );
+                                                        }
+                                                    }}
+                                                />
+                                            </label>
+                                        </div>
+                                    )}
+                                </div>
+                                <div className="mt-2 text-center">
+                                    <p className="text-xs text-gray-500">
+                                        {editForm.imageFile
+                                            ? "New image selected • PNG, JPG, or WebP (Max 5MB)"
+                                            : editForm.image_url
+                                            ? "Current product image"
+                                            : "PNG, JPG, or WebP (Max 5MB)"}
+                                    </p>
+                                </div>
+                            </div>
+                        ) : (
+                            <div className="h-64 sm:h-80 bg-gray-200">
+                                <img
+                                    src={
+                                        product.image_url ||
+                                        "/assets/gray-apple.png"
+                                    }
+                                    alt={product.name}
+                                    className="w-full h-full object-cover"
+                                    onError={(e) => {
+                                        e.target.src = "/assets/gray-apple.png";
+                                    }}
+                                />
                             </div>
                         )}
                     </div>
@@ -967,7 +1307,7 @@ function ProducerProduct() {
 
             {/* Delete Confirmation Modal */}
             <ConfirmModal
-                isOpen={showDeleteModal}
+                open={showDeleteModal}
                 onClose={() => setShowDeleteModal(false)}
                 onConfirm={handleDelete}
                 title="Delete Product"

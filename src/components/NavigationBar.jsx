@@ -1,9 +1,32 @@
 import { Link, useLocation } from "react-router-dom";
 import { Icon } from "@iconify/react";
+import { useState, useEffect, useContext } from "react";
+import { AuthContext } from "../App.jsx";
+import { getCartCount } from "../utils/cartUtils.js";
 
 function NavigationBar() {
     const location = useLocation();
+    const { user } = useContext(AuthContext);
+    const [cartCount, setCartCount] = useState(0);
+
     const isActive = (path) => location.pathname === path;
+
+    // Fetch cart count
+    useEffect(() => {
+        const fetchCartCount = async () => {
+            if (user) {
+                const count = await getCartCount(user.id);
+                setCartCount(count);
+            }
+        };
+
+        fetchCartCount();
+
+        // Optional: Set up interval to refresh cart count every 30 seconds
+        const interval = setInterval(fetchCartCount, 30000);
+
+        return () => clearInterval(interval);
+    }, [user]);
 
     return (
         <div className="fixed bottom-0 left-0 w-full bg-white shadow-lg border-t border-gray-200 z-[1000]">
@@ -67,9 +90,11 @@ function NavigationBar() {
                     />
                     <span className="text-xs mt-1 font-medium">Cart</span>
                     {/* Cart badge */}
-                    <div className="absolute -top-1 -right-1 bg-red-500 text-white text-xs w-5 h-5 flex items-center justify-center rounded-full">
-                        0
-                    </div>
+                    {cartCount > 0 && (
+                        <div className="absolute -top-1 -right-1 bg-red-500 text-white text-xs w-5 h-5 flex items-center justify-center rounded-full">
+                            {cartCount}
+                        </div>
+                    )}
                 </Link>
 
                 <Link

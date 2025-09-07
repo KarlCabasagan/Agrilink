@@ -10,6 +10,8 @@ import {
     Routes,
     Route,
     Navigate,
+    useLocation,
+    useNavigate,
 } from "react-router-dom";
 
 import Home from "./pages/consumer/Home";
@@ -24,9 +26,11 @@ import SellerApplication from "./pages/consumer/SellerApplication";
 import ProducerProfile from "./pages/producer/ProducerProfile";
 import Product from "./pages/consumer/Product";
 import Cart from "./pages/consumer/Cart";
+import Orders from "./pages/consumer/Orders";
+import Checkout from "./pages/consumer/Checkout";
 import Messages from "./pages/consumer/Messages";
 import ProducerMessages from "./pages/producer/ProducerMessages";
-import Orders from "./pages/producer/Orders";
+import ProducerOrders from "./pages/producer/Orders";
 import CropRecommendation from "./pages/producer/CropRecommendation";
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import AdminUserManagement from "./pages/admin/AdminUserManagement";
@@ -49,29 +53,114 @@ export const AuthContext = createContext({
     setUserRole: () => {},
 });
 
+// Component to handle email verification redirect
+function EmailVerificationHandler() {
+    const location = useLocation();
+    const navigate = useNavigate();
+
+    useEffect(() => {
+        const handleEmailVerification = async () => {
+            const hashParams = new URLSearchParams(location.hash.substring(1));
+            const type = hashParams.get("type");
+            const accessToken = hashParams.get("access_token");
+
+            if (type === "signup" && accessToken) {
+                // Wait a moment for Supabase to process the session
+                setTimeout(() => {
+                    navigate("/account-verified", { replace: true });
+                }, 500);
+            }
+        };
+
+        handleEmailVerification();
+    }, [location, navigate]);
+
+    return null;
+}
+
 function App() {
     const [user, setUser] = useState(null);
     const [userRole, setUserRole] = useState(null);
     const [loading, setLoading] = useState(true);
 
-    // Fetch user role from profiles table
-    const fetchUserRole = useCallback(async (userId) => {
+    // Fetch user role from profiles table and handle deleted users
+    const fetchUserRole = useCallback(async (userId, currentUser = null) => {
         try {
             const { data, error } = await supabase
                 .from("profiles")
-                .select("role_id")
+                .select(
+                    `
+                    role_id, 
+                    name,
+                    statuses(name)
+                `
+                )
                 .eq("id", userId)
                 .single();
 
             if (data) {
+                // Check if user is active using the new status structure
+                if (data.statuses?.name === "suspended") {
+                    console.log("User account is suspended, logging out...");
+                    await supabase.auth.signOut();
+                    setUser(null);
+                    setUserRole(null);
+                    return;
+                }
+
+                // Check if name is missing but exists in user metadata
+                if (
+                    !data.name &&
+                    currentUser &&
+                    currentUser.email_confirmed_at
+                ) {
+                    const userName =
+                        currentUser.user_metadata?.full_name ||
+                        currentUser.user_metadata?.display_name;
+                    if (userName && userName.trim()) {
+                        console.log(
+                            "Transferring name from metadata to profile..."
+                        );
+                        // Transfer name from metadata to profile
+                        const { error: updateError } = await supabase
+                            .from("profiles")
+                            .update({
+                                name: userName.trim(),
+                                updated_at: new Date().toISOString(),
+                            })
+                            .eq("id", userId);
+
+                        if (updateError) {
+                            console.error(
+                                "Error updating profile with name:",
+                                updateError
+                            );
+                        }
+                    }
+                }
+
                 setUserRole(data.role_id);
             } else if (error && error.code === "PGRST116") {
-                // No profile found, default to Consumer role
-                setUserRole(1);
+                // No profile found - user might be deleted from database
+                console.log(
+                    "User profile not found in database, logging out..."
+                );
+                await supabase.auth.signOut();
+                setUser(null);
+                setUserRole(null);
+                return;
             }
         } catch (error) {
             console.error("Error fetching user role:", error);
-            setUserRole(1); // Default to Consumer role
+            // If there's a persistent error, logout the user
+            if (error.code === "PGRST301" || error.message.includes("JWT")) {
+                console.log("Authentication error, logging out...");
+                await supabase.auth.signOut();
+                setUser(null);
+                setUserRole(null);
+                return;
+            }
+            setUserRole(1); // Default to Consumer role for other errors
         }
     }, []);
 
@@ -86,7 +175,7 @@ function App() {
             setUser(sessionUser);
 
             if (sessionUser) {
-                fetchUserRole(sessionUser.id);
+                fetchUserRole(sessionUser.id, sessionUser);
             } else {
                 setLoading(false);
             }
@@ -102,7 +191,7 @@ function App() {
             setUser(sessionUser);
 
             if (sessionUser) {
-                fetchUserRole(sessionUser.id);
+                fetchUserRole(sessionUser.id, sessionUser);
             } else {
                 setUserRole(null);
                 setLoading(false);
@@ -188,6 +277,11 @@ function App() {
         }
 
         if (!allowedRoles.includes(userRole)) {
+            // If user is admin (role 3) and trying to access non-admin routes, redirect to admin dashboard
+            if (userRole === 3) {
+                return <Navigate to="/admin/dashboard" replace />;
+            }
+            // For other roles, redirect to home
             return <Navigate to="/" replace />;
         }
 
@@ -207,15 +301,21 @@ function App() {
     };
 
     const RoleBasedProfile = () => {
-        if (userRole === 2) {
+        if (userRole === 3) {
+            // Admin - redirect to admin dashboard instead of showing profile
+            return <Navigate to="/admin/dashboard" replace />;
+        } else if (userRole === 2) {
             // Producer
             return <ProducerProfile />;
         }
-        return <Profile />; // Consumer (role 1) or Admin default
+        return <Profile />; // Consumer (role 1) or default
     };
 
     const RoleBasedMessages = () => {
-        if (userRole === 2) {
+        if (userRole === 3) {
+            // Admin - redirect to admin dashboard instead of showing messages
+            return <Navigate to="/admin/dashboard" replace />;
+        } else if (userRole === 2) {
             // Producer
             return <ProducerMessages />;
         }
@@ -225,6 +325,7 @@ function App() {
     return (
         <AuthContext.Provider value={authContextValue}>
             <Router>
+                <EmailVerificationHandler />
                 <Routes>
                     <Route
                         path="/login"
@@ -304,6 +405,22 @@ function App() {
                         }
                     />
                     <Route
+                        path="/orders"
+                        element={
+                            <RoleGuard allowedRoles={[1]}>
+                                <Orders />
+                            </RoleGuard>
+                        }
+                    />
+                    <Route
+                        path="/checkout"
+                        element={
+                            <RoleGuard allowedRoles={[1]}>
+                                <Checkout />
+                            </RoleGuard>
+                        }
+                    />
+                    <Route
                         path="/seller-application"
                         element={
                             <RoleGuard allowedRoles={[1]}>
@@ -330,10 +447,10 @@ function App() {
                         }
                     />
                     <Route
-                        path="/orders"
+                        path="/producer/orders"
                         element={
                             <RoleGuard allowedRoles={[2]}>
-                                <Orders />
+                                <ProducerOrders />
                             </RoleGuard>
                         }
                     />

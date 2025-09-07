@@ -1081,7 +1081,7 @@ function AdminProductManagement() {
             {/* Image Modal */}
             {showImageModal && (
                 <div
-                    className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+                    className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[9999]"
                     onClick={() => setShowImageModal(false)}
                 >
                     <div className="bg-white p-4 rounded-lg max-w-2xl max-h-[80vh] overflow-auto">

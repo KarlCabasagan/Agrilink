@@ -16,9 +16,9 @@ function ProducerNavigationBar() {
             label: "Products",
         },
         {
-            path: "/orders",
+            path: "/producer/orders",
             icon: "mingcute:box-2-line",
-            activeIcon: "mingcute:box-2-line",
+            activeIcon: "mingcute:box-2-fill",
             label: "Orders",
             badge: 3, // Mock notification count
         },

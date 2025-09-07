@@ -2,34 +2,86 @@ import { Icon } from "@iconify/react";
 import { Link } from "react-router-dom";
 import NavigationBar from "../../components/NavigationBar";
 import ConsumerSearch from "../../components/ConsumerSearch.jsx";
-import { useState } from "react";
+import { useState, useEffect, useContext } from "react";
+import supabase from "../../SupabaseClient.jsx";
+import { AuthContext } from "../../App.jsx";
 
 function Favorites() {
+    const { user } = useContext(AuthContext);
     const [search, setSearch] = useState("");
-    const favoriteProducts = [
-        {
-            id: 4,
-            name: "Monggo",
-            price: 12.0,
-            image: "https://images.yummy.ph/yummy/uploads/2021/02/monggo.jpg",
-            address: "Seaside Market, Zone 2",
-            category: "Legumes",
-            rating: 4.3,
-            stock: 25,
-            farmerName: "Juan Santos",
-        },
-        {
-            id: 2,
-            name: "Apple",
-            price: 8.0,
-            image: "https://assets.clevelandclinic.org/transform/LargeFeatureImage/cd71f4bd-81d4-45d8-a450-74df78e4477a/Apples-184940975-770x533-1_jpg",
-            address: "Zone 4, Barangay 5",
-            category: "Fruits",
-            rating: 4.8,
-            stock: 15,
-            farmerName: "Maria Cruz",
-        },
-    ];
+    const [favoriteProducts, setFavoriteProducts] = useState([]);
+    const [loading, setLoading] = useState(true);
+
+    // Fetch user's favorite products from database
+    useEffect(() => {
+        const fetchFavorites = async () => {
+            if (!user) {
+                setLoading(false);
+                return;
+            }
+
+            setLoading(true);
+            try {
+                const { data, error } = await supabase
+                    .from("favorites")
+                    .select(
+                        `
+                        product_id,
+                        products (
+                            *,
+                            categories(name),
+                            profiles!products_user_id_fkey(name, address)
+                        )
+                    `
+                    )
+                    .eq("user_id", user.id);
+
+                if (error) {
+                    console.error("Error fetching favorites:", error);
+                    setFavoriteProducts([]);
+                    return;
+                }
+
+                const formattedFavorites = data
+                    .filter((fav) => fav.products) // Filter out any null products
+                    .map((fav) => {
+                        const product = fav.products;
+                        return {
+                            id: product.id,
+                            name: product.name,
+                            price: parseFloat(product.price),
+                            image:
+                                product.image_url ||
+                                "https://via.placeholder.com/300x200?text=No+Image",
+                            address:
+                                product.profiles?.address ||
+                                "Location not available",
+                            category: product.categories?.name || "Other",
+                            farmerName:
+                                product.profiles?.name || "Unknown Farmer",
+                            description: product.description,
+                            stock: parseFloat(product.stock) || 0,
+                            rating: 4.5, // We'll implement real ratings later
+                            unit: product.unit || "kg",
+                            minimumOrderQuantity:
+                                parseFloat(product.minimum_order_quantity) || 1,
+                            deliveryCost:
+                                parseFloat(product.delivery_cost) || 50,
+                            pickupLocation: product.pickup_location,
+                        };
+                    });
+
+                setFavoriteProducts(formattedFavorites);
+            } catch (error) {
+                console.error("Error fetching favorites:", error);
+                setFavoriteProducts([]);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchFavorites();
+    }, [user]);
 
     const filteredFavorites = favoriteProducts.filter(
         (product) =>
@@ -75,11 +127,68 @@ function Favorites() {
         );
     };
 
-    const handleRemoveFromFavorites = (productId, e) => {
+    const handleRemoveFromFavorites = async (productId, e) => {
         e.preventDefault();
         e.stopPropagation();
-        // This would normally remove from favorites in state/database
-        alert(`Removed from favorites! (Product ID: ${productId})`);
+
+        if (!user) {
+            alert("Please log in to remove favorites");
+            return;
+        }
+
+        try {
+            const { error } = await supabase
+                .from("favorites")
+                .delete()
+                .eq("user_id", user.id)
+                .eq("product_id", productId);
+
+            if (error) {
+                console.error("Error removing favorite:", error);
+                alert("Failed to remove from favorites. Please try again.");
+                return;
+            }
+
+            // Update local state to remove the product
+            setFavoriteProducts((prev) =>
+                prev.filter((product) => product.id !== productId)
+            );
+        } catch (error) {
+            console.error("Error removing favorite:", error);
+            alert("Failed to remove from favorites. Please try again.");
+        }
+    };
+
+    // Handle clearing all favorites
+    const handleClearAllFavorites = async () => {
+        if (!user) {
+            alert("Please log in to clear favorites");
+            return;
+        }
+
+        const confirmClear = window.confirm(
+            "Are you sure you want to remove all favorites? This action cannot be undone."
+        );
+        if (!confirmClear) return;
+
+        try {
+            const { error } = await supabase
+                .from("favorites")
+                .delete()
+                .eq("user_id", user.id);
+
+            if (error) {
+                console.error("Error clearing favorites:", error);
+                alert("Failed to clear favorites. Please try again.");
+                return;
+            }
+
+            setFavoriteProducts([]);
+            alert("All favorites have been removed!");
+        } catch (error) {
+            console.error("Error clearing favorites:", error);
+            alert("Failed to clear favorites. Please try again.");
+        }
     };
 
     return (
@@ -128,7 +237,38 @@ function Favorites() {
 
                 {/* Favorites Grid */}
                 <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 px-2">
-                    {filteredFavorites.length === 0 ? (
+                    {loading ? (
+                        // Loading skeleton
+                        Array.from({ length: 4 }).map((_, i) => (
+                            <div
+                                key={i}
+                                className="bg-white rounded-lg shadow-md overflow-hidden animate-pulse"
+                            >
+                                <div className="w-full h-40 sm:h-48 bg-gray-300"></div>
+                                <div className="p-3">
+                                    <div className="h-4 bg-gray-300 rounded mb-2"></div>
+                                    <div className="h-3 bg-gray-300 rounded mb-2 w-3/4"></div>
+                                    <div className="h-3 bg-gray-300 rounded mb-2 w-1/2"></div>
+                                    <div className="h-4 bg-gray-300 rounded w-1/3"></div>
+                                </div>
+                            </div>
+                        ))
+                    ) : !user ? (
+                        <div className="col-span-full flex flex-col items-center justify-center py-16">
+                            <Icon
+                                icon="mingcute:user-line"
+                                width="64"
+                                height="64"
+                                className="text-gray-300 mb-4"
+                            />
+                            <p className="text-gray-400 text-lg">
+                                Please log in
+                            </p>
+                            <p className="text-gray-400 text-sm text-center">
+                                You need to be logged in to view your favorites
+                            </p>
+                        </div>
+                    ) : filteredFavorites.length === 0 ? (
                         <div className="col-span-full flex flex-col items-center justify-center py-16">
                             <Icon
                                 icon="mingcute:heart-line"
@@ -220,10 +360,19 @@ function Favorites() {
 
                                     <div className="flex items-center justify-between">
                                         <p className="text-primary font-bold text-lg">
-                                            ₱{product.price.toFixed(2)}
+                                            ₱{product.price.toFixed(2)}/
+                                            {product.unit}
                                         </p>
-                                        <span className="text-xs text-gray-500">
-                                            {product.stock} left
+                                        <span
+                                            className={`text-xs ${
+                                                product.stock > 0
+                                                    ? "text-green-600"
+                                                    : "text-red-500"
+                                            }`}
+                                        >
+                                            {product.stock > 0
+                                                ? `${product.stock} ${product.unit} left`
+                                                : "Out of stock"}
                                         </span>
                                     </div>
                                 </div>
@@ -256,7 +405,10 @@ function Favorites() {
                                     />
                                     Share Favorites
                                 </button>
-                                <button className="flex items-center gap-2 bg-red-50 text-red-600 px-4 py-2 rounded-lg hover:bg-red-100 transition-colors">
+                                <button
+                                    className="flex items-center gap-2 bg-red-50 text-red-600 px-4 py-2 rounded-lg hover:bg-red-100 transition-colors"
+                                    onClick={handleClearAllFavorites}
+                                >
                                     <Icon
                                         icon="mingcute:delete-2-line"
                                         width="16"

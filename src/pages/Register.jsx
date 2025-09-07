@@ -32,6 +32,10 @@ function Register() {
             setError("All fields are required.");
             return;
         }
+        if (!name.trim()) {
+            setError("Please enter a valid name.");
+            return;
+        }
         if (password !== confirmPassword) {
             setError("Passwords do not match.");
             return;
@@ -45,7 +49,10 @@ function Register() {
                 email,
                 password,
                 options: {
-                    data: { display_name: name },
+                    data: { 
+                        display_name: name.trim(),
+                        full_name: name.trim() // Store name in user metadata
+                    },
                     emailRedirectTo: `${window.location.origin}/account-verified`,
                 },
             });
@@ -54,25 +61,10 @@ function Register() {
                 setLoading(false);
                 return;
             }
-            const userId = data.user?.id;
-            if (userId) {
-                const { error: insertError } = await supabase
-                    .from("profiles")
-                    .insert([
-                        {
-                            id: userId,
-                            user_id: userId,
-                            email: email,
-                            name: name,
-                        },
-                    ]);
-                if (insertError) {
-                    setError("User registered, but failed to save profile.");
-                    setLoading(false);
-                    console.log(insertError);
-                    return;
-                }
-            }
+            
+            // Don't try to update profiles table here since user is unverified
+            // The name will be saved to the profile when they verify their email
+            
             setUser(data.user || null);
             setLoading(false);
             navigate("/verify-account");
@@ -112,7 +104,7 @@ function Register() {
                             <input
                                 type="text"
                                 className="bg-white w-full max-w-sm p-3 rounded-md mb-4 text-base outline-none focus:outline-none focus:ring-0 shadow-sm"
-                                placeholder="Name"
+                                placeholder="Full Name"
                                 value={name}
                                 onChange={(e) => setName(e.target.value)}
                                 autoComplete="name"

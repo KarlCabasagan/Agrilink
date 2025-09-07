@@ -39,7 +39,7 @@ function Login() {
       }
       setUser(data.user || null);
       setLoading(false);
-      navigate("/");
+      // Remove manual navigation - let App.jsx handle routing based on verification status
     } catch (err) {
       setError("Login failed. Try again.");
       setLoading(false);

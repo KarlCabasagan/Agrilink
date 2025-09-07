@@ -1,35 +1,195 @@
 import { useParams } from "react-router-dom";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useContext } from "react";
 import { Icon } from "@iconify/react";
 import { Link } from "react-router-dom";
 import NavigationBar from "../../components/NavigationBar";
-import { findProductById } from "../../data/products.js";
+import Modal from "../../components/Modal";
+import supabase from "../../SupabaseClient.jsx";
+import { AuthContext } from "../../App.jsx";
+import { addToCart } from "../../utils/cartUtils.js";
 
 function Product() {
     const { id } = useParams();
-    const [quantity, setQuantity] = useState(1);
+    const { user } = useContext(AuthContext);
+    const [quantity, setQuantity] = useState(0.1);
+    const [product, setProduct] = useState(null);
+    const [loading, setLoading] = useState(true);
+    const [addingToCart, setAddingToCart] = useState(false);
+    const [modal, setModal] = useState({
+        open: false,
+        type: "",
+        title: "",
+        message: "",
+        onConfirm: null,
+    });
 
-    const product = useMemo(() => findProductById(id), [id]);
+    const showModal = (type, title, message, onConfirm = null) => {
+        setModal({ open: true, type, title, message, onConfirm });
+    };
 
-    const handleAddToCart = () => {
-        alert(`Added ${quantity} ${product.name}(s) to cart!`);
+    // Fetch product details
+    useEffect(() => {
+        const fetchProduct = async () => {
+            setLoading(true);
+            try {
+                const { data, error } = await supabase
+                    .from("products")
+                    .select(
+                        `
+                        *,
+                        categories(name),
+                        profiles!user_id(name, address, delivery_cost, minimum_order_quantity),
+                        statuses(name)
+                    `
+                    )
+                    .eq("id", id)
+                    .eq("statuses.name", "active")
+                    .single();
+
+                if (error) {
+                    console.error("Error fetching product:", error);
+                    return;
+                }
+
+                const formattedProduct = {
+                    id: data.id,
+                    name: data.name,
+                    price: parseFloat(data.price),
+                    image:
+                        data.image_url ||
+                        "https://via.placeholder.com/300x200?text=No+Image",
+                    address: data.profiles?.address || "Location not available",
+                    category: data.categories?.name || "Other",
+                    farmerName: data.profiles?.name || "Unknown Farmer",
+                    description: data.description,
+                    stock: parseFloat(data.stock) || 0,
+                    rating: 4.5, // We'll implement real ratings later
+                    unit: "kg", // Default unit since not in new schema
+                    minimumOrderQuantity:
+                        parseFloat(data.profiles?.minimum_order_quantity) || 1,
+                    deliveryCost:
+                        parseFloat(data.profiles?.delivery_cost) || 50,
+                    pickupLocation: data.profiles?.address || "Farm location",
+                    farmerId: data.user_id, // Updated to use user_id
+                    reviews: [], // We'll implement real reviews later
+                };
+
+                setProduct(formattedProduct);
+                setQuantity(
+                    Math.max(0.1, formattedProduct.minimumOrderQuantity)
+                );
+            } catch (error) {
+                console.error("Error fetching product:", error);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        if (id) {
+            fetchProduct();
+        }
+    }, [id]);
+
+    const handleAddToCart = async () => {
+        if (!user || !product) return;
+
+        setAddingToCart(true);
+        try {
+            const result = await addToCart(user.id, product.id, quantity);
+
+            if (result.success) {
+                showModal(
+                    "success",
+                    "Item Added to Cart!",
+                    `Successfully added ${quantity} kg of ${product.name} to your cart. You can continue shopping or go to cart to checkout.`,
+                    () => setModal((prev) => ({ ...prev, open: false }))
+                );
+            } else {
+                showModal("error", "Error", `Error: ${result.message}`, () =>
+                    setModal((prev) => ({ ...prev, open: false }))
+                );
+            }
+        } catch (error) {
+            console.error("Error adding to cart:", error);
+            showModal(
+                "error",
+                "Error",
+                "Error adding to cart. Please try again.",
+                () => setModal((prev) => ({ ...prev, open: false }))
+            );
+        } finally {
+            setAddingToCart(false);
+        }
     };
 
     const handleMessageFarmer = () => {
-        alert(`Messaging ${product.farmerName} about ${product.name}`);
+        showModal(
+            "info",
+            "Message Farmer",
+            `Messaging ${product.farmerName} about ${product.name}`,
+            () => setModal((prev) => ({ ...prev, open: false }))
+        );
     };
 
     const increaseQuantity = () => {
-        if (quantity < product.stock) {
-            setQuantity(quantity + 1);
+        if (!product) return;
+        const newQuantity = Math.round((quantity + 0.1) * 10) / 10;
+        if (newQuantity <= product.stock) {
+            setQuantity(newQuantity);
         }
     };
 
     const decreaseQuantity = () => {
-        if (quantity > 1) {
-            setQuantity(quantity - 1);
+        if (!product) return;
+        const newQuantity = Math.round((quantity - 0.1) * 10) / 10;
+        if (newQuantity >= 0.1) {
+            setQuantity(newQuantity);
         }
     };
+
+    const handleQuantityChange = (e) => {
+        if (!product) return;
+        const value = parseFloat(e.target.value);
+        if (!isNaN(value) && value >= 0.1 && value <= product.stock) {
+            setQuantity(Math.round(value * 10) / 10);
+        } else if (e.target.value === "") {
+            setQuantity(0.1);
+        }
+    };
+
+    if (loading) {
+        return (
+            <div className="min-h-screen w-full flex items-center justify-center bg-background">
+                <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-primary"></div>
+            </div>
+        );
+    }
+
+    if (!product) {
+        return (
+            <div className="min-h-screen w-full flex flex-col items-center justify-center bg-background text-center">
+                <Icon
+                    icon="mingcute:sad-line"
+                    width="80"
+                    height="80"
+                    className="text-gray-300 mb-4"
+                />
+                <h2 className="text-xl font-bold text-gray-600 mb-2">
+                    Product not found
+                </h2>
+                <p className="text-gray-500 mb-6">
+                    The product you're looking for doesn't exist or is no longer
+                    available.
+                </p>
+                <Link
+                    to="/"
+                    className="bg-primary text-white px-6 py-3 rounded-lg hover:bg-primary-dark transition-colors font-medium"
+                >
+                    Back to Home
+                </Link>
+            </div>
+        );
+    }
 
     const renderStars = (rating) => {
         const fullStars = Math.floor(rating);
@@ -138,7 +298,7 @@ function Product() {
                         </div>
 
                         <p className="text-3xl sm:text-4xl font-bold text-primary mb-3">
-                            ₱{product.price.toFixed(2)}
+                            ₱{product.price.toFixed(2)}/kg
                         </p>
 
                         <p className="text-gray-600 mb-4">
@@ -150,7 +310,7 @@ function Product() {
                                         : "text-red-600"
                                 }
                             >
-                                {product.stock} available
+                                {product.stock} kg available
                             </span>
                         </p>
 
@@ -170,34 +330,31 @@ function Product() {
                         </div>
 
                         <div className="flex items-center gap-4 mb-6">
-                            <span className="font-semibold">Quantity:</span>
-                            <div className="flex items-center border rounded-lg">
-                                <button
-                                    onClick={decreaseQuantity}
-                                    className="px-4 py-2 hover:bg-gray-100 rounded-l-lg"
-                                    disabled={quantity <= 1}
-                                >
-                                    -
-                                </button>
-                                <span className="px-4 py-2 border-l border-r bg-gray-50">
-                                    {quantity}
-                                </span>
-                                <button
-                                    onClick={increaseQuantity}
-                                    className="px-4 py-2 hover:bg-gray-100 rounded-r-lg"
-                                    disabled={quantity >= product.stock}
-                                >
-                                    +
-                                </button>
+                            <span className="font-semibold">
+                                Quantity (kg):
+                            </span>
+                            <div className="flex items-center">
+                                <input
+                                    type="number"
+                                    value={quantity}
+                                    onChange={handleQuantityChange}
+                                    step="0.1"
+                                    min="0.1"
+                                    max={product.stock}
+                                    className="px-4 py-2 border border-gray-300 rounded-lg w-24 text-center focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary"
+                                />
                             </div>
+                            <span className="text-sm text-gray-500">
+                                Max: {product.stock} kg
+                            </span>
                         </div>
 
                         <div className="flex flex-col sm:flex-row gap-3 mb-6">
                             <button
                                 onClick={handleAddToCart}
-                                disabled={product.stock === 0}
+                                disabled={product.stock === 0 || addingToCart}
                                 className={`flex-1 py-3 px-4 rounded-lg font-semibold flex items-center justify-center gap-2 ${
-                                    product.stock === 0
+                                    product.stock === 0 || addingToCart
                                         ? "bg-gray-300 text-gray-500 cursor-not-allowed"
                                         : "bg-primary text-white hover:bg-primary-dark"
                                 }`}
@@ -209,6 +366,8 @@ function Product() {
                                 />
                                 {product.stock === 0
                                     ? "Out of Stock"
+                                    : addingToCart
+                                    ? "Adding..."
                                     : "Add to Cart"}
                             </button>
                             <button
@@ -262,6 +421,14 @@ function Product() {
                 </div>
             )}
             <NavigationBar />
+            <Modal
+                open={modal.open}
+                type={modal.type}
+                title={modal.title}
+                message={modal.message}
+                onConfirm={modal.onConfirm}
+                onClose={() => setModal((prev) => ({ ...prev, open: false }))}
+            />
         </div>
     );
 }
