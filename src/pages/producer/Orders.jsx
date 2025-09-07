@@ -99,11 +99,12 @@ function Orders() {
 
             // Transform orders - no need to filter since all orders are for this seller
             const transformedOrders = ordersData.map((order) => {
-                // Calculate total from order items
-                const orderTotal = order.order_items.reduce(
-                    (sum, item) => sum + item.price_at_purchase * item.quantity,
-                    0
-                );
+                // Calculate total from order items with safety checks
+                const orderTotal = order.order_items.reduce((sum, item) => {
+                    const price = parseFloat(item.price_at_purchase) || 0;
+                    const quantity = parseFloat(item.quantity) || 0;
+                    return sum + price * quantity;
+                }, 0);
 
                 return {
                     id: order.id,
@@ -111,12 +112,13 @@ function Orders() {
                     customer_contact: order.profiles?.contact || "",
                     customer_address: order.profiles?.address || "",
                     total_amount:
-                        orderTotal + (order.delivery_fee_at_order || 0),
+                        orderTotal +
+                        (parseFloat(order.delivery_fee_at_order) || 0),
                     status: order.statuses?.name || "unknown",
                     created_at: order.created_at,
                     deliveryMethod: order.delivery_methods?.name || "Unknown",
                     paymentMethod: order.payment_methods?.name || "Unknown",
-                    deliveryFee: order.delivery_fee_at_order || 0,
+                    deliveryFee: parseFloat(order.delivery_fee_at_order) || 0,
                     customerDetails: {
                         name: order.profiles?.name || "Unknown Customer",
                         phone: order.profiles?.contact || "",
@@ -125,10 +127,12 @@ function Orders() {
                     items: order.order_items.map((item) => ({
                         id: item.id,
                         product_id: item.product_id,
-                        name: item.name_at_purchase,
-                        quantity: item.quantity,
-                        unit_price: item.price_at_purchase,
-                        subtotal: item.price_at_purchase * item.quantity,
+                        name: item.name_at_purchase || "Unknown Product",
+                        quantity: parseFloat(item.quantity) || 0,
+                        unit_price: parseFloat(item.price_at_purchase) || 0,
+                        subtotal:
+                            (parseFloat(item.price_at_purchase) || 0) *
+                            (parseFloat(item.quantity) || 0),
                         category: item.products?.categories?.name || "Other",
                         image_url: item.products?.image_url || "",
                     })),
@@ -197,9 +201,7 @@ function Orders() {
                     .includes(searchTerm.toLowerCase()) ||
                 order.id.toString().includes(searchTerm) ||
                 order.items.some((item) =>
-                    item.product_name
-                        .toLowerCase()
-                        .includes(searchTerm.toLowerCase())
+                    item.name.toLowerCase().includes(searchTerm.toLowerCase())
                 )
         );
     };
@@ -398,7 +400,10 @@ function Orders() {
 
                                         <div className="flex justify-between items-center">
                                             <p className="text-lg font-bold text-primary">
-                                                ₱{order.total_amount.toFixed(2)}
+                                                ₱
+                                                {(
+                                                    order.total_amount || 0
+                                                ).toFixed(2)}
                                             </p>
                                             <div className="flex items-center gap-3">
                                                 <p className="text-xs text-primary bg-primary/10 px-2 py-1 rounded-full flex items-center gap-1">
@@ -454,35 +459,40 @@ function Orders() {
                                                             >
                                                                 <img
                                                                     src={
-                                                                        item.image
+                                                                        item.image_url
                                                                     }
                                                                     alt={
-                                                                        item.product_name
+                                                                        item.name
                                                                     }
                                                                     className="w-12 h-12 object-cover rounded-lg"
                                                                 />
                                                                 <div className="flex-1">
                                                                     <h6 className="font-medium text-gray-800 text-sm">
                                                                         {
-                                                                            item.product_name
+                                                                            item.name
                                                                         }
                                                                     </h6>
                                                                     <p className="text-xs text-gray-500">
                                                                         ₱
-                                                                        {item.price.toFixed(
+                                                                        {(
+                                                                            item.unit_price ||
+                                                                            0
+                                                                        ).toFixed(
                                                                             2
                                                                         )}
                                                                         /kg ×{" "}
-                                                                        {
-                                                                            item.quantity
-                                                                        }
+                                                                        {item.quantity ||
+                                                                            0}
                                                                         kg
                                                                     </p>
                                                                 </div>
                                                                 <div className="text-right">
                                                                     <p className="text-sm font-medium text-gray-800">
                                                                         ₱
-                                                                        {item.total.toFixed(
+                                                                        {(
+                                                                            item.subtotal ||
+                                                                            0
+                                                                        ).toFixed(
                                                                             2
                                                                         )}
                                                                     </p>
@@ -601,7 +611,10 @@ function Orders() {
                                                                 <p className="text-xs text-orange-600">
                                                                     Payment due:
                                                                     ₱
-                                                                    {order.total_amount.toFixed(
+                                                                    {(
+                                                                        order.total_amount ||
+                                                                        0
+                                                                    ).toFixed(
                                                                         2
                                                                     )}
                                                                 </p>
@@ -631,8 +644,10 @@ function Orders() {
                                                         <span className="text-gray-800">
                                                             ₱
                                                             {(
-                                                                order.total_amount -
-                                                                order.deliveryFee
+                                                                (order.total_amount ||
+                                                                    0) -
+                                                                (order.deliveryFee ||
+                                                                    0)
                                                             ).toFixed(2)}
                                                         </span>
                                                     </div>
@@ -644,11 +659,12 @@ function Orders() {
                                                                 : "Pickup Fee"}
                                                         </span>
                                                         <span className="text-gray-800">
-                                                            {order.deliveryFee >
-                                                            0
-                                                                ? `₱${order.deliveryFee.toFixed(
-                                                                      2
-                                                                  )}`
+                                                            {(order.deliveryFee ||
+                                                                0) > 0
+                                                                ? `₱${(
+                                                                      order.deliveryFee ||
+                                                                      0
+                                                                  ).toFixed(2)}`
                                                                 : "Free"}
                                                         </span>
                                                     </div>
@@ -658,9 +674,10 @@ function Orders() {
                                                         </span>
                                                         <span className="text-blue-800">
                                                             ₱
-                                                            {order.total_amount.toFixed(
-                                                                2
-                                                            )}
+                                                            {(
+                                                                order.total_amount ||
+                                                                0
+                                                            ).toFixed(2)}
                                                         </span>
                                                     </div>
                                                 </div>
