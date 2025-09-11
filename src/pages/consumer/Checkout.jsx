@@ -388,9 +388,32 @@ function Checkout() {
 
             // Update product stock
             for (const item of currentCartItems) {
+                // First, get the current stock from the database to ensure accuracy
+                const { data: currentProduct, error: fetchError } =
+                    await supabase
+                        .from("products")
+                        .select("stock")
+                        .eq("id", item.id)
+                        .single();
+
+                if (fetchError) {
+                    console.error(
+                        "Error fetching current stock for product",
+                        item.id,
+                        ":",
+                        fetchError
+                    );
+                    continue; // Skip this item but continue with others
+                }
+
+                const newStock = Math.max(
+                    0,
+                    currentProduct.stock - item.quantity
+                );
+
                 const { error: stockError } = await supabase
                     .from("products")
-                    .update({ stock: item.stock - item.quantity })
+                    .update({ stock: newStock })
                     .eq("id", item.id);
 
                 if (stockError) {
@@ -401,6 +424,10 @@ function Checkout() {
                         stockError
                     );
                     // Don't throw error, order was successful
+                } else {
+                    console.log(
+                        `Updated stock for product ${item.id}: ${currentProduct.stock} - ${item.quantity} = ${newStock}`
+                    );
                 }
             }
 

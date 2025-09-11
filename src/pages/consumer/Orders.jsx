@@ -84,6 +84,7 @@ function Orders() {
                     sellerContact: order.profiles?.contact || "",
                     items: order.order_items.map((item) => ({
                         id: item.id,
+                        product_id: item.product_id, // Add product_id for cart functionality
                         name: item.name_at_purchase, // Use name_at_purchase from new schema
                         price: item.price_at_purchase, // Use price_at_purchase from new schema
                         quantity: item.quantity,
@@ -235,10 +236,50 @@ function Orders() {
         return Object.values(grouped);
     };
 
-    const handleReorder = (order) => {
-        console.log("Reordering:", order);
-        alert("Items added to cart!");
-        navigate("/cart");
+    const handleReorder = async (order) => {
+        try {
+            console.log("Adding order items to cart:", order);
+
+            // Get or create user's cart
+            let { data: cartData, error: cartError } = await supabase
+                .from("carts")
+                .select("id")
+                .eq("user_id", user.id)
+                .single();
+
+            if (cartError && cartError.code === "PGRST116") {
+                // Cart doesn't exist, create one
+                const { data: newCart, error: createCartError } = await supabase
+                    .from("carts")
+                    .insert({ user_id: user.id })
+                    .select("id")
+                    .single();
+
+                if (createCartError) throw createCartError;
+                cartData = newCart;
+            } else if (cartError) {
+                throw cartError;
+            }
+
+            // Add each item from the order to the cart
+            const cartItems = order.items.map((item) => ({
+                cart_id: cartData.id,
+                product_id: item.product_id, // Use product_id instead of item.id
+                quantity: item.quantity,
+            }));
+
+            const { error: insertError } = await supabase
+                .from("cart_items")
+                .insert(cartItems);
+
+            if (insertError) throw insertError;
+
+            console.log("Successfully added items to cart");
+            navigate("/cart");
+        } catch (error) {
+            console.error("Error adding items to cart:", error);
+            alert("Failed to add items to cart. Please try again.");
+        }
     };
 
     const handleTrackOrder = (orderId) => {
@@ -466,10 +507,8 @@ function Orders() {
                                                         : ""}
                                                 </p>
                                                 <p className="text-xs text-primary bg-primary/10 px-2 py-1 rounded-full">
-                                                    {order.deliveryMethod ===
-                                                    "delivery"
-                                                        ? "Delivery"
-                                                        : "Pickup"}
+                                                    {order.deliveryMethod ||
+                                                        "Unknown"}
                                                 </p>
                                             </div>
                                         </div>
@@ -883,7 +922,7 @@ function Orders() {
                                                             }}
                                                             className="px-4 py-2 text-sm bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors"
                                                         >
-                                                            Reorder
+                                                            Order Again
                                                         </button>
                                                         <button
                                                             onClick={(e) =>

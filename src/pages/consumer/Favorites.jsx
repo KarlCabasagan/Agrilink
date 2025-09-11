@@ -191,6 +191,134 @@ function Favorites() {
         }
     };
 
+    // Handle adding all favorites to cart
+    const handleAddAllToCart = async () => {
+        if (!user) {
+            alert("Please log in to add items to cart");
+            return;
+        }
+
+        if (filteredFavorites.length === 0) {
+            alert("No favorite products to add to cart");
+            return;
+        }
+
+        // Filter out products that are out of stock
+        const availableProducts = filteredFavorites.filter(
+            (product) => product.stock > 0
+        );
+
+        if (availableProducts.length === 0) {
+            alert("All favorite products are currently out of stock");
+            return;
+        }
+
+        try {
+            // Get or create user's cart
+            let { data: cartData, error: cartError } = await supabase
+                .from("carts")
+                .select("id")
+                .eq("user_id", user.id)
+                .single();
+
+            if (cartError && cartError.code === "PGRST116") {
+                // Cart doesn't exist, create one
+                const { data: newCart, error: createCartError } = await supabase
+                    .from("carts")
+                    .insert({ user_id: user.id })
+                    .select("id")
+                    .single();
+
+                if (createCartError) throw createCartError;
+                cartData = newCart;
+            } else if (cartError) {
+                throw cartError;
+            }
+
+            // Get existing cart items for this user
+            const { data: existingCartItems, error: existingError } =
+                await supabase
+                    .from("cart_items")
+                    .select("product_id, quantity")
+                    .eq("cart_id", cartData.id);
+
+            if (existingError) throw existingError;
+
+            // Create a map of existing products in cart
+            const existingProductsMap = {};
+            if (existingCartItems) {
+                existingCartItems.forEach((item) => {
+                    existingProductsMap[item.product_id] = item.quantity;
+                });
+            }
+
+            // Separate products into new and existing
+            const newProducts = [];
+            const existingProductsToUpdate = [];
+
+            availableProducts.forEach((product) => {
+                if (existingProductsMap[product.id]) {
+                    // Product already exists in cart - add 1kg more
+                    existingProductsToUpdate.push({
+                        product_id: product.id,
+                        current_quantity: existingProductsMap[product.id],
+                        new_quantity: existingProductsMap[product.id] + 1,
+                    });
+                } else {
+                    // New product - add with minimum order quantity
+                    newProducts.push({
+                        cart_id: cartData.id,
+                        product_id: product.id,
+                        quantity: product.minimumOrderQuantity || 1,
+                    });
+                }
+            });
+
+            // Insert new products to cart
+            if (newProducts.length > 0) {
+                const { error: insertError } = await supabase
+                    .from("cart_items")
+                    .insert(newProducts);
+
+                if (insertError) throw insertError;
+            }
+
+            // Update existing products in cart (add 1kg to each)
+            for (const existingProduct of existingProductsToUpdate) {
+                const { error: updateError } = await supabase
+                    .from("cart_items")
+                    .update({ quantity: existingProduct.new_quantity })
+                    .eq("cart_id", cartData.id)
+                    .eq("product_id", existingProduct.product_id);
+
+                if (updateError) throw updateError;
+            }
+
+            const outOfStockCount =
+                filteredFavorites.length - availableProducts.length;
+            const newItemsCount = newProducts.length;
+            const updatedItemsCount = existingProductsToUpdate.length;
+
+            let message = "";
+            if (newItemsCount > 0 && updatedItemsCount > 0) {
+                message = `Added ${newItemsCount} new items and updated ${updatedItemsCount} existing items (+1kg each) in cart!`;
+            } else if (newItemsCount > 0) {
+                message = `Successfully added ${newItemsCount} new items to cart!`;
+            } else if (updatedItemsCount > 0) {
+                message = `Updated ${updatedItemsCount} existing items in cart (+1kg each)!`;
+            }
+
+            if (outOfStockCount > 0) {
+                message += ` (${outOfStockCount} out-of-stock items were skipped)`;
+            }
+
+            alert(message);
+        } catch (error) {
+            console.error("Error adding items to cart:", error);
+            alert("Failed to add items to cart. Please try again.");
+        }
+    };
+
     return (
         <div className="min-h-screen w-full flex flex-col relative items-center scrollbar-hide bg-background overflow-x-hidden text-text pb-20">
             {/* Header with Back button and Title */}
@@ -389,7 +517,10 @@ function Favorites() {
                                 Quick Actions
                             </h3>
                             <div className="flex flex-wrap gap-3">
-                                <button className="flex items-center gap-2 bg-primary text-white px-4 py-2 rounded-lg hover:bg-primary-dark transition-colors">
+                                <button
+                                    onClick={handleAddAllToCart}
+                                    className="flex items-center gap-2 bg-primary text-white px-4 py-2 rounded-lg hover:bg-primary-dark transition-colors"
+                                >
                                     <Icon
                                         icon="mingcute:shopping-cart-1-line"
                                         width="16"

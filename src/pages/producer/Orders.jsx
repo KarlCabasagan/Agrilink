@@ -24,7 +24,7 @@ const orderStatuses = [
         icon: "mingcute:box-line",
     },
     {
-        value: "ready",
+        value: "ready for pickup",
         label: "Ready for Pickup",
         color: "bg-purple-100 text-purple-800",
         icon: "mingcute:truck-line",
@@ -79,7 +79,8 @@ function Orders() {
                     profiles!orders_user_id_fkey (
                         name,
                         address,
-                        contact
+                        contact,
+                        email
                     ),
                     order_items (
                         *,
@@ -123,6 +124,7 @@ function Orders() {
                         name: order.profiles?.name || "Unknown Customer",
                         phone: order.profiles?.contact || "",
                         address: order.profiles?.address || "",
+                        email: order.profiles?.email || "Not provided",
                     },
                     items: order.order_items.map((item) => ({
                         id: item.id,
@@ -163,6 +165,65 @@ function Orders() {
             if (!statusId) {
                 console.error("Unknown status:", newStatus);
                 return;
+            }
+
+            // If cancelling the order, restore stock for all order items
+            if (newStatus === "cancelled") {
+                // Find the order to get its items
+                const orderToCancel = orders.find(
+                    (order) => order.id === orderId
+                );
+                if (orderToCancel) {
+                    // Restore stock for each item in the order
+                    for (const item of orderToCancel.items) {
+                        try {
+                            // Get current stock
+                            const { data: currentProduct, error: fetchError } =
+                                await supabase
+                                    .from("products")
+                                    .select("stock")
+                                    .eq("id", item.product_id)
+                                    .single();
+
+                            if (fetchError) {
+                                console.error(
+                                    "Error fetching current stock for product",
+                                    item.product_id,
+                                    ":",
+                                    fetchError
+                                );
+                                continue;
+                            }
+
+                            // Restore stock
+                            const restoredStock =
+                                currentProduct.stock + item.quantity;
+
+                            const { error: stockError } = await supabase
+                                .from("products")
+                                .update({ stock: restoredStock })
+                                .eq("id", item.product_id);
+
+                            if (stockError) {
+                                console.error(
+                                    "Error restoring stock for product",
+                                    item.product_id,
+                                    ":",
+                                    stockError
+                                );
+                            } else {
+                                console.log(
+                                    `Restored stock for product ${item.product_id}: ${currentProduct.stock} + ${item.quantity} = ${restoredStock}`
+                                );
+                            }
+                        } catch (stockRestoreError) {
+                            console.error(
+                                "Error in stock restoration:",
+                                stockRestoreError
+                            );
+                        }
+                    }
+                }
             }
 
             const { error } = await supabase
@@ -417,10 +478,8 @@ function Orders() {
                                                         width="12"
                                                         height="12"
                                                     />
-                                                    {order.deliveryMethod ===
-                                                    "delivery"
-                                                        ? "Delivery"
-                                                        : "Pickup"}
+                                                    {order.deliveryMethod ||
+                                                        "Unknown"}
                                                 </p>
                                                 <Icon
                                                     icon={
@@ -823,7 +882,7 @@ function Orders() {
                                                         onClick={() =>
                                                             updateOrderStatus(
                                                                 order.id,
-                                                                "ready"
+                                                                "ready for pickup"
                                                             )
                                                         }
                                                         className="px-4 py-2 bg-purple-600 text-white rounded-lg text-sm hover:bg-purple-700 transition-colors"
@@ -837,7 +896,8 @@ function Orders() {
                                                         Mark as Ready
                                                     </button>
                                                 )}
-                                                {order.status === "ready" && (
+                                                {order.status ===
+                                                    "ready for pickup" && (
                                                     <button
                                                         onClick={() =>
                                                             updateOrderStatus(
