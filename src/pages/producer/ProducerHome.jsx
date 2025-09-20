@@ -622,12 +622,25 @@ function ProducerHome() {
         try {
             const { data, error } = await supabase
                 .from("products")
-                .select(
-                    `
-                    *,
-                    categories(name)
-                `
-                )
+                .select(`
+                    id,
+                    name,
+                    price,
+                    description,
+                    stock,
+                    image_url,
+                    status_id,
+                    created_at,
+                    updated_at,
+                    categories!inner (
+                        id,
+                        name
+                    ),
+                    crops!inner (
+                        id,
+                        name
+                    )
+                `)
                 .eq("user_id", user.id)
                 .order("created_at", { ascending: false });
 
@@ -638,15 +651,14 @@ function ProducerHome() {
                     id: product.id,
                     name: product.name,
                     price: parseFloat(product.price),
-                    category:
-                        product.categories?.name || product.category || "Other",
+                    category: product.categories?.name || "Other",
                     description: product.description,
                     stock: parseFloat(product.stock),
-                    image:
-                        product.image_url ||
+                    image: product.image_url ||
                         "https://via.placeholder.com/300x200?text=No+Image",
-                    image_url: product.image_url, // Keep the original field for delete function
-                    cropType: product.crop_type,
+                    image_url: product.image_url,
+                    cropId: product.crops?.id,
+                    cropType: product.crops?.name,
                     status_id: product.status_id,
                     created_at: product.created_at,
                     updated_at: product.updated_at,
@@ -710,16 +722,16 @@ function ProducerHome() {
                 category_id = categoryData?.id;
             }
 
-            // Get crop_id
-            let crop_id = null;
-            if (productForm.cropType) {
-                const selectedCrop = allCrops.find(
-                    (c) => c.name === productForm.cropType
-                );
-                if (selectedCrop) {
-                    crop_id = selectedCrop.id;
-                }
+            // Get crop_id - it's required by the schema
+            const selectedCrop = allCrops.find(
+                (c) => c.name === productForm.cropType
+            );
+            if (!selectedCrop) {
+                alert("Please select a valid crop type");
+                setIsSubmitting(false);
+                return;
             }
+            const crop_id = selectedCrop.id;
 
             // Upload image if provided
             let image_url = null;
@@ -749,12 +761,24 @@ function ProducerHome() {
                     stock: parseFloat(productForm.stock),
                     image_url: image_url,
                 })
-                .select(
-                    `
-                    *,
-                    categories(name),
-                    crops(name)
-                `
+                .select(`
+                    id,
+                    name,
+                    price,
+                    description,
+                    stock,
+                    image_url,
+                    status_id,
+                    created_at,
+                    updated_at,
+                    categories (
+                        id,
+                        name
+                    ),
+                    crops (
+                        id,
+                        name
+                    )`
                 )
                 .single();
 
@@ -766,13 +790,15 @@ function ProducerHome() {
                     id: data.id,
                     name: data.name,
                     price: parseFloat(data.price),
-                    category: data.categories?.name || productForm.category,
+                    category: data.categories?.name || "Other",
                     description: data.description,
                     stock: parseFloat(data.stock),
                     image:
                         data.image_url ||
                         "https://via.placeholder.com/300x200?text=No+Image",
-                    cropType: data.crops?.name || productForm.cropType,
+                    image_url: data.image_url,
+                    cropId: data.crops?.id,
+                    cropType: data.crops?.name,
                     status_id: data.status_id,
                     created_at: data.created_at,
                     updated_at: data.updated_at,
@@ -813,16 +839,16 @@ function ProducerHome() {
                 category_id = categoryData?.id;
             }
 
-            // Get crop_id if cropType is provided
-            let crop_id = null;
-            if (productForm.cropType) {
-                const selectedCrop = allCrops.find(
-                    (c) => c.name === productForm.cropType
-                );
-                if (selectedCrop) {
-                    crop_id = selectedCrop.id;
-                }
+            // Get crop_id - it's required by the schema
+            const selectedCrop = allCrops.find(
+                (c) => c.name === productForm.cropType
+            );
+            if (!selectedCrop) {
+                alert("Please select a valid crop type");
+                setIsSubmitting(false);
+                return;
             }
+            const crop_id = selectedCrop.id;
 
             // Handle image upload and deletion
             let image_url = selectedProduct.image_url; // Keep existing image by default
