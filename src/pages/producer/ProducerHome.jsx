@@ -622,7 +622,8 @@ function ProducerHome() {
         try {
             const { data, error } = await supabase
                 .from("products")
-                .select(`
+                .select(
+                    `
                     id,
                     name,
                     price,
@@ -640,7 +641,8 @@ function ProducerHome() {
                         id,
                         name
                     )
-                `)
+                `
+                )
                 .eq("user_id", user.id)
                 .order("created_at", { ascending: false });
 
@@ -654,7 +656,8 @@ function ProducerHome() {
                     category: product.categories?.name || "Other",
                     description: product.description,
                     stock: parseFloat(product.stock),
-                    image: product.image_url ||
+                    image:
+                        product.image_url ||
                         "https://via.placeholder.com/300x200?text=No+Image",
                     image_url: product.image_url,
                     cropId: product.crops?.id,
@@ -761,7 +764,8 @@ function ProducerHome() {
                     stock: parseFloat(productForm.stock),
                     image_url: image_url,
                 })
-                .select(`
+                .select(
+                    `
                     id,
                     name,
                     price,
@@ -1012,6 +1016,8 @@ function ProducerHome() {
     const openEditModal = useCallback(
         (product) => {
             setSelectedProduct(product);
+            const productCropName = product.cropType;
+
             setProductForm({
                 name: product.name,
                 price: product.price.toString(),
@@ -1021,15 +1027,15 @@ function ProducerHome() {
                 image_url: product.image_url || "",
                 imageFile: null,
                 imagePreview: "",
-                cropType: product.cropType || "",
+                cropType: productCropName || "",
                 user_id: user?.id || "",
             });
-            setCropTypeSearch(
-                typeof product.cropType === "string" ? product.cropType : ""
-            );
+
+            // Set the crop search field to show the current crop name
+            setCropTypeSearch(productCropName || "");
             setShowEditModal(true);
         },
-        [user, categories]
+        [user]
     );
 
     const openDeleteModal = useCallback((product) => {
