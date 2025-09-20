@@ -1,156 +1,8 @@
-import { useState, useEffect, useContext } from "react";
+import { useState, useContext, useEffect } from "react";
 import { Icon } from "@iconify/react";
-import { AuthContext } from "../../App.jsx";
 import ProducerNavigationBar from "../../components/ProducerNavigationBar";
-
-const cropData = [
-    {
-        id: 1,
-        name: "Sweet Potato",
-        category: "Root and Tuber",
-        plantingPercentage: 15,
-        demandLevel: "High",
-        season: "Year-round",
-        growthPeriod: "3-4 months",
-        description:
-            "Low competition crop with high market demand. Perfect for small-scale farming.",
-        benefits: [
-            "High nutritional value",
-            "Growing health trend",
-            "Multiple uses",
-        ],
-        icon: "twemoji:potato",
-        recommendation: "Highly Recommended",
-        color: "bg-green-100 text-green-800 border-green-200",
-    },
-    {
-        id: 2,
-        name: "Lettuce",
-        category: "Vegetables",
-        plantingPercentage: 18,
-        demandLevel: "High",
-        season: "Cool season",
-        growthPeriod: "2-3 months",
-        description: "Fast-growing leafy green with consistent market demand.",
-        benefits: [
-            "Quick harvest",
-            "Continuous planting",
-            "Urban farming friendly",
-        ],
-        icon: "twemoji:leafy-greens",
-        recommendation: "Highly Recommended",
-        color: "bg-green-100 text-green-800 border-green-200",
-    },
-    {
-        id: 3,
-        name: "Herbs (Basil, Cilantro)",
-        category: "Spices",
-        plantingPercentage: 12,
-        demandLevel: "Medium-High",
-        season: "Year-round",
-        growthPeriod: "1-2 months",
-        description: "High-value herbs with premium market prices.",
-        benefits: [
-            "High profit margin",
-            "Small space required",
-            "Multiple harvests",
-        ],
-        icon: "twemoji:herb",
-        recommendation: "Recommended",
-        color: "bg-blue-100 text-blue-800 border-blue-200",
-    },
-    {
-        id: 4,
-        name: "Bell Peppers",
-        category: "Vegetables",
-        plantingPercentage: 22,
-        demandLevel: "Medium-High",
-        season: "Warm season",
-        growthPeriod: "3-4 months",
-        description:
-            "Moderate competition but steady demand for fresh consumption.",
-        benefits: [
-            "Year-round demand",
-            "Export potential",
-            "Good storage life",
-        ],
-        icon: "twemoji:bell-pepper",
-        recommendation: "Recommended",
-        color: "bg-blue-100 text-blue-800 border-blue-200",
-    },
-    {
-        id: 5,
-        name: "Cabbage",
-        category: "Vegetables",
-        plantingPercentage: 35,
-        demandLevel: "Medium",
-        season: "Cool season",
-        growthPeriod: "3-4 months",
-        description:
-            "Moderate competition level. Consider timing and market conditions.",
-        benefits: [
-            "Stable market",
-            "Good storage",
-            "Processing industry demand",
-        ],
-        icon: "twemoji:cabbage",
-        recommendation: "Consider Carefully",
-        color: "bg-yellow-100 text-yellow-800 border-yellow-200",
-    },
-    {
-        id: 6,
-        name: "Tomatoes",
-        category: "Vegetables",
-        plantingPercentage: 45,
-        demandLevel: "High",
-        season: "Warm season",
-        growthPeriod: "3-5 months",
-        description:
-            "High competition due to many growers. Consider specialty varieties.",
-        benefits: [
-            "High demand",
-            "Processing opportunities",
-            "Multiple varieties",
-        ],
-        icon: "twemoji:tomato",
-        recommendation: "Consider Carefully",
-        color: "bg-yellow-100 text-yellow-800 border-yellow-200",
-    },
-    {
-        id: 7,
-        name: "Carrots",
-        category: "Vegetables",
-        plantingPercentage: 55,
-        demandLevel: "Medium",
-        season: "Cool season",
-        growthPeriod: "3-4 months",
-        description:
-            "Market saturation concerns. Focus on quality and direct marketing.",
-        benefits: ["Long shelf life", "Processing market", "Export potential"],
-        icon: "twemoji:carrot",
-        recommendation: "Caution Advised",
-        color: "bg-red-100 text-red-800 border-red-200",
-    },
-    {
-        id: 8,
-        name: "Rice",
-        category: "Grains",
-        plantingPercentage: 65,
-        demandLevel: "High",
-        season: "Wet/Dry season",
-        growthPeriod: "4-6 months",
-        description:
-            "Oversupply in some areas. Consider specialty rice varieties.",
-        benefits: [
-            "Staple crop demand",
-            "Government support",
-            "Established market",
-        ],
-        icon: "twemoji:cooked-rice",
-        recommendation: "Caution Advised",
-        color: "bg-red-100 text-red-800 border-red-200",
-    },
-];
+import { AuthContext } from "../../App";
+import supabase from "../../SupabaseClient";
 
 function CropRecommendation() {
     const { user } = useContext(AuthContext);
@@ -163,14 +15,126 @@ function CropRecommendation() {
     const [confirmingCrop, setConfirmingCrop] = useState(null);
     const [confirmingHarvest, setConfirmingHarvest] = useState(null);
     const [myCropsSubTab, setMyCropsSubTab] = useState("growing");
+    const [crops, setCrops] = useState([]);
+    const [categories, setCategories] = useState(["All"]);
+    const [loading, setLoading] = useState(true);
 
-    const categories = [
-        "All",
-        "Vegetables",
-        "Root and Tuber",
-        "Spices",
-        "Grains",
-    ];
+    const fetchInitialData = async () => {
+        if (!user) return;
+        setLoading(true);
+        await Promise.all([
+            fetchCropsAndCompetition(),
+            fetchPlantedCrops(),
+            fetchCategories(),
+        ]);
+        setLoading(false);
+    };
+
+    useEffect(() => {
+        fetchInitialData();
+    }, [user]);
+
+    const fetchCropsAndCompetition = async () => {
+        const { count: totalProducers, error: producersError } = await supabase
+            .from("profiles")
+            .select("id", { count: "exact", head: true })
+            .eq("role_id", 2);
+
+        if (producersError) {
+            console.error("Error fetching total producers:", producersError);
+            return;
+        }
+
+        const { data: plantings, error: plantingsError } = await supabase
+            .from("planted_crops")
+            .select("crop_id")
+            .eq("is_harvested", false);
+
+        if (plantingsError) {
+            console.error("Error fetching plantings:", plantingsError);
+            return;
+        }
+
+        const plantingCounts = plantings.reduce((acc, { crop_id }) => {
+            acc[crop_id] = (acc[crop_id] || 0) + 1;
+            return acc;
+        }, {});
+
+        const { data, error } = await supabase
+            .from("crops")
+            .select("*, category:categories(name)");
+
+        if (error) {
+            console.error("Error fetching crops:", error);
+        } else {
+            const formattedCrops = data.map((crop) => {
+                const count = plantingCounts[crop.id] || 0;
+                const percentage =
+                    totalProducers > 0
+                        ? Math.round((count / totalProducers) * 100)
+                        : 0;
+
+                let recommendation = "Consider Carefully";
+                let color = "bg-yellow-100 text-yellow-800 border-yellow-200";
+                if (percentage <= 20) {
+                    recommendation = "Highly Recommended";
+                    color = "bg-green-100 text-green-800 border-green-200";
+                } else if (percentage <= 40) {
+                    recommendation = "Recommended";
+                    color = "bg-blue-100 text-blue-800 border-blue-200";
+                } else if (percentage > 60) {
+                    recommendation = "Caution Advised";
+                    color = "bg-red-100 text-red-800 border-red-200";
+                }
+
+                return {
+                    ...crop,
+                    category: crop.category.name,
+                    plantingPercentage: percentage,
+                    demandLevel: crop.market_demand,
+                    season: crop.growing_season,
+                    harvestTime: crop.harvest_time,
+                    description: crop.description,
+                    benefits: crop.benefits || [],
+                    recommendation,
+                    color,
+                };
+            });
+            setCrops(formattedCrops);
+        }
+    };
+
+    const fetchPlantedCrops = async () => {
+        if (!user) return;
+        const { data, error } = await supabase
+            .from("planted_crops")
+            .select("*, crop:crops(*, category:categories(name))")
+            .eq("user_id", user.id);
+
+        if (error) {
+            console.error("Error fetching planted crops:", error);
+        } else {
+            const formatted = data.map((pc) => ({
+                ...pc.crop,
+                id: pc.id, // Use planted_crop id as the unique key
+                planted_id: pc.id,
+                plantedDate: pc.created_at,
+                harvestDate: pc.is_harvested ? pc.updated_at : null,
+                category: pc.crop.category.name,
+            }));
+            setPlantedCrops(formatted);
+        }
+    };
+
+    const fetchCategories = async () => {
+        const { data, error } = await supabase.from("categories").select("name");
+        if (error) {
+            console.error("Error fetching categories:", error);
+        } else {
+            const categoryNames = data.map((c) => c.name);
+            setCategories(["All", ...new Set(categoryNames)]);
+        }
+    };
 
     const handleRecommendationToggle = (recommendation) => {
         if (selectedRecommendation === recommendation) {
@@ -183,38 +147,47 @@ function CropRecommendation() {
     };
 
     const handlePlantCrop = (crop) => {
-        // Check if this crop type is already planted and not harvested
-        const isAlreadyPlanted = plantedCrops.some(
-            (plantedCrop) =>
-                plantedCrop.name === crop.name && !plantedCrop.harvestDate
-        );
-
-        if (isAlreadyPlanted) {
-            alert(
-                `You have already planted ${crop.name}. Please harvest it before planting again.`
-            );
-            return;
-        }
-
-        // Set the crop for confirmation
         setConfirmingCrop(crop);
     };
 
-    const confirmPlantCrop = () => {
-        if (!confirmingCrop) return;
+    const confirmPlantCrop = async () => {
+        if (!confirmingCrop || !user) return;
 
+        // Optimistic Update: Create a temporary representation of the new crop.
         const newPlantedCrop = {
-            ...confirmingCrop,
-            plantedDate: new Date().toISOString(),
-            harvestDate: null,
-            id: `planted_${confirmingCrop.id}_${Date.now()}`, // Unique ID for planted crop
+            id: Date.now(), // Use a temporary unique ID
+            user_id: user.id,
+            crop_id: confirmingCrop.id,
+            is_harvested: false,
+            created_at: new Date().toISOString(), // Use current time
+            updated_at: new Date().toISOString(),
+            crop: confirmingCrop, // Embed the full crop object for immediate rendering
         };
-        setPlantedCrops((prev) => [...prev, newPlantedCrop]);
-        setConfirmingCrop(null);
 
-        // Switch to My Crops tab to show the newly planted crop
+        // Immediately update the state and UI
+        setPlantedCrops((prevPlantedCrops) => [
+            ...prevPlantedCrops,
+            newPlantedCrop,
+        ]);
         setActiveTab("my-crops");
         setMyCropsSubTab("growing");
+        setConfirmingCrop(null);
+
+        // Send the actual request to the database
+        const { error } = await supabase
+            .from("planted_crops")
+            .insert({ user_id: user.id, crop_id: confirmingCrop.id });
+
+        if (error) {
+            console.error("Error planting crop:", error);
+            // If there's an error, revert the optimistic update
+            setPlantedCrops((prevPlantedCrops) =>
+                prevPlantedCrops.filter((p) => p.id !== newPlantedCrop.id)
+            );
+        }
+
+        // Silently refetch data from the server to sync the real ID and timestamp
+        await fetchInitialData();
     };
 
     const cancelPlantCrop = () => {
@@ -225,16 +198,20 @@ function CropRecommendation() {
         setConfirmingHarvest(plantedCropId);
     };
 
-    const confirmHarvestCrop = () => {
+    const confirmHarvestCrop = async () => {
         if (!confirmingHarvest) return;
 
-        setPlantedCrops((prev) =>
-            prev.map((crop) =>
-                crop.id === confirmingHarvest
-                    ? { ...crop, harvestDate: new Date().toISOString() }
-                    : crop
-            )
-        );
+        const { error } = await supabase
+            .from("planted_crops")
+            .update({ is_harvested: true, updated_at: new Date().toISOString() })
+            .eq("id", confirmingHarvest);
+
+        if (error) {
+            console.error("Error harvesting crop:", error);
+        } else {
+            await fetchPlantedCrops();
+            await fetchCropsAndCompetition(); // Refresh competition stats
+        }
         setConfirmingHarvest(null);
     };
 
@@ -242,26 +219,22 @@ function CropRecommendation() {
         setConfirmingHarvest(null);
     };
 
-    const searchCrops = (crops) => {
-        if (!searchTerm) return crops;
+    const searchCrops = (cropsToSearch) => {
+        if (!searchTerm) return cropsToSearch;
 
-        return crops.filter(
+        return cropsToSearch.filter(
             (crop) =>
                 crop.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                crop.category
-                    .toLowerCase()
-                    .includes(searchTerm.toLowerCase()) ||
-                crop.description
-                    .toLowerCase()
-                    .includes(searchTerm.toLowerCase()) ||
-                crop.benefits.some((benefit) =>
+                crop.category.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                (crop.description && crop.description.toLowerCase().includes(searchTerm.toLowerCase())) ||
+                (crop.benefits && crop.benefits.some((benefit) =>
                     benefit.toLowerCase().includes(searchTerm.toLowerCase())
-                )
+                ))
         );
     };
 
     const filteredCrops = searchCrops(
-        cropData
+        crops
             .filter(
                 (crop) =>
                     selectedCategory === "All" ||
@@ -273,83 +246,54 @@ function CropRecommendation() {
                     crop.recommendation === selectedRecommendation
             )
     ).sort((a, b) => {
+        if (sortBy === "recommendation") {
+            const order = { "Highly Recommended": 1, Recommended: 2, "Consider Carefully": 3, "Caution Advised": 4 };
+            return order[a.recommendation] - order[b.recommendation];
+        }
+        if (sortBy === "demand") {
+            const order = { High: 1, "Medium-High": 2, Medium: 3, Low: 4 };
+            return order[a.demandLevel] - order[b.demandLevel];
+        }
+        if (sortBy === "competition") {
+            return a.plantingPercentage - b.plantingPercentage;
+        }
         if (sortBy === "available") {
-            // Prioritize crops that are not planted yet
             const aPlanted = isCropAlreadyPlanted(a.name);
             const bPlanted = isCropAlreadyPlanted(b.name);
             if (aPlanted && !bPlanted) return 1;
             if (!aPlanted && bPlanted) return -1;
-            // If both have same planting status, sort by recommendation
-            const recommendationOrder = {
-                "Highly Recommended": 1,
-                Recommended: 2,
-                "Consider Carefully": 3,
-                "Caution Advised": 4,
-            };
-            return (
-                recommendationOrder[a.recommendation] -
-                recommendationOrder[b.recommendation]
-            );
-        } else if (sortBy === "recommendation") {
-            const recommendationOrder = {
-                "Highly Recommended": 1,
-                Recommended: 2,
-                "Consider Carefully": 3,
-                "Caution Advised": 4,
-            };
-            return (
-                recommendationOrder[a.recommendation] -
-                recommendationOrder[b.recommendation]
-            );
-        } else if (sortBy === "demand") {
-            const demandOrder = {
-                High: 1,
-                "Medium-High": 2,
-                Medium: 3,
-                Low: 4,
-            };
-            return demandOrder[a.demandLevel] - demandOrder[b.demandLevel];
-        } else if (sortBy === "competition") {
-            return a.plantingPercentage - b.plantingPercentage;
+            return 0;
         }
         return 0;
     });
 
     const getRecommendationIcon = (recommendation) => {
         switch (recommendation) {
-            case "Highly Recommended":
-                return "mingcute:star-fill";
-            case "Recommended":
-                return "mingcute:thumb-up-fill";
-            case "Consider Carefully":
-                return "mingcute:question-fill";
-            case "Caution Advised":
-                return "mingcute:alert-fill";
-            default:
-                return "mingcute:information-fill";
+            case "Highly Recommended": return "mingcute:star-fill";
+            case "Recommended": return "mingcute:thumb-up-fill";
+            case "Consider Carefully": return "mingcute:question-fill";
+            case "Caution Advised": return "mingcute:alert-fill";
+            default: return "mingcute:question-fill";
         }
     };
 
     const getDemandColor = (level) => {
         switch (level) {
-            case "High":
-                return "text-primary";
-            case "Medium-High":
-                return "text-blue-600";
-            case "Medium":
-                return "text-yellow-600";
-            default:
-                return "text-gray-600";
+            case "High": return "text-green-600";
+            case "Medium-High": return "text-blue-600";
+            case "Medium": return "text-yellow-600";
+            case "Low": return "text-red-600";
+            default: return "text-gray-600";
         }
     };
 
     const getCompetitionColor = (percentage) => {
-        if (percentage <= 20) return "text-primary";
-        if (percentage <= 40) return "text-yellow-600";
+        if (percentage <= 20) return "text-green-600";
+        if (percentage <= 40) return "text-blue-600";
+        if (percentage <= 60) return "text-yellow-600";
         return "text-red-600";
     };
 
-    // Check if a crop is already planted and not harvested
     const isCropAlreadyPlanted = (cropName) => {
         return plantedCrops.some(
             (plantedCrop) =>
@@ -357,12 +301,10 @@ function CropRecommendation() {
         );
     };
 
-    // Get count of active planted crops (not harvested)
     const activePlantedCropsCount = plantedCrops.filter(
         (crop) => !crop.harvestDate
     ).length;
 
-    // Get count of harvested crops
     const harvestedCropsCount = plantedCrops.filter(
         (crop) => crop.harvestDate
     ).length;
@@ -623,10 +565,12 @@ function CropRecommendation() {
 
                         {/* Crops Grid */}
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            {filteredCrops.map((crop) => (
+                            {loading ? (
+                                <p>Loading recommendations...</p>
+                            ) : filteredCrops.map((crop) => (
                                 <div
                                     key={crop.id}
-                                    className="bg-white rounded-lg shadow-md overflow-hidden"
+                                    className="bg-white rounded-lg shadow-md p-4"
                                 >
                                     {/* Header */}
                                     <div className="p-4 border-b border-gray-200">
@@ -703,10 +647,10 @@ function CropRecommendation() {
                                             </div>
                                             <div>
                                                 <label className="text-xs text-gray-500 font-medium">
-                                                    Growth Period
+                                                    Harvest Time
                                                 </label>
                                                 <p className="font-medium text-gray-800">
-                                                    {crop.growthPeriod}
+                                                    {crop.harvestTime}
                                                 </p>
                                             </div>
                                         </div>
@@ -726,7 +670,7 @@ function CropRecommendation() {
                                                         20
                                                             ? "bg-primary"
                                                             : crop.plantingPercentage <=
-                                                              40
+                                                              60
                                                             ? "bg-yellow-500"
                                                             : "bg-red-500"
                                                     }`}
@@ -738,7 +682,7 @@ function CropRecommendation() {
                                         </div>
 
                                         {/* Benefits */}
-                                        <div className="mb-4">
+                                        {/* <div className="mb-4">
                                             <label className="text-xs text-gray-500 font-medium mb-2 block">
                                                 Key Benefits
                                             </label>
@@ -754,7 +698,7 @@ function CropRecommendation() {
                                                     )
                                                 )}
                                             </div>
-                                        </div>
+                                        </div> */}
 
                                         {/* Plant Crop Button */}
                                         <div className="pt-4 border-t border-gray-200">
@@ -943,65 +887,56 @@ function CropRecommendation() {
                                                                 60 *
                                                                 24)
                                                     );
+                                                
+                                                const harvestTimeInDays = crop.harvest_time ? parseInt(crop.harvest_time.split('-')[0]) * 30 : 90;
+                                                const progress = Math.min(100, Math.round((daysSincePlanted / harvestTimeInDays) * 100));
 
                                                 return (
                                                     <div
                                                         key={crop.id}
-                                                        className="bg-white border border-primary/20 rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow"
+                                                        className="bg-white rounded-lg shadow-md p-4"
                                                     >
                                                         <div className="flex items-center gap-3 mb-3">
                                                             <Icon
-                                                                icon={crop.icon}
+                                                                icon={
+                                                                    crop.icon ||
+                                                                    "twemoji:seedling"
+                                                                }
                                                                 width="32"
                                                                 height="32"
                                                             />
-                                                            <div className="flex-1">
-                                                                <h3 className="font-medium text-gray-800">
+                                                            <div>
+                                                                <h4 className="font-semibold text-gray-800">
                                                                     {crop.name}
-                                                                </h3>
-                                                                <p className="text-sm text-gray-600">
-                                                                    {
-                                                                        crop.category
-                                                                    }
+                                                                </h4>
+                                                                <p className="text-xs text-gray-500">
+                                                                    Planted:{" "}
+                                                                    {plantedDate.toLocaleDateString()}
                                                                 </p>
                                                             </div>
-                                                            <span className="bg-primary/10 text-primary px-2 py-1 rounded-full text-xs font-medium">
-                                                                Growing
-                                                            </span>
                                                         </div>
 
-                                                        <div className="space-y-2 mb-4">
-                                                            <div className="flex justify-between text-sm">
-                                                                <span className="text-gray-600">
-                                                                    Planted:
+                                                        <div className="mb-3">
+                                                            <div className="flex justify-between text-xs text-gray-600 mb-1">
+                                                                <span>
+                                                                    Growth Progress
                                                                 </span>
-                                                                <span className="font-medium">
-                                                                    {plantedDate.toLocaleDateString()}
-                                                                </span>
-                                                            </div>
-                                                            <div className="flex justify-between text-sm">
-                                                                <span className="text-gray-600">
-                                                                    Days
-                                                                    Growing:
-                                                                </span>
-                                                                <span className="font-medium text-primary">
-                                                                    {
-                                                                        daysSincePlanted
-                                                                    }{" "}
-                                                                    days
+                                                                <span>
+                                                                    {progress}%
                                                                 </span>
                                                             </div>
-                                                            <div className="flex justify-between text-sm">
-                                                                <span className="text-gray-600">
-                                                                    Growth
-                                                                    Period:
-                                                                </span>
-                                                                <span className="font-medium">
-                                                                    {
-                                                                        crop.growthPeriod
-                                                                    }
-                                                                </span>
+                                                            <div className="w-full bg-gray-200 rounded-full h-2">
+                                                                <div
+                                                                    className="bg-primary h-2 rounded-full"
+                                                                    style={{
+                                                                        width: `${progress}%`,
+                                                                    }}
+                                                                ></div>
                                                             </div>
+                                                            <p className="text-xs text-gray-500 mt-1 text-center">
+                                                                {daysSincePlanted}{" "}
+                                                                days planted
+                                                            </p>
                                                         </div>
 
                                                         {confirmingHarvest ===
@@ -1011,7 +946,7 @@ function CropRecommendation() {
                                                                     onClick={
                                                                         confirmHarvestCrop
                                                                     }
-                                                                    className="flex-1 bg-primary text-white py-2 px-4 rounded-lg hover:bg-primary-dark transition-colors font-medium text-sm flex items-center justify-center gap-2"
+                                                                    className="flex-1 bg-green-600 text-white py-2 px-3 rounded-lg hover:bg-green-700 transition-colors font-medium text-sm flex items-center justify-center gap-1"
                                                                 >
                                                                     <Icon
                                                                         icon="mingcute:check-line"
@@ -1024,7 +959,7 @@ function CropRecommendation() {
                                                                     onClick={
                                                                         cancelHarvestCrop
                                                                     }
-                                                                    className="flex-1 bg-gray-500 text-white py-2 px-4 rounded-lg hover:bg-gray-600 transition-colors font-medium text-sm flex items-center justify-center gap-2"
+                                                                    className="flex-1 bg-gray-500 text-white py-2 px-3 rounded-lg hover:bg-gray-600 transition-colors font-medium text-sm flex items-center justify-center gap-1"
                                                                 >
                                                                     <Icon
                                                                         icon="mingcute:close-line"
@@ -1041,15 +976,14 @@ function CropRecommendation() {
                                                                         crop.id
                                                                     )
                                                                 }
-                                                                className="w-full bg-primary text-white py-2 px-4 rounded-lg hover:bg-primary-dark transition-colors font-medium text-sm flex items-center justify-center gap-2"
+                                                                className="w-full bg-green-600 text-white py-2 px-3 rounded-lg hover:bg-green-700 transition-colors font-medium text-sm flex items-center justify-center gap-2"
                                                             >
                                                                 <Icon
                                                                     icon="mingcute:check-circle-line"
                                                                     width="16"
                                                                     height="16"
                                                                 />
-                                                                Mark as
-                                                                Harvested
+                                                                Mark as Harvested
                                                             </button>
                                                         )}
                                                     </div>
@@ -1059,7 +993,7 @@ function CropRecommendation() {
                                 </div>
                             )}
 
-                        {/* Harvested Crops */}
+                        {/* Harvest History */}
                         {myCropsSubTab === "history" &&
                             harvestedCropsCount > 0 && (
                                 <div className="mb-8">
@@ -1075,94 +1009,42 @@ function CropRecommendation() {
                                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                                         {plantedCrops
                                             .filter((crop) => crop.harvestDate)
-                                            .map((crop) => {
-                                                const plantedDate = new Date(
-                                                    crop.plantedDate
-                                                );
-                                                const harvestedDate = new Date(
-                                                    crop.harvestDate
-                                                );
-                                                const growthDays = Math.floor(
-                                                    (harvestedDate -
-                                                        plantedDate) /
-                                                        (1000 * 60 * 60 * 24)
-                                                );
-
-                                                return (
-                                                    <div
-                                                        key={crop.id}
-                                                        className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm"
-                                                    >
-                                                        <div className="flex items-center gap-3 mb-3">
-                                                            <Icon
-                                                                icon={crop.icon}
-                                                                width="32"
-                                                                height="32"
-                                                                className="opacity-75"
-                                                            />
-                                                            <div className="flex-1">
-                                                                <h3 className="font-medium text-gray-800">
-                                                                    {crop.name}
-                                                                </h3>
-                                                                <p className="text-sm text-gray-600">
-                                                                    {
-                                                                        crop.category
-                                                                    }
-                                                                </p>
-                                                            </div>
-                                                            <span className="bg-gray-100 text-gray-600 px-2 py-1 rounded-full text-xs font-medium">
-                                                                Harvested
-                                                            </span>
-                                                        </div>
-
-                                                        <div className="space-y-2 mb-4">
-                                                            <div className="flex justify-between text-sm">
-                                                                <span className="text-gray-600">
-                                                                    Planted:
-                                                                </span>
-                                                                <span className="font-medium">
-                                                                    {plantedDate.toLocaleDateString()}
-                                                                </span>
-                                                            </div>
-                                                            <div className="flex justify-between text-sm">
-                                                                <span className="text-gray-600">
-                                                                    Harvested:
-                                                                </span>
-                                                                <span className="font-medium">
-                                                                    {harvestedDate.toLocaleDateString()}
-                                                                </span>
-                                                            </div>
-                                                            <div className="flex justify-between text-sm">
-                                                                <span className="text-gray-600">
-                                                                    Growth Days:
-                                                                </span>
-                                                                <span className="font-medium text-primary">
-                                                                    {growthDays}{" "}
-                                                                    days
-                                                                </span>
-                                                            </div>
-                                                        </div>
-
-                                                        <div className="bg-primary/5 border border-primary/20 rounded-lg p-3 text-center">
-                                                            <Icon
-                                                                icon="mingcute:check-circle-fill"
-                                                                width="20"
-                                                                height="20"
-                                                                className="mx-auto text-primary mb-1"
-                                                            />
-                                                            <p className="text-xs font-medium text-primary">
-                                                                Successfully
-                                                                Completed
+                                            .map((crop) => (
+                                                <div
+                                                    key={crop.id}
+                                                    className="bg-white rounded-lg shadow-md p-4 opacity-80"
+                                                >
+                                                    <div className="flex items-center gap-3 mb-2">
+                                                        <Icon
+                                                            icon={
+                                                                crop.icon ||
+                                                                "twemoji:seedling"
+                                                            }
+                                                            width="32"
+                                                            height="32"
+                                                        />
+                                                        <div>
+                                                            <h4 className="font-semibold text-gray-800">
+                                                                {crop.name}
+                                                            </h4>
+                                                            <p className="text-xs text-gray-500">
+                                                                Harvested:{" "}
+                                                                {new Date(
+                                                                    crop.harvestDate
+                                                                ).toLocaleDateString()}
                                                             </p>
                                                         </div>
                                                     </div>
-                                                );
-                                            })}
+                                                    <div className="text-center bg-green-50 text-green-700 text-sm font-medium py-2 rounded-lg">
+                                                        Harvest Complete
+                                                    </div>
+                                                </div>
+                                            ))}
                                     </div>
                                 </div>
                             )}
 
-                        {/* Empty States */}
+                        {/* Empty State for No Crops */}
                         {plantedCrops.length === 0 && (
                             <div className="text-center py-12">
                                 <Icon
@@ -1264,41 +1146,8 @@ function CropRecommendation() {
                     </>
                 )}
 
-                {/* Quick Action Buttons */}
-                <div className="mt-8 flex justify-center">
-                    <div className="bg-white rounded-lg border border-gray-200 p-1 inline-flex">
-                        <button
-                            onClick={() => setActiveTab("recommendations")}
-                            className={`px-4 py-2 rounded-md text-sm font-medium transition-colors flex items-center gap-2 ${
-                                activeTab === "recommendations"
-                                    ? "bg-primary text-white"
-                                    : "text-gray-600 hover:text-gray-800 hover:bg-gray-50"
-                            }`}
-                        >
-                            <Icon
-                                icon="mingcute:search-line"
-                                width="16"
-                                height="16"
-                            />
-                            Find Crops to Plant
-                        </button>
-                        <button
-                            onClick={() => setActiveTab("my-crops")}
-                            className={`px-4 py-2 rounded-md text-sm font-medium transition-colors flex items-center gap-2 ${
-                                activeTab === "my-crops"
-                                    ? "bg-primary text-white"
-                                    : "text-gray-600 hover:text-gray-800 hover:bg-gray-50"
-                            }`}
-                        >
-                            <Icon
-                                icon="mingcute:plant-line"
-                                width="16"
-                                height="16"
-                            />
-                            Track My Crops
-                        </button>
-                    </div>
-                </div>
+                {/* Redundant Nav - Can be removed if not needed */}
+                {/* <div className="mt-8 flex justify-center"> ... </div> */}
             </div>
             <ProducerNavigationBar />
         </div>
