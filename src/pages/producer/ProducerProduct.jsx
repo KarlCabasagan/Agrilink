@@ -239,6 +239,22 @@ function ProducerProduct() {
     };
 
     useEffect(() => {
+        if (product) {
+            setEditForm({
+                name: product.name,
+                price: product.price.toString(),
+                category: product.category,
+                cropType: product.cropType || "",
+                description: product.description,
+                stock: product.stock.toString(),
+                image_url: product.image_url || "",
+                imageFile: null,
+                imagePreview: product.image_url || "",
+            });
+        }
+    }, [product]);
+
+    useEffect(() => {
         const fetchProduct = async () => {
             if (!id || !user) return;
 
@@ -250,7 +266,7 @@ function ProducerProduct() {
                         `
                         *,
                         categories(name),
-                        crop_types(name)
+                        crops(name)
                     `
                     )
                     .eq("id", parseInt(id))
@@ -269,25 +285,13 @@ function ProducerProduct() {
                         description: data.description,
                         stock: parseFloat(data.stock),
                         image_url: data.image_url || "",
-                        cropType: data.crop_types?.name || "",
-                        unit: data.unit || "kg",
-                        status: data.status,
+                        cropType: data.crops?.name || "",
+                        status_id: data.status_id,
                         created_at: data.created_at,
                         updated_at: data.updated_at,
                         reviews: [], // TODO: Fetch reviews separately if needed
                     };
                     setProduct(productData);
-                    setEditForm({
-                        name: productData.name,
-                        price: productData.price.toString(),
-                        category: productData.category,
-                        cropType: productData.cropType || "",
-                        description: productData.description,
-                        stock: productData.stock.toString(),
-                        image_url: data.image_url || "",
-                        imageFile: null,
-                        imagePreview: data.image_url || "",
-                    });
                 }
             } catch (error) {
                 console.error("Unexpected error:", error);
@@ -326,15 +330,15 @@ function ProducerProduct() {
                 category_id = categoryData?.id;
             }
 
-            // Get crop_type_id
-            let crop_type_id = null;
+            // Get crop_id
+            let crop_id = null;
             if (editForm.cropType) {
-                const { data: cropTypeData } = await supabase
-                    .from("crop_types")
+                const { data: cropData } = await supabase
+                    .from("crops")
                     .select("id")
                     .eq("name", editForm.cropType)
                     .single();
-                crop_type_id = cropTypeData?.id;
+                crop_id = cropData?.id;
             }
 
             // Handle image upload and deletion
@@ -370,7 +374,7 @@ function ProducerProduct() {
                     name: editForm.name,
                     price: parseFloat(editForm.price),
                     category_id: category_id,
-                    crop_type_id: crop_type_id,
+                    crop_id: crop_id,
                     description: editForm.description,
                     stock: parseFloat(editForm.stock),
                     image_url: image_url,
@@ -380,7 +384,7 @@ function ProducerProduct() {
                     `
                     *,
                     categories(name),
-                    crop_types(name)
+                    crops(name)
                 `
                 )
                 .single();
@@ -398,7 +402,7 @@ function ProducerProduct() {
                     description: data.description,
                     stock: parseFloat(data.stock),
                     image_url: data.image_url,
-                    cropType: data.crop_types?.name || editForm.cropType,
+                    cropType: data.crops?.name || editForm.cropType,
                     updated_at: data.updated_at,
                 };
 

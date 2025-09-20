@@ -99,7 +99,7 @@ create table public.products (
   price numeric(10, 2) not null,
   stock numeric(10, 2) null default 0,
   category_id integer null,
-  crop_type_id integer null,
+  crop_id bigint not null,
   image_url text null,
   approval_date timestamp with time zone null,
   created_at timestamp with time zone null default now(),
@@ -107,6 +107,7 @@ create table public.products (
   status_id bigint not null default '1'::bigint,
   constraint products_pkey primary key (id),
   constraint products_category_id_fkey foreign KEY (category_id) references categories (id),
+  constraint products_crop_id_fkey foreign KEY (crop_id) references crops (id) on update CASCADE on delete RESTRICT,
   constraint products_status_id_fkey foreign KEY (status_id) references statuses (id) on update CASCADE,
   constraint products_user_id_fkey foreign KEY (user_id) references profiles (id) on delete CASCADE
 ) TABLESPACE pg_default;

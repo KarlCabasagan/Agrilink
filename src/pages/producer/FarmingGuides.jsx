@@ -180,8 +180,7 @@ function FarmingGuides() {
                     <p className="text-gray-600 text-sm">
                         Showing {filteredGuides.length} of{" "}
                         {farmingGuides.length} guides
-                        {selectedCrop !== "All" &&
-                            ` in ${selectedCrop}`}
+                        {selectedCrop !== "All" && ` in ${selectedCrop}`}
                         {searchTerm && ` matching "${searchTerm}"`}
                     </p>
                 </div>

@@ -287,7 +287,8 @@ function AdminCropManagement() {
             name: guideFormData.name,
             description: guideFormData.description,
             url: guideFormData.url,
-            crop_id: guideFormData.crop_id === "null" ? null : guideFormData.crop_id,
+            crop_id:
+                guideFormData.crop_id === "null" ? null : guideFormData.crop_id,
         };
 
         if (selectedGuide) {
@@ -496,7 +497,7 @@ function AdminCropManagement() {
                                 className="w-4 h-4 mr-1 text-gray-400"
                             />
                             <span className="text-sm text-gray-900">
-                                {crop.growingSeason}
+                                {crop.growing_season}
                             </span>
                         </div>
                     </div>
@@ -510,7 +511,7 @@ function AdminCropManagement() {
                                 className="w-4 h-4 mr-1 text-gray-400"
                             />
                             <span className="text-sm text-gray-900">
-                                {crop.harvestTime}
+                                {crop.harvest_time}
                             </span>
                         </div>
                     </div>

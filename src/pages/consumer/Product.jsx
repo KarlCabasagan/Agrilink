@@ -64,7 +64,6 @@ function Product() {
                     description: data.description,
                     stock: parseFloat(data.stock) || 0,
                     rating: 4.5, // We'll implement real ratings later
-                    unit: "kg", // Default unit since not in new schema
                     minimumOrderQuantity:
                         parseFloat(data.profiles?.minimum_order_quantity) || 1,
                     deliveryCost:

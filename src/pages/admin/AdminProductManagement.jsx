@@ -86,7 +86,6 @@ function AdminProductManagement() {
                 category: product.category_id.name,
                 cropType: product.crop_type,
                 price: product.price,
-                unit: product.unit,
                 description: product.description,
                 image: product.image_url,
                 submittedDate: new Date(product.created_at)
@@ -154,7 +153,6 @@ function AdminProductManagement() {
                 category: product.category_id.name,
                 cropType: product.crop_type,
                 price: product.price,
-                unit: "kg",
                 description: product.description,
                 image: product.image_url,
                 approvedDate: new Date(product.approval_date)
@@ -916,8 +914,7 @@ function AdminProductManagement() {
                                                     </select>
                                                 </td>
                                                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                                    ₱{product.price}/
-                                                    {product.unit}
+                                                    ₱{product.price}/kg
                                                 </td>
                                                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                                                     {product.stock} kg
