@@ -45,17 +45,9 @@ function Home() {
                     return;
                 }
 
-                const categoryIcons = {
-                    Vegetables: "twemoji:carrot",
-                    Fruits: "twemoji:red-apple",
-                    Grains: "twemoji:cooked-rice",
-                    Herbs: "twemoji:onion",
-                    Legumes: "twemoji:beans",
-                };
-
                 const dbCategories = data.map((cat) => ({
                     name: cat.name,
-                    icon: categoryIcons[cat.name] || "mingcute:leaf-line",
+                    icon: cat.icon || "mingcute:leaf-line", // Use icon from DB, with a fallback
                     id: cat.id,
                 }));
 
@@ -214,7 +206,6 @@ function Home() {
                     description: product.description,
                     stock: parseFloat(product.stock) || 0,
                     rating: 4.5, // We'll implement real ratings later
-                    unit: "kg", // Default unit since it's not in new schema
                     minimumOrderQuantity:
                         parseFloat(product.profiles?.minimum_order_quantity) ||
                         1,
@@ -497,8 +488,7 @@ function Home() {
 
                                     <div className="flex items-center justify-between">
                                         <p className="text-primary font-bold text-lg">
-                                            ₱{product.price.toFixed(2)}/
-                                            {product.unit}
+                                            ₱{product.price.toFixed(2)}/kg
                                         </p>
                                         <span
                                             className={`text-xs ${
@@ -508,7 +498,7 @@ function Home() {
                                             }`}
                                         >
                                             {product.stock > 0
-                                                ? `${product.stock} ${product.unit} left`
+                                                ? `${product.stock} kg left`
                                                 : "Out of stock"}
                                         </span>
                                     </div>

@@ -2,85 +2,56 @@ import { useState, useEffect } from "react";
 import { Icon } from "@iconify/react";
 import { useNavigate } from "react-router-dom";
 import ProducerNavigationBar from "../../components/ProducerNavigationBar";
+import supabase from "../../SupabaseClient";
 
 function FarmingGuides() {
     const navigate = useNavigate();
     const [searchTerm, setSearchTerm] = useState("");
-    const [selectedCategory, setSelectedCategory] = useState("All");
+    const [selectedCrop, setSelectedCrop] = useState("All");
     const [loading, setLoading] = useState(true);
-
-    // Mock data - In a real app, this would come from the same source as AdminCropManagement
-    const [farmingGuides, setFarmingGuides] = useState([
-        {
-            id: 1,
-            name: "Tomato Growing Basics",
-            summary:
-                "Complete guide on how to grow healthy tomatoes from seed to harvest. Learn about soil preparation, watering techniques, and pest management.",
-            videoUrl: "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
-            category: "Vegetables",
-            addedDate: "2024-09-01",
-            views: 1250,
-        },
-        {
-            id: 2,
-            name: "Rice Farming Techniques",
-            summary:
-                "Traditional and modern rice farming methods for maximum yield. Covers transplanting, water management, and harvesting best practices.",
-            videoUrl: "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
-            category: "Grains",
-            addedDate: "2024-08-28",
-            views: 890,
-        },
-        {
-            id: 3,
-            name: "Lettuce Growing in Small Spaces",
-            summary:
-                "Learn how to grow fresh lettuce even in limited garden space. Perfect for urban farming and container gardening.",
-            videoUrl: "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
-            category: "Vegetables",
-            addedDate: "2024-08-25",
-            views: 750,
-        },
-        {
-            id: 4,
-            name: "Organic Pest Control Methods",
-            summary:
-                "Natural and eco-friendly ways to protect your crops from pests. Safe methods that don't harm the environment or your produce.",
-            videoUrl: "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
-            category: "General",
-            addedDate: "2024-08-20",
-            views: 1100,
-        },
-        {
-            id: 5,
-            name: "Herb Garden Setup",
-            summary:
-                "Start your own herb garden with this comprehensive guide. Learn about spacing, companion planting, and harvesting techniques.",
-            videoUrl: "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
-            category: "Herbs",
-            addedDate: "2024-08-15",
-            views: 650,
-        },
-    ]);
-
-    const categories = [
-        "All",
-        "Vegetables",
-        "Fruits",
-        "Grains",
-        "Legumes",
-        "Herbs",
-        "General",
-    ];
+    const [farmingGuides, setFarmingGuides] = useState([]);
+    const [crops, setCrops] = useState(["All"]);
 
     useEffect(() => {
-        // Simulate loading
-        const timer = setTimeout(() => {
-            setLoading(false);
-        }, 1000);
-
-        return () => clearTimeout(timer);
+        fetchInitialData();
     }, []);
+
+    const fetchInitialData = async () => {
+        setLoading(true);
+        await Promise.all([fetchFarmingGuides(), fetchCropsForFilter()]);
+        setLoading(false);
+    };
+
+    const fetchFarmingGuides = async () => {
+        const { data, error } = await supabase
+            .from("farming_guides")
+            .select("*, crop:crops(name)");
+
+        if (error) {
+            console.error("Error fetching farming guides:", error);
+        } else {
+            const formattedGuides = data.map((guide) => ({
+                id: guide.id,
+                name: guide.name,
+                summary: guide.description,
+                videoUrl: guide.url,
+                crop_name: guide.crop ? guide.crop.name : "General",
+                addedDate: guide.created_at,
+                views: guide.views || 0, // Assuming a 'views' column exists or defaulting to 0
+            }));
+            setFarmingGuides(formattedGuides);
+        }
+    };
+
+    const fetchCropsForFilter = async () => {
+        const { data, error } = await supabase.from("crops").select("name");
+        if (error) {
+            console.error("Error fetching crops:", error);
+        } else {
+            const cropNames = data.map((c) => c.name);
+            setCrops(["All", "General", ...new Set(cropNames)]);
+        }
+    };
 
     // Helper function to extract video ID from YouTube URL
     const getYouTubeVideoId = (url) => {
@@ -95,12 +66,12 @@ function FarmingGuides() {
         const matchesSearch =
             guide.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
             guide.summary.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            guide.category.toLowerCase().includes(searchTerm.toLowerCase());
+            guide.crop_name.toLowerCase().includes(searchTerm.toLowerCase());
 
-        const matchesCategory =
-            selectedCategory === "All" || guide.category === selectedCategory;
+        const matchesCrop =
+            selectedCrop === "All" || guide.crop_name === selectedCrop;
 
-        return matchesSearch && matchesCategory;
+        return matchesSearch && matchesCrop;
     });
 
     const formatViews = (views) => {
@@ -188,15 +159,15 @@ function FarmingGuides() {
                         {/* Category Filter */}
                         <div className="sm:w-48">
                             <select
-                                value={selectedCategory}
+                                value={selectedCrop}
                                 onChange={(e) =>
-                                    setSelectedCategory(e.target.value)
+                                    setSelectedCrop(e.target.value)
                                 }
                                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
                             >
-                                {categories.map((category) => (
-                                    <option key={category} value={category}>
-                                        {category}
+                                {crops.map((crop) => (
+                                    <option key={crop} value={crop}>
+                                        {crop}
                                     </option>
                                 ))}
                             </select>
@@ -209,8 +180,7 @@ function FarmingGuides() {
                     <p className="text-gray-600 text-sm">
                         Showing {filteredGuides.length} of{" "}
                         {farmingGuides.length} guides
-                        {selectedCategory !== "All" &&
-                            ` in ${selectedCategory}`}
+                        {selectedCrop !== "All" && ` in ${selectedCrop}`}
                         {searchTerm && ` matching "${searchTerm}"`}
                     </p>
                 </div>
@@ -251,7 +221,7 @@ function FarmingGuides() {
                                     <div className="p-4">
                                         <div className="flex items-start justify-between mb-2">
                                             <span className="bg-primary/10 text-primary px-2 py-1 rounded text-xs font-medium">
-                                                {guide.category}
+                                                {guide.crop_name}
                                             </span>
                                             <span className="text-xs text-gray-500">
                                                 {formatViews(guide.views)}
@@ -299,15 +269,15 @@ function FarmingGuides() {
                         <p className="text-gray-500 mb-4">
                             {searchTerm
                                 ? `No guides match your search "${searchTerm}"`
-                                : selectedCategory !== "All"
-                                ? `No guides available in ${selectedCategory} category`
+                                : selectedCrop !== "All"
+                                ? `No guides available in ${selectedCrop} category`
                                 : "No farming guides available at the moment"}
                         </p>
-                        {(searchTerm || selectedCategory !== "All") && (
+                        {(searchTerm || selectedCrop !== "All") && (
                             <button
                                 onClick={() => {
                                     setSearchTerm("");
-                                    setSelectedCategory("All");
+                                    setSelectedCrop("All");
                                 }}
                                 className="bg-primary text-white px-4 py-2 rounded-lg hover:bg-primary-dark transition-colors"
                             >

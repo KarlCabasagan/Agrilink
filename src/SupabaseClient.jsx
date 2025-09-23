@@ -4,12 +4,13 @@ const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
 const supabase = createClient(supabaseUrl, supabaseAnonKey, {
-  auth: {
-    // Allow unverified users to sign in
-    autoRefreshToken: true,
-    persistSession: true,
-    detectSessionInUrl: true
-  }
+    auth: {
+        // Allow unverified users to sign in
+        autoRefreshToken: true,
+        persistSession: true,
+        detectSessionInUrl: true,
+        site_url: "https://agrilink-iligan.netlify.app",
+    },
 });
 
 export default supabase;

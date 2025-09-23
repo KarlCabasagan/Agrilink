@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { Icon } from "@iconify/react";
 import { Link } from "react-router-dom";
+import supabase from "../../SupabaseClient";
 import AdminNavigationBar from "../../components/AdminNavigationBar";
 import ConfirmModal from "../../components/ConfirmModal";
 
@@ -27,38 +28,26 @@ function AdminProductManagement() {
     });
 
     // Categories management
-    const [categories, setCategories] = useState([
-        {
-            id: 1,
-            name: "Vegetables",
-            description: "Fresh vegetables and greens",
-            icon: "twemoji:leafy-greens",
-        },
-        {
-            id: 2,
-            name: "Grains",
-            description: "Rice, corn, wheat and other grains",
-            icon: "twemoji:sheaf-of-rice",
-        },
-        {
-            id: 3,
-            name: "Fruits",
-            description: "Fresh seasonal fruits",
-            icon: "twemoji:red-apple",
-        },
-        {
-            id: 4,
-            name: "Legumes",
-            description: "Beans, lentils and other legumes",
-            icon: "twemoji:beans",
-        },
-        {
-            id: 5,
-            name: "Root Crops",
-            description: "Potatoes, sweet potatoes, cassava",
-            icon: "twemoji:potato",
-        },
-    ]);
+    const [categories, setCategories] = useState([]);
+
+    // Fetch categories from Supabase
+    useEffect(() => {
+        const fetchCategories = async () => {
+            const { data, error } = await supabase
+                .from("categories")
+                .select("*")
+                .order("name");
+
+            if (error) {
+                console.error("Error fetching categories:", error);
+                return;
+            }
+
+            setCategories(data);
+        };
+
+        fetchCategories();
+    }, []);
 
     const [newCategory, setNewCategory] = useState({
         name: "",
@@ -66,104 +55,124 @@ function AdminProductManagement() {
         icon: "",
     });
 
-    const [pendingProducts, setPendingProducts] = useState([
-        {
-            id: 1,
-            name: "Organic Tomatoes",
-            producer: "John Farmer",
-            category: "Vegetables",
-            cropType: "Tomato",
-            price: 80,
-            unit: "kg",
-            description: "Fresh organic tomatoes grown without pesticides",
-            image: "https://drearth.com/wp-content/uploads/tomato-iStock-174932787.jpg",
-            submittedDate: "2024-09-01",
-            status: "pending",
-            stock: 50,
-        },
-        {
-            id: 2,
-            name: "Premium Rice",
-            producer: "Maria Cruz",
-            category: "Grains",
-            cropType: "Rice",
-            price: 45,
-            unit: "kg",
-            description: "High-quality jasmine rice from Nueva Ecija",
-            image: "https://www.bigas-online.com/cdn/shop/products/dinorado_300x300.jpg?v=1600422872",
-            submittedDate: "2024-08-30",
-            status: "pending",
-            stock: 200,
-        },
-        {
-            id: 3,
-            name: "Fresh Carrots",
-            producer: "Pedro Santos",
-            category: "Vegetables",
-            cropType: "Carrot",
-            price: 60,
-            unit: "kg",
-            description: "Crisp and sweet carrots harvested daily",
-            image: "/assets/adel.jpg",
-            submittedDate: "2024-08-28",
-            status: "pending",
-            stock: 30,
-        },
-    ]);
+    const [pendingProducts, setPendingProducts] = useState([]);
 
-    const [approvedProducts, setApprovedProducts] = useState([
-        {
-            id: 101,
-            name: "Sweet Corn",
-            producer: "Ana Garcia",
-            category: "Vegetables",
-            cropType: "Corn",
-            price: 25,
-            unit: "kg",
-            description: "Sweet and tender corn",
-            image: "/assets/adel.jpg",
-            approvedDate: "2024-08-25",
-            status: "Active", // Active or Suspended
-            stock: 100,
-            sales: 45,
-            rating: 4.5,
-            reviews: 23,
-        },
-        {
-            id: 102,
-            name: "Fresh Lettuce",
-            producer: "Carlos Mendoza",
-            category: "Vegetables",
-            cropType: "Lettuce",
-            price: 35,
-            unit: "kg",
-            description: "Crisp lettuce leaves perfect for salads",
-            image: "/assets/adel.jpg",
-            approvedDate: "2024-08-20",
-            status: "Active", // Active or Suspended
-            stock: 75,
-            sales: 32,
-            rating: 4.2,
-            reviews: 18,
-        },
-        {
-            id: 103,
-            name: "Organic Cabbage",
-            producer: "Linda Torres",
-            category: "Vegetables",
-            cropType: "Cabbage",
-            price: 40,
-            unit: "kg",
-            description: "Organic cabbage grown with natural methods",
-            image: "/assets/adel.jpg",
-            approvedDate: "2024-08-18",
-            status: "Suspended", // Example of suspended product
-            stock: 60,
-            sales: 28,
-            rating: 4.0,
-            reviews: 15,
-        },
-    ]);
+    // Fetch pending products from Supabase
+    useEffect(() => {
+        const fetchPendingProducts = async () => {
+            console.log("Fetching pending products...");
+            const { data: products, error } = await supabase
+                .from("products")
+                .select(
+                    `
+                    *,
+                    user_id:profiles!products_user_id_fkey(name),
+                    category_id:categories!products_category_id_fkey(name)
+                `
+                )
+                .is("approval_date", null); // Only get products with null approval_date
+
+            console.log("Pending products query result:", { products, error });
+
+            if (error) {
+                console.error("Error fetching pending products:", error);
+                return;
+            }
+
+            const formattedProducts = products.map((product) => ({
+                id: product.id,
+                name: product.name,
+                producer: product.user_id.name,
+                category: product.category_id.name,
+                cropType: product.crop_type,
+                price: product.price,
+                description: product.description,
+                image: product.image_url,
+                submittedDate: new Date(product.created_at)
+                    .toISOString()
+                    .split("T")[0],
+                status: "pending",
+                stock: product.stock,
+            }));
+
+            setPendingProducts(formattedProducts);
+        };
+
+        fetchPendingProducts();
+    }, []);
+
+    const [approvedProducts, setApprovedProducts] = useState([]);
+
+    // Fetch approved products from Supabase
+    useEffect(() => {
+        const fetchApprovedProducts = async () => {
+            console.log("Fetching approved products...");
+            const { data: products, error } = await supabase
+                .from("products")
+                .select(
+                    `
+                    *,
+                    user_id:profiles!products_user_id_fkey(name),
+                    category_id:categories!products_category_id_fkey(name),
+                    status_id:statuses!products_status_id_fkey(name)
+                `
+                )
+                .not("approval_date", "is", null) // Not pending
+                .not("approval_date", "eq", "1970-01-01T00:00:00Z"); // Not rejected
+
+            console.log("Approved products query result:", { products, error });
+
+            if (error) {
+                console.error("Error fetching approved products:", error);
+                return;
+            }
+
+            // Fetch sales data for each product
+            const { data: orderItems, error: orderError } = await supabase
+                .from("order_items")
+                .select("product_id, quantity");
+
+            if (orderError) {
+                console.error("Error fetching order items:", orderError);
+                return;
+            }
+
+            // Calculate total sales for each product
+            const salesByProduct = {};
+            orderItems?.forEach((item) => {
+                if (!salesByProduct[item.product_id]) {
+                    salesByProduct[item.product_id] = 0;
+                }
+                salesByProduct[item.product_id] += item.quantity;
+            });
+
+            const formattedProducts = products.map((product) => ({
+                id: product.id,
+                name: product.name,
+                producer: product.user_id.name,
+                category: product.category_id.name,
+                cropType: product.crop_type,
+                price: product.price,
+                description: product.description,
+                image: product.image_url,
+                approvedDate: new Date(product.approval_date)
+                    .toISOString()
+                    .split("T")[0],
+                status:
+                    product.status_id.name === "active"
+                        ? "Active"
+                        : "Suspended",
+                stock: product.stock,
+                sales: salesByProduct[product.id] || 0,
+                rating: "N/A",
+                reviews: 0,
+            }));
+
+            setApprovedProducts(formattedProducts);
+        };
+
+        fetchApprovedProducts();
+    }, []);
 
     // Utility functions
     const handleSort = (key) => {
@@ -212,15 +221,24 @@ function AdminProductManagement() {
     };
 
     // Category management functions
-    const handleAddCategory = () => {
+    const handleAddCategory = async () => {
         if (newCategory.name.trim()) {
-            const newCategoryObj = {
-                id: Math.max(...categories.map((c) => c.id)) + 1,
-                name: newCategory.name.trim(),
-                description: newCategory.description.trim(),
-                icon: newCategory.icon.trim() || "twemoji:package",
-            };
-            setCategories([...categories, newCategoryObj]);
+            const { data, error } = await supabase
+                .from("categories")
+                .insert({
+                    name: newCategory.name.trim(),
+                    description: newCategory.description.trim(),
+                    icon: newCategory.icon.trim() || "twemoji:package",
+                })
+                .select()
+                .single();
+
+            if (error) {
+                console.error("Error adding category:", error);
+                return;
+            }
+
+            setCategories([...categories, data]);
             setNewCategory({ name: "", description: "", icon: "" });
         }
     };
@@ -234,19 +252,27 @@ function AdminProductManagement() {
         });
     };
 
-    const handleUpdateCategory = () => {
+    const handleUpdateCategory = async () => {
         if (selectedCategory && newCategory.name.trim()) {
+            const { data, error } = await supabase
+                .from("categories")
+                .update({
+                    name: newCategory.name.trim(),
+                    description: newCategory.description.trim(),
+                    icon: newCategory.icon.trim() || "twemoji:package",
+                })
+                .eq("id", selectedCategory.id)
+                .select()
+                .single();
+
+            if (error) {
+                console.error("Error updating category:", error);
+                return;
+            }
+
             setCategories(
                 categories.map((cat) =>
-                    cat.id === selectedCategory.id
-                        ? {
-                              ...cat,
-                              name: newCategory.name.trim(),
-                              description: newCategory.description.trim(),
-                              icon:
-                                  newCategory.icon.trim() || "twemoji:package",
-                          }
-                        : cat
+                    cat.id === selectedCategory.id ? data : cat
                 )
             );
             setSelectedCategory(null);
@@ -254,17 +280,59 @@ function AdminProductManagement() {
         }
     };
 
-    const handleDeleteCategory = (categoryId) => {
+    const handleDeleteCategory = async (categoryId) => {
+        const { error } = await supabase
+            .from("categories")
+            .delete()
+            .eq("id", categoryId);
+
+        if (error) {
+            console.error("Error deleting category:", error);
+            return;
+        }
+
         setCategories(categories.filter((cat) => cat.id !== categoryId));
     };
 
     const handleProductAction = (productId, action) => {
+        if (!productId || !action) {
+            console.error("Invalid product action parameters:", {
+                productId,
+                action,
+            });
+            return;
+        }
+
+        console.log("Setting confirm action:", { id: productId, type: action });
         setConfirmAction({ id: productId, type: action });
         setShowConfirmModal(true);
     };
 
     // Handle product status change (suspend/activate) - separate from approval/rejection
-    const handleProductStatusAction = (productId, action) => {
+    const handleProductStatusAction = async (productId, action) => {
+        const { data: statusData, error: statusError } = await supabase
+            .from("statuses")
+            .select("id")
+            .eq("name", action === "suspend" ? "suspended" : "active")
+            .single();
+
+        if (statusError) {
+            console.error("Error getting status ID:", statusError);
+            return;
+        }
+
+        const { error: updateError } = await supabase
+            .from("products")
+            .update({
+                status_id: statusData.id,
+            })
+            .eq("id", productId);
+
+        if (updateError) {
+            console.error("Error updating product status:", updateError);
+            return;
+        }
+
         setApprovedProducts((prev) =>
             prev.map((product) =>
                 product.id === productId
@@ -277,36 +345,99 @@ function AdminProductManagement() {
         );
     };
 
-    const confirmProductAction = () => {
-        if (confirmAction) {
-            const product = pendingProducts.find(
-                (p) => p.id === confirmAction.id
-            );
+    const confirmProductAction = async () => {
+        console.log("Confirming action:", confirmAction);
+        if (!confirmAction) {
+            console.error("No confirm action found");
+            return;
+        }
 
+        const product = pendingProducts.find((p) => p.id === confirmAction.id);
+        console.log("Found product:", product);
+        if (!product) {
+            console.error("Product not found:", confirmAction.id);
+            return;
+        }
+
+        try {
             if (confirmAction.type === "approved") {
-                // Move to approved products
+                console.log("Approving product...");
+                // Get active status
+                const { data: statusData, error: statusError } = await supabase
+                    .from("statuses")
+                    .select("id")
+                    .eq("name", "active")
+                    .single();
+
+                if (statusError || !statusData) {
+                    throw new Error(
+                        `Failed to get active status: ${
+                            statusError?.message || "Status not found"
+                        }`
+                    );
+                }
+
+                // Update product with current timestamp for approval
+                const now = new Date().toISOString();
+                const { error: updateError } = await supabase
+                    .from("products")
+                    .update({
+                        status_id: statusData.id,
+                        approval_date: now,
+                    })
+                    .eq("id", confirmAction.id);
+
+                if (updateError) {
+                    throw new Error(
+                        `Error approving product: ${updateError.message}`
+                    );
+                }
+
+                console.log(
+                    "Successfully approved product. Adding to approved products list."
+                );
+                // Move to approved products in UI
                 setApprovedProducts((prev) => [
                     ...prev,
                     {
                         ...product,
-                        status: "approved",
-                        approvedDate: new Date().toISOString().split("T")[0],
-                        rating: 0,
-                        reviews: 0,
+                        status: "Active",
+                        approvedDate: now.split("T")[0],
                         sales: 0,
+                        rating: "N/A",
+                        reviews: 0,
                     },
                 ]);
-                // Remove from pending
-                setPendingProducts((prev) =>
-                    prev.filter((p) => p.id !== confirmAction.id)
-                );
             } else if (confirmAction.type === "rejected") {
-                // Remove from pending
-                setPendingProducts((prev) =>
-                    prev.filter((p) => p.id !== confirmAction.id)
-                );
+                console.log("Rejecting product...");
+                // Update product with epoch timestamp (1970) to mark as rejected
+                const { error: updateError } = await supabase
+                    .from("products")
+                    .update({
+                        approval_date: "1970-01-01T00:00:00Z",
+                    })
+                    .eq("id", confirmAction.id);
+
+                if (updateError) {
+                    throw new Error(
+                        `Error rejecting product: ${updateError.message}`
+                    );
+                }
+                console.log("Successfully rejected product");
+            } else {
+                throw new Error(`Invalid action type: ${confirmAction.type}`);
             }
 
+            // Remove from pending products in UI
+            setPendingProducts((prev) =>
+                prev.filter((p) => p.id !== confirmAction.id)
+            );
+
+            console.log(`Product ${confirmAction.type} successfully`);
+        } catch (error) {
+            console.error("Error in confirmProductAction:", error);
+            // You might want to show an error message to the user here
+        } finally {
             setShowConfirmModal(false);
             setConfirmAction(null);
         }
@@ -519,7 +650,7 @@ function AdminProductManagement() {
                                                             </h4>
                                                             <p className="text-lg font-semibold text-green-600">
                                                                 ₱{product.price}{" "}
-                                                                / {product.unit}
+                                                                / kg
                                                             </p>
                                                         </div>
                                                         <div>
@@ -708,26 +839,6 @@ function AdminProductManagement() {
                                                     />
                                                 )}
                                             </th>
-                                            <th
-                                                className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
-                                                onClick={() =>
-                                                    handleSort("rating")
-                                                }
-                                            >
-                                                Rating{" "}
-                                                {sortConfig.key ===
-                                                    "rating" && (
-                                                    <Icon
-                                                        icon={
-                                                            sortConfig.direction ===
-                                                            "asc"
-                                                                ? "mingcute:up-line"
-                                                                : "mingcute:down-line"
-                                                        }
-                                                        className="inline ml-1"
-                                                    />
-                                                )}
-                                            </th>
                                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                                 Actions
                                             </th>
@@ -803,35 +914,13 @@ function AdminProductManagement() {
                                                     </select>
                                                 </td>
                                                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                                    ₱{product.price}/
-                                                    {product.unit}
+                                                    ₱{product.price}/kg
                                                 </td>
                                                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                                                     {product.stock} kg
                                                 </td>
                                                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                                                     {product.sales} sold
-                                                </td>
-                                                <td className="px-6 py-4 whitespace-nowrap">
-                                                    <div className="flex items-center">
-                                                        <Icon
-                                                            icon="mingcute:star-fill"
-                                                            className="text-yellow-400 mr-1"
-                                                        />
-                                                        <span className="text-sm text-gray-900">
-                                                            {product.rating} (
-                                                            <Link
-                                                                to={`/admin/products/${product.id}/reviews`}
-                                                                className="text-blue-600 hover:text-blue-800 font-medium"
-                                                            >
-                                                                {
-                                                                    product.reviews
-                                                                }{" "}
-                                                                reviews
-                                                            </Link>
-                                                            )
-                                                        </span>
-                                                    </div>
                                                 </td>
                                                 <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                                                     <button
@@ -1110,33 +1199,32 @@ function AdminProductManagement() {
             )}
 
             {/* Confirm Modal */}
-            {showConfirmModal && (
-                <ConfirmModal
-                    isOpen={showConfirmModal}
-                    onClose={() => setShowConfirmModal(false)}
-                    onConfirm={confirmProductAction}
-                    title={`${
-                        confirmAction?.type === "approved"
-                            ? "Approve"
-                            : "Reject"
-                    } Product`}
-                    message={`Are you sure you want to ${
-                        confirmAction?.type === "approved"
-                            ? "approve"
-                            : "reject"
-                    } this product?`}
-                    confirmText={
-                        confirmAction?.type === "approved"
-                            ? "Approve"
-                            : "Reject"
-                    }
-                    confirmButtonClass={
-                        confirmAction?.type === "approved"
-                            ? "bg-green-600 hover:bg-green-700"
-                            : "bg-red-600 hover:bg-red-700"
-                    }
-                />
-            )}
+            <ConfirmModal
+                open={showConfirmModal}
+                onClose={() => {
+                    console.log("Closing modal");
+                    setShowConfirmModal(false);
+                    setConfirmAction(null);
+                }}
+                onConfirm={async () => {
+                    console.log("Modal confirm clicked");
+                    await confirmProductAction();
+                }}
+                title={`${
+                    confirmAction?.type === "approved" ? "Approve" : "Reject"
+                } Product`}
+                message={`Are you sure you want to ${
+                    confirmAction?.type === "approved" ? "approve" : "reject"
+                } this product?`}
+                confirmText={
+                    confirmAction?.type === "approved" ? "Approve" : "Reject"
+                }
+                confirmButtonClass={
+                    confirmAction?.type === "approved"
+                        ? "bg-green-600 hover:bg-green-700"
+                        : "bg-red-600 hover:bg-red-700"
+                }
+            />
 
             <AdminNavigationBar />
         </div>

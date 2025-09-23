@@ -1,9 +1,12 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useContext } from "react";
 import { Icon } from "@iconify/react";
 import AdminNavigationBar from "../../components/AdminNavigationBar";
 import ConfirmModal from "../../components/ConfirmModal";
+import supabase from "../../SupabaseClient";
+import { AuthContext } from "../../App";
 
 function AdminCropManagement() {
+    const { user } = useContext(AuthContext);
     // Initialize activeTab from localStorage or default to "crops"
     const [activeTab, setActiveTab] = useState(() => {
         return localStorage.getItem("adminCropManagementTab") || "crops";
@@ -18,92 +21,120 @@ function AdminCropManagement() {
     const [selectedGuide, setSelectedGuide] = useState(null);
     const [searchTerm, setSearchTerm] = useState("");
 
-    const [crops, setCrops] = useState([
-        {
-            id: 1,
-            name: "Tomatoes",
-            category: "Vegetables",
-            icon: "twemoji:tomato",
-            plantingSeason: "Dry Season",
-            harvestTime: "60-80 days",
-            difficulty: "Easy",
-            waterRequirement: "Moderate",
-            description:
-                "Popular vegetable crop with high market demand year-round",
-            tips: "Plant during cooler months, provide support for vines",
-            lastUpdated: "2024-09-01",
-        },
-        {
-            id: 2,
-            name: "Rice",
-            category: "Grains",
-            icon: "twemoji:sheaf-of-rice",
-            plantingSeason: "Wet Season",
-            harvestTime: "120-150 days",
-            difficulty: "Medium",
-            waterRequirement: "High",
-            description:
-                "Staple crop with consistent demand and government support",
-            tips: "Requires flooded fields, timing is crucial for wet season",
-            lastUpdated: "2024-08-28",
-        },
-        {
-            id: 3,
-            name: "Lettuce",
-            category: "Vegetables",
-            icon: "twemoji:leafy-greens",
-            plantingSeason: "Cool Season",
-            harvestTime: "45-60 days",
-            difficulty: "Easy",
-            waterRequirement: "Moderate",
-            description:
-                "Fast-growing leafy vegetable with good profit margins",
-            tips: "Grows best in cooler weather, harvest in early morning",
-            lastUpdated: "2024-08-25",
-        },
-    ]);
+    const [crops, setCrops] = useState([]);
+    const [categories, setCategories] = useState([]);
+    const [farmingGuides, setFarmingGuides] = useState([]);
 
-    const [farmingGuides, setFarmingGuides] = useState([
-        {
-            id: 1,
-            name: "Tomato Growing Basics",
-            summary:
-                "Complete guide on how to grow healthy tomatoes from seed to harvest",
-            videoUrl: "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
-            category: "Vegetables",
-            duration: "15:30",
-            addedDate: "2024-09-01",
-        },
-        {
-            id: 2,
-            name: "Rice Farming Techniques",
-            summary:
-                "Traditional and modern rice farming methods for maximum yield",
-            videoUrl: "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
-            category: "Grains",
-            duration: "20:45",
-            addedDate: "2024-08-28",
-        },
-    ]);
+    useEffect(() => {
+        fetchCrops();
+        fetchCategories();
+        fetchFarmingGuides();
+    }, []);
+
+    const fetchFarmingGuides = async () => {
+        const { data, error } = await supabase
+            .from("farming_guides")
+            .select("*, crop:crops(name)");
+
+        if (error) {
+            console.error("Error fetching farming guides:", error);
+        } else {
+            const formattedGuides = data.map((guide) => ({
+                id: guide.id,
+                name: guide.name,
+                summary: guide.description,
+                videoUrl: guide.url,
+                crop_name: guide.crop ? guide.crop.name : "General",
+                crop_id: guide.crop_id,
+                addedDate: guide.created_at,
+            }));
+            setFarmingGuides(formattedGuides);
+        }
+    };
+
+    const fetchCrops = async () => {
+        // 1. Get total number of producers
+        const { count: totalProducers, error: producersError } = await supabase
+            .from("profiles")
+            .select("id", { count: "exact", head: true })
+            .eq("role_id", 2)
+            .neq("id", user?.id);
+
+        if (producersError) {
+            console.error("Error fetching total producers:", producersError);
+            return;
+        }
+
+        // 2. Get active plantings
+        const { data: plantings, error: plantingsError } = await supabase
+            .from("planted_crops")
+            .select("crop_id")
+            .eq("is_harvested", false);
+
+        if (plantingsError) {
+            console.error("Error fetching plantings:", plantingsError);
+            return;
+        }
+
+        // Create a map of crop_id to planting count
+        const plantingCounts = plantings.reduce((acc, { crop_id }) => {
+            acc[crop_id] = (acc[crop_id] || 0) + 1;
+            return acc;
+        }, {});
+
+        // 3. Fetch all crops
+        const { data, error } = await supabase
+            .from("crops")
+            .select("*, category:categories(name)");
+
+        if (error) {
+            console.error("Error fetching crops:", error);
+        } else {
+            const formattedCrops = data.map((crop) => {
+                const count = plantingCounts[crop.id] || 0;
+                const percentage =
+                    totalProducers > 0
+                        ? Math.round((count / totalProducers) * 100)
+                        : 0;
+                return {
+                    ...crop,
+                    category: crop.category.name,
+                    plantingPercentage: percentage, // Calculated percentage
+                    lastUpdated: crop.updated_at,
+                    demandLevel: crop.market_demand,
+                    description: crop.description || "N/A",
+                };
+            });
+            setCrops(formattedCrops);
+        }
+    };
+
+    const fetchCategories = async () => {
+        const { data, error } = await supabase.from("categories").select("*");
+        if (error) {
+            console.error("Error fetching categories:", error);
+        } else {
+            setCategories(data);
+        }
+    };
 
     const [formData, setFormData] = useState({
         name: "",
-        category: "",
+        category_id: "",
         icon: "",
-        plantingSeason: "",
-        harvestTime: "",
-        difficulty: "",
-        waterRequirement: "",
+        growing_season: "",
+        harvest_time: "",
+        market_demand: "",
         description: "",
-        tips: "",
     });
 
     const [guideFormData, setGuideFormData] = useState({
         name: "",
-        summary: "",
-        videoUrl: "",
-        category: "",
+        description: "",
+        url: "",
+        crop_id: "",
     });
+    const [guideFormErrors, setGuideFormErrors] = useState({});
 
     // Save active tab to localStorage whenever it changes
     useEffect(() => {
@@ -113,23 +144,21 @@ function AdminCropManagement() {
     const resetForm = () => {
         setFormData({
             name: "",
-            category: "",
+            category_id: "",
             icon: "",
-            plantingSeason: "",
-            harvestTime: "",
-            difficulty: "",
-            waterRequirement: "",
+            growing_season: "",
+            harvest_time: "",
+            market_demand: "",
             description: "",
-            tips: "",
         });
     };
 
     const resetGuideForm = () => {
         setGuideFormData({
             name: "",
-            summary: "",
-            videoUrl: "",
-            category: "",
+            description: "",
+            url: "",
+            crop_id: "",
         });
     };
 
@@ -140,7 +169,15 @@ function AdminCropManagement() {
 
     const handleEdit = (crop) => {
         setSelectedCrop(crop);
-        setFormData(crop);
+        setFormData({
+            name: crop.name,
+            category_id: crop.category_id,
+            icon: crop.icon,
+            growing_season: crop.growing_season,
+            harvest_time: crop.harvest_time,
+            market_demand: crop.market_demand,
+            description: crop.description || "",
+        });
         setShowEditModal(true);
     };
 
@@ -149,33 +186,59 @@ function AdminCropManagement() {
         setShowDeleteModal(true);
     };
 
-    const saveCrop = () => {
-        const newCrop = {
-            ...formData,
-            id: selectedCrop?.id || Date.now(),
-            lastUpdated: new Date().toISOString().split("T")[0],
+    const saveCrop = async () => {
+        let error;
+        const cropData = {
+            name: formData.name,
+            category_id: formData.category_id,
+            icon: formData.icon,
+            growing_season: formData.growing_season,
+            harvest_time: formData.harvest_time,
+            market_demand: formData.market_demand,
+            description: formData.description,
+            updated_at: new Date().toISOString(),
         };
 
         if (selectedCrop) {
-            setCrops((prev) =>
-                prev.map((crop) =>
-                    crop.id === selectedCrop.id ? newCrop : crop
-                )
-            );
+            // Update
+            const { error: updateError } = await supabase
+                .from("crops")
+                .update(cropData)
+                .eq("id", selectedCrop.id);
+            error = updateError;
         } else {
-            setCrops((prev) => [...prev, newCrop]);
+            // Insert
+            const { error: insertError } = await supabase
+                .from("crops")
+                .insert(cropData);
+            error = insertError;
         }
 
-        setShowAddModal(false);
-        setShowEditModal(false);
-        resetForm();
-        setSelectedCrop(null);
+        if (error) {
+            console.error("Error saving crop:", error);
+        } else {
+            await fetchCrops();
+            setShowAddModal(false);
+            setShowEditModal(false);
+            resetForm();
+            setSelectedCrop(null);
+        }
     };
 
-    const deleteCrop = () => {
-        setCrops((prev) => prev.filter((crop) => crop.id !== selectedCrop.id));
-        setShowDeleteModal(false);
-        setSelectedCrop(null);
+    const deleteCrop = async () => {
+        if (!selectedCrop) return;
+        const { error } = await supabase
+            .from("crops")
+            .delete()
+            .eq("id", selectedCrop.id);
+
+        if (error) {
+            console.error("Error deleting crop:", error);
+        } else {
+            await fetchCrops();
+            setShowDeleteModal(false);
+            setSelectedCrop(null);
+        }
     };
 
     // Farming Guide Handlers
@@ -186,7 +249,12 @@ function AdminCropManagement() {
 
     const handleEditGuide = (guide) => {
         setSelectedGuide(guide);
-        setGuideFormData(guide);
+        setGuideFormData({
+            name: guide.name,
+            description: guide.summary,
+            url: guide.videoUrl,
+            crop_id: guide.crop_id,
+        });
         setShowEditGuideModal(true);
     };
 
@@ -195,35 +263,78 @@ function AdminCropManagement() {
         setShowDeleteGuideModal(true);
     };
 
-    const saveGuide = () => {
-        const newGuide = {
-            ...guideFormData,
-            id: selectedGuide?.id || Date.now(),
-            addedDate: new Date().toISOString().split("T")[0],
+    const saveGuide = async () => {
+        const errors = {};
+        if (!guideFormData.name) errors.name = "Guide name is required.";
+        if (!guideFormData.url) {
+            errors.url = "Video URL is required.";
+        } else {
+            try {
+                new URL(guideFormData.url);
+            } catch (_) {
+                errors.url = "Please enter a valid URL.";
+            }
+        }
+        if (!guideFormData.description)
+            errors.description = "Summary is required.";
+        if (guideFormData.crop_id === "")
+            errors.crop_id = "Please select a crop or 'General'.";
+
+        if (Object.keys(errors).length > 0) {
+            setGuideFormErrors(errors);
+            return;
+        }
+        setGuideFormErrors({});
+
+        let error;
+        const guideData = {
+            name: guideFormData.name,
+            description: guideFormData.description,
+            url: guideFormData.url,
+            crop_id:
+                guideFormData.crop_id === "null" ? null : guideFormData.crop_id,
         };
 
         if (selectedGuide) {
-            setFarmingGuides((prev) =>
-                prev.map((guide) =>
-                    guide.id === selectedGuide.id ? newGuide : guide
-                )
-            );
+            // Update
+            const { error: updateError } = await supabase
+                .from("farming_guides")
+                .update(guideData)
+                .eq("id", selectedGuide.id);
+            error = updateError;
         } else {
-            setFarmingGuides((prev) => [...prev, newGuide]);
+            // Insert
+            const { error: insertError } = await supabase
+                .from("farming_guides")
+                .insert(guideData);
+            error = insertError;
         }
 
-        setShowAddGuideModal(false);
-        setShowEditGuideModal(false);
-        setSelectedGuide(null);
-        resetGuideForm();
+        if (error) {
+            console.error("Error saving guide:", error);
+        } else {
+            await fetchFarmingGuides();
+            setShowAddGuideModal(false);
+            setShowEditGuideModal(false);
+            resetGuideForm();
+            setSelectedGuide(null);
+        }
     };
 
-    const confirmDeleteGuide = () => {
-        setFarmingGuides((prev) =>
-            prev.filter((guide) => guide.id !== selectedGuide.id)
-        );
-        setShowDeleteGuideModal(false);
-        setSelectedGuide(null);
+    const confirmDeleteGuide = async () => {
+        if (!selectedGuide) return;
+        const { error } = await supabase
+            .from("farming_guides")
+            .delete()
+            .eq("id", selectedGuide.id);
+
+        if (error) {
+            console.error("Error deleting guide:", error);
+        } else {
+            await fetchFarmingGuides();
+            setShowDeleteGuideModal(false);
+            setSelectedGuide(null);
+        }
     };
 
     // Helper function to extract video ID from YouTube URL
@@ -279,6 +390,176 @@ function AdminCropManagement() {
         (crop) =>
             crop.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
             crop.category.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+
+    const getWaterRequirementColor = (requirement) => {
+        switch (requirement.toLowerCase()) {
+            case "low":
+                return "bg-yellow-100 text-yellow-800 border-yellow-200";
+            case "moderate":
+                return "bg-blue-100 text-blue-800 border-blue-200";
+            case "high":
+                return "bg-green-100 text-green-800 border-green-200";
+            default:
+                return "bg-gray-100 text-gray-800 border-gray-200";
+        }
+    };
+
+    const renderCropCard = (crop) => (
+        <div
+            key={crop.id}
+            className={`bg-white rounded-lg shadow-md overflow-hidden`}
+        >
+            <div className="p-6">
+                {/* Header with Edit/Delete Buttons and Recommendation */}
+                <div className="flex justify-between items-start mb-4">
+                    <div className="flex items-center">
+                        <Icon icon={crop.icon} className="w-8 h-8 mr-3" />
+                        <div>
+                            <h3 className="text-xl font-semibold text-gray-900">
+                                {crop.name}
+                            </h3>
+                            <div className="flex items-center gap-2">
+                                <p className="text-sm text-gray-500">
+                                    {crop.category}
+                                </p>
+                                {/* <span
+                                    className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${crop.color}`}
+                                >
+                                    {crop.recommendation}
+                                </span> */}
+                            </div>
+                        </div>
+                    </div>
+                    <div className="flex gap-2">
+                        <button
+                            onClick={() => handleEdit(crop)}
+                            className="inline-flex items-center p-1 text-blue-600 hover:text-blue-800 transition-colors"
+                        >
+                            <Icon
+                                icon="mingcute:edit-line"
+                                className="w-5 h-5"
+                            />
+                        </button>
+                        <button
+                            onClick={() => handleDelete(crop)}
+                            className="inline-flex items-center p-1 text-red-600 hover:text-red-800 transition-colors"
+                        >
+                            <Icon
+                                icon="mingcute:delete-line"
+                                className="w-5 h-5"
+                            />
+                        </button>
+                    </div>
+                </div>
+
+                {/* Description */}
+                <div className="mb-4">
+                    <p className="text-sm font-medium text-gray-500 mb-1">
+                        Description
+                    </p>
+                    <p className="text-sm text-gray-600">{crop.description}</p>
+                </div>
+
+                {/* Market Information */}
+                <div className="grid grid-cols-2 gap-4 mb-4">
+                    <div>
+                        <p className="text-sm font-medium text-gray-500 mb-1">
+                            Market Demand
+                        </p>
+                        <span
+                            className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getDemandColor(
+                                crop.demandLevel
+                            )}`}
+                        >
+                            {crop.demandLevel}
+                        </span>
+                    </div>
+                    <div>
+                        <p className="text-sm font-medium text-gray-500 mb-1">
+                            Competition Level
+                        </p>
+                        <span
+                            className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getCompetitionColor(
+                                crop.plantingPercentage
+                            )}`}
+                        >
+                            {crop.plantingPercentage}% of farmers
+                        </span>
+                    </div>
+                </div>
+
+                {/* Crop Details Grid */}
+                <div className="grid grid-cols-2 gap-4 mb-4">
+                    <div>
+                        <p className="text-sm font-medium text-gray-500 mb-1">
+                            Growing Season
+                        </p>
+                        <div className="flex items-center">
+                            <Icon
+                                icon="mingcute:sun-line"
+                                className="w-4 h-4 mr-1 text-gray-400"
+                            />
+                            <span className="text-sm text-gray-900">
+                                {crop.growing_season}
+                            </span>
+                        </div>
+                    </div>
+                    <div>
+                        <p className="text-sm font-medium text-gray-500 mb-1">
+                            Harvest Time
+                        </p>
+                        <div className="flex items-center">
+                            <Icon
+                                icon="mingcute:time-line"
+                                className="w-4 h-4 mr-1 text-gray-400"
+                            />
+                            <span className="text-sm text-gray-900">
+                                {crop.harvest_time}
+                            </span>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Tips */}
+                {/* <div>
+                    <p className="text-sm font-medium text-gray-500 mb-1">
+                        Key Benefits
+                    </p>
+                    <p className="text-sm text-gray-600">{crop.tips}</p>
+                </div> */}
+
+                {/* Competition Bar */}
+                <div className="mb-4">
+                    <div className="flex justify-between text-xs text-gray-600 mb-1">
+                        <span>Competition Level</span>
+                        <span>{crop.plantingPercentage}%</span>
+                    </div>
+                    <div className="w-full bg-gray-200 rounded-full h-2">
+                        <div
+                            className={`h-2 rounded-full ${
+                                crop.plantingPercentage <= 20
+                                    ? "bg-primary"
+                                    : crop.plantingPercentage <= 40
+                                    ? "bg-yellow-500"
+                                    : "bg-red-500"
+                            }`}
+                            style={{
+                                width: `${crop.plantingPercentage}%`,
+                            }}
+                        ></div>
+                    </div>
+                </div>
+
+                {/* Last Updated */}
+                <div className="mt-4 pt-4 border-t border-gray-200">
+                    <p className="text-xs text-gray-500">
+                        Last updated:{" "}
+                        {new Date(crop.lastUpdated).toLocaleDateString()}
+                    </p>
+                </div>
+            </div>
+        </div>
     );
 
     return (
@@ -355,110 +636,8 @@ function AdminCropManagement() {
                         </div>
 
                         {/* Crops Grid */}
-                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                            {filteredCrops.map((crop) => (
-                                <div
-                                    key={crop.id}
-                                    className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow"
-                                >
-                                    <div className="flex items-start justify-between mb-4">
-                                        <div className="flex items-center gap-3">
-                                            {crop.icon && (
-                                                <Icon
-                                                    icon={crop.icon}
-                                                    width="32"
-                                                    height="32"
-                                                    className="flex-shrink-0"
-                                                />
-                                            )}
-                                            <div>
-                                                <h3 className="text-xl font-semibold text-gray-800">
-                                                    {crop.name}
-                                                </h3>
-                                                <p className="text-sm text-gray-600">
-                                                    {crop.category}
-                                                </p>
-                                            </div>
-                                        </div>
-                                        <div className="flex gap-2">
-                                            <button
-                                                onClick={() => handleEdit(crop)}
-                                                className="text-blue-600 hover:text-blue-800"
-                                            >
-                                                <Icon
-                                                    icon="mingcute:edit-line"
-                                                    width="20"
-                                                    height="20"
-                                                />
-                                            </button>
-                                            <button
-                                                onClick={() =>
-                                                    handleDelete(crop)
-                                                }
-                                                className="text-red-600 hover:text-red-800"
-                                            >
-                                                <Icon
-                                                    icon="mingcute:delete-line"
-                                                    width="20"
-                                                    height="20"
-                                                />
-                                            </button>
-                                        </div>
-                                    </div>
-
-                                    <div className="grid grid-cols-2 gap-4 mb-4">
-                                        <div>
-                                            <h4 className="font-medium text-gray-700 mb-1">
-                                                Planting Season
-                                            </h4>
-                                            <p className="text-sm text-gray-600">
-                                                {crop.plantingSeason}
-                                            </p>
-                                        </div>
-                                        <div>
-                                            <h4 className="font-medium text-gray-700 mb-1">
-                                                Harvest Time
-                                            </h4>
-                                            <p className="text-sm text-gray-600">
-                                                {crop.harvestTime}
-                                            </p>
-                                        </div>
-                                    </div>
-
-                                    <div className="flex flex-wrap gap-2 mb-4">
-                                        <span
-                                            className={`px-2 py-1 text-xs rounded-full ${getDifficultyColor(
-                                                crop.difficulty
-                                            )}`}
-                                        >
-                                            {crop.difficulty}
-                                        </span>
-                                        <span className="px-2 py-1 text-xs rounded-full bg-gray-100 text-gray-800">
-                                            {crop.waterRequirement} Water
-                                        </span>
-                                    </div>
-
-                                    <p className="text-sm text-gray-600 mb-3">
-                                        {crop.description}
-                                    </p>
-
-                                    <div className="border-t pt-3">
-                                        <h4 className="font-medium text-gray-700 mb-1">
-                                            Growing Tips:
-                                        </h4>
-                                        <p className="text-sm text-gray-600">
-                                            {crop.tips}
-                                        </p>
-                                    </div>
-
-                                    <p className="text-xs text-gray-400 mt-3">
-                                        Last updated:{" "}
-                                        {new Date(
-                                            crop.lastUpdated
-                                        ).toLocaleDateString()}
-                                    </p>
-                                </div>
-                            ))}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            {filteredCrops.map(renderCropCard)}
                         </div>
 
                         {filteredCrops.length === 0 && (
@@ -528,7 +707,7 @@ function AdminCropManagement() {
                                 guide.summary
                                     .toLowerCase()
                                     .includes(searchTerm.toLowerCase()) ||
-                                guide.category
+                                guide.crop_name
                                     .toLowerCase()
                                     .includes(searchTerm.toLowerCase())
                         ).length > 0 ? (
@@ -546,7 +725,7 @@ function AdminCropManagement() {
                                                 .includes(
                                                     searchTerm.toLowerCase()
                                                 ) ||
-                                            guide.category
+                                            guide.crop_name
                                                 .toLowerCase()
                                                 .includes(
                                                     searchTerm.toLowerCase()
@@ -597,7 +776,7 @@ function AdminCropManagement() {
 
                                                     <div className="flex items-center justify-between text-sm text-gray-500 mb-3">
                                                         <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded text-xs">
-                                                            {guide.category}
+                                                            {guide.crop_name}
                                                         </span>
                                                         <span>
                                                             Added:{" "}
@@ -706,24 +885,22 @@ function AdminCropManagement() {
                                     Category *
                                 </label>
                                 <select
-                                    value={formData.category}
+                                    value={formData.category_id}
                                     onChange={(e) =>
                                         setFormData({
                                             ...formData,
-                                            category: e.target.value,
+                                            category_id: e.target.value,
                                         })
                                     }
                                     className="w-full px-3 py-3 border border-gray-300 rounded-lg text-base outline-none focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
                                     required
                                 >
                                     <option value="">Select Category</option>
-                                    <option value="Vegetables">
-                                        Vegetables
-                                    </option>
-                                    <option value="Fruits">Fruits</option>
-                                    <option value="Grains">Grains</option>
-                                    <option value="Legumes">Legumes</option>
-                                    <option value="Herbs">Herbs</option>
+                                    {categories.map((cat) => (
+                                        <option key={cat.id} value={cat.id}>
+                                            {cat.name}
+                                        </option>
+                                    ))}
                                 </select>
                             </div>
 
@@ -781,14 +958,14 @@ function AdminCropManagement() {
 
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                                    Planting Season *
+                                    Growing Season *
                                 </label>
                                 <select
-                                    value={formData.plantingSeason}
+                                    value={formData.growing_season}
                                     onChange={(e) =>
                                         setFormData({
                                             ...formData,
-                                            plantingSeason: e.target.value,
+                                            growing_season: e.target.value,
                                         })
                                     }
                                     className="w-full px-3 py-3 border border-gray-300 rounded-lg text-base outline-none focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
@@ -816,14 +993,14 @@ function AdminCropManagement() {
                                 </label>
                                 <input
                                     type="text"
-                                    value={formData.harvestTime}
+                                    value={formData.harvest_time}
                                     onChange={(e) =>
                                         setFormData({
                                             ...formData,
-                                            harvestTime: e.target.value,
+                                            harvest_time: e.target.value,
                                         })
                                     }
-                                    placeholder="e.g., 60-80 days"
+                                    placeholder="e.g., 1-2 months"
                                     className="w-full px-3 py-3 border border-gray-300 rounded-lg text-base outline-none focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
                                     required
                                 />
@@ -831,45 +1008,24 @@ function AdminCropManagement() {
 
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                                    Difficulty Level *
+                                    Market Demand *
                                 </label>
                                 <select
-                                    value={formData.difficulty}
+                                    value={formData.market_demand}
                                     onChange={(e) =>
                                         setFormData({
                                             ...formData,
-                                            difficulty: e.target.value,
+                                            market_demand: e.target.value,
                                         })
                                     }
                                     className="w-full px-3 py-3 border border-gray-300 rounded-lg text-base outline-none focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
                                     required
                                 >
-                                    <option value="">Select Difficulty</option>
-                                    <option value="Easy">Easy</option>
-                                    <option value="Medium">Medium</option>
-                                    <option value="Hard">Hard</option>
-                                </select>
-                            </div>
-
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
-                                    Water Requirement *
-                                </label>
-                                <select
-                                    value={formData.waterRequirement}
-                                    onChange={(e) =>
-                                        setFormData({
-                                            ...formData,
-                                            waterRequirement: e.target.value,
-                                        })
-                                    }
-                                    className="w-full px-3 py-3 border border-gray-300 rounded-lg text-base outline-none focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
-                                    required
-                                >
-                                    <option value="">Select Water Need</option>
+                                    <option value="">Select Demand</option>
                                     <option value="Low">Low</option>
-                                    <option value="Moderate">Moderate</option>
+                                    <option value="Medium">Medium</option>
                                     <option value="High">High</option>
+                                    <option value="Very High">Very High</option>
                                 </select>
                             </div>
 
@@ -883,24 +1039,6 @@ function AdminCropManagement() {
                                         setFormData({
                                             ...formData,
                                             description: e.target.value,
-                                        })
-                                    }
-                                    rows="3"
-                                    className="w-full px-3 py-3 border border-gray-300 rounded-lg text-base outline-none focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
-                                    required
-                                />
-                            </div>
-
-                            <div className="md:col-span-2">
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
-                                    Growing Tips *
-                                </label>
-                                <textarea
-                                    value={formData.tips}
-                                    onChange={(e) =>
-                                        setFormData({
-                                            ...formData,
-                                            tips: e.target.value,
                                         })
                                     }
                                     rows="3"
@@ -935,7 +1073,7 @@ function AdminCropManagement() {
             {/* Delete Confirmation Modal */}
             {showDeleteModal && (
                 <ConfirmModal
-                    isOpen={showDeleteModal}
+                    open={showDeleteModal}
                     onClose={() => setShowDeleteModal(false)}
                     onConfirm={deleteCrop}
                     title="Delete Crop"
@@ -986,36 +1124,52 @@ function AdminCropManagement() {
                                             name: e.target.value,
                                         })
                                     }
-                                    className="w-full px-3 py-3 border border-gray-300 rounded-lg text-base outline-none focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
+                                    className={`w-full px-3 py-3 border rounded-lg text-base outline-none focus:outline-none focus:ring-2 focus:border-transparent transition-all ${
+                                        guideFormErrors.name
+                                            ? "border-red-500 ring-red-500"
+                                            : "border-gray-300 focus:ring-primary"
+                                    }`}
                                     required
                                 />
+                                {guideFormErrors.name && (
+                                    <p className="text-red-500 text-xs mt-1">
+                                        {guideFormErrors.name}
+                                    </p>
+                                )}
                             </div>
 
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                                    Category *
+                                    Crop *
                                 </label>
                                 <select
-                                    value={guideFormData.category}
+                                    value={guideFormData.crop_id}
                                     onChange={(e) =>
                                         setGuideFormData({
                                             ...guideFormData,
-                                            category: e.target.value,
+                                            crop_id: e.target.value,
                                         })
                                     }
-                                    className="w-full px-3 py-3 border border-gray-300 rounded-lg text-base outline-none focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
+                                    className={`w-full px-3 py-3 border rounded-lg text-base outline-none focus:outline-none focus:ring-2 focus:border-transparent transition-all ${
+                                        guideFormErrors.crop_id
+                                            ? "border-red-500 ring-red-500"
+                                            : "border-gray-300 focus:ring-primary"
+                                    }`}
                                     required
                                 >
-                                    <option value="">Select Category</option>
-                                    <option value="Vegetables">
-                                        Vegetables
-                                    </option>
-                                    <option value="Fruits">Fruits</option>
-                                    <option value="Grains">Grains</option>
-                                    <option value="Legumes">Legumes</option>
-                                    <option value="Herbs">Herbs</option>
-                                    <option value="General">General</option>
+                                    <option value="">Select Crop</option>
+                                    <option value="null">General</option>
+                                    {crops.map((crop) => (
+                                        <option key={crop.id} value={crop.id}>
+                                            {crop.name}
+                                        </option>
+                                    ))}
                                 </select>
+                                {guideFormErrors.crop_id && (
+                                    <p className="text-red-500 text-xs mt-1">
+                                        {guideFormErrors.crop_id}
+                                    </p>
+                                )}
                             </div>
 
                             <div>
@@ -1024,17 +1178,26 @@ function AdminCropManagement() {
                                 </label>
                                 <input
                                     type="url"
-                                    value={guideFormData.videoUrl}
+                                    value={guideFormData.url}
                                     onChange={(e) =>
                                         setGuideFormData({
                                             ...guideFormData,
-                                            videoUrl: e.target.value,
+                                            url: e.target.value,
                                         })
                                     }
                                     placeholder="https://www.youtube.com/watch?v=..."
-                                    className="w-full px-3 py-3 border border-gray-300 rounded-lg text-base outline-none focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
+                                    className={`w-full px-3 py-3 border rounded-lg text-base outline-none focus:outline-none focus:ring-2 focus:border-transparent transition-all ${
+                                        guideFormErrors.url
+                                            ? "border-red-500 ring-red-500"
+                                            : "border-gray-300 focus:ring-primary"
+                                    }`}
                                     required
                                 />
+                                {guideFormErrors.url && (
+                                    <p className="text-red-500 text-xs mt-1">
+                                        {guideFormErrors.url}
+                                    </p>
+                                )}
                             </div>
 
                             <div>
@@ -1042,17 +1205,26 @@ function AdminCropManagement() {
                                     Summary *
                                 </label>
                                 <textarea
-                                    value={guideFormData.summary}
+                                    value={guideFormData.description}
                                     onChange={(e) =>
                                         setGuideFormData({
                                             ...guideFormData,
-                                            summary: e.target.value,
+                                            description: e.target.value,
                                         })
                                     }
                                     rows="4"
-                                    className="w-full px-3 py-3 border border-gray-300 rounded-lg text-base outline-none focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
+                                    className={`w-full px-3 py-3 border rounded-lg text-base outline-none focus:outline-none focus:ring-2 focus:border-transparent transition-all ${
+                                        guideFormErrors.description
+                                            ? "border-red-500 ring-red-500"
+                                            : "border-gray-300 focus:ring-primary"
+                                    }`}
                                     required
                                 />
+                                {guideFormErrors.description && (
+                                    <p className="text-red-500 text-xs mt-1">
+                                        {guideFormErrors.description}
+                                    </p>
+                                )}
                             </div>
                         </div>
 
@@ -1083,7 +1255,7 @@ function AdminCropManagement() {
             {/* Delete Guide Confirmation Modal */}
             {showDeleteGuideModal && (
                 <ConfirmModal
-                    isOpen={showDeleteGuideModal}
+                    open={showDeleteGuideModal}
                     onClose={() => setShowDeleteGuideModal(false)}
                     onConfirm={confirmDeleteGuide}
                     title="Delete Farming Guide"

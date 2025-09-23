@@ -355,28 +355,6 @@ function Profile() {
                                     className="text-gray-400"
                                 />
                             </Link>
-
-                            <button className="w-full flex items-center justify-between p-4 hover:bg-gray-50 transition-colors">
-                                <div className="flex items-center gap-3">
-                                    <div className="w-10 h-10 bg-yellow-100 rounded-lg flex items-center justify-center">
-                                        <Icon
-                                            icon="mingcute:history-anticlockwise-line"
-                                            width="20"
-                                            height="20"
-                                            className="text-yellow-600"
-                                        />
-                                    </div>
-                                    <span className="text-gray-800">
-                                        Order History
-                                    </span>
-                                </div>
-                                <Icon
-                                    icon="mingcute:right-line"
-                                    width="16"
-                                    height="16"
-                                    className="text-gray-400"
-                                />
-                            </button>
                         </div>
                     </div>
 

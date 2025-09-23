@@ -1,6 +1,14 @@
 import React from "react";
 
-function ConfirmModal({ open, onClose, onConfirm, title, message }) {
+function ConfirmModal({
+    open,
+    onClose,
+    onConfirm,
+    title,
+    message,
+    confirmText,
+    confirmButtonClass,
+}) {
     if (!open) return null;
     return (
         <>
@@ -24,10 +32,13 @@ function ConfirmModal({ open, onClose, onConfirm, title, message }) {
                             Cancel
                         </button>
                         <button
-                            className="px-4 py-2 rounded bg-red-600 text-white hover:bg-red-700 font-medium transition-colors"
+                            className={`px-4 py-2 rounded text-white font-medium transition-colors ${
+                                confirmButtonClass ||
+                                "bg-red-600 hover:bg-red-700"
+                            }`}
                             onClick={onConfirm}
                         >
-                            Delete
+                            {confirmText || "Confirm"}
                         </button>
                     </div>
                 </div>

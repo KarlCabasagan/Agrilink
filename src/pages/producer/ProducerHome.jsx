@@ -15,16 +15,6 @@ import ImageUpload from "../../components/ImageUpload";
 import { deleteImageFromUrl, uploadImage } from "../../utils/imageUpload";
 import supabase from "../../SupabaseClient.jsx";
 
-const categories = [
-    { name: "All", icon: "mdi:apps-box" },
-    { name: "Vegetables", icon: "twemoji:carrot" },
-    { name: "Fruits", icon: "twemoji:red-apple" },
-    { name: "Grains", icon: "twemoji:cooked-rice" },
-    { name: "Spices", icon: "twemoji:onion" },
-    { name: "Root and Tuber", icon: "twemoji:potato" },
-    { name: "Legumes", icon: "twemoji:beans" },
-];
-
 // Memoized ProductModal component to prevent unnecessary re-renders
 const ProductModal = memo(
     ({
@@ -359,18 +349,21 @@ const ProductModal = memo(
                                             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-primary focus:border-primary"
                                             required
                                         >
-                                            {categories.slice(1).map((cat) => (
-                                                <option
-                                                    key={cat.name}
-                                                    value={cat.name}
-                                                >
-                                                    {cat.name}
-                                                </option>
-                                            ))}
+                                            {categories.length > 1 &&
+                                                categories
+                                                    .slice(1)
+                                                    .map((cat) => (
+                                                        <option
+                                                            key={cat.name}
+                                                            value={cat.name}
+                                                        >
+                                                            {cat.name}
+                                                        </option>
+                                                    ))}
                                         </select>
                                     </div>
 
-                                    <div className="md:col-span-2">
+                                    <div>
                                         <label className="block text-sm font-medium text-gray-700 mb-1">
                                             Crop Type *
                                         </label>
@@ -456,6 +449,7 @@ const ProductModal = memo(
                                         !productForm.name ||
                                         !productForm.price ||
                                         !productForm.stock ||
+                                        !productForm.category ||
                                         isSubmitting
                                     }
                                     className="flex-1 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed flex items-center justify-center gap-2"
@@ -501,6 +495,7 @@ function ProducerHome() {
     const [isDeliverySettingsExpanded, setIsDeliverySettingsExpanded] =
         useState(false);
     const [isHowItWorksExpanded, setIsHowItWorksExpanded] = useState(false);
+    const [categories, setCategories] = useState([]);
     const [productForm, setProductForm] = useState({
         name: "",
         price: "",
@@ -515,18 +510,55 @@ function ProducerHome() {
     });
     const [cropTypeSearch, setCropTypeSearch] = useState("");
     const [showCropDropdown, setShowCropDropdown] = useState(false);
+    const [allCrops, setAllCrops] = useState([]);
 
-    // Available crop types from crop recommendation
-    const availableCrops = [
-        "Sweet Potato",
-        "Lettuce",
-        "Herbs (Basil, Cilantro)",
-        "Bell Peppers",
-        "Cabbage",
-        "Tomatoes",
-        "Carrots",
-        "Rice",
-    ];
+    useEffect(() => {
+        const fetchCategories = async () => {
+            try {
+                const { data, error } = await supabase
+                    .from("categories")
+                    .select("name, icon")
+                    .order("name", { ascending: true });
+
+                if (error) {
+                    console.error("Error fetching categories:", error);
+                } else {
+                    const allCategory = {
+                        name: "All",
+                        icon: "mdi:apps-box",
+                    };
+                    const fetchedCategories = data.map((cat) => ({
+                        name: cat.name,
+                        icon: cat.icon || "mingcute:leaf-line", // Default icon
+                    }));
+                    setCategories([allCategory, ...fetchedCategories]);
+                }
+            } catch (error) {
+                console.error("Unexpected error fetching categories:", error);
+            }
+        };
+
+        fetchCategories();
+    }, []);
+
+    useEffect(() => {
+        const fetchAllCrops = async () => {
+            const { data, error } = await supabase
+                .from("crops")
+                .select("id, name");
+            if (error) {
+                console.error("Error fetching crops:", error);
+            } else {
+                setAllCrops(data);
+            }
+        };
+        fetchAllCrops();
+    }, []);
+
+    const availableCrops = useMemo(
+        () => allCrops.map((c) => c.name),
+        [allCrops]
+    );
 
     const filteredCrops = availableCrops.filter((crop) =>
         crop.toLowerCase().includes((cropTypeSearch || "").toLowerCase())
@@ -592,8 +624,23 @@ function ProducerHome() {
                 .from("products")
                 .select(
                     `
-                    *,
-                    categories(name)
+                    id,
+                    name,
+                    price,
+                    description,
+                    stock,
+                    image_url,
+                    status_id,
+                    created_at,
+                    updated_at,
+                    categories!inner (
+                        id,
+                        name
+                    ),
+                    crops!inner (
+                        id,
+                        name
+                    )
                 `
                 )
                 .eq("user_id", user.id)
@@ -606,17 +653,16 @@ function ProducerHome() {
                     id: product.id,
                     name: product.name,
                     price: parseFloat(product.price),
-                    category:
-                        product.categories?.name || product.category || "Other",
+                    category: product.categories?.name || "Other",
                     description: product.description,
                     stock: parseFloat(product.stock),
                     image:
                         product.image_url ||
                         "https://via.placeholder.com/300x200?text=No+Image",
-                    image_url: product.image_url, // Keep the original field for delete function
-                    cropType: product.crop_type_id,
-                    unit: product.unit || "kg",
-                    status: product.status,
+                    image_url: product.image_url,
+                    cropId: product.crops?.id,
+                    cropType: product.crops?.name,
+                    status_id: product.status_id,
                     created_at: product.created_at,
                     updated_at: product.updated_at,
                 }));
@@ -660,7 +706,7 @@ function ProducerHome() {
             return;
 
         // Validate crop type exists in available crops
-        if (!availableCrops.includes(productForm.cropType)) {
+        if (!allCrops.map((c) => c.name).includes(productForm.cropType)) {
             alert("Please select a valid crop type from the list");
             return;
         }
@@ -679,16 +725,16 @@ function ProducerHome() {
                 category_id = categoryData?.id;
             }
 
-            // Get crop_type_id
-            let crop_type_id = null;
-            if (productForm.cropType) {
-                const { data: cropTypeData } = await supabase
-                    .from("crop_types")
-                    .select("id")
-                    .eq("name", productForm.cropType)
-                    .single();
-                crop_type_id = cropTypeData?.id;
+            // Get crop_id - it's required by the schema
+            const selectedCrop = allCrops.find(
+                (c) => c.name === productForm.cropType
+            );
+            if (!selectedCrop) {
+                alert("Please select a valid crop type");
+                setIsSubmitting(false);
+                return;
             }
+            const crop_id = selectedCrop.id;
 
             // Upload image if provided
             let image_url = null;
@@ -713,19 +759,30 @@ function ProducerHome() {
                     name: productForm.name,
                     price: parseFloat(productForm.price),
                     category_id: category_id,
-                    crop_type_id: crop_type_id,
+                    crop_id: crop_id,
                     description: productForm.description,
                     stock: parseFloat(productForm.stock),
                     image_url: image_url,
-                    unit: "kg",
-                    status: "active",
                 })
                 .select(
                     `
-                    *,
-                    categories(name),
-                    crop_types(name)
-                `
+                    id,
+                    name,
+                    price,
+                    description,
+                    stock,
+                    image_url,
+                    status_id,
+                    created_at,
+                    updated_at,
+                    categories (
+                        id,
+                        name
+                    ),
+                    crops (
+                        id,
+                        name
+                    )`
                 )
                 .single();
 
@@ -737,15 +794,16 @@ function ProducerHome() {
                     id: data.id,
                     name: data.name,
                     price: parseFloat(data.price),
-                    category: data.categories?.name || productForm.category,
+                    category: data.categories?.name || "Other",
                     description: data.description,
                     stock: parseFloat(data.stock),
                     image:
                         data.image_url ||
                         "https://via.placeholder.com/300x200?text=No+Image",
-                    cropType: data.crop_types?.name || productForm.cropType,
-                    unit: data.unit,
-                    status: data.status,
+                    image_url: data.image_url,
+                    cropId: data.crops?.id,
+                    cropType: data.crops?.name,
+                    status_id: data.status_id,
                     created_at: data.created_at,
                     updated_at: data.updated_at,
                 };
@@ -760,7 +818,7 @@ function ProducerHome() {
         } finally {
             setIsSubmitting(false);
         }
-    }, [productForm, availableCrops, deliveryCost, user]);
+    }, [productForm, availableCrops, deliveryCost, user, allCrops]);
 
     const handleEditProduct = useCallback(async () => {
         if (
@@ -785,16 +843,16 @@ function ProducerHome() {
                 category_id = categoryData?.id;
             }
 
-            // Get crop_type_id if cropType is provided
-            let crop_type_id = null;
-            if (productForm.cropType) {
-                const { data: cropTypeData } = await supabase
-                    .from("crop_types")
-                    .select("id")
-                    .eq("name", productForm.cropType)
-                    .single();
-                crop_type_id = cropTypeData?.id;
+            // Get crop_id - it's required by the schema
+            const selectedCrop = allCrops.find(
+                (c) => c.name === productForm.cropType
+            );
+            if (!selectedCrop) {
+                alert("Please select a valid crop type");
+                setIsSubmitting(false);
+                return;
             }
+            const crop_id = selectedCrop.id;
 
             // Handle image upload and deletion
             let image_url = selectedProduct.image_url; // Keep existing image by default
@@ -829,7 +887,7 @@ function ProducerHome() {
                     name: productForm.name,
                     price: parseFloat(productForm.price),
                     category_id: category_id,
-                    crop_type_id: crop_type_id,
+                    crop_id: crop_id,
                     description: productForm.description,
                     stock: parseFloat(productForm.stock),
                     image_url: image_url,
@@ -839,7 +897,7 @@ function ProducerHome() {
                     `
                     *,
                     categories(name),
-                    crop_types(name)
+                    crops(name)
                 `
                 )
                 .single();
@@ -857,9 +915,8 @@ function ProducerHome() {
                     stock: parseFloat(data.stock),
                     image: data.image_url || "/assets/gray-apple.png",
                     image_url: data.image_url, // Keep for future edit operations
-                    cropType: data.crop_types?.name || productForm.cropType,
-                    unit: data.unit,
-                    status: data.status,
+                    cropType: data.crops?.name || productForm.cropType,
+                    status_id: data.status_id,
                     created_at: data.created_at,
                     updated_at: data.updated_at,
                 };
@@ -878,7 +935,7 @@ function ProducerHome() {
         } finally {
             setIsSubmitting(false);
         }
-    }, [selectedProduct, productForm, deliveryCost, user]);
+    }, [selectedProduct, productForm, deliveryCost, user, allCrops]);
 
     const handleDeleteProduct = async () => {
         if (!selectedProduct) return;
@@ -919,7 +976,7 @@ function ProducerHome() {
         setProductForm({
             name: "",
             price: "",
-            category: "Vegetables",
+            category: categories.length > 1 ? categories[1].name : "",
             description: "",
             stock: "",
             image_url: "",
@@ -931,7 +988,7 @@ function ProducerHome() {
         setCropTypeSearch("");
         setShowCropDropdown(false);
         setSelectedProduct(null);
-    }, [user]);
+    }, [user, categories]);
 
     // Memoized input handlers to prevent modal refresh
     const handleInputChange = useCallback((field, value) => {
@@ -959,6 +1016,8 @@ function ProducerHome() {
     const openEditModal = useCallback(
         (product) => {
             setSelectedProduct(product);
+            const productCropName = product.cropType;
+
             setProductForm({
                 name: product.name,
                 price: product.price.toString(),
@@ -968,12 +1027,12 @@ function ProducerHome() {
                 image_url: product.image_url || "",
                 imageFile: null,
                 imagePreview: "",
-                cropType: product.cropType || "",
+                cropType: productCropName || "",
                 user_id: user?.id || "",
             });
-            setCropTypeSearch(
-                typeof product.cropType === "string" ? product.cropType : ""
-            );
+
+            // Set the crop search field to show the current crop name
+            setCropTypeSearch(productCropName || "");
             setShowEditModal(true);
         },
         [user]
