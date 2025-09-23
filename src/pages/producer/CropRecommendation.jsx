@@ -153,6 +153,13 @@ function CropRecommendation() {
         setConfirmingCrop(crop);
     };
 
+    const isCropAlreadyPlanted = (cropName) => {
+        return plantedCrops.some(
+            (plantedCrop) =>
+                plantedCrop.name === cropName && !plantedCrop.harvestDate
+        );
+    };
+
     const confirmPlantCrop = async () => {
         if (!confirmingCrop || !user) return;
 
@@ -268,7 +275,7 @@ function CropRecommendation() {
             return order[a.recommendation] - order[b.recommendation];
         }
         if (sortBy === "demand") {
-            const order = { High: 1, "Medium-High": 2, Medium: 3, Low: 4 };
+            const order = { "Very High": 1, High: 2, Medium: 3, Low: 4 };
             return order[a.demandLevel] - order[b.demandLevel];
         }
         if (sortBy === "competition") {
@@ -301,9 +308,9 @@ function CropRecommendation() {
 
     const getDemandColor = (level) => {
         switch (level) {
-            case "High":
+            case "Very High":
                 return "text-green-600";
-            case "Medium-High":
+            case "High":
                 return "text-blue-600";
             case "Medium":
                 return "text-yellow-600";
@@ -319,13 +326,6 @@ function CropRecommendation() {
         if (percentage <= 40) return "text-blue-600";
         if (percentage <= 60) return "text-yellow-600";
         return "text-red-600";
-    };
-
-    const isCropAlreadyPlanted = (cropName) => {
-        return plantedCrops.some(
-            (plantedCrop) =>
-                plantedCrop.name === cropName && !plantedCrop.harvestDate
-        );
     };
 
     const activePlantedCropsCount = plantedCrops.filter(

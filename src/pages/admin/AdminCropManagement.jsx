@@ -196,6 +196,7 @@ function AdminCropManagement() {
             harvest_time: formData.harvest_time,
             market_demand: formData.market_demand,
             description: formData.description,
+            updated_at: new Date().toISOString(),
         };
 
         if (selectedCrop) {
