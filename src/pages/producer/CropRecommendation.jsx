@@ -38,7 +38,8 @@ function CropRecommendation() {
         const { count: totalProducers, error: producersError } = await supabase
             .from("profiles")
             .select("id", { count: "exact", head: true })
-            .eq("role_id", 2);
+            .eq("role_id", 2)
+            .neq("id", user ? user.id : null); // Exclude current user
 
         if (producersError) {
             console.error("Error fetching total producers:", producersError);

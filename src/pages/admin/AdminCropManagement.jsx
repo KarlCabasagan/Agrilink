@@ -1,10 +1,12 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useContext } from "react";
 import { Icon } from "@iconify/react";
 import AdminNavigationBar from "../../components/AdminNavigationBar";
 import ConfirmModal from "../../components/ConfirmModal";
 import supabase from "../../SupabaseClient";
+import { AuthContext } from "../../App";
 
 function AdminCropManagement() {
+    const { user } = useContext(AuthContext);
     // Initialize activeTab from localStorage or default to "crops"
     const [activeTab, setActiveTab] = useState(() => {
         return localStorage.getItem("adminCropManagementTab") || "crops";
@@ -55,7 +57,8 @@ function AdminCropManagement() {
         const { count: totalProducers, error: producersError } = await supabase
             .from("profiles")
             .select("id", { count: "exact", head: true })
-            .eq("role_id", 2);
+            .eq("role_id", 2)
+            .neq("id", user?.id);
 
         if (producersError) {
             console.error("Error fetching total producers:", producersError);
