@@ -36,7 +36,7 @@ function FarmingGuides() {
                 summary: guide.description,
                 videoUrl: guide.url,
                 crop_name: guide.crop ? guide.crop.name : "General",
-                addedDate: guide.created_at
+                addedDate: guide.created_at,
             }));
             setFarmingGuides(formattedGuides);
         }
@@ -72,8 +72,6 @@ function FarmingGuides() {
 
         return matchesSearch && matchesCrop;
     });
-
-
 
     if (loading) {
         return (
