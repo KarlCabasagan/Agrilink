@@ -631,6 +631,7 @@ function ProducerHome() {
                     stock,
                     image_url,
                     status_id,
+                    approval_date,
                     created_at,
                     updated_at,
                     categories!inner (
@@ -663,6 +664,7 @@ function ProducerHome() {
                     cropId: product.crops?.id,
                     cropType: product.crops?.name,
                     status_id: product.status_id,
+                    approval_date: product.approval_date,
                     created_at: product.created_at,
                     updated_at: product.updated_at,
                 }));
@@ -881,6 +883,12 @@ function ProducerHome() {
                 }
             }
 
+            // Check if approval_date needs to be reset
+            const needsApprovalReset =
+                selectedProduct.approval_date &&
+                new Date(selectedProduct.approval_date).getTime() ===
+                    new Date("1970-01-01").getTime();
+
             const { data, error } = await supabase
                 .from("products")
                 .update({
@@ -891,6 +899,7 @@ function ProducerHome() {
                     description: productForm.description,
                     stock: parseFloat(productForm.stock),
                     image_url: image_url,
+                    ...(needsApprovalReset ? { approval_date: null } : {}),
                 })
                 .eq("id", selectedProduct.id)
                 .select(
@@ -1469,19 +1478,66 @@ function ProducerHome() {
                                         className="block"
                                     >
                                         <div className="relative">
-                                            <img
-                                                src={
-                                                    product.image ||
-                                                    "/assets/gray-apple.png"
-                                                }
-                                                alt={product.name}
-                                                className="w-full h-40 sm:h-48 object-cover"
-                                                loading="lazy"
-                                                onError={(e) => {
-                                                    e.target.src =
-                                                        "/assets/gray-apple.png";
-                                                }}
-                                            />
+                                            <div className="relative">
+                                                <img
+                                                    src={
+                                                        product.image ||
+                                                        "/assets/gray-apple.png"
+                                                    }
+                                                    alt={product.name}
+                                                    className="w-full h-40 sm:h-48 object-cover"
+                                                    loading="lazy"
+                                                    onError={(e) => {
+                                                        e.target.src =
+                                                            "/assets/gray-apple.png";
+                                                    }}
+                                                />
+                                                {/* Status Label */}
+                                                {(() => {
+                                                    if (
+                                                        product.status_id === 2
+                                                    ) {
+                                                        // Suspended
+                                                        return (
+                                                            <div className="absolute top-2 left-2 bg-red-500 text-white text-xs px-2 py-1 rounded-lg font-medium">
+                                                                Suspended
+                                                            </div>
+                                                        );
+                                                    } else if (
+                                                        !product.approval_date
+                                                    ) {
+                                                        // Waiting for approval
+                                                        return (
+                                                            <div className="absolute top-2 left-2 bg-yellow-500 text-white text-xs px-2 py-1 rounded-lg font-medium">
+                                                                Pending Approval
+                                                            </div>
+                                                        );
+                                                    } else if (
+                                                        new Date(
+                                                            product.approval_date
+                                                        ).getTime() ===
+                                                        new Date(
+                                                            "1970-01-01"
+                                                        ).getTime()
+                                                    ) {
+                                                        // Needs editing
+                                                        return (
+                                                            <div className="absolute top-2 left-2 bg-orange-500 text-white text-xs px-2 py-1 rounded-lg font-medium">
+                                                                Needs Editing
+                                                            </div>
+                                                        );
+                                                    } else if (
+                                                        product.status_id === 1
+                                                    ) {
+                                                        // Active
+                                                        return (
+                                                            <div className="absolute top-2 left-2 bg-green-500 text-white text-xs px-2 py-1 rounded-lg font-medium">
+                                                                Active
+                                                            </div>
+                                                        );
+                                                    }
+                                                })()}
+                                            </div>
                                         </div>
 
                                         <div className="p-3">
