@@ -36,8 +36,7 @@ function FarmingGuides() {
                 summary: guide.description,
                 videoUrl: guide.url,
                 crop_name: guide.crop ? guide.crop.name : "General",
-                addedDate: guide.created_at,
-                views: guide.views || 0, // Assuming a 'views' column exists or defaulting to 0
+                addedDate: guide.created_at
             }));
             setFarmingGuides(formattedGuides);
         }
@@ -74,12 +73,7 @@ function FarmingGuides() {
         return matchesSearch && matchesCrop;
     });
 
-    const formatViews = (views) => {
-        if (views >= 1000) {
-            return `${(views / 1000).toFixed(1)}k views`;
-        }
-        return `${views} views`;
-    };
+
 
     if (loading) {
         return (
@@ -222,9 +216,6 @@ function FarmingGuides() {
                                         <div className="flex items-start justify-between mb-2">
                                             <span className="bg-primary/10 text-primary px-2 py-1 rounded text-xs font-medium">
                                                 {guide.crop_name}
-                                            </span>
-                                            <span className="text-xs text-gray-500">
-                                                {formatViews(guide.views)}
                                             </span>
                                         </div>
 
