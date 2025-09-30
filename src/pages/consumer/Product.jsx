@@ -36,18 +36,22 @@ function Product() {
                     .from("products")
                     .select(
                         `
-                        *,
-                        categories(name),
-                        profiles!user_id(name, address, delivery_cost, minimum_order_quantity),
-                        statuses(name)
-                    `
+                    *,
+                    categories(name),
+                    profiles!user_id(name, address, delivery_cost, minimum_order_quantity),
+                    statuses(name)
+                `
                     )
                     .eq("id", id)
+                    .neq("status_id", 2) // exclude status_id = 2
+                    .not("approval_date", "is", null) // exclude NULL approval_date
+                    .neq("approval_date", "1970-01-01 00:00:00+00") // exclude invalid approval_date
                     .eq("statuses.name", "active")
                     .single();
 
-                if (error) {
+                if (error || !data) {
                     console.error("Error fetching product:", error);
+                    setProduct(null); // show "Product not found"
                     return;
                 }
 
@@ -63,14 +67,14 @@ function Product() {
                     farmerName: data.profiles?.name || "Unknown Farmer",
                     description: data.description,
                     stock: parseFloat(data.stock) || 0,
-                    rating: 4.5, // We'll implement real ratings later
+                    rating: 4.5,
                     minimumOrderQuantity:
                         parseFloat(data.profiles?.minimum_order_quantity) || 1,
                     deliveryCost:
                         parseFloat(data.profiles?.delivery_cost) || 50,
                     pickupLocation: data.profiles?.address || "Farm location",
-                    farmerId: data.user_id, // Updated to use user_id
-                    reviews: [], // We'll implement real reviews later
+                    farmerId: data.user_id,
+                    reviews: [],
                 };
 
                 setProduct(formattedProduct);
@@ -78,7 +82,8 @@ function Product() {
                     Math.max(0.1, formattedProduct.minimumOrderQuantity)
                 );
             } catch (error) {
-                console.error("Error fetching product:", error);
+                console.error("Unexpected error fetching product:", error);
+                setProduct(null); // show "Product not found"
             } finally {
                 setLoading(false);
             }
