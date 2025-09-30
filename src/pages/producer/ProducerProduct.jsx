@@ -36,17 +36,17 @@ function ProducerProduct() {
         const fetchCrops = async () => {
             try {
                 const { data, error } = await supabase
-                    .from('crops')
-                    .select('id, name')
-                    .order('name', { ascending: true });
+                    .from("crops")
+                    .select("id, name")
+                    .order("name", { ascending: true });
 
                 if (error) {
-                    console.error('Error fetching crops:', error);
+                    console.error("Error fetching crops:", error);
                 } else {
                     setCrops(data);
                 }
             } catch (error) {
-                console.error('Unexpected error fetching crops:', error);
+                console.error("Unexpected error fetching crops:", error);
             }
         };
 
@@ -55,9 +55,11 @@ function ProducerProduct() {
 
     // Filter crops based on search term
     const filteredCrops = crops
-        .map(crop => crop.name)
+        .map((crop) => crop.name)
         .filter((cropName) =>
-            cropName.toLowerCase().includes((cropSearchTerm || "").toLowerCase())
+            cropName
+                .toLowerCase()
+                .includes((cropSearchTerm || "").toLowerCase())
         );
 
     const [editForm, setEditForm] = useState({
@@ -303,7 +305,10 @@ function ProducerProduct() {
         }
 
         // Validate crop type
-        if (editForm.cropType && !crops.some(crop => crop.name === editForm.cropType)) {
+        if (
+            editForm.cropType &&
+            !crops.some((crop) => crop.name === editForm.cropType)
+        ) {
             alert(
                 "Please select a valid crop type from the available options."
             );
