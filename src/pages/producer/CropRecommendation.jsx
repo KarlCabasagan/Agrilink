@@ -711,6 +711,9 @@ function CropRecommendation() {
                                                             20
                                                                 ? "bg-primary"
                                                                 : crop.plantingPercentage <=
+                                                                  40
+                                                                ? "bg-blue-600"
+                                                                : crop.plantingPercentage <=
                                                                   60
                                                                 ? "bg-yellow-500"
                                                                 : "bg-red-500"
