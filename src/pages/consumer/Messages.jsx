@@ -262,37 +262,56 @@ function Messages() {
             if (conversationsError) throw conversationsError;
 
             // Format conversations with the latest message
-            const formattedConversations = conversationsData.map((conv) => {
-                const isConsumer = conv.consumer_id === user.id;
-                const otherUser = isConsumer ? conv.producer : conv.consumer;
+            const formattedConversations = conversationsData
+                .filter((conv) => conv && conv.producer) // Filter out invalid conversations
+                .map((conv) => {
+                    // Get the latest message with null checks
+                    const validMessages = Array.isArray(conv.messages)
+                        ? conv.messages
+                        : [];
+                    const latestMessage =
+                        validMessages.length > 0
+                            ? validMessages.sort((a, b) => {
+                                  const dateA = new Date(a.created_at || 0);
+                                  const dateB = new Date(b.created_at || 0);
+                                  return dateB - dateA;
+                              })[0]
+                            : null;
 
-                // Get the latest message
-                const latestMessage =
-                    conv.messages.length > 0
-                        ? conv.messages.sort(
-                              (a, b) =>
-                                  new Date(b.created_at) -
-                                  new Date(a.created_at)
-                          )[0]
-                        : null;
+                    // Calculate unread count
+                    const unreadCount = validMessages.filter(
+                        (msg) =>
+                            msg && msg.sender_id !== user.id && !msg.is_read
+                    ).length;
 
-                return {
-                    id: conv.id,
-                    farmerName: otherUser.name || "Unknown User",
-                    farmerAvatar: otherUser.avatar_url || "/assets/adel.jpg",
-                    lastMessage: latestMessage
-                        ? latestMessage.body
-                        : "No messages yet",
-                    timestamp: latestMessage
-                        ? latestMessage.created_at
-                        : conv.created_at,
-                    unread: 0, // We'll implement this later
-                    online: false, // We'll implement this later
-                    lastMessageTime: latestMessage
-                        ? latestMessage.created_at
-                        : conv.created_at,
-                };
-            });
+                    // Get valid timestamp
+                    let timestamp;
+                    try {
+                        timestamp =
+                            latestMessage?.created_at || conv.created_at;
+                        // Validate the timestamp
+                        const testDate = new Date(timestamp);
+                        if (isNaN(testDate.getTime())) {
+                            timestamp = new Date().toISOString();
+                        }
+                    } catch (e) {
+                        timestamp = new Date().toISOString();
+                    }
+
+                    return {
+                        id: conv.id,
+                        farmerName: conv.producer?.name || "Unknown Farmer",
+                        farmerAvatar:
+                            conv.producer?.avatar_url ||
+                            "/assets/blank-profile.jpg",
+                        lastMessage: latestMessage
+                            ? latestMessage.body
+                            : "No messages yet",
+                        timestamp: timestamp,
+                        unread: unreadCount,
+                        lastMessageTime: new Date(timestamp),
+                    };
+                });
 
             // Sort conversations by the latest message time
             const sortedConversations = formattedConversations.sort(
@@ -350,21 +369,36 @@ function Messages() {
     };
 
     const formatTimestamp = (timestamp) => {
-        const date = new Date(timestamp);
-        const now = new Date();
-        const diffInMs = now - date;
-        const diffInMinutes = Math.floor(diffInMs / (1000 * 60));
-        const diffInHours = Math.floor(diffInMinutes / 60);
-        const diffInDays = Math.floor(diffInHours / 24);
+        if (!timestamp) return "Just now";
 
-        if (diffInMinutes < 1) {
+        try {
+            const date = new Date(timestamp);
+            if (isNaN(date.getTime())) return "Just now";
+
+            const now = new Date();
+            const diffInMs = now - date;
+            const diffInMinutes = Math.floor(diffInMs / (1000 * 60));
+            const diffInHours = Math.floor(diffInMinutes / 60);
+            const diffInDays = Math.floor(diffInHours / 24);
+
+            if (diffInMinutes < 1) {
+                return "Just now";
+            } else if (diffInMinutes < 60) {
+                return `${diffInMinutes} min ago`;
+            } else if (diffInHours < 24) {
+                return `${diffInHours} hour${diffInHours === 1 ? "" : "s"} ago`;
+            } else if (diffInDays < 7) {
+                return `${diffInDays} day${diffInDays === 1 ? "" : "s"} ago`;
+            } else {
+                // Format as date if more than a week old
+                return date.toLocaleDateString("en-US", {
+                    month: "short",
+                    day: "numeric",
+                });
+            }
+        } catch (error) {
+            console.error("Error formatting timestamp:", error);
             return "Just now";
-        } else if (diffInMinutes < 60) {
-            return `${diffInMinutes} min ago`;
-        } else if (diffInHours < 24) {
-            return `${diffInHours} hour${diffInHours === 1 ? "" : "s"} ago`;
-        } else {
-            return `${diffInDays} day${diffInDays === 1 ? "" : "s"} ago`;
         }
     };
 
@@ -745,9 +779,11 @@ function Messages() {
                                                 {conversation.farmerName}
                                             </h3>
                                             <span className="text-xs text-gray-500">
-                                                {formatTimestamp(
-                                                    conversation.timestamp
-                                                )}
+                                                {conversation?.timestamp
+                                                    ? formatTimestamp(
+                                                          conversation.timestamp
+                                                      )
+                                                    : "Just now"}
                                             </span>
                                         </div>
                                         <p className="text-sm text-gray-600 truncate">
