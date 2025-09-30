@@ -98,13 +98,6 @@ function ProducerMessages() {
                           ).length
                         : 0;
 
-                    // Check online status
-                    const lastLogin = consumer.last_login
-                        ? new Date(consumer.last_login)
-                        : null;
-                    const isOnline =
-                        lastLogin && new Date() - lastLogin < 300000; // 5 minutes
-
                     return {
                         id: conv.id,
                         consumer: consumer, // Keep the full consumer object for reference
@@ -118,7 +111,6 @@ function ProducerMessages() {
                             ? formatTimestamp(latestMessage.created_at)
                             : formatTimestamp(conv.created_at),
                         unread: unreadCount,
-                        online: isOnline,
                     };
                 });
 
@@ -131,9 +123,8 @@ function ProducerMessages() {
         }
     };
 
-    // Create refs for subscriptions and auto-scroll
+    // Create refs for subscription and auto-scroll
     const messagesSubscriptionRef = useRef(null);
-    const onlineStatusSubscriptionRef = useRef(null);
     const messagesEndRef = useRef(null);
 
     // Auto-scroll to bottom when messages change
@@ -145,38 +136,15 @@ function ProducerMessages() {
         scrollToBottom();
     }, [conversationMessages]);
 
-    // Set up real-time updates for messages and online status
+    // Set up real-time updates for messages
     useEffect(() => {
         if (!user || !conversations.length) return;
 
-        // Update current user's online status
-        const updateOnlineStatus = async () => {
-            try {
-                const { error } = await supabase
-                    .from("profiles")
-                    .update({ last_login: new Date().toISOString() })
-                    .eq("id", user.id);
-
-                if (error) throw error;
-            } catch (error) {
-                console.error("Error updating online status:", error);
-            }
-        };
-
-        // Update online status immediately and every 4 minutes
-        updateOnlineStatus();
-        const statusInterval = setInterval(updateOnlineStatus, 240000); // 4 minutes
-
         // Cleanup function to safely unsubscribe
         const cleanup = () => {
-            clearInterval(statusInterval);
             if (messagesSubscriptionRef.current) {
                 messagesSubscriptionRef.current.unsubscribe();
                 messagesSubscriptionRef.current = null;
-            }
-            if (onlineStatusSubscriptionRef.current) {
-                onlineStatusSubscriptionRef.current.unsubscribe();
-                onlineStatusSubscriptionRef.current = null;
             }
         };
 
@@ -295,45 +263,7 @@ function ProducerMessages() {
                 )
                 .subscribe();
 
-            // Subscribe to online status changes
-            const consumerIds = conversations
-                .filter((c) => c && c.consumer && c.consumer.id)
-                .map((c) => c.consumer.id)
-                .join(",");
-
-            if (consumerIds) {
-                onlineStatusSubscriptionRef.current = supabase
-                    .channel("online-status-channel")
-                    .on(
-                        "postgres_changes",
-                        {
-                            event: "UPDATE",
-                            schema: "public",
-                            table: "profiles",
-                            filter: `id=in.(${consumerIds})`,
-                        },
-                        (payload) => {
-                            // Update the online status in the conversations state
-                            setConversations((prev) =>
-                                prev.map((conv) => {
-                                    if (conv.consumer.id === payload.new.id) {
-                                        return {
-                                            ...conv,
-                                            online:
-                                                new Date() -
-                                                    new Date(
-                                                        payload.new.last_login
-                                                    ) <
-                                                300000,
-                                        };
-                                    }
-                                    return conv;
-                                })
-                            );
-                        }
-                    )
-                    .subscribe();
-            }
+            // No online status subscription needed
         } catch (error) {
             console.error("Error setting up real-time subscriptions:", error);
             cleanup();
@@ -582,22 +512,6 @@ function ProducerMessages() {
                         <h2 className="font-semibold text-gray-800">
                             {customer.customerName}
                         </h2>
-                        <p
-                            className={`text-xs ${
-                                customer.online
-                                    ? "text-green-600"
-                                    : "text-gray-500"
-                            }`}
-                        >
-                            {customer.online ? (
-                                <>
-                                    <span className="inline-block w-2 h-2 bg-green-500 rounded-full mr-1"></span>
-                                    Online
-                                </>
-                            ) : (
-                                "Offline"
-                            )}
-                        </p>
                     </div>
                     {/* <button className="text-gray-600 hover:text-primary">
                         <Icon
@@ -878,9 +792,6 @@ function ProducerMessages() {
                                                     "/assets/blank-profile.jpg";
                                             }}
                                         />
-                                        {conversation.online && (
-                                            <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 border-2 border-white rounded-full"></div>
-                                        )}
                                     </div>
                                     <div className="flex-1 min-w-0">
                                         <div className="flex items-center justify-between mb-1">
