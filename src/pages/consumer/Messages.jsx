@@ -1,12 +1,13 @@
 import React, { useState, useEffect, useContext } from "react";
 import { Icon } from "@iconify/react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import NavigationBar from "../../components/NavigationBar";
 import supabase from "../../SupabaseClient";
 import { AuthContext } from "../../App.jsx";
 
 function Messages() {
     const { user } = useContext(AuthContext);
+    const [searchParams] = useSearchParams();
     const [searchTerm, setSearchTerm] = useState("");
     const [showSearch, setShowSearch] = useState(false);
     const [conversations, setConversations] = useState([]);
@@ -17,82 +18,101 @@ function Messages() {
     const [conversationMessages, setConversationMessages] = useState([]);
     const [loadingMessages, setLoadingMessages] = useState(false);
 
+    // Handle conversation parameter from URL
+    useEffect(() => {
+        const conversationId = searchParams.get("conversation");
+        if (conversationId) {
+            setSelectedConversation(parseInt(conversationId));
+        }
+    }, [searchParams]);
+
     useEffect(() => {
         if (user) {
             fetchConversations();
         }
     }, [user]);
 
+    // Move the message fetching effect to the top level
+    useEffect(() => {
+        if (selectedConversation) {
+            fetchMessages(selectedConversation);
+        }
+    }, [selectedConversation]);
+
     const fetchConversations = async () => {
         try {
             setLoading(true);
 
-            // Get all messages involving this user as either sender or recipient
-            const { data: messagesData, error: messagesError } = await supabase
-                .from("messages")
-                .select(
-                    `
+            // Get all conversations where the user is either consumer or producer
+            const { data: conversationsData, error: conversationsError } =
+                await supabase
+                    .from("conversations")
+                    .select(
+                        `
                     *,
-                    sender:profiles!messages_sender_id_fkey (
+                    consumer:profiles!conversations_consumer_id_fkey (
                         id,
-                        full_name,
+                        name,
                         avatar_url
                     ),
-                    recipient:profiles!messages_recipient_id_fkey (
+                    producer:profiles!conversations_producer_id_fkey (
                         id,
-                        full_name,
+                        name,
                         avatar_url
+                    ),
+                    messages:messages (
+                        id,
+                        body,
+                        created_at,
+                        sender_id
                     )
                 `
-                )
-                .or(`sender_id.eq.${user.id},recipient_id.eq.${user.id}`)
-                .order("created_at", { ascending: false });
+                    )
+                    .or(`consumer_id.eq.${user.id},producer_id.eq.${user.id}`)
+                    .order("created_at", { ascending: false });
 
-            if (messagesError) throw messagesError;
+            if (conversationsError) throw conversationsError;
 
-            // Group messages by conversation (other user)
-            const conversationMap = new Map();
+            // Format conversations with the latest message
+            const formattedConversations = conversationsData.map((conv) => {
+                const isConsumer = conv.consumer_id === user.id;
+                const otherUser = isConsumer ? conv.producer : conv.consumer;
 
-            messagesData.forEach((message) => {
-                const otherUser =
-                    message.sender_id === user.id
-                        ? message.recipient
-                        : message.sender;
+                // Get the latest message
+                const latestMessage =
+                    conv.messages.length > 0
+                        ? conv.messages.sort(
+                              (a, b) =>
+                                  new Date(b.created_at) -
+                                  new Date(a.created_at)
+                          )[0]
+                        : null;
 
-                const conversationKey = otherUser.id;
-
-                if (!conversationMap.has(conversationKey)) {
-                    conversationMap.set(conversationKey, {
-                        id: otherUser.id,
-                        farmerName: otherUser.full_name,
-                        farmerAvatar:
-                            otherUser.avatar_url || "/assets/adel.jpg",
-                        lastMessage: message.content,
-                        timestamp: message.created_at,
-                        unread: 0, // We'll calculate this properly later
-                        online: false, // We don't have real-time presence yet
-                        lastMessageTime: message.created_at,
-                    });
-                } else {
-                    // Update with latest message if this one is more recent
-                    const existing = conversationMap.get(conversationKey);
-                    if (
-                        new Date(message.created_at) >
-                        new Date(existing.lastMessageTime)
-                    ) {
-                        existing.lastMessage = message.content;
-                        existing.timestamp = message.created_at;
-                        existing.lastMessageTime = message.created_at;
-                    }
-                }
+                return {
+                    id: conv.id,
+                    farmerName: otherUser.name || "Unknown User",
+                    farmerAvatar: otherUser.avatar_url || "/assets/adel.jpg",
+                    lastMessage: latestMessage
+                        ? latestMessage.body
+                        : "No messages yet",
+                    timestamp: latestMessage
+                        ? latestMessage.created_at
+                        : conv.created_at,
+                    unread: 0, // We'll implement this later
+                    online: false, // We'll implement this later
+                    lastMessageTime: latestMessage
+                        ? latestMessage.created_at
+                        : conv.created_at,
+                };
             });
 
-            const conversations = Array.from(conversationMap.values()).sort(
+            // Sort conversations by the latest message time
+            const sortedConversations = formattedConversations.sort(
                 (a, b) =>
                     new Date(b.lastMessageTime) - new Date(a.lastMessageTime)
             );
 
-            setConversations(conversations);
+            setConversations(sortedConversations);
         } catch (error) {
             console.error("Error fetching conversations:", error);
             setError("Failed to load conversations");
@@ -111,27 +131,25 @@ function Messages() {
                     `
                     *,
                     sender:profiles!messages_sender_id_fkey (
-                        full_name,
+                        name,
                         avatar_url
                     )
                 `
                 )
-                .or(
-                    `and(sender_id.eq.${user.id},recipient_id.eq.${conversationId}),and(sender_id.eq.${conversationId},recipient_id.eq.${user.id})`
-                )
+                .eq("conversation_id", conversationId)
                 .order("created_at", { ascending: true });
 
             if (messagesError) throw messagesError;
 
             const transformedMessages = messagesData.map((message) => ({
                 id: message.id,
-                text: message.content,
+                text: message.body,
                 sender: message.sender_id === user.id ? "me" : "farmer",
                 timestamp: new Date(message.created_at).toLocaleTimeString([], {
                     hour: "2-digit",
                     minute: "2-digit",
                 }),
-                senderName: message.sender.full_name,
+                senderName: message.sender.name,
                 senderAvatar: message.sender.avatar_url,
             }));
 
@@ -177,10 +195,9 @@ function Messages() {
         if (newMessage.trim() && selectedConversation) {
             try {
                 const { error } = await supabase.from("messages").insert({
+                    conversation_id: selectedConversation,
                     sender_id: user.id,
-                    recipient_id: selectedConversation,
-                    content: newMessage.trim(),
-                    message_type: "text",
+                    body: newMessage.trim(),
                 });
 
                 if (error) throw error;
@@ -211,12 +228,20 @@ function Messages() {
     if (selectedConversation) {
         const farmer = conversations.find((c) => c.id === selectedConversation);
 
-        // Fetch messages when conversation is selected
-        React.useEffect(() => {
-            if (selectedConversation) {
-                fetchMessages(selectedConversation);
-            }
-        }, [selectedConversation]);
+        // Show loading state if conversations haven't been loaded yet or farmer not found
+        if (loading || !farmer) {
+            return (
+                <div className="min-h-screen w-full flex flex-col items-center justify-center bg-background">
+                    <Icon
+                        icon="mingcute:loading-line"
+                        width="40"
+                        height="40"
+                        className="text-primary mb-4 animate-spin"
+                    />
+                    <p className="text-gray-600">Loading conversation...</p>
+                </div>
+            );
+        }
 
         return (
             <div className="min-h-screen w-full flex flex-col relative bg-background text-text">
@@ -233,25 +258,18 @@ function Messages() {
                         />
                     </button>
                     <img
-                        src={farmer.farmerAvatar}
-                        alt={farmer.farmerName}
+                        src={farmer.farmerAvatar || "/assets/adel.jpg"}
+                        alt={farmer.farmerName || "Farmer"}
                         className="w-10 h-10 rounded-full object-cover"
                     />
                     <div className="flex-1">
                         <h2 className="font-semibold text-gray-800">
-                            {farmer.farmerName}
+                            {farmer.farmerName || "Loading..."}
                         </h2>
-                        <p className="text-xs text-green-600">
+                        <p className="text-xs text-gray-600">
                             {farmer.online ? "Online" : "Offline"}
                         </p>
                     </div>
-                    <button className="text-gray-600 hover:text-primary">
-                        <Icon
-                            icon="mingcute:phone-line"
-                            width="20"
-                            height="20"
-                        />
-                    </button>
                 </div>
 
                 {/* Messages */}

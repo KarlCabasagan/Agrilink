@@ -1,4 +1,4 @@
-import { useParams } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import { useState, useMemo, useEffect, useContext } from "react";
 import { Icon } from "@iconify/react";
 import { Link } from "react-router-dom";
@@ -10,6 +10,7 @@ import { addToCart } from "../../utils/cartUtils.js";
 
 function Product() {
     const { id } = useParams();
+    const navigate = useNavigate();
     const { user } = useContext(AuthContext);
     const [quantity, setQuantity] = useState(0.1);
     const [product, setProduct] = useState(null);
@@ -126,13 +127,76 @@ function Product() {
         }
     };
 
-    const handleMessageFarmer = () => {
-        showModal(
-            "info",
-            "Message Farmer",
-            `Messaging ${product.farmerName} about ${product.name}`,
-            () => setModal((prev) => ({ ...prev, open: false }))
-        );
+    const handleMessageFarmer = async () => {
+        if (!user || !product) return;
+
+        try {
+            // First, check if a conversation already exists
+            const { data: existingConversation, error: fetchError } =
+                await supabase
+                    .from("conversations")
+                    .select("id")
+                    .eq("consumer_id", user.id)
+                    .eq("producer_id", product.farmerId)
+                    .single();
+
+            if (fetchError && fetchError.code !== "PGRST116") {
+                // PGRST116 means no rows returned
+                console.error(
+                    "Error checking existing conversation:",
+                    fetchError
+                );
+                showModal(
+                    "error",
+                    "Error",
+                    "Unable to start conversation. Please try again.",
+                    () => setModal((prev) => ({ ...prev, open: false }))
+                );
+                return;
+            }
+
+            let conversationId;
+
+            if (existingConversation) {
+                // Use existing conversation
+                conversationId = existingConversation.id;
+            } else {
+                // Create new conversation
+                const { data: newConversation, error: insertError } =
+                    await supabase
+                        .from("conversations")
+                        .insert({
+                            consumer_id: user.id,
+                            producer_id: product.farmerId,
+                        })
+                        .select("id")
+                        .single();
+
+                if (insertError) {
+                    console.error("Error creating conversation:", insertError);
+                    showModal(
+                        "error",
+                        "Error",
+                        "Unable to start conversation. Please try again.",
+                        () => setModal((prev) => ({ ...prev, open: false }))
+                    );
+                    return;
+                }
+
+                conversationId = newConversation.id;
+            }
+
+            // Redirect to messages page with the conversation ID
+            navigate(`/messages?conversation=${conversationId}`);
+        } catch (error) {
+            console.error("Error handling message farmer:", error);
+            showModal(
+                "error",
+                "Error",
+                "An unexpected error occurred. Please try again.",
+                () => setModal((prev) => ({ ...prev, open: false }))
+            );
+        }
     };
 
     const increaseQuantity = () => {
