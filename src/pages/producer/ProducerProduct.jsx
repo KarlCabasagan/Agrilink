@@ -27,46 +27,38 @@ function ProducerProduct() {
     const [showDeleteModal, setShowDeleteModal] = useState(false);
     const [reviewSortBy, setReviewSortBy] = useState("newest");
 
-    // Available crops from recommendation system
-    const availableCrops = [
-        "Rice",
-        "Corn",
-        "Tomatoes",
-        "Sweet Corn",
-        "Lettuce",
-        "Cabbage",
-        "Carrots",
-        "Onions",
-        "Potatoes",
-        "Bell Peppers",
-        "Eggplant",
-        "Cucumber",
-        "Squash",
-        "Okra",
-        "Kangkong",
-        "Pechay",
-        "Radish",
-        "Mango",
-        "Banana",
-        "Papaya",
-        "Pineapple",
-        "Coconut",
-        "Rambutan",
-        "Lanzones",
-        "Durian",
-        "Avocado",
-        "Guava",
-        "Jackfruit",
-        "Citrus",
-    ];
-
+    const [crops, setCrops] = useState([]);
     const [cropSearchTerm, setCropSearchTerm] = useState("");
     const [showCropDropdown, setShowCropDropdown] = useState(false);
 
+    // Fetch available crops when component mounts
+    useEffect(() => {
+        const fetchCrops = async () => {
+            try {
+                const { data, error } = await supabase
+                    .from('crops')
+                    .select('id, name')
+                    .order('name', { ascending: true });
+
+                if (error) {
+                    console.error('Error fetching crops:', error);
+                } else {
+                    setCrops(data);
+                }
+            } catch (error) {
+                console.error('Unexpected error fetching crops:', error);
+            }
+        };
+
+        fetchCrops();
+    }, []);
+
     // Filter crops based on search term
-    const filteredCrops = availableCrops.filter((crop) =>
-        crop.toLowerCase().includes((cropSearchTerm || "").toLowerCase())
-    );
+    const filteredCrops = crops
+        .map(crop => crop.name)
+        .filter((cropName) =>
+            cropName.toLowerCase().includes((cropSearchTerm || "").toLowerCase())
+        );
 
     const [editForm, setEditForm] = useState({
         name: "",
@@ -311,7 +303,7 @@ function ProducerProduct() {
         }
 
         // Validate crop type
-        if (editForm.cropType && !availableCrops.includes(editForm.cropType)) {
+        if (editForm.cropType && !crops.some(crop => crop.name === editForm.cropType)) {
             alert(
                 "Please select a valid crop type from the available options."
             );
