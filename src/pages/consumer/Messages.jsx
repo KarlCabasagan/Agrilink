@@ -37,12 +37,35 @@ function Messages() {
     const messagesEndRef = useRef(null);
 
     // Auto-scroll to bottom when messages change
-    const scrollToBottom = () => {
-        messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    const scrollToBottom = (smooth = true) => {
+        if (messagesEndRef.current) {
+            messagesEndRef.current.scrollIntoView({
+                behavior: smooth ? "smooth" : "auto",
+                block: "end",
+            });
+        }
     };
 
+    // Scroll to bottom when messages change, but only if we're already near bottom
+    // or if it's a new message from the current user
     useEffect(() => {
-        scrollToBottom();
+        if (conversationMessages.length === 0) return;
+
+        const lastMessage =
+            conversationMessages[conversationMessages.length - 1];
+        const messageContainer = document.querySelector(".messages-container");
+
+        if (messageContainer) {
+            const { scrollHeight, scrollTop, clientHeight } = messageContainer;
+            const isNearBottom = scrollHeight - scrollTop - clientHeight < 100;
+            const isOwnMessage = lastMessage?.sender === "me";
+            const isTemp = lastMessage?.temp;
+
+            // Always scroll for own messages (including temp ones) or if near bottom
+            if (isOwnMessage || isTemp || isNearBottom) {
+                scrollToBottom(!isTemp); // Use instant scroll for temp messages
+            }
+        }
     }, [conversationMessages]);
 
     // Set up real-time updates for messages
@@ -109,13 +132,50 @@ function Messages() {
                                     sender_id: newMessage.sender_id,
                                     isReceived:
                                         newMessage.sender_id !== user.id,
+                                    created_at: newMessage.created_at,
                                 };
 
-                                // Add to conversation and scroll
-                                setConversationMessages((prev) => [
-                                    ...prev,
-                                    transformedMessage,
-                                ]);
+                                // Update messages with deduplication logic
+                                setConversationMessages((prev) => {
+                                    // If message with this ID already exists, don't add it
+                                    if (
+                                        prev.some(
+                                            (m) =>
+                                                String(m.id) ===
+                                                String(transformedMessage.id)
+                                        )
+                                    ) {
+                                        return prev;
+                                    }
+
+                                    // Check for temporary message to replace
+                                    const tempIdx = prev.findIndex(
+                                        (m) =>
+                                            m.temp &&
+                                            m.sender_id ===
+                                                transformedMessage.sender_id &&
+                                            m.text ===
+                                                transformedMessage.text &&
+                                            Math.abs(
+                                                new Date(m.created_at) -
+                                                    new Date(
+                                                        transformedMessage.created_at
+                                                    )
+                                            ) < 5000
+                                    );
+
+                                    if (tempIdx > -1) {
+                                        // Replace temp message with real one
+                                        const newMessages = [...prev];
+                                        newMessages[tempIdx] =
+                                            transformedMessage;
+                                        return newMessages;
+                                    }
+
+                                    // If no temp message found and not a duplicate, append
+                                    return [...prev, transformedMessage];
+                                });
+
                                 scrollToBottom();
 
                                 // If it's from the other person, mark as read
@@ -415,34 +475,80 @@ function Messages() {
 
     const handleSendMessage = async () => {
         if (newMessage.trim() && selectedConversation) {
+            const messageText = newMessage.trim();
+            const tempId = `temp-${Date.now()}`;
+            const timestamp = new Date();
+
+            // Create temporary message object for optimistic UI
+            const tempMsg = {
+                id: tempId,
+                text: messageText,
+                sender: "me",
+                timestamp: timestamp.toLocaleTimeString([], {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                }),
+                is_read: false,
+                sender_id: user.id,
+                created_at: timestamp.toISOString(),
+                temp: true, // Flag to identify temporary messages
+            };
+
+            // Clear input immediately for better UX
+            setNewMessage("");
+
+            // Optimistically add to UI
+            setConversationMessages((prev) => [...prev, tempMsg]);
+
+            // Optimistically update conversations list
+            setConversations((prev) =>
+                prev.map((conv) =>
+                    conv.id === selectedConversation
+                        ? {
+                              ...conv,
+                              lastMessage: messageText,
+                              timestamp: timestamp.toISOString(),
+                              lastMessageTime: timestamp,
+                          }
+                        : conv
+                )
+            );
+
             try {
-                const { error } = await supabase.from("messages").insert({
-                    conversation_id: selectedConversation,
-                    sender_id: user.id,
-                    body: newMessage.trim(),
-                });
+                // Send to Supabase
+                const { data, error } = await supabase
+                    .from("messages")
+                    .insert({
+                        conversation_id: selectedConversation,
+                        sender_id: user.id,
+                        body: messageText,
+                        is_read: false,
+                    })
+                    .select()
+                    .single();
 
                 if (error) throw error;
 
-                // Add the new message to the conversation
-                const newMsg = {
-                    id: Date.now(), // Temporary ID
-                    text: newMessage.trim(),
-                    sender: "me",
-                    timestamp: new Date().toLocaleTimeString([], {
-                        hour: "2-digit",
-                        minute: "2-digit",
-                    }),
-                };
-
-                setConversationMessages((prev) => [...prev, newMsg]);
-                setNewMessage("");
-
-                // Update the conversation list
-                fetchConversations();
+                // Replace temporary message with real one when we get the response
+                // This prevents duplicates as the subscription will update this message
+                setConversationMessages((prev) =>
+                    prev.map((msg) =>
+                        msg.id === tempId
+                            ? {
+                                  ...msg,
+                                  id: data.id,
+                                  temp: false,
+                              }
+                            : msg
+                    )
+                );
             } catch (error) {
                 console.error("Error sending message:", error);
-                alert("Failed to send message. Please try again.");
+                // Remove temporary message if send failed
+                setConversationMessages((prev) =>
+                    prev.filter((msg) => msg.id !== tempId)
+                );
+                setError("Failed to send message");
             }
         }
     };
@@ -492,7 +598,7 @@ function Messages() {
                 </div>
 
                 {/* Messages */}
-                <div className="flex-1 mt-16 mb-16 px-4 py-4 overflow-y-auto">
+                <div className="flex-1 mt-16 mb-16 px-4 py-4 overflow-y-auto messages-container">
                     <div className="space-y-4">
                         {loadingMessages ? (
                             <div className="text-center py-8">
