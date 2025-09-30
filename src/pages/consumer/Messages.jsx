@@ -39,32 +39,20 @@ function Messages() {
     // Auto-scroll to bottom when messages change
     const scrollToBottom = (smooth = true) => {
         if (messagesEndRef.current) {
-            messagesEndRef.current.scrollIntoView({
-                behavior: smooth ? "smooth" : "auto",
-                block: "end",
-            });
+            setTimeout(() => {
+                messagesEndRef.current.scrollIntoView({
+                    behavior: smooth ? "smooth" : "auto",
+                    block: "end",
+                    inline: "nearest",
+                });
+            }, 100); // Small delay to ensure DOM has updated
         }
     };
 
-    // Scroll to bottom when messages change, but only if we're already near bottom
-    // or if it's a new message from the current user
+    // Scroll to bottom when messages change
     useEffect(() => {
-        if (conversationMessages.length === 0) return;
-
-        const lastMessage =
-            conversationMessages[conversationMessages.length - 1];
-        const messageContainer = document.querySelector(".messages-container");
-
-        if (messageContainer) {
-            const { scrollHeight, scrollTop, clientHeight } = messageContainer;
-            const isNearBottom = scrollHeight - scrollTop - clientHeight < 100;
-            const isOwnMessage = lastMessage?.sender === "me";
-            const isTemp = lastMessage?.temp;
-
-            // Always scroll for own messages (including temp ones) or if near bottom
-            if (isOwnMessage || isTemp || isNearBottom) {
-                scrollToBottom(!isTemp); // Use instant scroll for temp messages
-            }
+        if (conversationMessages.length > 0) {
+            scrollToBottom();
         }
     }, [conversationMessages]);
 
@@ -176,7 +164,8 @@ function Messages() {
                                     return [...prev, transformedMessage];
                                 });
 
-                                scrollToBottom();
+                                // Ensure scroll to bottom happens after state update
+                                requestAnimationFrame(() => scrollToBottom());
 
                                 // If it's from the other person, mark as read
                                 if (newMessage.sender_id !== user.id) {
@@ -421,6 +410,9 @@ function Messages() {
             }));
 
             setConversationMessages(transformedMessages);
+
+            // Use requestAnimationFrame to ensure scroll happens after render
+            requestAnimationFrame(() => scrollToBottom(false));
         } catch (error) {
             console.error("Error fetching messages:", error);
         } finally {
@@ -598,7 +590,7 @@ function Messages() {
                 </div>
 
                 {/* Messages */}
-                <div className="flex-1 mt-16 mb-16 px-4 py-4 overflow-y-auto messages-container">
+                <div className="flex-1 mt-16 mb-16 px-4 py-4 overflow-y-auto">
                     <div className="space-y-4">
                         {loadingMessages ? (
                             <div className="text-center py-8">
@@ -629,41 +621,37 @@ function Messages() {
                             </div>
                         ) : (
                             <>
-                                {Array.isArray(conversationMessages) &&
-                                    conversationMessages.map((message) =>
-                                        message?.id ? (
-                                            <div
-                                                key={message.id}
-                                                className={`flex ${
+                                {conversationMessages.map((message) => (
+                                    <div
+                                        key={message.id}
+                                        className={`flex ${
+                                            message.sender === "me"
+                                                ? "justify-end"
+                                                : "justify-start"
+                                        }`}
+                                    >
+                                        <div
+                                            className={`max-w-xs px-4 py-2 rounded-2xl ${
+                                                message.sender === "me"
+                                                    ? "bg-primary text-white"
+                                                    : "bg-white shadow-sm"
+                                            }`}
+                                        >
+                                            <p className="text-sm">
+                                                {message.text}
+                                            </p>
+                                            <p
+                                                className={`text-xs mt-1 ${
                                                     message.sender === "me"
-                                                        ? "justify-end"
-                                                        : "justify-start"
+                                                        ? "text-primary-light"
+                                                        : "text-gray-500"
                                                 }`}
                                             >
-                                                <div
-                                                    className={`max-w-xs px-4 py-2 rounded-2xl ${
-                                                        message.sender === "me"
-                                                            ? "bg-primary text-white"
-                                                            : "bg-white shadow-sm"
-                                                    }`}
-                                                >
-                                                    <p className="text-sm">
-                                                        {message.text}
-                                                    </p>
-                                                    <p
-                                                        className={`text-xs mt-1 ${
-                                                            message.sender ===
-                                                            "me"
-                                                                ? "text-primary-light"
-                                                                : "text-gray-500"
-                                                        }`}
-                                                    >
-                                                        {message.timestamp}
-                                                    </p>
-                                                </div>
-                                            </div>
-                                        ) : null
-                                    )}
+                                                {message.timestamp}
+                                            </p>
+                                        </div>
+                                    </div>
+                                ))}
                                 <div ref={messagesEndRef} />
                             </>
                         )}
