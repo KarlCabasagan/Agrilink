@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useContext } from "react";
+import React, { useState, useEffect, useContext, useRef } from "react";
 import { Icon } from "@iconify/react";
 import { Link, useSearchParams } from "react-router-dom";
 import ProducerNavigationBar from "../../components/ProducerNavigationBar";
@@ -47,13 +47,15 @@ function ProducerMessages() {
                     consumer:profiles!conversations_consumer_id_fkey (
                         id,
                         name,
-                        avatar_url
+                        avatar_url,
+                        last_login
                     ),
                     messages (
                         id,
                         body,
                         created_at,
-                        sender_id
+                        sender_id,
+                        is_read
                     )
                 `
                     )
@@ -63,34 +65,62 @@ function ProducerMessages() {
             if (conversationsError) throw conversationsError;
 
             // Format conversations with the latest message
-            const formattedConversations = conversationsData.map((conv) => {
-                const consumer = conv.consumer;
+            const formattedConversations = conversationsData
+                .filter((conv) => conv && conv.consumer) // Filter out invalid conversations
+                .map((conv) => {
+                    const consumer = conv.consumer;
 
-                // Get the latest message
-                const latestMessage =
-                    conv.messages.length > 0
-                        ? conv.messages.sort(
-                              (a, b) =>
-                                  new Date(b.created_at) -
-                                  new Date(a.created_at)
-                          )[0]
+                    // Get the latest message
+                    const latestMessage =
+                        conv.messages.length > 0
+                            ? conv.messages.sort(
+                                  (a, b) =>
+                                      new Date(b.created_at) -
+                                      new Date(a.created_at)
+                              )[0]
+                            : null;
+
+                    // Ensure we have valid consumer data
+                    if (!consumer) {
+                        console.warn(
+                            `No consumer data found for conversation ${conv.id}`
+                        );
+                        return null;
+                    }
+
+                    // Calculate unread messages
+                    const unreadCount = conv.messages
+                        ? conv.messages.filter(
+                              (msg) =>
+                                  msg &&
+                                  msg.sender_id !== user.id &&
+                                  !msg.is_read
+                          ).length
+                        : 0;
+
+                    // Check online status
+                    const lastLogin = consumer.last_login
+                        ? new Date(consumer.last_login)
                         : null;
+                    const isOnline =
+                        lastLogin && new Date() - lastLogin < 300000; // 5 minutes
 
-                return {
-                    id: conv.id,
-                    customerName: consumer.name || "Unknown Customer",
-                    customerAvatar:
-                        consumer.avatar_url || "/assets/blank-profile.jpg",
-                    lastMessage: latestMessage
-                        ? latestMessage.body
-                        : "No messages yet",
-                    timestamp: latestMessage
-                        ? formatTimestamp(latestMessage.created_at)
-                        : formatTimestamp(conv.created_at),
-                    unread: 0, // We'll implement this later
-                    online: false, // We'll implement this later
-                };
-            });
+                    return {
+                        id: conv.id,
+                        consumer: consumer, // Keep the full consumer object for reference
+                        customerName: consumer.name || "Unknown Customer",
+                        customerAvatar:
+                            consumer.avatar_url || "/assets/blank-profile.jpg",
+                        lastMessage: latestMessage
+                            ? latestMessage.body
+                            : "No messages yet",
+                        timestamp: latestMessage
+                            ? formatTimestamp(latestMessage.created_at)
+                            : formatTimestamp(conv.created_at),
+                        unread: unreadCount,
+                        online: isOnline,
+                    };
+                });
 
             setConversations(formattedConversations);
         } catch (error) {
@@ -100,6 +130,131 @@ function ProducerMessages() {
             setLoading(false);
         }
     };
+
+    // Create refs for subscriptions
+    const messagesSubscriptionRef = useRef(null);
+    const onlineStatusSubscriptionRef = useRef(null);
+
+    // Set up real-time updates for messages and online status
+    useEffect(() => {
+        if (!user || !conversations.length) return;
+
+        // Update current user's online status
+        const updateOnlineStatus = async () => {
+            try {
+                const { error } = await supabase
+                    .from("profiles")
+                    .update({ last_login: new Date().toISOString() })
+                    .eq("id", user.id);
+
+                if (error) throw error;
+            } catch (error) {
+                console.error("Error updating online status:", error);
+            }
+        };
+
+        // Update online status immediately and every 4 minutes
+        updateOnlineStatus();
+        const statusInterval = setInterval(updateOnlineStatus, 240000); // 4 minutes
+
+        // Cleanup function to safely unsubscribe
+        const cleanup = () => {
+            clearInterval(statusInterval);
+            if (messagesSubscriptionRef.current) {
+                messagesSubscriptionRef.current.unsubscribe();
+                messagesSubscriptionRef.current = null;
+            }
+            if (onlineStatusSubscriptionRef.current) {
+                onlineStatusSubscriptionRef.current.unsubscribe();
+                onlineStatusSubscriptionRef.current = null;
+            }
+        };
+
+        // Create filter condition only if we have conversations
+        const conversationIds = conversations
+            .filter((c) => c && c.id) // Ensure we only include valid conversations
+            .map((c) => c.id)
+            .join(",");
+
+        if (!conversationIds) {
+            cleanup();
+            return;
+        }
+
+        try {
+            // Subscribe to new messages
+            messagesSubscriptionRef.current = supabase
+                .channel("messages-channel")
+                .on(
+                    "postgres_changes",
+                    {
+                        event: "*",
+                        schema: "public",
+                        table: "messages",
+                        filter: `conversation_id=in.(${conversationIds})`,
+                    },
+                    (payload) => {
+                        // Refresh conversations to update latest messages and unread counts
+                        fetchConversations();
+
+                        // If the message is for the currently selected conversation, fetch new messages
+                        if (
+                            selectedConversation ===
+                            payload.new?.conversation_id
+                        ) {
+                            fetchMessages(selectedConversation);
+                        }
+                    }
+                )
+                .subscribe();
+
+            // Subscribe to online status changes
+            const consumerIds = conversations
+                .filter((c) => c && c.consumer && c.consumer.id)
+                .map((c) => c.consumer.id)
+                .join(",");
+
+            if (consumerIds) {
+                onlineStatusSubscriptionRef.current = supabase
+                    .channel("online-status-channel")
+                    .on(
+                        "postgres_changes",
+                        {
+                            event: "UPDATE",
+                            schema: "public",
+                            table: "profiles",
+                            filter: `id=in.(${consumerIds})`,
+                        },
+                        (payload) => {
+                            // Update the online status in the conversations state
+                            setConversations((prev) =>
+                                prev.map((conv) => {
+                                    if (conv.consumer.id === payload.new.id) {
+                                        return {
+                                            ...conv,
+                                            online:
+                                                new Date() -
+                                                    new Date(
+                                                        payload.new.last_login
+                                                    ) <
+                                                300000,
+                                        };
+                                    }
+                                    return conv;
+                                })
+                            );
+                        }
+                    )
+                    .subscribe();
+            }
+        } catch (error) {
+            console.error("Error setting up real-time subscriptions:", error);
+            cleanup();
+        }
+
+        // Cleanup function for useEffect
+        return cleanup;
+    }, [user, conversations, selectedConversation]);
 
     const formatTimestamp = (timestamp) => {
         const date = new Date(timestamp);
@@ -143,7 +298,10 @@ function ProducerMessages() {
                     sender:profiles!messages_sender_id_fkey (
                         name,
                         avatar_url
-                    )
+                    ),
+                    sender_id,
+                    conversation_id,
+                    is_read
                 `
                 )
                 .eq("conversation_id", conversationId)
@@ -161,6 +319,9 @@ function ProducerMessages() {
                 }),
                 senderName: message.sender.name,
                 senderAvatar: message.sender.avatar_url,
+                is_read: message.is_read,
+                // Message is received by current user if they're not the sender
+                isReceived: message.sender_id !== user.id,
             }));
 
             setConversationMessages(transformedMessages);
@@ -172,12 +333,86 @@ function ProducerMessages() {
         }
     };
 
-    // Effect to fetch messages when a conversation is selected
+    // Effect to fetch messages and mark them as read when a conversation is selected
     useEffect(() => {
-        if (selectedConversation) {
-            fetchMessages(selectedConversation);
-        }
-    }, [selectedConversation]);
+        if (!selectedConversation || !user?.id) return;
+
+        let mounted = true;
+
+        const markConversationMessagesAsRead = async () => {
+            try {
+                console.log(
+                    "Marking messages as read for conversation:",
+                    selectedConversation
+                );
+
+                // First verify this user is part of the conversation
+                const { data: conversation, error: convError } = await supabase
+                    .from("conversations")
+                    .select("id")
+                    .eq("id", selectedConversation)
+                    .or(`consumer_id.eq.${user.id},producer_id.eq.${user.id}`)
+                    .single();
+
+                if (convError || !conversation) {
+                    console.error(
+                        "Not authorized to mark messages in this conversation:",
+                        convError
+                    );
+                    return;
+                }
+
+                // Update messages that are:
+                // 1. In this conversation
+                // 2. Not sent by current user
+                // 3. Currently unread
+                const { data, error } = await supabase
+                    .from("messages")
+                    .update({ is_read: true })
+                    .eq("conversation_id", selectedConversation)
+                    .neq("sender_id", user.id)
+                    .eq("is_read", false)
+                    .select("id");
+
+                if (error) {
+                    console.error("Failed to mark messages as read:", error);
+                    return;
+                }
+
+                console.log(`Marked ${data?.length || 0} messages as read`);
+
+                // Only update UI if we successfully updated some messages
+                if (mounted && data?.length) {
+                    // Update the messages in the current conversation view
+                    setConversationMessages((prev) =>
+                        prev.map((m) => ({
+                            ...m,
+                            is_read: m.sender_id !== user.id ? true : m.is_read,
+                        }))
+                    );
+
+                    // Update the unread count in the conversations list
+                    setConversations((prev) =>
+                        prev.map((conv) =>
+                            conv.id === selectedConversation
+                                ? { ...conv, unread: 0 }
+                                : conv
+                        )
+                    );
+                }
+            } catch (err) {
+                console.error("Error marking messages as read:", err);
+            }
+        };
+
+        // First fetch messages, then mark as read
+        fetchMessages(selectedConversation);
+        markConversationMessagesAsRead();
+
+        return () => {
+            mounted = false;
+        };
+    }, [selectedConversation, user?.id]);
 
     const handleSendMessage = async () => {
         if (newMessage.trim() && selectedConversation) {
@@ -186,6 +421,7 @@ function ProducerMessages() {
                     conversation_id: selectedConversation,
                     sender_id: user.id,
                     body: newMessage.trim(),
+                    is_read: false, // Explicitly set default value
                 });
 
                 if (error) throw error;
@@ -199,6 +435,8 @@ function ProducerMessages() {
                         hour: "2-digit",
                         minute: "2-digit",
                     }),
+                    is_read: false,
+                    sender_id: user.id,
                 };
 
                 setConversationMessages((prev) => [...prev, newMsg]);
@@ -246,8 +484,21 @@ function ProducerMessages() {
                         <h2 className="font-semibold text-gray-800">
                             {customer.customerName}
                         </h2>
-                        <p className="text-xs text-green-600">
-                            {customer.online ? "Online" : "Offline"}
+                        <p
+                            className={`text-xs ${
+                                customer.online
+                                    ? "text-green-600"
+                                    : "text-gray-500"
+                            }`}
+                        >
+                            {customer.online ? (
+                                <>
+                                    <span className="inline-block w-2 h-2 bg-green-500 rounded-full mr-1"></span>
+                                    Online
+                                </>
+                            ) : (
+                                "Offline"
+                            )}
                         </p>
                     </div>
                     <button className="text-gray-600 hover:text-primary">
