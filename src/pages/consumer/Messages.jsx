@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useContext } from "react";
+import React, { useState, useEffect, useContext, useRef } from "react";
 import { Icon } from "@iconify/react";
 import { Link, useSearchParams } from "react-router-dom";
 import NavigationBar from "../../components/NavigationBar";
@@ -32,43 +32,231 @@ function Messages() {
         }
     }, [user]);
 
-    // Move the message fetching effect to the top level
+    // Create refs for subscription and auto-scroll
+    const messagesSubscriptionRef = useRef(null);
+    const messagesEndRef = useRef(null);
+
+    // Auto-scroll to bottom when messages change
+    const scrollToBottom = () => {
+        messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    };
+
     useEffect(() => {
-        if (selectedConversation) {
-            fetchMessages(selectedConversation);
+        scrollToBottom();
+    }, [conversationMessages]);
+
+    // Set up real-time updates for messages
+    useEffect(() => {
+        if (!user || !conversations.length) return;
+
+        // Cleanup function to safely unsubscribe
+        const cleanup = () => {
+            if (messagesSubscriptionRef.current) {
+                messagesSubscriptionRef.current.unsubscribe();
+                messagesSubscriptionRef.current = null;
+            }
+        };
+
+        // Create filter condition only if we have conversations
+        const conversationIds = conversations
+            .filter((c) => c && c.id)
+            .map((c) => c.id)
+            .join(",");
+
+        if (!conversationIds) {
+            cleanup();
+            return;
         }
-    }, [selectedConversation]);
+
+        try {
+            // Subscribe to new messages
+            messagesSubscriptionRef.current = supabase
+                .channel("messages-channel")
+                .on(
+                    "postgres_changes",
+                    {
+                        event: "*",
+                        schema: "public",
+                        table: "messages",
+                        filter: `conversation_id=in.(${conversationIds})`,
+                    },
+                    async (payload) => {
+                        const newMessage = payload.new;
+                        const event = payload.eventType;
+
+                        // Handle new messages
+                        if (event === "INSERT") {
+                            // If message belongs to current conversation
+                            if (
+                                selectedConversation ===
+                                newMessage?.conversation_id
+                            ) {
+                                // Transform the message for our UI format
+                                const transformedMessage = {
+                                    id: newMessage.id,
+                                    text: newMessage.body,
+                                    sender:
+                                        newMessage.sender_id === user.id
+                                            ? "me"
+                                            : "farmer",
+                                    timestamp: new Date(
+                                        newMessage.created_at
+                                    ).toLocaleTimeString([], {
+                                        hour: "2-digit",
+                                        minute: "2-digit",
+                                    }),
+                                    is_read: newMessage.is_read,
+                                    sender_id: newMessage.sender_id,
+                                    isReceived:
+                                        newMessage.sender_id !== user.id,
+                                };
+
+                                // Add to conversation and scroll
+                                setConversationMessages((prev) => [
+                                    ...prev,
+                                    transformedMessage,
+                                ]);
+                                scrollToBottom();
+
+                                // If it's from the other person, mark as read
+                                if (newMessage.sender_id !== user.id) {
+                                    await supabase
+                                        .from("messages")
+                                        .update({ is_read: true })
+                                        .eq("id", newMessage.id);
+                                }
+                            }
+
+                            // Update conversations list without full reload
+                            setConversations((prev) =>
+                                prev.map((conv) =>
+                                    conv.id === newMessage.conversation_id
+                                        ? {
+                                              ...conv,
+                                              lastMessage: newMessage.body,
+                                              timestamp: formatTimestamp(
+                                                  newMessage.created_at
+                                              ),
+                                              unread:
+                                                  newMessage.sender_id !==
+                                                      user.id &&
+                                                  selectedConversation !==
+                                                      conv.id
+                                                      ? conv.unread + 1
+                                                      : conv.unread,
+                                          }
+                                        : conv
+                                )
+                            );
+                        }
+
+                        // Handle message updates (e.g., is_read status)
+                        if (event === "UPDATE") {
+                            if (
+                                selectedConversation ===
+                                newMessage?.conversation_id
+                            ) {
+                                setConversationMessages((prev) =>
+                                    prev.map((msg) =>
+                                        msg.id === newMessage.id
+                                            ? {
+                                                  ...msg,
+                                                  is_read: newMessage.is_read,
+                                              }
+                                            : msg
+                                    )
+                                );
+                            }
+                        }
+                    }
+                )
+                .subscribe();
+        } catch (error) {
+            console.error("Error setting up real-time subscriptions:", error);
+            cleanup();
+        }
+
+        // Cleanup function for useEffect
+        return cleanup;
+    }, [user, conversations, selectedConversation]);
+
+    // Fetch and mark messages as read when conversation is selected
+    useEffect(() => {
+        if (!selectedConversation || !user?.id) return;
+
+        let mounted = true;
+
+        const markConversationMessagesAsRead = async () => {
+            if (!mounted) return;
+
+            try {
+                // Optimistically update UI first
+                setConversationMessages((prev) =>
+                    prev.map((m) => ({
+                        ...m,
+                        is_read: m.sender_id !== user.id ? true : m.is_read,
+                    }))
+                );
+
+                setConversations((prev) =>
+                    prev.map((conv) =>
+                        conv.id === selectedConversation
+                            ? { ...conv, unread: 0 }
+                            : conv
+                    )
+                );
+
+                // Then update in database
+                const { error } = await supabase
+                    .from("messages")
+                    .update({ is_read: true })
+                    .eq("conversation_id", selectedConversation)
+                    .neq("sender_id", user.id)
+                    .eq("is_read", false);
+
+                if (error) {
+                    console.error("Failed to mark messages as read:", error);
+                }
+            } catch (err) {
+                console.error("Error marking messages as read:", err);
+            }
+        };
+
+        // First fetch messages, then mark as read
+        fetchMessages(selectedConversation);
+        markConversationMessagesAsRead();
+
+        return () => {
+            mounted = false;
+        };
+    }, [selectedConversation, user?.id]);
 
     const fetchConversations = async () => {
         try {
             setLoading(true);
 
-            // Get all conversations where the user is either consumer or producer
+            // Get all conversations where the user is the consumer
             const { data: conversationsData, error: conversationsError } =
                 await supabase
                     .from("conversations")
                     .select(
                         `
                     *,
-                    consumer:profiles!conversations_consumer_id_fkey (
-                        id,
-                        name,
-                        avatar_url
-                    ),
                     producer:profiles!conversations_producer_id_fkey (
                         id,
                         name,
                         avatar_url
                     ),
-                    messages:messages (
+                    messages (
                         id,
                         body,
                         created_at,
-                        sender_id
+                        sender_id,
+                        is_read
                     )
                 `
                     )
-                    .or(`consumer_id.eq.${user.id},producer_id.eq.${user.id}`)
+                    .eq("consumer_id", user.id)
                     .order("created_at", { ascending: false });
 
             if (conversationsError) throw conversationsError;
@@ -266,9 +454,6 @@ function Messages() {
                         <h2 className="font-semibold text-gray-800">
                             {farmer.farmerName || "Loading..."}
                         </h2>
-                        <p className="text-xs text-gray-600">
-                            {farmer.online ? "Online" : "Offline"}
-                        </p>
                     </div>
                 </div>
 
@@ -303,37 +488,44 @@ function Messages() {
                                 </p>
                             </div>
                         ) : (
-                            conversationMessages.map((message) => (
-                                <div
-                                    key={message.id}
-                                    className={`flex ${
-                                        message.sender === "me"
-                                            ? "justify-end"
-                                            : "justify-start"
-                                    }`}
-                                >
-                                    <div
-                                        className={`max-w-xs px-4 py-2 rounded-2xl ${
-                                            message.sender === "me"
-                                                ? "bg-primary text-white"
-                                                : "bg-white shadow-sm"
-                                        }`}
-                                    >
-                                        <p className="text-sm">
-                                            {message.text}
-                                        </p>
-                                        <p
-                                            className={`text-xs mt-1 ${
-                                                message.sender === "me"
-                                                    ? "text-primary-light"
-                                                    : "text-gray-500"
-                                            }`}
-                                        >
-                                            {message.timestamp}
-                                        </p>
-                                    </div>
-                                </div>
-                            ))
+                            <>
+                                {Array.isArray(conversationMessages) &&
+                                    conversationMessages.map((message) =>
+                                        message?.id ? (
+                                            <div
+                                                key={message.id}
+                                                className={`flex ${
+                                                    message.sender === "me"
+                                                        ? "justify-end"
+                                                        : "justify-start"
+                                                }`}
+                                            >
+                                                <div
+                                                    className={`max-w-xs px-4 py-2 rounded-2xl ${
+                                                        message.sender === "me"
+                                                            ? "bg-primary text-white"
+                                                            : "bg-white shadow-sm"
+                                                    }`}
+                                                >
+                                                    <p className="text-sm">
+                                                        {message.text}
+                                                    </p>
+                                                    <p
+                                                        className={`text-xs mt-1 ${
+                                                            message.sender ===
+                                                            "me"
+                                                                ? "text-primary-light"
+                                                                : "text-gray-500"
+                                                        }`}
+                                                    >
+                                                        {message.timestamp}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        ) : null
+                                    )}
+                                <div ref={messagesEndRef} />
+                            </>
                         )}
                     </div>
                 </div>
@@ -535,13 +727,17 @@ function Messages() {
                                 <div className="flex items-center gap-3">
                                     <div className="relative">
                                         <img
-                                            src={conversation.farmerAvatar}
+                                            src={
+                                                conversation.farmerAvatar ||
+                                                "/assets/blank-profile.jpg"
+                                            }
                                             alt={conversation.farmerName}
                                             className="w-12 h-12 rounded-full object-cover"
+                                            onError={(e) => {
+                                                e.target.src =
+                                                    "/assets/blank-profile.jpg";
+                                            }}
                                         />
-                                        {conversation.online && (
-                                            <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 border-2 border-white rounded-full"></div>
-                                        )}
                                     </div>
                                     <div className="flex-1 min-w-0">
                                         <div className="flex items-center justify-between mb-1">
