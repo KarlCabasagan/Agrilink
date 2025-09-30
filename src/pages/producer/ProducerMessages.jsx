@@ -131,9 +131,19 @@ function ProducerMessages() {
         }
     };
 
-    // Create refs for subscriptions
+    // Create refs for subscriptions and auto-scroll
     const messagesSubscriptionRef = useRef(null);
     const onlineStatusSubscriptionRef = useRef(null);
+    const messagesEndRef = useRef(null);
+
+    // Auto-scroll to bottom when messages change
+    const scrollToBottom = () => {
+        messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    };
+
+    useEffect(() => {
+        scrollToBottom();
+    }, [conversationMessages]);
 
     // Set up real-time updates for messages and online status
     useEffect(() => {
@@ -193,16 +203,93 @@ function ProducerMessages() {
                         table: "messages",
                         filter: `conversation_id=in.(${conversationIds})`,
                     },
-                    (payload) => {
-                        // Refresh conversations to update latest messages and unread counts
-                        fetchConversations();
+                    async (payload) => {
+                        const newMessage = payload.new;
+                        const event = payload.eventType;
 
-                        // If the message is for the currently selected conversation, fetch new messages
-                        if (
-                            selectedConversation ===
-                            payload.new?.conversation_id
-                        ) {
-                            fetchMessages(selectedConversation);
+                        // Handle new messages
+                        if (event === "INSERT") {
+                            // If message belongs to current conversation
+                            if (
+                                selectedConversation ===
+                                newMessage?.conversation_id
+                            ) {
+                                // Transform the message for our UI format
+                                const transformedMessage = {
+                                    id: newMessage.id,
+                                    text: newMessage.body,
+                                    sender:
+                                        newMessage.sender_id === user.id
+                                            ? "me"
+                                            : "customer",
+                                    timestamp: new Date(
+                                        newMessage.created_at
+                                    ).toLocaleTimeString([], {
+                                        hour: "2-digit",
+                                        minute: "2-digit",
+                                    }),
+                                    is_read: newMessage.is_read,
+                                    sender_id: newMessage.sender_id,
+                                    isReceived:
+                                        newMessage.sender_id !== user.id,
+                                };
+
+                                // Add to conversation and scroll
+                                setConversationMessages((prev) => [
+                                    ...prev,
+                                    transformedMessage,
+                                ]);
+                                scrollToBottom();
+
+                                // If it's from the other person, mark as read
+                                if (newMessage.sender_id !== user.id) {
+                                    await supabase
+                                        .from("messages")
+                                        .update({ is_read: true })
+                                        .eq("id", newMessage.id);
+                                }
+                            }
+
+                            // Update conversations list without full reload
+                            setConversations((prev) =>
+                                prev.map((conv) =>
+                                    conv.id === newMessage.conversation_id
+                                        ? {
+                                              ...conv,
+                                              lastMessage: newMessage.body,
+                                              timestamp: formatTimestamp(
+                                                  newMessage.created_at
+                                              ),
+                                              unread:
+                                                  newMessage.sender_id !==
+                                                      user.id &&
+                                                  selectedConversation !==
+                                                      conv.id
+                                                      ? conv.unread + 1
+                                                      : conv.unread,
+                                          }
+                                        : conv
+                                )
+                            );
+                        }
+
+                        // Handle message updates (e.g., is_read status)
+                        if (event === "UPDATE") {
+                            if (
+                                selectedConversation ===
+                                newMessage?.conversation_id
+                            ) {
+                                setConversationMessages((prev) =>
+                                    prev.map((msg) =>
+                                        msg.id === newMessage.id
+                                            ? {
+                                                  ...msg,
+                                                  is_read: newMessage.is_read,
+                                              }
+                                            : msg
+                                    )
+                                );
+                            }
                         }
                     }
                 )
@@ -340,65 +427,37 @@ function ProducerMessages() {
         let mounted = true;
 
         const markConversationMessagesAsRead = async () => {
+            if (!mounted) return;
+
             try {
-                console.log(
-                    "Marking messages as read for conversation:",
-                    selectedConversation
+                // Optimistically update UI first
+                setConversationMessages((prev) =>
+                    prev.map((m) => ({
+                        ...m,
+                        is_read: m.sender_id !== user.id ? true : m.is_read,
+                    }))
                 );
 
-                // First verify this user is part of the conversation
-                const { data: conversation, error: convError } = await supabase
-                    .from("conversations")
-                    .select("id")
-                    .eq("id", selectedConversation)
-                    .or(`consumer_id.eq.${user.id},producer_id.eq.${user.id}`)
-                    .single();
+                setConversations((prev) =>
+                    prev.map((conv) =>
+                        conv.id === selectedConversation
+                            ? { ...conv, unread: 0 }
+                            : conv
+                    )
+                );
 
-                if (convError || !conversation) {
-                    console.error(
-                        "Not authorized to mark messages in this conversation:",
-                        convError
-                    );
-                    return;
-                }
-
-                // Update messages that are:
-                // 1. In this conversation
-                // 2. Not sent by current user
-                // 3. Currently unread
-                const { data, error } = await supabase
+                // Then update in database
+                const { error } = await supabase
                     .from("messages")
                     .update({ is_read: true })
                     .eq("conversation_id", selectedConversation)
                     .neq("sender_id", user.id)
-                    .eq("is_read", false)
-                    .select("id");
+                    .eq("is_read", false);
 
                 if (error) {
                     console.error("Failed to mark messages as read:", error);
-                    return;
-                }
-
-                console.log(`Marked ${data?.length || 0} messages as read`);
-
-                // Only update UI if we successfully updated some messages
-                if (mounted && data?.length) {
-                    // Update the messages in the current conversation view
-                    setConversationMessages((prev) =>
-                        prev.map((m) => ({
-                            ...m,
-                            is_read: m.sender_id !== user.id ? true : m.is_read,
-                        }))
-                    );
-
-                    // Update the unread count in the conversations list
-                    setConversations((prev) =>
-                        prev.map((conv) =>
-                            conv.id === selectedConversation
-                                ? { ...conv, unread: 0 }
-                                : conv
-                        )
-                    );
+                    // Note: We don't revert the optimistic update here as it would cause UI flicker
+                    // and the user has already seen the messages anyway
                 }
             } catch (err) {
                 console.error("Error marking messages as read:", err);
@@ -416,36 +475,75 @@ function ProducerMessages() {
 
     const handleSendMessage = async () => {
         if (newMessage.trim() && selectedConversation) {
+            const messageText = newMessage.trim();
+            const tempId = `temp-${Date.now()}`;
+            const timestamp = new Date();
+
+            // Create message object
+            const newMsg = {
+                id: tempId,
+                text: messageText,
+                sender: "me",
+                timestamp: timestamp.toLocaleTimeString([], {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                }),
+                is_read: false,
+                sender_id: user.id,
+                created_at: timestamp.toISOString(),
+                temp: true, // Flag to identify temporary messages
+            };
+
+            // Optimistically add to UI
+            setConversationMessages((prev) => [...prev, newMsg]);
+            setNewMessage(""); // Clear input immediately
+
+            // Optimistically update conversations list
+            setConversations((prev) =>
+                prev.map((conv) =>
+                    conv.id === selectedConversation
+                        ? {
+                              ...conv,
+                              lastMessage: messageText,
+                              timestamp: formatTimestamp(timestamp),
+                          }
+                        : conv
+                )
+            );
+
             try {
-                const { error } = await supabase.from("messages").insert({
-                    conversation_id: selectedConversation,
-                    sender_id: user.id,
-                    body: newMessage.trim(),
-                    is_read: false, // Explicitly set default value
-                });
+                // Send to Supabase
+                const { data, error } = await supabase
+                    .from("messages")
+                    .insert({
+                        conversation_id: selectedConversation,
+                        sender_id: user.id,
+                        body: messageText,
+                        is_read: false,
+                    })
+                    .select()
+                    .single();
 
                 if (error) throw error;
 
-                // Add the new message to the conversation
-                const newMsg = {
-                    id: Date.now(), // Temporary ID
-                    text: newMessage.trim(),
-                    sender: "me",
-                    timestamp: new Date().toLocaleTimeString([], {
-                        hour: "2-digit",
-                        minute: "2-digit",
-                    }),
-                    is_read: false,
-                    sender_id: user.id,
-                };
-
-                setConversationMessages((prev) => [...prev, newMsg]);
-                setNewMessage("");
-
-                // Update the conversations list to show the latest message
-                fetchConversations();
+                // Replace temporary message with real one
+                setConversationMessages((prev) =>
+                    prev.map((msg) =>
+                        msg.id === tempId
+                            ? {
+                                  ...msg,
+                                  id: data.id,
+                                  temp: false,
+                              }
+                            : msg
+                    )
+                );
             } catch (error) {
                 console.error("Error sending message:", error);
+                // Remove temporary message if send failed
+                setConversationMessages((prev) =>
+                    prev.filter((msg) => msg.id !== tempId)
+                );
                 setError("Failed to send message");
             }
         }
@@ -501,13 +599,13 @@ function ProducerMessages() {
                             )}
                         </p>
                     </div>
-                    <button className="text-gray-600 hover:text-primary">
+                    {/* <button className="text-gray-600 hover:text-primary">
                         <Icon
                             icon="mingcute:phone-line"
                             width="20"
                             height="20"
                         />
-                    </button>
+                    </button> */}
                 </div>
 
                 {/* Messages */}
@@ -541,37 +639,40 @@ function ProducerMessages() {
                                 </p>
                             </div>
                         ) : (
-                            conversationMessages.map((message) => (
-                                <div
-                                    key={message.id}
-                                    className={`flex ${
-                                        message.sender === "me"
-                                            ? "justify-end"
-                                            : "justify-start"
-                                    }`}
-                                >
+                            <>
+                                {conversationMessages.map((message) => (
                                     <div
-                                        className={`max-w-xs px-4 py-2 rounded-2xl ${
+                                        key={message.id}
+                                        className={`flex ${
                                             message.sender === "me"
-                                                ? "bg-primary text-white"
-                                                : "bg-white shadow-sm"
+                                                ? "justify-end"
+                                                : "justify-start"
                                         }`}
                                     >
-                                        <p className="text-sm">
-                                            {message.text}
-                                        </p>
-                                        <p
-                                            className={`text-xs mt-1 ${
+                                        <div
+                                            className={`max-w-xs px-4 py-2 rounded-2xl ${
                                                 message.sender === "me"
-                                                    ? "text-primary-light"
-                                                    : "text-gray-500"
+                                                    ? "bg-primary text-white"
+                                                    : "bg-white shadow-sm"
                                             }`}
                                         >
-                                            {message.timestamp}
-                                        </p>
+                                            <p className="text-sm">
+                                                {message.text}
+                                            </p>
+                                            <p
+                                                className={`text-xs mt-1 ${
+                                                    message.sender === "me"
+                                                        ? "text-primary-light"
+                                                        : "text-gray-500"
+                                                }`}
+                                            >
+                                                {message.timestamp}
+                                            </p>
+                                        </div>
                                     </div>
-                                </div>
-                            ))
+                                ))}
+                                <div ref={messagesEndRef} />
+                            </>
                         )}
                     </div>
                 </div>
