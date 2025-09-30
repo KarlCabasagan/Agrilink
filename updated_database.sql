@@ -261,6 +261,7 @@ create table public.messages (
   body text not null,
   created_at timestamp with time zone not null default now(),
   updated_at timestamp with time zone not null default now(),
+  is_read boolean not null default false,
   constraint messages_pkey primary key (id),
   constraint messages_conversation_id_fkey foreign KEY (conversation_id) references conversations (id) on update CASCADE on delete CASCADE,
   constraint messages_sender_id_fkey foreign KEY (sender_id) references profiles (id) on update CASCADE on delete CASCADE
