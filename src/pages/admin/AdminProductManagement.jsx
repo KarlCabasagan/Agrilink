@@ -67,7 +67,8 @@ function AdminProductManagement() {
                     `
                     *,
                     user_id:profiles!products_user_id_fkey(name),
-                    category_id:categories!products_category_id_fkey(name)
+                    category_id:categories!products_category_id_fkey(name),
+                    crops!products_crop_id_fkey(id, name)
                 `
                 )
                 .is("approval_date", null); // Only get products with null approval_date
@@ -84,7 +85,8 @@ function AdminProductManagement() {
                 name: product.name,
                 producer: product.user_id.name,
                 category: product.category_id.name,
-                cropType: product.crop_type,
+                cropId: product.crops.id,
+                cropType: product.crops.name,
                 price: product.price,
                 description: product.description,
                 image: product.image_url,
