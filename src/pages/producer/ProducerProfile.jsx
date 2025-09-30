@@ -54,12 +54,57 @@ function ProducerProfile() {
                     });
                 }
 
-                // Mock stats - in real app, this would come from database
-                setStats({
-                    totalProducts: 12,
-                    totalOrders: 48,
-                    totalRevenue: 15750.0,
-                });
+                // Fetch real stats from database
+                const fetchStats = async () => {
+                    // Get total products
+                    const { data: productsData } = await supabase
+                        .from("products")
+                        .select("id", { count: "exact" })
+                        .eq("user_id", user.id)
+                        .eq("status_id", 1); // Active products only
+
+                    // Get completed orders count
+                    const { data: ordersData } = await supabase
+                        .from("orders")
+                        .select("id", { count: "exact" })
+                        .eq("seller_id", user.id)
+                        .eq("status_id", 7); // Completed orders
+
+                    // Calculate total revenue from completed orders
+                    const { data: revenueData } = await supabase
+                        .from("orders")
+                        .select(
+                            `
+                            id,
+                            order_items (
+                                quantity,
+                                price_at_purchase
+                            )
+                        `
+                        )
+                        .eq("seller_id", user.id)
+                        .eq("status_id", 7); // Completed orders
+
+                    const totalRevenue =
+                        revenueData?.reduce((sum, order) => {
+                            const orderTotal =
+                                order.order_items?.reduce((orderSum, item) => {
+                                    return (
+                                        orderSum +
+                                        item.quantity * item.price_at_purchase
+                                    );
+                                }, 0) || 0;
+                            return sum + orderTotal;
+                        }, 0) || 0;
+
+                    setStats({
+                        totalProducts: productsData?.length || 0,
+                        totalOrders: ordersData?.length || 0,
+                        totalRevenue: totalRevenue,
+                    });
+                };
+
+                await fetchStats();
             } catch (error) {
                 console.error("Unexpected error:", error);
             } finally {

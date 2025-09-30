@@ -32,6 +32,7 @@ const ProductModal = memo(
         onSubmit,
         categories,
         isSubmitting = false,
+        selectedProduct = null,
     }) => {
         if (!isOpen) return null;
 
@@ -450,7 +451,24 @@ const ProductModal = memo(
                                         !productForm.price ||
                                         !productForm.stock ||
                                         !productForm.category ||
-                                        isSubmitting
+                                        isSubmitting ||
+                                        (isEdit && // Only check for changes in edit mode
+                                            productForm.name ===
+                                                selectedProduct?.name &&
+                                            productForm.price ===
+                                                selectedProduct?.price.toString() &&
+                                            productForm.stock ===
+                                                selectedProduct?.stock.toString() &&
+                                            productForm.category ===
+                                                selectedProduct?.category &&
+                                            productForm.description ===
+                                                (selectedProduct?.description ||
+                                                    "") &&
+                                            productForm.cropType ===
+                                                selectedProduct?.cropType &&
+                                            !productForm.imageFile &&
+                                            productForm.image_url ===
+                                                selectedProduct?.image_url)
                                     }
                                     className="flex-1 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                                 >
@@ -631,6 +649,7 @@ function ProducerHome() {
                     stock,
                     image_url,
                     status_id,
+                    approval_date,
                     created_at,
                     updated_at,
                     categories!inner (
@@ -663,6 +682,7 @@ function ProducerHome() {
                     cropId: product.crops?.id,
                     cropType: product.crops?.name,
                     status_id: product.status_id,
+                    approval_date: product.approval_date,
                     created_at: product.created_at,
                     updated_at: product.updated_at,
                 }));
@@ -829,6 +849,26 @@ function ProducerHome() {
         )
             return;
 
+        // Check if any fields other than price/stock have changed
+        const hasNonPriceStockChanges =
+            productForm.name !== selectedProduct.name ||
+            productForm.category !== selectedProduct.category ||
+            productForm.description !== selectedProduct.description ||
+            productForm.cropType !== selectedProduct.cropType ||
+            productForm.imageFile !== null ||
+            (!productForm.image_url && selectedProduct.image_url) ||
+            (productForm.image_url && !selectedProduct.image_url);
+
+        // Check if there are any changes at all
+        const hasPriceStockChanges =
+            productForm.price !== selectedProduct.price.toString() ||
+            productForm.stock !== selectedProduct.stock.toString();
+
+        // If no changes at all, don't submit
+        if (!hasNonPriceStockChanges && !hasPriceStockChanges) {
+            return;
+        }
+
         setIsSubmitting(true);
 
         try {
@@ -891,6 +931,10 @@ function ProducerHome() {
                     description: productForm.description,
                     stock: parseFloat(productForm.stock),
                     image_url: image_url,
+                    // Only modify approval status for non-price/stock changes
+                    ...(hasNonPriceStockChanges && selectedProduct.approval_date
+                        ? { approval_date: null }
+                        : {}),
                 })
                 .eq("id", selectedProduct.id)
                 .select(
@@ -917,6 +961,9 @@ function ProducerHome() {
                     image_url: data.image_url, // Keep for future edit operations
                     cropType: data.crops?.name || productForm.cropType,
                     status_id: data.status_id,
+                    approval_date: hasNonPriceStockChanges
+                        ? null
+                        : selectedProduct.approval_date, // Update approval_date based on changes
                     created_at: data.created_at,
                     updated_at: data.updated_at,
                 };
@@ -1072,6 +1119,7 @@ function ProducerHome() {
                 onSubmit={handleAddProduct}
                 categories={categories}
                 isSubmitting={isSubmitting}
+                selectedProduct={null}
             />
             <ProductModal
                 isOpen={showEditModal}
@@ -1088,6 +1136,7 @@ function ProducerHome() {
                 onSubmit={handleEditProduct}
                 categories={categories}
                 isSubmitting={isSubmitting}
+                selectedProduct={selectedProduct}
             />
             <ConfirmModal
                 open={showDeleteModal}
@@ -1469,19 +1518,67 @@ function ProducerHome() {
                                         className="block"
                                     >
                                         <div className="relative">
-                                            <img
-                                                src={
-                                                    product.image ||
-                                                    "/assets/gray-apple.png"
-                                                }
-                                                alt={product.name}
-                                                className="w-full h-40 sm:h-48 object-cover"
-                                                loading="lazy"
-                                                onError={(e) => {
-                                                    e.target.src =
-                                                        "/assets/gray-apple.png";
-                                                }}
-                                            />
+                                            <div className="relative">
+                                                <img
+                                                    src={
+                                                        product.image ||
+                                                        "/assets/gray-apple.png"
+                                                    }
+                                                    alt={product.name}
+                                                    className="w-full h-40 sm:h-48 object-cover"
+                                                    loading="lazy"
+                                                    onError={(e) => {
+                                                        e.target.src =
+                                                            "/assets/gray-apple.png";
+                                                    }}
+                                                />
+                                                {/* Status Label */}
+                                                {(() => {
+                                                    if (
+                                                        product.status_id === 2
+                                                    ) {
+                                                        // Suspended
+                                                        return (
+                                                            <div className="absolute top-2 left-2 bg-red-500 text-white text-xs px-2 py-1 rounded-lg font-medium">
+                                                                Suspended
+                                                            </div>
+                                                        );
+                                                    } else if (
+                                                        product.approval_date ===
+                                                        null
+                                                    ) {
+                                                        // New product or modified with non-price/stock changes
+                                                        return (
+                                                            <div className="absolute top-2 left-2 bg-yellow-500 text-white text-xs px-2 py-1 rounded-lg font-medium">
+                                                                Pending Approval
+                                                            </div>
+                                                        );
+                                                    } else if (
+                                                        new Date(
+                                                            product.approval_date
+                                                        ).getTime() ===
+                                                        new Date(
+                                                            "1970-01-01"
+                                                        ).getTime()
+                                                    ) {
+                                                        // Needs editing
+                                                        return (
+                                                            <div className="absolute top-2 left-2 bg-orange-500 text-white text-xs px-2 py-1 rounded-lg font-medium">
+                                                                Needs Editing
+                                                            </div>
+                                                        );
+                                                    } else if (
+                                                        product.status_id === 1
+                                                    ) {
+                                                        // Active
+                                                        return (
+                                                            <div className="absolute top-2 left-2 bg-green-500 text-white text-xs px-2 py-1 rounded-lg font-medium">
+                                                                Active
+                                                            </div>
+                                                        );
+                                                    }
+                                                })()}
+                                            </div>
                                         </div>
 
                                         <div className="p-3">

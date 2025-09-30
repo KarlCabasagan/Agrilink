@@ -1,4 +1,4 @@
-import { useParams } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import { useState, useMemo, useEffect, useContext } from "react";
 import { Icon } from "@iconify/react";
 import { Link } from "react-router-dom";
@@ -10,6 +10,7 @@ import { addToCart } from "../../utils/cartUtils.js";
 
 function Product() {
     const { id } = useParams();
+    const navigate = useNavigate();
     const { user } = useContext(AuthContext);
     const [quantity, setQuantity] = useState(0.1);
     const [product, setProduct] = useState(null);
@@ -36,18 +37,22 @@ function Product() {
                     .from("products")
                     .select(
                         `
-                        *,
-                        categories(name),
-                        profiles!user_id(name, address, delivery_cost, minimum_order_quantity),
-                        statuses(name)
-                    `
+                    *,
+                    categories(name),
+                    profiles!user_id(name, address, delivery_cost, minimum_order_quantity),
+                    statuses(name)
+                `
                     )
                     .eq("id", id)
+                    .neq("status_id", 2) // exclude status_id = 2
+                    .not("approval_date", "is", null) // exclude NULL approval_date
+                    .neq("approval_date", "1970-01-01 00:00:00+00") // exclude invalid approval_date
                     .eq("statuses.name", "active")
                     .single();
 
-                if (error) {
+                if (error || !data) {
                     console.error("Error fetching product:", error);
+                    setProduct(null); // show "Product not found"
                     return;
                 }
 
@@ -63,14 +68,14 @@ function Product() {
                     farmerName: data.profiles?.name || "Unknown Farmer",
                     description: data.description,
                     stock: parseFloat(data.stock) || 0,
-                    rating: 4.5, // We'll implement real ratings later
+                    rating: 4.5,
                     minimumOrderQuantity:
                         parseFloat(data.profiles?.minimum_order_quantity) || 1,
                     deliveryCost:
                         parseFloat(data.profiles?.delivery_cost) || 50,
                     pickupLocation: data.profiles?.address || "Farm location",
-                    farmerId: data.user_id, // Updated to use user_id
-                    reviews: [], // We'll implement real reviews later
+                    farmerId: data.user_id,
+                    reviews: [],
                 };
 
                 setProduct(formattedProduct);
@@ -78,7 +83,8 @@ function Product() {
                     Math.max(0.1, formattedProduct.minimumOrderQuantity)
                 );
             } catch (error) {
-                console.error("Error fetching product:", error);
+                console.error("Unexpected error fetching product:", error);
+                setProduct(null); // show "Product not found"
             } finally {
                 setLoading(false);
             }
@@ -121,13 +127,76 @@ function Product() {
         }
     };
 
-    const handleMessageFarmer = () => {
-        showModal(
-            "info",
-            "Message Farmer",
-            `Messaging ${product.farmerName} about ${product.name}`,
-            () => setModal((prev) => ({ ...prev, open: false }))
-        );
+    const handleMessageFarmer = async () => {
+        if (!user || !product) return;
+
+        try {
+            // First, check if a conversation already exists
+            const { data: existingConversation, error: fetchError } =
+                await supabase
+                    .from("conversations")
+                    .select("id")
+                    .eq("consumer_id", user.id)
+                    .eq("producer_id", product.farmerId)
+                    .single();
+
+            if (fetchError && fetchError.code !== "PGRST116") {
+                // PGRST116 means no rows returned
+                console.error(
+                    "Error checking existing conversation:",
+                    fetchError
+                );
+                showModal(
+                    "error",
+                    "Error",
+                    "Unable to start conversation. Please try again.",
+                    () => setModal((prev) => ({ ...prev, open: false }))
+                );
+                return;
+            }
+
+            let conversationId;
+
+            if (existingConversation) {
+                // Use existing conversation
+                conversationId = existingConversation.id;
+            } else {
+                // Create new conversation
+                const { data: newConversation, error: insertError } =
+                    await supabase
+                        .from("conversations")
+                        .insert({
+                            consumer_id: user.id,
+                            producer_id: product.farmerId,
+                        })
+                        .select("id")
+                        .single();
+
+                if (insertError) {
+                    console.error("Error creating conversation:", insertError);
+                    showModal(
+                        "error",
+                        "Error",
+                        "Unable to start conversation. Please try again.",
+                        () => setModal((prev) => ({ ...prev, open: false }))
+                    );
+                    return;
+                }
+
+                conversationId = newConversation.id;
+            }
+
+            // Redirect to messages page with the conversation ID
+            navigate(`/messages?conversation=${conversationId}`);
+        } catch (error) {
+            console.error("Error handling message farmer:", error);
+            showModal(
+                "error",
+                "Error",
+                "An unexpected error occurred. Please try again.",
+                () => setModal((prev) => ({ ...prev, open: false }))
+            );
+        }
     };
 
     const increaseQuantity = () => {

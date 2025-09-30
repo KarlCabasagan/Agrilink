@@ -171,12 +171,15 @@ function Home() {
                     .from("products")
                     .select(
                         `
-                        *,
-                        categories(name),
-                        profiles!user_id(name, address, delivery_cost, minimum_order_quantity),
-                        statuses(name)
-                    `
+                    *,
+                    categories(name),
+                    profiles!user_id(name, address, delivery_cost, minimum_order_quantity),
+                    statuses(name)
+                `
                     )
+                    .neq("status_id", 2) // exclude status_id = 2
+                    .not("approval_date", "is", null) // exclude NULL
+                    .neq("approval_date", "1970-01-01 00:00:00+00") // exclude default date
                     .eq("statuses.name", "active")
                     .order("created_at", { ascending: false });
 
@@ -205,7 +208,7 @@ function Home() {
                     farmerName: product.profiles?.name || "Unknown Farmer",
                     description: product.description,
                     stock: parseFloat(product.stock) || 0,
-                    rating: 4.5, // We'll implement real ratings later
+                    rating: 4.5,
                     minimumOrderQuantity:
                         parseFloat(product.profiles?.minimum_order_quantity) ||
                         1,
@@ -213,7 +216,7 @@ function Home() {
                         parseFloat(product.profiles?.delivery_cost) || 50,
                     pickupLocation:
                         product.profiles?.address || "Farm location",
-                    farmerId: product.user_id, // Updated to use user_id
+                    farmerId: product.user_id,
                 }));
 
                 setProducts(formattedProducts);

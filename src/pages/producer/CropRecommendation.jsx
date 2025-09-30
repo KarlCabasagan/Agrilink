@@ -35,27 +35,33 @@ function CropRecommendation() {
     }, [user]);
 
     const fetchCropsAndCompetition = async () => {
+        if (!user) return;
+
+        // Get total number of producers excluding current user
         const { count: totalProducers, error: producersError } = await supabase
             .from("profiles")
             .select("id", { count: "exact", head: true })
             .eq("role_id", 2)
-            .neq("id", user ? user.id : null); // Exclude current user
+            .neq("id", user.id);
 
         if (producersError) {
             console.error("Error fetching total producers:", producersError);
             return;
         }
 
+        // Get plantings excluding the current user's plantings
         const { data: plantings, error: plantingsError } = await supabase
             .from("planted_crops")
-            .select("crop_id")
-            .eq("is_harvested", false);
+            .select("crop_id, user_id")
+            .eq("is_harvested", false)
+            .neq("user_id", user.id);
 
         if (plantingsError) {
             console.error("Error fetching plantings:", plantingsError);
             return;
         }
 
+        // Count plantings by other farmers only
         const plantingCounts = plantings.reduce((acc, { crop_id }) => {
             acc[crop_id] = (acc[crop_id] || 0) + 1;
             return acc;
@@ -704,6 +710,9 @@ function CropRecommendation() {
                                                             crop.plantingPercentage <=
                                                             20
                                                                 ? "bg-primary"
+                                                                : crop.plantingPercentage <=
+                                                                  40
+                                                                ? "bg-blue-600"
                                                                 : crop.plantingPercentage <=
                                                                   60
                                                                 ? "bg-yellow-500"
