@@ -79,7 +79,8 @@ function ProducerMessages() {
                 return {
                     id: conv.id,
                     customerName: consumer.name || "Unknown Customer",
-                    customerAvatar: consumer.avatar_url || "/assets/blank-profile.jpg",
+                    customerAvatar:
+                        consumer.avatar_url || "/assets/blank-profile.jpg",
                     lastMessage: latestMessage
                         ? latestMessage.body
                         : "No messages yet",
@@ -231,7 +232,10 @@ function ProducerMessages() {
                         />
                     </button>
                     <img
-                        src={customer.customerAvatar || "/assets/blank-profile.jpg"}
+                        src={
+                            customer.customerAvatar ||
+                            "/assets/blank-profile.jpg"
+                        }
                         alt={customer.customerName}
                         className="w-10 h-10 rounded-full object-cover"
                         onError={(e) => {
@@ -511,11 +515,15 @@ function ProducerMessages() {
                                 <div className="flex items-center gap-3">
                                     <div className="relative">
                                         <img
-                                            src={conversation.customerAvatar || "/assets/blank-profile.jpg"}
+                                            src={
+                                                conversation.customerAvatar ||
+                                                "/assets/blank-profile.jpg"
+                                            }
                                             alt={conversation.customerName}
                                             className="w-12 h-12 rounded-full object-cover"
                                             onError={(e) => {
-                                                e.target.src = "/assets/blank-profile.jpg";
+                                                e.target.src =
+                                                    "/assets/blank-profile.jpg";
                                             }}
                                         />
                                         {conversation.online && (
