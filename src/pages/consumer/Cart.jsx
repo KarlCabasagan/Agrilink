@@ -11,6 +11,7 @@ function Cart() {
     const navigate = useNavigate();
     const [cartItems, setCartItems] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [hasInvalidItems, setHasInvalidItems] = useState(false);
     const [modal, setModal] = useState({
         open: false,
         type: "",
@@ -39,12 +40,35 @@ function Cart() {
                         products(
                             *,
                             categories(name),
-                            profiles!user_id(name, address, delivery_cost, minimum_order_quantity)
+                            profiles!user_id(name, address, delivery_cost, minimum_order_quantity),
+                            approval_date,
+                            status_id
                         )
                     `
                     )
                     .eq("carts.user_id", user.id)
                     .order("created_at", { ascending: false });
+
+                // Check for invalid products
+                const hasInvalid = data?.some((item) => {
+                    const product = item.products;
+                    // Convert approval_date to a standardized format for comparison
+                    const approvalDate = product?.approval_date
+                        ? new Date(product.approval_date).toISOString()
+                        : null;
+                    const defaultDate = new Date(
+                        "1970-01-01T00:00:00.000Z"
+                    ).toISOString();
+
+                    return (
+                        !product?.approval_date ||
+                        approvalDate.startsWith("1970-01-01T00:00:00") ||
+                        approvalDate === defaultDate ||
+                        product.status_id === 2
+                    );
+                });
+
+                setHasInvalidItems(hasInvalid);
 
                 if (error) {
                     console.error("Error fetching cart items:", error);
@@ -65,6 +89,10 @@ function Cart() {
                     farmerName:
                         item.products.profiles?.name || "Unknown Farmer",
                     farmerId: item.products.user_id, // Updated to use user_id
+                    products: {
+                        status_id: item.products.status_id,
+                        approval_date: item.products.approval_date,
+                    },
                     farmerAddress:
                         item.products.profiles?.address ||
                         "Location not available",
@@ -173,9 +201,35 @@ function Cart() {
                 return;
             }
 
-            setCartItems((items) =>
-                items.filter((cartItem) => cartItem.id !== id)
-            );
+            // Update cart items and recalculate hasInvalidItems
+            setCartItems((prevItems) => {
+                const updatedItems = prevItems.filter(
+                    (cartItem) => cartItem.id !== id
+                );
+
+                // Check remaining items for invalid products
+                const hasInvalid = updatedItems.some((item) => {
+                    const product = item.products;
+                    const approvalDate = product?.approval_date
+                        ? new Date(product.approval_date).toISOString()
+                        : null;
+                    const defaultDate = new Date(
+                        "1970-01-01T00:00:00.000Z"
+                    ).toISOString();
+
+                    return (
+                        !product?.approval_date ||
+                        approvalDate.startsWith("1970-01-01T00:00:00") ||
+                        approvalDate === defaultDate ||
+                        product.status_id === 2
+                    );
+                });
+
+                // Update hasInvalidItems state
+                setHasInvalidItems(hasInvalid);
+
+                return updatedItems;
+            });
         } catch (error) {
             console.error("Error removing cart item:", error);
         }
@@ -207,6 +261,54 @@ function Cart() {
         if (cartItems.length === 0) {
             showModal("warning", "Empty Cart", "Your cart is empty!", () =>
                 setModal((prev) => ({ ...prev, open: false }))
+            );
+            return;
+        }
+
+        // Check for invalid products before proceeding
+        try {
+            const { data: productsData, error: productsError } = await supabase
+                .from("products")
+                .select("id, approval_date, status_id")
+                .in(
+                    "id",
+                    cartItems.map((item) => item.id)
+                );
+
+            if (productsError) {
+                console.error("Error checking products:", productsError);
+                showModal(
+                    "error",
+                    "Checkout Error",
+                    "Unable to verify products. Please try again.",
+                    () => setModal((prev) => ({ ...prev, open: false }))
+                );
+                return;
+            }
+
+            const invalidProducts = productsData.filter(
+                (product) =>
+                    !product.approval_date ||
+                    product.approval_date === "1970-01-01 00:00:00+00" ||
+                    product.status_id === 2
+            );
+
+            if (invalidProducts.length > 0) {
+                showModal(
+                    "error",
+                    "Unable to Checkout",
+                    "Some items in your cart are no longer available for purchase. Please remove them and try again.",
+                    () => setModal((prev) => ({ ...prev, open: false }))
+                );
+                return;
+            }
+        } catch (error) {
+            console.error("Error verifying products:", error);
+            showModal(
+                "error",
+                "Checkout Error",
+                "Unable to verify products. Please try again.",
+                () => setModal((prev) => ({ ...prev, open: false }))
             );
             return;
         }
@@ -492,9 +594,44 @@ function Cart() {
                                                             className="w-16 h-16 object-cover rounded-lg"
                                                         />
                                                         <div className="flex-1">
-                                                            <h4 className="font-semibold text-gray-800 mb-1">
-                                                                {item.name}
-                                                            </h4>
+                                                            <div className="flex items-start justify-between mb-1">
+                                                                <h4 className="font-semibold text-gray-800">
+                                                                    {item.name}
+                                                                </h4>
+                                                                {item.products
+                                                                    ?.status_id ===
+                                                                    2 && (
+                                                                    <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-800">
+                                                                        <Icon
+                                                                            icon="mingcute:alert-fill"
+                                                                            className="mr-1"
+                                                                            width="12"
+                                                                            height="12"
+                                                                        />
+                                                                        Suspended
+                                                                    </span>
+                                                                )}
+                                                                {(!item.products
+                                                                    ?.approval_date ||
+                                                                    new Date(
+                                                                        item.products?.approval_date
+                                                                    )
+                                                                        .toISOString()
+                                                                        .startsWith(
+                                                                            "1970-01-01"
+                                                                        )) && (
+                                                                    <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-yellow-100 text-yellow-800">
+                                                                        <Icon
+                                                                            icon="mingcute:time-fill"
+                                                                            className="mr-1"
+                                                                            width="12"
+                                                                            height="12"
+                                                                        />
+                                                                        Not
+                                                                        Approved
+                                                                    </span>
+                                                                )}
+                                                            </div>
                                                             <p className="text-primary font-bold text-lg">
                                                                 ₱
                                                                 {item.price.toFixed(
@@ -683,7 +820,12 @@ function Cart() {
                         <div className="sticky bottom-20 bg-white rounded-lg shadow-lg p-4 border-t border-gray-200">
                             <button
                                 onClick={handleCheckout}
-                                className="w-full bg-primary text-white py-3 rounded-lg font-semibold hover:bg-primary-dark transition-colors flex items-center justify-center gap-2"
+                                disabled={hasInvalidItems}
+                                className={`w-full py-3 rounded-lg font-semibold flex items-center justify-center gap-2 ${
+                                    hasInvalidItems
+                                        ? "bg-gray-300 text-gray-500 cursor-not-allowed"
+                                        : "bg-primary text-white hover:bg-primary-dark transition-colors"
+                                }`}
                             >
                                 <Icon
                                     icon="mingcute:wallet-3-line"
@@ -692,10 +834,19 @@ function Cart() {
                                 />
                                 Proceed to Checkout
                             </button>
-                            <p className="text-center text-gray-500 text-xs mt-2">
-                                {isDeliveryAvailable()
-                                    ? "Home delivery & farm pickup available for all items"
-                                    : "Farm pickup available • Some deliveries need min. quantities"}
+                            <p className="text-center text-xs mt-2">
+                                {hasInvalidItems ? (
+                                    <span className="text-red-500">
+                                        Some items are no longer available.
+                                        Please remove them to continue.
+                                    </span>
+                                ) : (
+                                    <span className="text-gray-500">
+                                        {isDeliveryAvailable()
+                                            ? "Home delivery & farm pickup available for all items"
+                                            : "Farm pickup available • Some deliveries need min. quantities"}
+                                    </span>
+                                )}
                             </p>
                         </div>
                     </>
