@@ -139,7 +139,9 @@ function App() {
                     }
                 }
 
-                setUserRole(data.role_id);
+                if (data.role_id !== userRole) {
+                    setUserRole(data.role_id);
+                }
             } else if (error && error.code === "PGRST116") {
                 // No profile found - user might be deleted from database
                 console.log(
@@ -185,10 +187,14 @@ function App() {
         const {
             data: { subscription },
         } = supabase.auth.onAuthStateChange((event, session) => {
-            if (!mounted) return;
-
             const sessionUser = session?.user || null;
-            setUser(sessionUser);
+
+            setUser((prevUser) => {
+                if (JSON.stringify(prevUser) !== JSON.stringify(sessionUser)) {
+                    return sessionUser;
+                }
+                return prevUser; // no change, no re-render
+            });
 
             if (sessionUser) {
                 fetchUserRole(sessionUser.id, sessionUser);
@@ -272,17 +278,35 @@ function App() {
 
     // Role-based access control
     const RoleGuard = ({ children, allowedRoles }) => {
+        const location = useLocation();
+
+        // Wait until userRole is known before making decisions
         if (!user || !isVerified) {
             return <Navigate to="/login" replace />;
         }
 
+        if (userRole === null) {
+            // Still loading role -> show a loader instead of redirecting
+            return (
+                <div className="fixed inset-0 flex items-center justify-center bg-background">
+                    <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-primary"></div>
+                </div>
+            );
+        }
+
         if (!allowedRoles.includes(userRole)) {
-            // If user is admin (role 3) and trying to access non-admin routes, redirect to admin dashboard
+            // If user is admin (role 3) and trying to access non-admin routes
             if (userRole === 3) {
-                return <Navigate to="/admin/dashboard" replace />;
+                return (
+                    <Navigate
+                        to="/admin/dashboard"
+                        state={{ from: location }}
+                        replace
+                    />
+                );
             }
-            // For other roles, redirect to home
-            return <Navigate to="/" replace />;
+            // Other roles go home
+            return <Navigate to="/" state={{ from: location }} replace />;
         }
 
         return children;

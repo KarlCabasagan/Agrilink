@@ -823,7 +823,11 @@ function ProducerHome() {
                     image_url: data.image_url,
                     cropId: data.crops?.id,
                     cropType: data.crops?.name,
-                    status_id: data.status_id,
+
+                    // 👇 Force frontend to show Pending Approval
+                    status_id: null, // ignore whatever backend returns
+                    approval_date: null, // ensures label logic shows Pending Approval
+
                     created_at: data.created_at,
                     updated_at: data.updated_at,
                 };
@@ -849,7 +853,6 @@ function ProducerHome() {
         )
             return;
 
-        // Check if any fields other than price/stock have changed
         const hasNonPriceStockChanges =
             productForm.name !== selectedProduct.name ||
             productForm.category !== selectedProduct.category ||
@@ -859,12 +862,10 @@ function ProducerHome() {
             (!productForm.image_url && selectedProduct.image_url) ||
             (productForm.image_url && !selectedProduct.image_url);
 
-        // Check if there are any changes at all
         const hasPriceStockChanges =
             productForm.price !== selectedProduct.price.toString() ||
             productForm.stock !== selectedProduct.stock.toString();
 
-        // If no changes at all, don't submit
         if (!hasNonPriceStockChanges && !hasPriceStockChanges) {
             return;
         }
@@ -872,7 +873,6 @@ function ProducerHome() {
         setIsSubmitting(true);
 
         try {
-            // Get category_id if category is selected
             let category_id = null;
             if (productForm.category && productForm.category !== "All") {
                 const { data: categoryData } = await supabase
@@ -883,7 +883,6 @@ function ProducerHome() {
                 category_id = categoryData?.id;
             }
 
-            // Get crop_id - it's required by the schema
             const selectedCrop = allCrops.find(
                 (c) => c.name === productForm.cropType
             );
@@ -894,24 +893,20 @@ function ProducerHome() {
             }
             const crop_id = selectedCrop.id;
 
-            // Handle image upload and deletion
-            let image_url = selectedProduct.image_url; // Keep existing image by default
+            let image_url = selectedProduct.image_url;
 
-            // Check if user deleted the image (both imagePreview and image_url are empty/cleared)
             const userDeletedImage =
                 !productForm.imagePreview && !productForm.image_url;
 
             if (userDeletedImage && selectedProduct.image_url) {
-                // User deleted the image, delete from storage
                 await deleteImageFromUrl(selectedProduct.image_url, "products");
                 image_url = null;
             } else if (productForm.imageFile) {
-                // If new image selected, upload it
                 const uploadResult = await uploadImage(
                     productForm.imageFile,
                     "products",
                     user.id,
-                    selectedProduct.image_url // Pass old image URL for deletion
+                    selectedProduct.image_url
                 );
                 if (uploadResult.success) {
                     image_url = uploadResult.url;
@@ -926,12 +921,12 @@ function ProducerHome() {
                 .update({
                     name: productForm.name,
                     price: parseFloat(productForm.price),
-                    category_id: category_id,
-                    crop_id: crop_id,
+                    category_id,
+                    crop_id,
                     description: productForm.description,
                     stock: parseFloat(productForm.stock),
-                    image_url: image_url,
-                    // Only modify approval status for non-price/stock changes
+                    image_url,
+                    status_id: 1, // ✅ Always set to Active after edit
                     ...(hasNonPriceStockChanges && selectedProduct.approval_date
                         ? { approval_date: null }
                         : {}),
@@ -939,10 +934,10 @@ function ProducerHome() {
                 .eq("id", selectedProduct.id)
                 .select(
                     `
-                    *,
-                    categories(name),
-                    crops(name)
-                `
+                *,
+                categories(name),
+                crops(name)
+            `
                 )
                 .single();
 
@@ -958,21 +953,23 @@ function ProducerHome() {
                     description: data.description,
                     stock: parseFloat(data.stock),
                     image: data.image_url || "/assets/gray-apple.png",
-                    image_url: data.image_url, // Keep for future edit operations
+                    image_url: data.image_url,
                     cropType: data.crops?.name || productForm.cropType,
-                    status_id: data.status_id,
+                    status_id: 1, // ✅ force Active in UI
                     approval_date: hasNonPriceStockChanges
                         ? null
-                        : selectedProduct.approval_date, // Update approval_date based on changes
+                        : selectedProduct.approval_date,
                     created_at: data.created_at,
                     updated_at: data.updated_at,
                 };
 
+                // ✅ Instantly update UI (buttery smooth)
                 setProducts((prev) =>
                     prev.map((p) =>
                         p.id === selectedProduct.id ? updatedProduct : p
                     )
                 );
+
                 setShowEditModal(false);
                 resetForm();
             }
@@ -987,35 +984,66 @@ function ProducerHome() {
     const handleDeleteProduct = async () => {
         if (!selectedProduct) return;
 
+        setIsSubmitting(true); // optional — prevents double-click UI
         try {
-            // First, delete the image from storage if it exists
-            if (
-                selectedProduct.image_url &&
-                !selectedProduct.image_url.includes("placeholder") &&
-                !selectedProduct.image_url.includes("gray-apple.png")
-            ) {
-                await deleteImageFromUrl(selectedProduct.image_url, "products");
-            }
-
-            // Then delete the product from database
-            const { error } = await supabase
+            // Attempt to delete the product row and return the deleted row (id + image_url)
+            const { data, error } = await supabase
                 .from("products")
                 .delete()
-                .eq("id", selectedProduct.id);
+                .eq("id", selectedProduct.id)
+                .select("id, image_url")
+                .single();
 
             if (error) {
                 console.error("Error deleting product:", error);
-                alert("Error deleting product. Please try again.");
-            } else {
-                setProducts((prev) =>
-                    prev.filter((p) => p.id !== selectedProduct.id)
-                );
-                setShowDeleteModal(false);
-                setSelectedProduct(null);
+
+                // Friendly, actionable messages for common cases
+                if (error.code === "21000") {
+                    // scalar subquery returned multiple rows -> likely malformed RLS policy
+                    alert(
+                        "Delete failed due to a server policy error (RLS). Please check the product deletion policy in the database (subquery returned multiple rows)."
+                    );
+                } else if (error.status === 401 || error.status === 403) {
+                    alert(
+                        "You are not allowed to delete this product (permission denied)."
+                    );
+                } else {
+                    alert("Error deleting product. Please try again.");
+                }
+
+                return;
             }
-        } catch (error) {
-            console.error("Unexpected error:", error);
+
+            // If DB deletion succeeded, `data` will contain the deleted row (id, image_url)
+            // Now delete the image from storage (best-effort). If it fails, log but keep UX consistent.
+            const imageUrl = data?.image_url;
+            if (
+                imageUrl &&
+                !imageUrl.includes("placeholder") &&
+                !imageUrl.includes("gray-apple.png")
+            ) {
+                try {
+                    await deleteImageFromUrl(imageUrl, "products");
+                } catch (imgErr) {
+                    console.error(
+                        "Error deleting image from storage after DB delete:",
+                        imgErr
+                    );
+                    // we don't block the UI for this; image cleanup can be retried later
+                }
+            }
+
+            // Update UI immediately
+            setProducts((prev) =>
+                prev.filter((p) => p.id !== selectedProduct.id)
+            );
+            setShowDeleteModal(false);
+            setSelectedProduct(null);
+        } catch (err) {
+            console.error("Unexpected error deleting product:", err);
             alert("Unexpected error occurred. Please try again.");
+        } finally {
+            setIsSubmitting(false);
         }
     };
 

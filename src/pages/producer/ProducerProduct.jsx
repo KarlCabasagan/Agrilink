@@ -281,6 +281,7 @@ function ProducerProduct() {
                         image_url: data.image_url || "",
                         cropType: data.crops?.name || "",
                         status_id: data.status_id,
+                        approval_date: data.approval_date, // <-- add this line
                         created_at: data.created_at,
                         updated_at: data.updated_at,
                         reviews: [], // TODO: Fetch reviews separately if needed
@@ -340,17 +341,13 @@ function ProducerProduct() {
 
             // Handle image upload and deletion
             let image_url = product.image_url; // Keep existing image by default
-
-            // Check if user deleted the image (both imagePreview and image_url are empty/cleared)
             const userDeletedImage =
                 !editForm.imagePreview && !editForm.image_url;
 
             if (userDeletedImage && product.image_url) {
-                // User deleted the image, delete from storage
                 await deleteImageFromUrl(product.image_url, "products");
                 image_url = null;
             } else if (editForm.imageFile) {
-                // If new image selected, upload it
                 const uploadResult = await uploadImage(
                     editForm.imageFile,
                     "products",
@@ -365,24 +362,47 @@ function ProducerProduct() {
                 }
             }
 
+            // 🔎 Determine whether changes are non-price/stock (i.e. require re-approval)
+            const hasNonPriceStockChanges =
+                editForm.name !== product.name ||
+                editForm.category !== product.category ||
+                editForm.description !== product.description ||
+                editForm.cropType !== product.cropType ||
+                editForm.imageFile !== null ||
+                (!editForm.image_url && product.image_url) ||
+                (editForm.image_url && !product.image_url);
+
+            const hasPriceStockChanges =
+                editForm.price !== product.price.toString() ||
+                editForm.stock !== product.stock.toString();
+
+            // Build update payload
+            const updatePayload = {
+                name: editForm.name,
+                price: parseFloat(editForm.price),
+                category_id,
+                crop_id,
+                description: editForm.description,
+                stock: parseFloat(editForm.stock),
+                image_url,
+                status_id: 1, // keep the behavior you asked for: set status_id to 1 on update
+            };
+
+            // If non-price/stock fields changed, reset approval_date (always include null)
+            if (hasNonPriceStockChanges) {
+                updatePayload.approval_date = null;
+            }
+
             const { data, error } = await supabase
                 .from("products")
-                .update({
-                    name: editForm.name,
-                    price: parseFloat(editForm.price),
-                    category_id: category_id,
-                    crop_id: crop_id,
-                    description: editForm.description,
-                    stock: parseFloat(editForm.stock),
-                    image_url: image_url,
-                })
+                .update(updatePayload)
                 .eq("id", product.id)
                 .select(
                     `
-                    *,
-                    categories(name),
-                    crops(name)
-                `
+                *,
+                categories(name),
+                crops(name)
+            `
                 )
                 .single();
 
@@ -390,7 +410,7 @@ function ProducerProduct() {
                 console.error("Error updating product:", error);
                 alert("Error updating product. Please try again.");
             } else {
-                // Update the local product state
+                // Update the local product state instantly for buttery-smooth UI
                 const updatedProduct = {
                     ...product,
                     name: data.name,
@@ -401,6 +421,10 @@ function ProducerProduct() {
                     image_url: data.image_url,
                     cropType: data.crops?.name || editForm.cropType,
                     updated_at: data.updated_at,
+                    status_id: data.status_id ?? 1,
+                    approval_date: hasNonPriceStockChanges
+                        ? null
+                        : product.approval_date,
                 };
 
                 setProduct(updatedProduct);
