@@ -25,7 +25,7 @@ function AdminNavigationBar() {
 
     const navItems = [
         {
-            path: "/admin",
+            path: "/",
             icon: "mingcute:home-1-line",
             activeIcon: "mingcute:home-1-fill",
             label: "Dashboard",
