@@ -139,7 +139,9 @@ function App() {
                     }
                 }
 
-                setUserRole(data.role_id);
+                if (data.role_id !== userRole) {
+                    setUserRole(data.role_id);
+                }
             } else if (error && error.code === "PGRST116") {
                 // No profile found - user might be deleted from database
                 console.log(
@@ -185,10 +187,14 @@ function App() {
         const {
             data: { subscription },
         } = supabase.auth.onAuthStateChange((event, session) => {
-            if (!mounted) return;
-
             const sessionUser = session?.user || null;
-            setUser(sessionUser);
+
+            setUser((prevUser) => {
+                if (JSON.stringify(prevUser) !== JSON.stringify(sessionUser)) {
+                    return sessionUser;
+                }
+                return prevUser; // no change, no re-render
+            });
 
             if (sessionUser) {
                 fetchUserRole(sessionUser.id, sessionUser);
