@@ -64,24 +64,61 @@ const ProductModal = memo(
                             </div>
 
                             {isEdit && selectedProduct?.rejection_reason && (
-                                <div className="mb-6 bg-amber-50 border border-amber-200 rounded-lg p-4">
-                                    <div className="flex items-start gap-3">
+                                <div
+                                    className={
+                                        selectedProduct.status_id === 2
+                                            ? "mb-6 bg-red-50 border border-red-200 rounded-lg p-4"
+                                            : "mb-6 bg-amber-50 border border-amber-200 rounded-lg p-4"
+                                    }
+                                >
+                                    <div
+                                        className={
+                                            selectedProduct.status_id === 2
+                                                ? "flex items-start gap-3"
+                                                : "flex items-start gap-3"
+                                        }
+                                    >
                                         <Icon
                                             icon="mingcute:warning-line"
-                                            className="text-amber-500 w-5 h-5 mt-0.5 flex-shrink-0"
+                                            className={
+                                                selectedProduct.status_id === 2
+                                                    ? "text-red-500 w-5 h-5 mt-0.5 flex-shrink-0"
+                                                    : "text-amber-500 w-5 h-5 mt-0.5 flex-shrink-0"
+                                            }
                                         />
                                         <div>
-                                            <h4 className="text-sm font-semibold text-amber-800 mb-1">
+                                            <h4
+                                                className={
+                                                    selectedProduct.status_id ===
+                                                    2
+                                                        ? "text-sm font-semibold text-red-800 mb-1"
+                                                        : "text-sm font-semibold text-amber-800 mb-1"
+                                                }
+                                            >
                                                 {selectedProduct.status_id === 2
                                                     ? "Product Suspended"
                                                     : "Product Rejected"}
                                             </h4>
-                                            <p className="text-sm text-amber-700">
+                                            <p
+                                                className={
+                                                    selectedProduct.status_id ===
+                                                    2
+                                                        ? "text-sm text-red-700"
+                                                        : "text-sm text-amber-700"
+                                                }
+                                            >
                                                 {
                                                     selectedProduct.rejection_reason
                                                 }
                                             </p>
-                                            <p className="text-xs text-amber-600 mt-2">
+                                            <p
+                                                className={
+                                                    selectedProduct.status_id ===
+                                                    2
+                                                        ? "text-xs text-red-600 mt-2"
+                                                        : "text-xs text-amber-600 mt-2"
+                                                }
+                                            >
                                                 Update your product details to
                                                 address this issue. The product
                                                 will be automatically
