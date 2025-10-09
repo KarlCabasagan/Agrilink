@@ -6,23 +6,28 @@ import AdminNavigationBar from "../../components/AdminNavigationBar";
 import ConfirmModal from "../../components/ConfirmModal";
 
 // Custom Rejection Modal Component
-const RejectionModal = ({
+const ActionModal = ({
     open,
     onClose,
     onConfirm,
     productName,
     isSubmitting,
+    type,
 }) => {
-    const [rejectionReason, setRejectionReason] = useState("");
+    const [reason, setReason] = useState("");
     const [error, setError] = useState("");
+
+    const isRejection = type === "rejection";
+    const title = isRejection ? "Reject" : "Suspend";
+    const actionText = isRejection ? "rejection" : "suspension";
 
     const handleSubmit = (e) => {
         e.preventDefault();
-        if (!rejectionReason.trim()) {
-            setError("Please provide a reason for rejection");
+        if (!reason.trim()) {
+            setError(`Please provide a reason for ${actionText}`);
             return;
         }
-        onConfirm(rejectionReason.trim());
+        onConfirm(reason.trim());
     };
 
     if (!open) return null;
@@ -36,30 +41,31 @@ const RejectionModal = ({
             <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4">
                 <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-md">
                     <h3 className="text-xl font-bold text-gray-900 mb-2">
-                        Reject Product
+                        {title} Product
                     </h3>
                     <p className="text-gray-600 mb-4">
-                        You are about to reject "{productName}". Please provide
-                        a reason for rejection.
+                        You are about to {actionText.toLowerCase()} "
+                        {productName}". Please provide a reason for {actionText}
+                        .
                     </p>
 
                     <form onSubmit={handleSubmit}>
                         <div className="mb-4">
                             <label className="block text-sm font-medium text-gray-700 mb-2">
-                                Rejection Reason{" "}
+                                {title} Reason{" "}
                                 <span className="text-red-500">*</span>
                             </label>
                             <textarea
-                                value={rejectionReason}
+                                value={reason}
                                 onChange={(e) => {
-                                    setRejectionReason(e.target.value);
+                                    setReason(e.target.value);
                                     if (error) setError("");
                                 }}
                                 className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent ${
                                     error ? "border-red-500" : "border-gray-300"
                                 }`}
                                 rows="3"
-                                placeholder="Please provide a detailed reason for rejecting this product..."
+                                placeholder={`Please provide a detailed reason for ${actionText.toLowerCase()} this product...`}
                             />
                             {error && (
                                 <p className="mt-1 text-sm text-red-500">
@@ -78,12 +84,10 @@ const RejectionModal = ({
                             </button>
                             <button
                                 type="submit"
-                                disabled={
-                                    !rejectionReason.trim() || isSubmitting
-                                }
+                                disabled={!reason.trim() || isSubmitting}
                                 className={`px-4 py-2 rounded text-white font-medium transition-colors 
                                     ${
-                                        !rejectionReason.trim() || isSubmitting
+                                        !reason.trim() || isSubmitting
                                             ? "bg-red-400 cursor-not-allowed"
                                             : "bg-red-600 hover:bg-red-700"
                                     }`}
@@ -91,10 +95,10 @@ const RejectionModal = ({
                                 {isSubmitting ? (
                                     <div className="flex items-center gap-2">
                                         <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                                        Rejecting...
+                                        {`${title}ing...`}
                                     </div>
                                 ) : (
-                                    "Reject Product"
+                                    `${title} Product`
                                 )}
                             </button>
                         </div>
@@ -125,6 +129,9 @@ function AdminProductManagement() {
     const [showImageModal, setShowImageModal] = useState(false);
     const [selectedImage, setSelectedImage] = useState("");
     const [selectedCategory, setSelectedCategory] = useState(null);
+    const [showSuspensionModal, setShowSuspensionModal] = useState(false);
+    const [selectedProductForSuspension, setSelectedProductForSuspension] =
+        useState(null);
     const [searchTerm, setSearchTerm] = useState("");
     const [sortConfig, setSortConfig] = useState({
         key: null,
@@ -461,12 +468,76 @@ function AdminProductManagement() {
         }
     };
 
-    // Handle product status change (suspend/activate) - separate from approval/rejection
+    const handleProductSuspension = async (suspensionReason) => {
+        if (!selectedProductForSuspension) return;
+
+        setIsSubmitting(true);
+        try {
+            const { data: statusData, error: statusError } = await supabase
+                .from("statuses")
+                .select("id")
+                .eq("name", "suspended")
+                .single();
+
+            if (statusError) {
+                throw new Error(
+                    `Error getting status ID: ${statusError.message}`
+                );
+            }
+
+            const { error: updateError } = await supabase
+                .from("products")
+                .update({
+                    status_id: statusData.id,
+                    rejection_reason: suspensionReason,
+                })
+                .eq("id", selectedProductForSuspension.id);
+
+            if (updateError) {
+                throw new Error(
+                    `Error suspending product: ${updateError.message}`
+                );
+            }
+
+            setApprovedProducts((prev) =>
+                prev.map((product) =>
+                    product.id === selectedProductForSuspension.id
+                        ? {
+                              ...product,
+                              status: "Suspended",
+                          }
+                        : product
+                )
+            );
+
+            setShowSuspensionModal(false);
+            setSelectedProductForSuspension(null);
+        } catch (error) {
+            console.error("Error in handleProductSuspension:", error);
+            alert("Failed to suspend product. Please try again.");
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+
+    // Handle product status change (suspend/activate)
     const handleProductStatusAction = async (productId, action) => {
+        if (action === "suspend") {
+            const product = approvedProducts.find((p) => p.id === productId);
+            if (!product) {
+                console.error("Product not found:", productId);
+                return;
+            }
+            setSelectedProductForSuspension(product);
+            setShowSuspensionModal(true);
+            return;
+        }
+
+        // Handle activation
         const { data: statusData, error: statusError } = await supabase
             .from("statuses")
             .select("id")
-            .eq("name", action === "suspend" ? "suspended" : "active")
+            .eq("name", "active")
             .single();
 
         if (statusError) {
@@ -478,6 +549,7 @@ function AdminProductManagement() {
             .from("products")
             .update({
                 status_id: statusData.id,
+                rejection_reason: null,
             })
             .eq("id", productId);
 
@@ -491,7 +563,7 @@ function AdminProductManagement() {
                 product.id === productId
                     ? {
                           ...product,
-                          status: action === "suspend" ? "Suspended" : "Active",
+                          status: "Active",
                       }
                     : product
             )
@@ -1380,8 +1452,8 @@ function AdminProductManagement() {
                 }
             />
 
-            {/* Custom Rejection Modal */}
-            <RejectionModal
+            {/* Custom Action Modals */}
+            <ActionModal
                 open={showRejectionModal}
                 onClose={() => {
                     setShowRejectionModal(false);
@@ -1390,6 +1462,19 @@ function AdminProductManagement() {
                 onConfirm={handleProductRejection}
                 productName={selectedProductForRejection?.name || ""}
                 isSubmitting={isSubmitting}
+                type="rejection"
+            />
+
+            <ActionModal
+                open={showSuspensionModal}
+                onClose={() => {
+                    setShowSuspensionModal(false);
+                    setSelectedProductForSuspension(null);
+                }}
+                onConfirm={handleProductSuspension}
+                productName={selectedProductForSuspension?.name || ""}
+                isSubmitting={isSubmitting}
+                type="suspension"
             />
 
             <AdminNavigationBar />
