@@ -105,12 +105,23 @@ create table public.products (
   created_at timestamp with time zone null default now(),
   updated_at timestamp with time zone null default now(),
   status_id bigint not null default '1'::bigint,
+  rejection_reason text null,
   constraint products_pkey primary key (id),
   constraint products_category_id_fkey foreign KEY (category_id) references categories (id),
   constraint products_crop_id_fkey foreign KEY (crop_id) references crops (id) on update CASCADE on delete RESTRICT,
   constraint products_status_id_fkey foreign KEY (status_id) references statuses (id) on update CASCADE,
   constraint products_user_id_fkey foreign KEY (user_id) references profiles (id) on delete CASCADE
 ) TABLESPACE pg_default;
+
+create index IF not exists idx_products_farmer_id on public.products using btree (user_id) TABLESPACE pg_default;
+
+create index IF not exists idx_products_category_id on public.products using btree (category_id) TABLESPACE pg_default;
+
+create index IF not exists idx_products_created_at on public.products using btree (created_at desc) TABLESPACE pg_default;
+
+create trigger on_products_updated BEFORE
+update on products for EACH row
+execute FUNCTION handle_updated_at ();
 
 create index IF not exists idx_products_farmer_id on public.products using btree (user_id) TABLESPACE pg_default;
 
