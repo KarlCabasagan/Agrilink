@@ -281,7 +281,8 @@ function ProducerProduct() {
                         image_url: data.image_url || "",
                         cropType: data.crops?.name || "",
                         status_id: data.status_id,
-                        approval_date: data.approval_date, // <-- add this line
+                        rejection_reason: data.rejection_reason,
+                        approval_date: data.approval_date,
                         created_at: data.created_at,
                         updated_at: data.updated_at,
                         reviews: [], // TODO: Fetch reviews separately if needed
@@ -385,7 +386,8 @@ function ProducerProduct() {
                 description: editForm.description,
                 stock: parseFloat(editForm.stock),
                 image_url,
-                status_id: 1, // keep the behavior you asked for: set status_id to 1 on update
+                status_id: 1, // Set status to active on update
+                rejection_reason: null, // Clear rejection reason on update
             };
 
             // If non-price/stock fields changed, reset approval_date (always include null)
@@ -422,6 +424,7 @@ function ProducerProduct() {
                     cropType: data.crops?.name || editForm.cropType,
                     updated_at: data.updated_at,
                     status_id: data.status_id ?? 1,
+                    rejection_reason: null,
                     approval_date: hasNonPriceStockChanges
                         ? null
                         : product.approval_date,
@@ -600,6 +603,61 @@ function ProducerProduct() {
             </div>
 
             <div className="w-full max-w-4xl mx-4 sm:mx-auto my-16">
+                {/* Rejection/Suspension Alert */}
+                {product.rejection_reason && (
+                    <div
+                        className={`mb-4 border rounded-lg p-4 ${
+                            product.status_id === 2
+                                ? "bg-red-50 border-red-200"
+                                : "bg-orange-50 border-orange-200"
+                        }`}
+                    >
+                        <div className="flex items-start gap-3">
+                            <Icon
+                                icon="mingcute:warning-line"
+                                className={`w-5 h-5 mt-0.5 flex-shrink-0 ${
+                                    product.status_id === 2
+                                        ? "text-red-500"
+                                        : "text-orange-500"
+                                }`}
+                            />
+                            <div>
+                                <h4
+                                    className={`text-sm font-semibold mb-1 ${
+                                        product.status_id === 2
+                                            ? "text-red-800"
+                                            : "text-orange-800"
+                                    }`}
+                                >
+                                    {product.status_id === 2
+                                        ? "Product Suspended"
+                                        : "Product Rejected"}
+                                </h4>
+                                <p
+                                    className={`text-sm ${
+                                        product.status_id === 2
+                                            ? "text-red-700"
+                                            : "text-orange-700"
+                                    }`}
+                                >
+                                    {product.rejection_reason}
+                                </p>
+                                <p
+                                    className={`text-xs mt-2 ${
+                                        product.status_id === 2
+                                            ? "text-red-600"
+                                            : "text-orange-600"
+                                    }`}
+                                >
+                                    {product.status_id === 2
+                                        ? "Update your product details to address the suspension reason. Product will be reviewed again after update."
+                                        : "Update your product details to address the rejection reason. Product will be reviewed again after update."}
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
                 <div className="bg-white rounded-lg shadow-md overflow-hidden mt-4">
                     {/* Product Image */}
                     <div className="relative">
