@@ -5,6 +5,110 @@ import supabase from "../../SupabaseClient";
 import AdminNavigationBar from "../../components/AdminNavigationBar";
 import ConfirmModal from "../../components/ConfirmModal";
 
+// Custom Rejection Modal Component
+const ActionModal = ({
+    open,
+    onClose,
+    onConfirm,
+    productName,
+    isSubmitting,
+    type,
+}) => {
+    const [reason, setReason] = useState("");
+    const [error, setError] = useState("");
+
+    const isRejection = type === "rejection";
+    const title = isRejection ? "Reject" : "Suspend";
+    const actionText = isRejection ? "rejection" : "suspension";
+
+    const handleSubmit = (e) => {
+        e.preventDefault();
+        if (!reason.trim()) {
+            setError(`Please provide a reason for ${actionText}`);
+            return;
+        }
+        onConfirm(reason.trim());
+    };
+
+    if (!open) return null;
+
+    return (
+        <>
+            <div
+                className="fixed inset-0 z-[9999] bg-black opacity-50"
+                onClick={onClose}
+            ></div>
+            <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4">
+                <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-md">
+                    <h3 className="text-xl font-bold text-gray-900 mb-2">
+                        {title} Product
+                    </h3>
+                    <p className="text-gray-600 mb-4">
+                        You are about to {actionText.toLowerCase()} "
+                        {productName}". Please provide a reason for {actionText}
+                        .
+                    </p>
+
+                    <form onSubmit={handleSubmit}>
+                        <div className="mb-4">
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                                {title} Reason{" "}
+                                <span className="text-red-500">*</span>
+                            </label>
+                            <textarea
+                                value={reason}
+                                onChange={(e) => {
+                                    setReason(e.target.value);
+                                    if (error) setError("");
+                                }}
+                                className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent ${
+                                    error ? "border-red-500" : "border-gray-300"
+                                }`}
+                                rows="3"
+                                placeholder={`Please provide a detailed reason for ${actionText.toLowerCase()} this product...`}
+                            />
+                            {error && (
+                                <p className="mt-1 text-sm text-red-500">
+                                    {error}
+                                </p>
+                            )}
+                        </div>
+
+                        <div className="flex justify-end gap-4">
+                            <button
+                                type="button"
+                                onClick={onClose}
+                                className="px-4 py-2 rounded bg-gray-200 text-gray-700 hover:bg-gray-300 font-medium transition-colors"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                type="submit"
+                                disabled={!reason.trim() || isSubmitting}
+                                className={`px-4 py-2 rounded text-white font-medium transition-colors 
+                                    ${
+                                        !reason.trim() || isSubmitting
+                                            ? "bg-red-400 cursor-not-allowed"
+                                            : "bg-red-600 hover:bg-red-700"
+                                    }`}
+                            >
+                                {isSubmitting ? (
+                                    <div className="flex items-center gap-2">
+                                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                                        {`${title}ing...`}
+                                    </div>
+                                ) : (
+                                    `${title} Product`
+                                )}
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </>
+    );
+};
+
 function AdminProductManagement() {
     // Get initial tab from localStorage or default to "pending"
     const [activeTab, setActiveTab] = useState(() => {
@@ -16,11 +120,18 @@ function AdminProductManagement() {
         localStorage.setItem("adminProductsActiveTab", activeTab);
     }, [activeTab]);
     const [showConfirmModal, setShowConfirmModal] = useState(false);
+    const [showRejectionModal, setShowRejectionModal] = useState(false);
     const [confirmAction, setConfirmAction] = useState(null);
     const [showCategoryModal, setShowCategoryModal] = useState(false);
+    const [selectedProductForRejection, setSelectedProductForRejection] =
+        useState(null);
+    const [isSubmitting, setIsSubmitting] = useState(false);
     const [showImageModal, setShowImageModal] = useState(false);
     const [selectedImage, setSelectedImage] = useState("");
     const [selectedCategory, setSelectedCategory] = useState(null);
+    const [showSuspensionModal, setShowSuspensionModal] = useState(false);
+    const [selectedProductForSuspension, setSelectedProductForSuspension] =
+        useState(null);
     const [searchTerm, setSearchTerm] = useState("");
     const [sortConfig, setSortConfig] = useState({
         key: null,
@@ -296,6 +407,40 @@ function AdminProductManagement() {
         setCategories(categories.filter((cat) => cat.id !== categoryId));
     };
 
+    const handleProductRejection = async (rejectionReason) => {
+        if (!selectedProductForRejection || !rejectionReason) return;
+
+        setIsSubmitting(true);
+        try {
+            const { error: updateError } = await supabase
+                .from("products")
+                .update({
+                    approval_date: "1970-01-01T00:00:00Z",
+                    rejection_reason: rejectionReason,
+                })
+                .eq("id", selectedProductForRejection.id);
+
+            if (updateError) {
+                throw new Error(
+                    `Error rejecting product: ${updateError.message}`
+                );
+            }
+
+            // Remove from pending products in UI
+            setPendingProducts((prev) =>
+                prev.filter((p) => p.id !== selectedProductForRejection.id)
+            );
+
+            setShowRejectionModal(false);
+            setSelectedProductForRejection(null);
+        } catch (error) {
+            console.error("Error in handleProductRejection:", error);
+            alert("Failed to reject product. Please try again.");
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+
     const handleProductAction = (productId, action) => {
         if (!productId || !action) {
             console.error("Invalid product action parameters:", {
@@ -305,17 +450,94 @@ function AdminProductManagement() {
             return;
         }
 
-        console.log("Setting confirm action:", { id: productId, type: action });
-        setConfirmAction({ id: productId, type: action });
-        setShowConfirmModal(true);
+        if (action === "rejected") {
+            const product = pendingProducts.find((p) => p.id === productId);
+            if (!product) {
+                console.error("Product not found:", productId);
+                return;
+            }
+            setSelectedProductForRejection(product);
+            setShowRejectionModal(true);
+        } else {
+            console.log("Setting confirm action:", {
+                id: productId,
+                type: action,
+            });
+            setConfirmAction({ id: productId, type: action });
+            setShowConfirmModal(true);
+        }
     };
 
-    // Handle product status change (suspend/activate) - separate from approval/rejection
+    const handleProductSuspension = async (suspensionReason) => {
+        if (!selectedProductForSuspension) return;
+
+        setIsSubmitting(true);
+        try {
+            const { data: statusData, error: statusError } = await supabase
+                .from("statuses")
+                .select("id")
+                .eq("name", "suspended")
+                .single();
+
+            if (statusError) {
+                throw new Error(
+                    `Error getting status ID: ${statusError.message}`
+                );
+            }
+
+            const { error: updateError } = await supabase
+                .from("products")
+                .update({
+                    status_id: statusData.id,
+                    rejection_reason: suspensionReason,
+                })
+                .eq("id", selectedProductForSuspension.id);
+
+            if (updateError) {
+                throw new Error(
+                    `Error suspending product: ${updateError.message}`
+                );
+            }
+
+            setApprovedProducts((prev) =>
+                prev.map((product) =>
+                    product.id === selectedProductForSuspension.id
+                        ? {
+                              ...product,
+                              status: "Suspended",
+                          }
+                        : product
+                )
+            );
+
+            setShowSuspensionModal(false);
+            setSelectedProductForSuspension(null);
+        } catch (error) {
+            console.error("Error in handleProductSuspension:", error);
+            alert("Failed to suspend product. Please try again.");
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+
+    // Handle product status change (suspend/activate)
     const handleProductStatusAction = async (productId, action) => {
+        if (action === "suspend") {
+            const product = approvedProducts.find((p) => p.id === productId);
+            if (!product) {
+                console.error("Product not found:", productId);
+                return;
+            }
+            setSelectedProductForSuspension(product);
+            setShowSuspensionModal(true);
+            return;
+        }
+
+        // Handle activation
         const { data: statusData, error: statusError } = await supabase
             .from("statuses")
             .select("id")
-            .eq("name", action === "suspend" ? "suspended" : "active")
+            .eq("name", "active")
             .single();
 
         if (statusError) {
@@ -327,6 +549,7 @@ function AdminProductManagement() {
             .from("products")
             .update({
                 status_id: statusData.id,
+                rejection_reason: null,
             })
             .eq("id", productId);
 
@@ -340,7 +563,7 @@ function AdminProductManagement() {
                 product.id === productId
                     ? {
                           ...product,
-                          status: action === "suspend" ? "Suspended" : "Active",
+                          status: "Active",
                       }
                     : product
             )
@@ -386,6 +609,7 @@ function AdminProductManagement() {
                     .update({
                         status_id: statusData.id,
                         approval_date: now,
+                        rejection_reason: null,
                     })
                     .eq("id", confirmAction.id);
 
@@ -1226,6 +1450,31 @@ function AdminProductManagement() {
                         ? "bg-green-600 hover:bg-green-700"
                         : "bg-red-600 hover:bg-red-700"
                 }
+            />
+
+            {/* Custom Action Modals */}
+            <ActionModal
+                open={showRejectionModal}
+                onClose={() => {
+                    setShowRejectionModal(false);
+                    setSelectedProductForRejection(null);
+                }}
+                onConfirm={handleProductRejection}
+                productName={selectedProductForRejection?.name || ""}
+                isSubmitting={isSubmitting}
+                type="rejection"
+            />
+
+            <ActionModal
+                open={showSuspensionModal}
+                onClose={() => {
+                    setShowSuspensionModal(false);
+                    setSelectedProductForSuspension(null);
+                }}
+                onConfirm={handleProductSuspension}
+                productName={selectedProductForSuspension?.name || ""}
+                isSubmitting={isSubmitting}
+                type="suspension"
             />
 
             <AdminNavigationBar />

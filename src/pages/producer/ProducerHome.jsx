@@ -63,6 +63,72 @@ const ProductModal = memo(
                                 </button>
                             </div>
 
+                            {isEdit && selectedProduct?.rejection_reason && (
+                                <div
+                                    className={
+                                        selectedProduct.status_id === 2
+                                            ? "mb-6 bg-red-50 border border-red-200 rounded-lg p-4"
+                                            : "mb-6 bg-amber-50 border border-amber-200 rounded-lg p-4"
+                                    }
+                                >
+                                    <div
+                                        className={
+                                            selectedProduct.status_id === 2
+                                                ? "flex items-start gap-3"
+                                                : "flex items-start gap-3"
+                                        }
+                                    >
+                                        <Icon
+                                            icon="mingcute:warning-line"
+                                            className={
+                                                selectedProduct.status_id === 2
+                                                    ? "text-red-500 w-5 h-5 mt-0.5 flex-shrink-0"
+                                                    : "text-amber-500 w-5 h-5 mt-0.5 flex-shrink-0"
+                                            }
+                                        />
+                                        <div>
+                                            <h4
+                                                className={
+                                                    selectedProduct.status_id ===
+                                                    2
+                                                        ? "text-sm font-semibold text-red-800 mb-1"
+                                                        : "text-sm font-semibold text-amber-800 mb-1"
+                                                }
+                                            >
+                                                {selectedProduct.status_id === 2
+                                                    ? "Product Suspended"
+                                                    : "Product Rejected"}
+                                            </h4>
+                                            <p
+                                                className={
+                                                    selectedProduct.status_id ===
+                                                    2
+                                                        ? "text-sm text-red-700"
+                                                        : "text-sm text-amber-700"
+                                                }
+                                            >
+                                                {
+                                                    selectedProduct.rejection_reason
+                                                }
+                                            </p>
+                                            <p
+                                                className={
+                                                    selectedProduct.status_id ===
+                                                    2
+                                                        ? "text-xs text-red-600 mt-2"
+                                                        : "text-xs text-amber-600 mt-2"
+                                                }
+                                            >
+                                                Update your product details to
+                                                address this issue. The product
+                                                will be automatically
+                                                resubmitted for review.
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
                             {/* Image Section - Top, Full Width */}
                             <div className="mb-6">
                                 <div className="relative group">
@@ -650,6 +716,7 @@ function ProducerHome() {
                     image_url,
                     status_id,
                     approval_date,
+                    rejection_reason,
                     created_at,
                     updated_at,
                     categories!inner (
@@ -658,6 +725,9 @@ function ProducerHome() {
                     ),
                     crops!inner (
                         id,
+                        name
+                    ),
+                    statuses!inner (
                         name
                     )
                 `
@@ -683,6 +753,7 @@ function ProducerHome() {
                     cropType: product.crops?.name,
                     status_id: product.status_id,
                     approval_date: product.approval_date,
+                    rejection_reason: product.rejection_reason,
                     created_at: product.created_at,
                     updated_at: product.updated_at,
                 }));
@@ -927,6 +998,7 @@ function ProducerHome() {
                     stock: parseFloat(productForm.stock),
                     image_url,
                     status_id: 1, // ✅ Always set to Active after edit
+                    rejection_reason: null, // Clear rejection reason on update
                     ...(hasNonPriceStockChanges && selectedProduct.approval_date
                         ? { approval_date: null }
                         : {}),
@@ -1090,7 +1162,11 @@ function ProducerHome() {
 
     const openEditModal = useCallback(
         (product) => {
-            setSelectedProduct(product);
+            setSelectedProduct({
+                ...product,
+                rejection_reason: product.rejection_reason,
+                status: product.status_id,
+            });
             const productCropName = product.cropType;
 
             setProductForm({
