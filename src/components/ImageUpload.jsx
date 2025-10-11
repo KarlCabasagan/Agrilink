@@ -12,8 +12,9 @@ const ImageUpload = ({
     userId,
     bucket = "products",
     className = "",
-    type = "product", // 'product' or 'avatar'
+    type = "product", // 'product' or 'avatar' or 'valid_id'
     disabled = false,
+    customText = null,
 }) => {
     const [uploading, setUploading] = useState(false);
     const [previewUrl, setPreviewUrl] = useState(currentImage || "");
@@ -184,12 +185,12 @@ const ImageUpload = ({
                                     className="mx-auto mb-2"
                                 />
                                 <p className="text-sm font-medium">
-                                    {isAvatar
+                                    {customText?.uploadTitle || (isAvatar
                                         ? "Upload Avatar"
-                                        : "Upload Product Image"}
+                                        : "Upload Product Image")}
                                 </p>
                                 <p className="text-xs mt-1">
-                                    JPEG, PNG, WebP up to 5MB
+                                    {customText?.uploadSubtext || "JPEG, PNG, WebP up to 5MB"}
                                 </p>
                             </>
                         )}
@@ -227,9 +228,9 @@ const ImageUpload = ({
             {/* Help text */}
             {!error && (
                 <p className="mt-2 text-xs text-gray-500">
-                    {isAvatar
+                    {customText?.recommendedText || (isAvatar
                         ? "Recommended: Square image, at least 200x200 pixels"
-                        : "Recommended: High-quality product image, at least 800x600 pixels"}
+                        : "Recommended: High-quality product image, at least 800x600 pixels")}
                 </p>
             )}
         </div>
