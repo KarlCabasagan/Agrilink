@@ -26,15 +26,15 @@ function SellerApplication() {
     useEffect(() => {
         const fetchCrops = async () => {
             const { data, error } = await supabase
-                .from('crops')
-                .select('id, name, category_id, market_demand')
-                .order('name');
-            
+                .from("crops")
+                .select("id, name, category_id, market_demand")
+                .order("name");
+
             if (error) {
-                console.error('Error fetching crops:', error);
+                console.error("Error fetching crops:", error);
                 return;
             }
-            
+
             setCropsData(data);
             setLoadingCrops(false);
         };
@@ -178,12 +178,13 @@ function SellerApplication() {
             // Create seller application record
             const { data: appData, error: appError } = await supabase
                 .from("seller_applications")
-                .insert([{
-                    user_id: session.user.id,
-                    experience: formData.experience,
-                    valid_id_url: validId,
-                    status: 'pending'
-                }])
+                .insert([
+                    {
+                        user_id: session.user.id,
+                        farming_experience: formData.experience,
+                        valid_id_url: validId,
+                    },
+                ])
                 .select()
                 .single();
 
@@ -194,9 +195,9 @@ function SellerApplication() {
                 const { error: cropError } = await supabase
                     .from("application_crops")
                     .insert(
-                        formData.crops.map(cropId => ({
+                        formData.crops.map((cropId) => ({
                             application_id: appData.id,
-                            crop_id: cropId
+                            crop_id: cropId,
                         }))
                     );
 
@@ -468,71 +469,82 @@ function SellerApplication() {
                                     {loadingCrops ? (
                                         <div className="col-span-full text-center py-4">
                                             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
-                                            <p className="text-sm text-gray-500 mt-2">Loading crops...</p>
+                                            <p className="text-sm text-gray-500 mt-2">
+                                                Loading crops...
+                                            </p>
                                         </div>
-                                    ) : cropsData
-                                        .filter((crop) =>
-                                            crop.name
-                                                .toLowerCase()
-                                                .includes(
-                                                    searchQuery.toLowerCase()
-                                                )
-                                        )
-                                        .slice(0, showAllCrops ? undefined : 6)
-                                        .map((crop) => (
-                                            <label
-                                                key={crop.id}
-                                                className="flex items-center p-2 border rounded-lg cursor-pointer hover:bg-gray-50 transition-colors"
-                                            >
-                                                <input
-                                                    type="checkbox"
-                                                    checked={formData.crops.includes(
-                                                        crop.id
-                                                    )}
-                                                    onChange={() =>
-                                                        handleCropToggle(crop.id)
-                                                    }
-                                                    className="mr-2 text-primary focus:ring-primary"
-                                                />
-                                                <div className="flex flex-col">
-                                                    <span className="text-sm font-medium">
-                                                        {crop.name}
-                                                    </span>
-                                                    <span className="text-xs text-gray-500">
-                                                        Demand: {crop.market_demand}
-                                                    </span>
-                                                </div>
-                                            </label>
-                                        ))}
+                                    ) : (
+                                        cropsData
+                                            .filter((crop) =>
+                                                crop.name
+                                                    .toLowerCase()
+                                                    .includes(
+                                                        searchQuery.toLowerCase()
+                                                    )
+                                            )
+                                            .slice(
+                                                0,
+                                                showAllCrops ? undefined : 6
+                                            )
+                                            .map((crop) => (
+                                                <label
+                                                    key={crop.id}
+                                                    className="flex items-center p-2 border rounded-lg cursor-pointer hover:bg-gray-50 transition-colors"
+                                                >
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={formData.crops.includes(
+                                                            crop.id
+                                                        )}
+                                                        onChange={() =>
+                                                            handleCropToggle(
+                                                                crop.id
+                                                            )
+                                                        }
+                                                        className="mr-2 text-primary focus:ring-primary"
+                                                    />
+                                                    <div className="flex flex-col">
+                                                        <span className="text-sm font-medium">
+                                                            {crop.name}
+                                                        </span>
+                                                        <span className="text-xs text-gray-500">
+                                                            Demand:{" "}
+                                                            {crop.market_demand}
+                                                        </span>
+                                                    </div>
+                                                </label>
+                                            ))
+                                    )}
                                 </div>
 
                                 {/* Show More/Less Button */}
-                                {!loadingCrops && cropsData.filter((crop) =>
-                                    crop.name
-                                        .toLowerCase()
-                                        .includes(searchQuery.toLowerCase())
-                                ).length > 6 && (
-                                    <button
-                                        type="button"
-                                        onClick={() =>
-                                            setShowAllCrops(!showAllCrops)
-                                        }
-                                        className="mt-4 text-primary hover:text-primary-dark text-sm font-medium flex items-center gap-1"
-                                    >
-                                        <Icon
-                                            icon={
-                                                showAllCrops
-                                                    ? "mingcute:up-line"
-                                                    : "mingcute:down-line"
+                                {!loadingCrops &&
+                                    cropsData.filter((crop) =>
+                                        crop.name
+                                            .toLowerCase()
+                                            .includes(searchQuery.toLowerCase())
+                                    ).length > 6 && (
+                                        <button
+                                            type="button"
+                                            onClick={() =>
+                                                setShowAllCrops(!showAllCrops)
                                             }
-                                            width="16"
-                                            height="16"
-                                        />
-                                        {showAllCrops
-                                            ? "Show Less"
-                                            : "Show More"}
-                                    </button>
-                                )}
+                                            className="mt-4 text-primary hover:text-primary-dark text-sm font-medium flex items-center gap-1"
+                                        >
+                                            <Icon
+                                                icon={
+                                                    showAllCrops
+                                                        ? "mingcute:up-line"
+                                                        : "mingcute:down-line"
+                                                }
+                                                width="16"
+                                                height="16"
+                                            />
+                                            {showAllCrops
+                                                ? "Show Less"
+                                                : "Show More"}
+                                        </button>
+                                    )}
 
                                 {errors.crops && (
                                     <p className="text-red-600 text-sm mt-1">

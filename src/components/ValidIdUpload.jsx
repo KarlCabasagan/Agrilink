@@ -1,7 +1,12 @@
-import React from 'react';
-import ImageUpload from './ImageUpload';
+import React from "react";
+import ImageUpload from "./ImageUpload";
 
-const ValidIdUpload = ({ currentImage, onImageChange, userId, className = "" }) => {
+const ValidIdUpload = ({
+    currentImage,
+    onImageChange,
+    userId,
+    className = "",
+}) => {
     return (
         <ImageUpload
             currentImage={currentImage}
@@ -12,8 +17,10 @@ const ValidIdUpload = ({ currentImage, onImageChange, userId, className = "" }) 
             className={className}
             customText={{
                 uploadTitle: "Upload Valid ID",
-                uploadSubtext: "Valid government IDs only (e.g., Driver's License, National ID, Passport)",
-                recommendedText: "Minimum size: 1000x1000 pixels. Must be clearly readable."
+                uploadSubtext:
+                    "Valid government IDs only (e.g., Driver's License, National ID, Passport)",
+                recommendedText:
+                    "Minimum size: 1000x1000 pixels. Must be clearly readable.",
             }}
         />
     );
