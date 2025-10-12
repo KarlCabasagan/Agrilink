@@ -2,6 +2,8 @@ import { useState, useEffect } from "react";
 import { Icon } from "@iconify/react";
 import AdminNavigationBar from "../../components/AdminNavigationBar";
 import ConfirmModal from "../../components/ConfirmModal";
+import supabase from "../../SupabaseClient";
+import { toast } from "react-hot-toast";
 
 function AdminUserManagement() {
     // Get initial tab from localStorage or default to "applications"
@@ -23,66 +25,12 @@ function AdminUserManagement() {
         direction: "asc",
     });
 
-    const [producerApplications, setProducerApplications] = useState([
-        {
-            id: 1,
-            name: "John Farmer",
-            email: "john.farmer@email.com",
-            contact: "+63912345678",
-            address: "Brgy. San Miguel, Bulacan",
-            farmSize: "2 hectares",
-            experience: "5 years",
-            crops: ["Tomatoes", "Carrots", "Lettuce"],
-            businessPermit: "Yes",
-            status: "pending",
-            applicationDate: "2024-08-30",
-            profileImage: "/assets/adel.jpg",
-        },
-        {
-            id: 2,
-            name: "Maria Santos",
-            email: "maria.santos@email.com",
-            contact: "+63987654321",
-            address: "Brgy. Maligaya, Nueva Ecija",
-            farmSize: "3 hectares",
-            experience: "8 years",
-            crops: ["Rice", "Corn"],
-            businessPermit: "Yes",
-            status: "pending",
-            applicationDate: "2024-08-28",
-            profileImage: "/assets/adel.jpg",
-        },
-    ]);
-
-    const [allUsers, setAllUsers] = useState([
-        {
-            id: 1,
-            name: "Pedro Santos",
-            email: "pedro@email.com",
-            role: "Consumer",
-            status: "Active",
-            joinDate: "2024-07-15",
-            lastLogin: "2024-09-02",
-        },
-        {
-            id: 2,
-            name: "Ana Garcia",
-            email: "ana@email.com",
-            role: "Producer",
-            status: "Active",
-            joinDate: "2024-06-20",
-            lastLogin: "2024-09-01",
-        },
-        {
-            id: 3,
-            name: "Carlos Mendoza",
-            email: "carlos@email.com",
-            role: "Consumer",
-            status: "Suspended",
-            joinDate: "2024-08-10",
-            lastLogin: "2024-08-30",
-        },
-    ]);
+    // Data states with loading and error handling
+    const [producerApplications, setProducerApplications] = useState([]);
+    const [allUsers, setAllUsers] = useState([]);
+    const [loadingApplications, setLoadingApplications] = useState(true);
+    const [loadingUsers, setLoadingUsers] = useState(true);
+    const [error, setError] = useState(null);
 
     // Utility functions
     const handleSort = (key) => {
@@ -124,26 +72,167 @@ function AdminUserManagement() {
         );
     };
 
+    // Fetch producer applications
+    const fetchProducerApplications = async () => {
+        try {
+            setLoadingApplications(true);
+            setError(null);
+
+            const { data: applications, error: applicationsError } =
+                await supabase
+                    .from("seller_applications")
+                    .select(
+                        `
+                    *,
+                    profiles:user_id (
+                        id,
+                        name,
+                        email,
+                        contact,
+                        address,
+                        avatar_url
+                    ),
+                    application_crops!inner (
+                        crops:crop_id (
+                            id,
+                            name
+                        )
+                    )
+                `
+                    )
+                    .order("created_at", { ascending: false });
+
+            if (applicationsError) throw applicationsError;
+
+            const formattedApplications = applications.map((app) => ({
+                id: app.id,
+                userId: app.user_id,
+                name: app.profiles.name,
+                email: app.profiles.email,
+                contact: app.profiles.contact,
+                address: app.profiles.address,
+                profileImage: app.profiles.avatar_url,
+                experience: app.farming_experience,
+                crops: app.application_crops.map((ac) => ac.crops.name),
+                status: app.status || "pending",
+                applicationDate: app.created_at,
+                rejectionReason: app.rejection_reason,
+            }));
+
+            setProducerApplications(formattedApplications);
+        } catch (err) {
+            setError(err.message);
+            toast.error("Failed to load applications");
+        } finally {
+            setLoadingApplications(false);
+        }
+    };
+
+    // Fetch all users
+    const fetchUsers = async () => {
+        try {
+            setLoadingUsers(true);
+            setError(null);
+
+            const { data: users, error: usersError } = await supabase
+                .from("profiles")
+                .select(
+                    `
+                    *,
+                    roles:role_id (name),
+                    statuses:status_id (name)
+                `
+                )
+                .order("created_at", { ascending: false });
+
+            if (usersError) throw usersError;
+
+            const formattedUsers = users.map((user) => ({
+                id: user.id,
+                name: user.name,
+                email: user.email,
+                role: user.roles.name,
+                status: user.statuses.name,
+                roleId: user.role_id,
+                statusId: user.status_id,
+                joinDate: user.created_at,
+                lastLogin: user.last_login,
+            }));
+
+            setAllUsers(formattedUsers);
+        } catch (err) {
+            setError(err.message);
+            toast.error("Failed to load users");
+        } finally {
+            setLoadingUsers(false);
+        }
+    };
+
+    // Load data on mount
+    useEffect(() => {
+        fetchProducerApplications();
+        fetchUsers();
+    }, []);
+
     const handleApplicationAction = (applicationId, action) => {
         setConfirmAction({ id: applicationId, type: action });
         setShowConfirmModal(true);
     };
 
-    const confirmApplicationAction = () => {
-        if (confirmAction) {
-            setProducerApplications((prev) =>
-                prev.map((app) =>
-                    app.id === confirmAction.id
-                        ? {
-                              ...app,
-                              status:
-                                  confirmAction.type === "approved"
-                                      ? "approved"
-                                      : "rejected",
-                          }
-                        : app
-                )
+    const confirmApplicationAction = async () => {
+        if (!confirmAction) return;
+
+        const { id, type } = confirmAction;
+        const application = producerApplications.find((app) => app.id === id);
+
+        try {
+            setLoadingApplications(true);
+
+            if (type === "approved") {
+                // First update the seller application
+                const { error: applicationError } = await supabase
+                    .from("seller_applications")
+                    .update({ status: "approved" })
+                    .eq("id", id);
+
+                if (applicationError) throw applicationError;
+
+                // Then update the user's role and verification status
+                const { error: profileError } = await supabase
+                    .from("profiles")
+                    .update({
+                        role_id: 2, // Producer role
+                        producer_verified: true,
+                    })
+                    .eq("id", application.userId);
+
+                if (profileError) throw profileError;
+            } else {
+                // Reject the application
+                const { error: rejectError } = await supabase
+                    .from("seller_applications")
+                    .update({
+                        status: "rejected",
+                        rejection_reason: "Application rejected by admin",
+                    })
+                    .eq("id", id);
+
+                if (rejectError) throw rejectError;
+            }
+
+            // Refresh data
+            await fetchProducerApplications();
+            await fetchUsers();
+
+            toast.success(
+                "Application successfully " +
+                    (type === "approved" ? "approved" : "rejected")
             );
+        } catch (err) {
+            toast.error("Failed to process application");
+            console.error("Application action error:", err);
+        } finally {
+            setLoadingApplications(false);
             setShowConfirmModal(false);
             setConfirmAction(null);
         }
@@ -154,33 +243,48 @@ function AdminUserManagement() {
         setShowImageModal(true);
     };
 
-    const handleUserAction = (userId, action) => {
-        setAllUsers((prev) =>
-            prev.map((user) =>
-                user.id === userId
-                    ? {
-                          ...user,
-                          status: action === "suspend" ? "Suspended" : "Active",
-                      }
-                    : user
-            )
-        );
+    const handleUserAction = async (userId, action) => {
+        try {
+            const statusId = action === "suspend" ? 2 : 1; // 2 for suspended, 1 for active
+
+            const { error } = await supabase
+                .from("profiles")
+                .update({ status_id: statusId })
+                .eq("id", userId);
+
+            if (error) throw error;
+
+            await fetchUsers();
+            toast.success(
+                "User successfully " +
+                    (action === "suspend" ? "suspended" : "activated")
+            );
+        } catch (err) {
+            toast.error("Failed to update user status");
+            console.error("User action error:", err);
+        }
     };
 
-    const handleRoleToggle = (userId) => {
-        setAllUsers((prev) =>
-            prev.map((user) =>
-                user.id === userId
-                    ? {
-                          ...user,
-                          role:
-                              user.role === "Consumer"
-                                  ? "Producer"
-                                  : "Consumer",
-                      }
-                    : user
-            )
-        );
+    const handleRoleToggle = async (userId) => {
+        const user = allUsers.find((u) => u.id === userId);
+        if (!user || user.role === "Admin") return; // Don't allow toggling admin roles
+
+        try {
+            const newRoleId = user.roleId === 1 ? 2 : 1; // Toggle between Consumer (1) and Producer (2)
+
+            const { error } = await supabase
+                .from("profiles")
+                .update({ role_id: newRoleId })
+                .eq("id", userId);
+
+            if (error) throw error;
+
+            await fetchUsers();
+            toast.success("User role updated successfully");
+        } catch (err) {
+            toast.error("Failed to update user role");
+            console.error("Role toggle error:", err);
+        }
     };
 
     return (
@@ -198,11 +302,12 @@ function AdminUserManagement() {
                     <div className="flex border-b border-gray-200">
                         <button
                             onClick={() => setActiveTab("applications")}
-                            className={`flex-1 py-3 px-4 text-center font-medium transition-colors ${
-                                activeTab === "applications"
+                            className={
+                                "flex-1 py-3 px-4 text-center font-medium transition-colors " +
+                                (activeTab === "applications"
                                     ? "text-primary border-b-2 border-primary"
-                                    : "text-gray-600 hover:text-gray-800"
-                            }`}
+                                    : "text-gray-600 hover:text-gray-800")
+                            }
                         >
                             Producer Applications
                             {producerApplications.filter(
@@ -254,11 +359,31 @@ function AdminUserManagement() {
                             </div>
                         </div>
 
-                        {filterData(
-                            producerApplications.filter(
-                                (app) => app.status === "pending"
-                            )
-                        ).length === 0 ? (
+                        {loadingApplications ? (
+                            <div className="bg-white rounded-lg shadow-md p-8 text-center">
+                                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
+                                <p className="text-gray-500 mt-2">
+                                    Loading applications...
+                                </p>
+                            </div>
+                        ) : error ? (
+                            <div className="bg-white rounded-lg shadow-md p-8 text-center">
+                                <Icon
+                                    icon="mingcute:error-fill"
+                                    width="64"
+                                    height="64"
+                                    className="mx-auto text-red-500 mb-4"
+                                />
+                                <h3 className="text-lg font-semibold text-gray-800 mb-2">
+                                    Error Loading Data
+                                </h3>
+                                <p className="text-gray-600">{error}</p>
+                            </div>
+                        ) : filterData(
+                              producerApplications.filter(
+                                  (app) => app.status === "pending"
+                              )
+                          ).length === 0 ? (
                             <div className="bg-white rounded-lg shadow-md p-8 text-center">
                                 <Icon
                                     icon="mingcute:user-add-line"
@@ -329,31 +454,32 @@ function AdminUserManagement() {
                                         </div>
                                         <div>
                                             <h4 className="font-medium text-gray-700 mb-1">
-                                                Farm Details
+                                                Farming Experience
                                             </h4>
                                             <p className="text-sm text-gray-600">
-                                                Size: {application.farmSize}
-                                            </p>
-                                            <p className="text-sm text-gray-600">
-                                                Experience:{" "}
                                                 {application.experience}
                                             </p>
                                         </div>
                                         <div>
                                             <h4 className="font-medium text-gray-700 mb-1">
-                                                Crops
+                                                Crops{" "}
+                                                <span className="text-gray-400 text-xs">
+                                                    ({application.crops.length})
+                                                </span>
                                             </h4>
-                                            <div className="flex flex-wrap gap-1">
-                                                {application.crops.map(
-                                                    (crop, index) => (
-                                                        <span
-                                                            key={index}
-                                                            className="bg-green-100 text-green-800 px-2 py-1 rounded text-xs"
-                                                        >
-                                                            {crop}
-                                                        </span>
-                                                    )
-                                                )}
+                                            <div className="max-h-[4.5rem] overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-transparent hover:scrollbar-thumb-gray-400 pr-2">
+                                                <div className="flex flex-wrap gap-1">
+                                                    {application.crops.map(
+                                                        (crop, index) => (
+                                                            <span
+                                                                key={index}
+                                                                className="bg-green-100 text-green-800 px-2 py-1 rounded text-xs whitespace-nowrap"
+                                                            >
+                                                                {crop}
+                                                            </span>
+                                                        )
+                                                    )}
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
