@@ -253,18 +253,12 @@ function EditProfile() {
             // Handle avatar upload if changed
             if (avatarChanged) {
                 if (selectedAvatarFile) {
-                    console.log("Uploading avatar file:", {
-                        name: selectedAvatarFile.name,
-                        size: selectedAvatarFile.size,
-                        type: selectedAvatarFile.type,
-                    });
-
-                    // Upload new avatar
+                    // Upload new avatar and delete old one
                     const uploadResult = await uploadImage(
                         selectedAvatarFile,
-                        "avatars", // Use correct avatars bucket
+                        "avatars",
                         user.id,
-                        formData.avatar_url // Pass old avatar URL for deletion
+                        formData.avatar_url // This will delete the old avatar
                     );
 
                     console.log("Upload result:", uploadResult);
@@ -375,7 +369,7 @@ function EditProfile() {
         setModalOpen(true);
     };
 
-    // Handle file selection for avatar
+    // Handle file selection for avatar - only handles preview and compression
     const handleAvatarFileSelect = async (event) => {
         const file = event.target.files[0];
         if (!file) return;
@@ -389,23 +383,19 @@ function EditProfile() {
         }
 
         try {
+            // Clean up previous preview URL if it exists
+            if (avatarPreview && avatarPreview.startsWith("blob:")) {
+                URL.revokeObjectURL(avatarPreview);
+            }
+
             // Create preview immediately using original file
             const previewUrl = URL.createObjectURL(file);
             setAvatarPreview(previewUrl);
             setAvatarChanged(true);
 
             // Compress the image in background for later upload
-            console.log("Original file:", {
-                name: file.name,
-                size: file.size,
-                type: file.type,
-            });
+            console.log("Compressing image for upload...");
             const compressedFile = await compressImage(file, 400, 0.8);
-            console.log("Compressed file:", {
-                name: compressedFile.name,
-                size: compressedFile.size,
-                type: compressedFile.type,
-            });
 
             // Validate the compressed file has content
             if (compressedFile.size === 0) {
@@ -424,16 +414,15 @@ function EditProfile() {
         }
     };
 
-    // Remove avatar (reset to blank)
+    // Handle avatar removal (just preview change until form submission)
     const handleRemoveAvatar = () => {
-        setAvatarPreview("/assets/blank-profile.jpg");
-        setSelectedAvatarFile(null);
-        setAvatarChanged(true);
-
         // Clean up the preview URL if it exists
         if (avatarPreview && avatarPreview.startsWith("blob:")) {
             URL.revokeObjectURL(avatarPreview);
         }
+        setAvatarPreview("/assets/blank-profile.jpg");
+        setSelectedAvatarFile(null);
+        setAvatarChanged(true); // Mark avatar as changed but don't delete yet
     };
 
     return (
