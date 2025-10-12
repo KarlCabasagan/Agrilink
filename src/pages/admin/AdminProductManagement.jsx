@@ -1395,11 +1395,12 @@ function AdminProductManagement() {
 
             {/* Image Modal */}
             {showImageModal && (
-                <div
-                    className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[9999]"
-                    onClick={() => setShowImageModal(false)}
-                >
-                    <div className="bg-white p-4 rounded-lg max-w-2xl max-h-[80vh] overflow-auto">
+                <>
+                    <div
+                        className="fixed inset-0 bg-black opacity-50 flex items-center justify-center z-[9999]"
+                        onClick={() => setShowImageModal(false)}
+                    ></div>
+                    <div className="bg-white p-4 rounded-lg max-w-2xl max-h-[80vh] overflow-auto z-[10000] fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-11/12 md:w-3/4 lg:w-1/2">
                         <div className="flex justify-between items-center mb-4">
                             <h3 className="text-lg font-semibold">
                                 Product Image
@@ -1421,7 +1422,7 @@ function AdminProductManagement() {
                             className="w-full h-auto rounded-lg"
                         />
                     </div>
-                </div>
+                </>
             )}
 
             {/* Confirm Modal */}

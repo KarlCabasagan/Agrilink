@@ -1,184 +1,214 @@
-import { useState } from "react";
+import { useState, useEffect, useContext } from "react";
 import { Icon } from "@iconify/react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import NavigationBar from "../../components/NavigationBar";
+import supabase from "../../SupabaseClient";
+import ValidIdUpload from "../../components/ValidIdUpload";
+import { AuthContext } from "../../App";
+import { uploadImage } from "../../utils/imageUpload";
 
 function SellerApplication() {
+    const { user } = useContext(AuthContext);
     const navigate = useNavigate();
-    const [loading, setLoading] = useState(false);
-    const [showSuccess, setShowSuccess] = useState(false);
 
+    // Form and validation states
     const [formData, setFormData] = useState({
-        name: "",
-        email: "",
-        contact: "",
-        address: "",
-        farmSize: "",
-        experience: "",
         crops: [],
-        businessPermit: "",
+        experience: "",
+    });
+    const [errors, setErrors] = useState({});
+    // Store file and preview for valid ID (no URL until submission)
+    const [validId, setValidId] = useState({
+        file: null,
+        preview: "",
     });
 
-    const [errors, setErrors] = useState({});
+    // UI states
+    const [loading, setLoading] = useState(false);
+    const [showSuccess, setShowSuccess] = useState(false);
+    const [searchQuery, setSearchQuery] = useState("");
+    const [showAllCrops, setShowAllCrops] = useState(false);
 
-    const cropOptions = [
-        "Rice",
-        "Corn",
-        "Tomatoes",
-        "Carrots",
-        "Lettuce",
-        "Cabbage",
-        "Eggplant",
-        "Onions",
-        "Garlic",
-        "Potatoes",
-        "Sweet Potato",
-        "Banana",
-        "Mango",
-        "Papaya",
-        "Citrus",
-        "Other Vegetables",
-        "Other Fruits",
-        "Herbs and Spices",
-    ];
+    // Data states
+    const [userData, setUserData] = useState(null);
+    const [cropsData, setCropsData] = useState([]);
+    const [loadingCrops, setLoadingCrops] = useState(true);
+    const [existingApplication, setExistingApplication] = useState(null);
 
-    const handleInputChange = (e) => {
-        const { name, value } = e.target;
-
-        if (name === "contact") {
-            // Remove all non-digits
-            const cleanValue = value.replace(/\D/g, "");
-            // Limit to 10 digits (excluding +63)
-            const limitedValue = cleanValue.slice(0, 10);
-            setFormData((prev) => ({
-                ...prev,
-                [name]: limitedValue,
-            }));
-        } else {
-            setFormData((prev) => ({
-                ...prev,
-                [name]: value,
-            }));
-        }
-
-        // Clear error when user starts typing
-        if (errors[name]) {
-            setErrors((prev) => ({
-                ...prev,
-                [name]: "",
-            }));
-        }
-    };
-
+    // Helper function to format phone numbers (e.g., +63 912 345 6789)
     const formatPhoneNumber = (phoneNumber) => {
         if (!phoneNumber) return "";
-        // Remove all non-digits
         const cleaned = phoneNumber.replace(/\D/g, "");
-
-        // Format as: +63 912 345 6789
-        if (cleaned.length >= 10) {
-            return `+63 ${cleaned.slice(0, 3)} ${cleaned.slice(
-                3,
-                6
-            )} ${cleaned.slice(6, 10)}`;
-        } else if (cleaned.length >= 6) {
-            return `+63 ${cleaned.slice(0, 3)} ${cleaned.slice(
-                3,
-                6
-            )} ${cleaned.slice(6)}`;
-        } else if (cleaned.length >= 3) {
-            return `+63 ${cleaned.slice(0, 3)} ${cleaned.slice(3)}`;
-        } else if (cleaned.length > 0) {
-            return `+63 ${cleaned}`;
-        }
-        return "+63 ";
+        const parts = [
+            "+63",
+            cleaned.slice(0, 3),
+            cleaned.slice(3, 6),
+            cleaned.slice(6, 10),
+        ].filter(Boolean);
+        return parts.join(" ");
     };
 
-    const displayPhoneNumber = (phoneNumber) => {
-        if (!phoneNumber) return "";
-        const cleaned = phoneNumber.replace(/\D/g, "");
-
-        if (cleaned.length >= 7) {
-            return `${cleaned.slice(0, 3)} ${cleaned.slice(
-                3,
-                6
-            )} ${cleaned.slice(6)}`;
-        } else if (cleaned.length >= 3) {
-            return `${cleaned.slice(0, 3)} ${cleaned.slice(3)}`;
-        }
-        return cleaned;
-    };
-
-    const handleCropToggle = (crop) => {
+    // Handle toggling crop selection
+    const handleCropToggle = (cropId) => {
         setFormData((prev) => ({
             ...prev,
-            crops: prev.crops.includes(crop)
-                ? prev.crops.filter((c) => c !== crop)
-                : [...prev.crops, crop],
+            crops: prev.crops.includes(cropId)
+                ? prev.crops.filter((c) => c !== cropId)
+                : [...prev.crops, cropId],
         }));
+        setErrors((prev) => ({ ...prev, crops: undefined }));
     };
 
     const validateForm = () => {
         const newErrors = {};
 
-        if (!formData.name.trim()) newErrors.name = "Name is required";
-        if (!formData.email.trim()) newErrors.email = "Email is required";
-        if (!formData.contact.trim())
-            newErrors.contact = "Contact number is required";
-        if (!formData.address.trim()) newErrors.address = "Address is required";
-        if (!formData.farmSize.trim())
-            newErrors.farmSize = "Farm size is required";
-        if (!formData.experience.trim())
+        // Required field validation
+        if (!formData.experience.trim()) {
             newErrors.experience = "Experience is required";
-        if (formData.crops.length === 0)
-            newErrors.crops = "Please select at least one crop";
-        if (!formData.businessPermit)
-            newErrors.businessPermit =
-                "Please specify if you have a business permit";
-
-        // Email validation
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        if (formData.email && !emailRegex.test(formData.email)) {
-            newErrors.email = "Please enter a valid email address";
         }
-
-        // Contact validation
-        const contactRegex = /^(\+63|0)[0-9]{10}$/;
-        if (formData.contact && !contactRegex.test(formData.contact)) {
-            newErrors.contact =
-                "Please enter a valid Philippine contact number";
+        if (formData.crops.length === 0) {
+            newErrors.crops = "Please select at least one crop";
+        }
+        if (!validId?.file) {
+            newErrors.validId = "Please upload a valid ID";
         }
 
         setErrors(newErrors);
         return Object.keys(newErrors).length === 0;
     };
 
+    const handleInputChange = (e) => {
+        const { name, value } = e.target;
+        setFormData((prev) => ({ ...prev, [name]: value }));
+        // Clear error when user starts typing
+        setErrors((prev) => ({ ...prev, [name]: undefined }));
+    };
+
+    useEffect(() => {
+        // Fetch all initial data on mount
+        const fetchInitialData = async () => {
+            try {
+                // Check for existing seller application
+                const { data: application, error: applicationError } =
+                    await supabase
+                        .from("seller_applications")
+                        .select("*")
+                        .eq("user_id", user.id)
+                        .single();
+
+                if (applicationError && applicationError.code !== "PGRST116") {
+                    // PGRST116 means no rows found, which is expected for new applicants
+                    console.error(
+                        "Error checking existing application:",
+                        applicationError
+                    );
+                }
+
+                setExistingApplication(application || null);
+
+                // Fetch user profile
+                const { data: profile, error: profileError } = await supabase
+                    .from("profiles")
+                    .select("*")
+                    .eq("id", user.id)
+                    .single();
+
+                if (profileError) throw profileError;
+                setUserData(profile);
+
+                // Only fetch crops if there's no existing application
+                if (!application) {
+                    setLoadingCrops(true);
+                    const { data: crops, error: cropsError } = await supabase
+                        .from("crops")
+                        .select("*");
+
+                    if (cropsError) throw cropsError;
+                    setCropsData(crops || []);
+                }
+            } catch (err) {
+                console.error("Error fetching initial data:", err);
+                setErrors((prev) => ({
+                    ...prev,
+                    submit: "Failed to load application data",
+                }));
+            } finally {
+                setLoadingCrops(false);
+            }
+        };
+
+        fetchInitialData();
+    }, []); // ✅ Run only once on mount
+
     const handleSubmit = async (e) => {
         e.preventDefault();
-
-        if (!validateForm()) {
-            return;
-        }
+        if (!validateForm()) return;
 
         setLoading(true);
+        setErrors({}); // Clear any previous errors
 
         try {
-            // Format contact number before submission
-            const formattedContact = formatPhoneNumber(formData.contactNumber);
-            const submissionData = {
-                ...formData,
-                contactNumber: formattedContact,
-            };
+            // Upload the valid ID only during form submission
+            if (!validId.file) {
+                setErrors({ submit: "Valid ID image is required" });
+                return;
+            }
 
-            // Simulate API call
-            await new Promise((resolve) => setTimeout(resolve, 2000));
+            // Upload the image to Supabase storage
+            const uploadResult = await uploadImage(
+                validId.file,
+                "valid_ids",
+                user.id
+            );
+            if (!uploadResult.success) {
+                setErrors({
+                    submit: uploadResult.error || "Failed to upload valid ID",
+                });
+                return;
+            }
 
+            // 2. Insert seller application record
+            const { data: appData, error: appError } = await supabase
+                .from("seller_applications")
+                .insert([
+                    {
+                        user_id: user.id,
+                        valid_id_url: uploadResult.url, // Use the URL from the upload result
+                        farming_experience: formData.experience,
+                        rejection_reason: null,
+                    },
+                ])
+                .select()
+                .single();
+
+            if (appError) {
+                throw new Error(appError.message);
+            }
+
+            // 3. Insert selected crops into application_crops
+            const { error: cropError } = await supabase
+                .from("application_crops")
+                .insert(
+                    formData.crops.map((cropId) => ({
+                        application_id: appData.id,
+                        crop_id: cropId,
+                    }))
+                );
+
+            if (cropError) {
+                throw new Error(cropError.message);
+            }
+
+            // Success! Show success message and redirect
             setShowSuccess(true);
-            setTimeout(() => {
-                navigate("/profile");
-            }, 3000);
+            setTimeout(() => navigate("/profile"), 3000);
         } catch (error) {
             console.error("Error submitting application:", error);
+            setErrors({
+                submit:
+                    error.message ||
+                    "Failed to submit application. Please try again.",
+            });
         } finally {
             setLoading(false);
         }
@@ -203,16 +233,26 @@ function SellerApplication() {
                                 className="text-green-600"
                             />
                         </div>
-                        <h2 className="text-xl font-bold text-gray-800 mb-2">
+                        <h2 className="text-xl font-bold text-gray-800 mb-4">
                             Application Submitted Successfully!
                         </h2>
-                        <p className="text-gray-600 mb-4">
-                            Your seller application has been submitted for
-                            review. You will receive an email notification once
-                            your application has been processed.
-                        </p>
-                        <p className="text-sm text-gray-500">
-                            Redirecting you back to profile...
+                        <div className="text-gray-600 space-y-4">
+                            <p>
+                                Your seller application has been submitted for
+                                review. Our admin team will verify your:
+                            </p>
+                            <ul className="list-disc pl-5 text-left space-y-2">
+                                <li>Personal Information</li>
+                                <li>Valid ID</li>
+                                <li>Farming Experience</li>
+                            </ul>
+                            <p>
+                                You will receive an email notification once your
+                                application has been verified.
+                            </p>
+                        </div>
+                        <p className="text-sm text-gray-500 mt-6">
+                            Redirecting you to your profile...
                         </p>
                     </div>
                 </div>
@@ -244,6 +284,39 @@ function SellerApplication() {
             </div>
 
             <div className="w-full max-w-2xl mx-4 sm:mx-auto my-16">
+                {existingApplication && (
+                    <div className="mb-6 bg-yellow-50 border-l-4 border-yellow-500 text-yellow-700 p-4 rounded-lg">
+                        <div className="flex items-start gap-3">
+                            <Icon
+                                icon="mingcute:time-line"
+                                width="24"
+                                height="24"
+                                className="mt-0.5"
+                            />
+                            <div>
+                                <h3 className="font-semibold mb-1">
+                                    Application Under Review
+                                </h3>
+                                <p className="text-sm">
+                                    Your seller application is currently being
+                                    reviewed by our admin team. We will notify
+                                    you via email once the review is complete.
+                                </p>
+                                <button
+                                    onClick={() => navigate("/profile")}
+                                    className="mt-3 text-sm font-medium text-yellow-800 hover:text-yellow-900 flex items-center gap-1"
+                                >
+                                    <Icon
+                                        icon="mingcute:user-4-line"
+                                        width="16"
+                                        height="16"
+                                    />
+                                    Go to Profile
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
                 {/* Info Banner */}
                 <div className="mb-6 bg-blue-50 border border-blue-200 rounded-lg p-4 mt-4">
                     <div className="flex items-start gap-3">
@@ -267,7 +340,14 @@ function SellerApplication() {
                 </div>
 
                 {/* Application Form */}
-                <form onSubmit={handleSubmit} className="space-y-6">
+                <form
+                    onSubmit={handleSubmit}
+                    className="space-y-6"
+                    style={{
+                        pointerEvents: existingApplication ? "none" : "auto",
+                        opacity: existingApplication ? 0.6 : 1,
+                    }}
+                >
                     {/* Personal Information */}
                     <div className="bg-white rounded-lg shadow-md overflow-hidden">
                         <div className="p-6 border-b border-gray-200">
@@ -278,104 +358,71 @@ function SellerApplication() {
                         <div className="p-6 space-y-4">
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                                    Full Name *
+                                    Full Name
                                 </label>
-                                <input
-                                    type="text"
-                                    name="name"
-                                    value={formData.name}
-                                    onChange={handleInputChange}
-                                    className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent ${
-                                        errors.name
-                                            ? "border-red-300"
-                                            : "border-gray-300"
-                                    }`}
-                                    placeholder="Enter your full name"
-                                />
-                                {errors.name && (
-                                    <p className="text-red-600 text-sm mt-1">
-                                        {errors.name}
-                                    </p>
-                                )}
-                            </div>
-
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
-                                    Email Address *
-                                </label>
-                                <input
-                                    type="email"
-                                    name="email"
-                                    value={formData.email}
-                                    onChange={handleInputChange}
-                                    className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent ${
-                                        errors.email
-                                            ? "border-red-300"
-                                            : "border-gray-300"
-                                    }`}
-                                    placeholder="Enter your email address"
-                                />
-                                {errors.email && (
-                                    <p className="text-red-600 text-sm mt-1">
-                                        {errors.email}
-                                    </p>
-                                )}
-                            </div>
-
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
-                                    Contact Number *
-                                </label>
-                                <div className="relative">
-                                    <div className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-600 font-medium bg-gray-100 px-2 py-1 rounded text-sm">
-                                        +63
-                                    </div>
-                                    <input
-                                        type="tel"
-                                        name="contact"
-                                        value={displayPhoneNumber(
-                                            formData.contact
-                                        )}
-                                        onChange={handleInputChange}
-                                        className={`w-full pl-16 pr-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent ${
-                                            errors.contact
-                                                ? "border-red-300"
-                                                : "border-gray-300"
-                                        }`}
-                                        placeholder="912 345 6789"
-                                        maxLength={13} // "912 345 6789"
-                                    />
+                                <div className="w-full px-3 py-2 border rounded-lg bg-gray-50 border-gray-300 text-gray-700">
+                                    {userData?.name || "Loading..."}
                                 </div>
-                                <p className="text-xs text-gray-500 mt-1">
-                                    Enter your 10-digit mobile number (without
-                                    +63)
-                                </p>
-                                {errors.contact && (
-                                    <p className="text-red-600 text-sm mt-1">
-                                        {errors.contact}
-                                    </p>
-                                )}
                             </div>
 
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                                    Complete Address *
+                                    Email Address
                                 </label>
-                                <textarea
-                                    name="address"
-                                    value={formData.address}
-                                    onChange={handleInputChange}
-                                    rows="3"
-                                    className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent ${
-                                        errors.address
-                                            ? "border-red-300"
-                                            : "border-gray-300"
-                                    }`}
-                                    placeholder="Enter your complete address including barangay, city/municipality, and province"
+                                <div className="w-full px-3 py-2 border rounded-lg bg-gray-50 border-gray-300 text-gray-700">
+                                    {userData?.email || "Loading..."}
+                                </div>
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    Contact Number
+                                </label>
+                                <div className="w-full px-3 py-2 border rounded-lg bg-gray-50 border-gray-300 text-gray-700">
+                                    {userData?.contact
+                                        ? formatPhoneNumber(userData.contact)
+                                        : "Loading..."}
+                                </div>
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    Complete Address
+                                </label>
+                                <div className="w-full px-3 py-2 border rounded-lg bg-gray-50 border-gray-300 text-gray-700">
+                                    {userData?.address || "Loading..."}
+                                </div>
+                            </div>
+
+                            <div className="mt-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
+                                <p className="text-sm text-gray-600">
+                                    Want to update your personal information?{" "}
+                                    <Link
+                                        to="/edit-profile"
+                                        className="text-primary hover:text-primary-dark font-medium"
+                                    >
+                                        Edit Profile
+                                    </Link>
+                                </p>
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    Valid ID *
+                                </label>
+                                <ValidIdUpload
+                                    currentImage={validId?.preview || ""}
+                                    onImageChange={(file, preview) =>
+                                        setValidId({ file, preview })
+                                    }
+                                    disableAutoUpload={true}
+                                    userId={user?.id}
+                                    className="w-full"
+                                    disabled={loading}
                                 />
-                                {errors.address && (
+                                {errors.validId && (
                                     <p className="text-red-600 text-sm mt-1">
-                                        {errors.address}
+                                        {errors.validId}
                                     </p>
                                 )}
                             </div>
@@ -390,29 +437,6 @@ function SellerApplication() {
                             </h2>
                         </div>
                         <div className="p-6 space-y-4">
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
-                                    Farm Size *
-                                </label>
-                                <input
-                                    type="text"
-                                    name="farmSize"
-                                    value={formData.farmSize}
-                                    onChange={handleInputChange}
-                                    className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent ${
-                                        errors.farmSize
-                                            ? "border-red-300"
-                                            : "border-gray-300"
-                                    }`}
-                                    placeholder="e.g., 2 hectares, 1000 square meters"
-                                />
-                                {errors.farmSize && (
-                                    <p className="text-red-600 text-sm mt-1">
-                                        {errors.farmSize}
-                                    </p>
-                                )}
-                            </div>
-
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-2">
                                     Farming Experience *
@@ -444,75 +468,113 @@ function SellerApplication() {
                                     Select all crops that you currently grow or
                                     plan to grow:
                                 </p>
-                                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                                    {cropOptions.map((crop) => (
-                                        <label
-                                            key={crop}
-                                            className="flex items-center p-2 border rounded-lg cursor-pointer hover:bg-gray-50 transition-colors"
-                                        >
-                                            <input
-                                                type="checkbox"
-                                                checked={formData.crops.includes(
-                                                    crop
-                                                )}
-                                                onChange={() =>
-                                                    handleCropToggle(crop)
-                                                }
-                                                className="mr-2 text-primary focus:ring-primary"
-                                            />
-                                            <span className="text-sm">
-                                                {crop}
-                                            </span>
-                                        </label>
-                                    ))}
+
+                                {/* Search Bar */}
+                                <div className="mb-4">
+                                    <div className="relative">
+                                        <input
+                                            type="text"
+                                            value={searchQuery}
+                                            onChange={(e) =>
+                                                setSearchQuery(e.target.value)
+                                            }
+                                            placeholder="Search crops..."
+                                            className="w-full px-3 py-2 pl-10 border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent border-gray-300"
+                                        />
+                                        <Icon
+                                            icon="mingcute:search-line"
+                                            className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"
+                                            width="20"
+                                            height="20"
+                                        />
+                                    </div>
                                 </div>
+
+                                {/* Crops Grid */}
+                                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                                    {loadingCrops ? (
+                                        <div className="col-span-full text-center py-4">
+                                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
+                                            <p className="text-sm text-gray-500 mt-2">
+                                                Loading crops...
+                                            </p>
+                                        </div>
+                                    ) : (
+                                        cropsData
+                                            .filter((crop) =>
+                                                crop.name
+                                                    .toLowerCase()
+                                                    .includes(
+                                                        searchQuery.toLowerCase()
+                                                    )
+                                            )
+                                            .slice(
+                                                0,
+                                                showAllCrops ? undefined : 6
+                                            )
+                                            .map((crop) => (
+                                                <label
+                                                    key={crop.id}
+                                                    className="flex items-center p-2 border rounded-lg cursor-pointer hover:bg-gray-50 transition-colors"
+                                                >
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={formData.crops.includes(
+                                                            crop.id
+                                                        )}
+                                                        onChange={() =>
+                                                            handleCropToggle(
+                                                                crop.id
+                                                            )
+                                                        }
+                                                        className="mr-2 text-primary focus:ring-primary"
+                                                    />
+                                                    <div className="flex flex-col">
+                                                        <span className="text-sm font-medium">
+                                                            {crop.name}
+                                                        </span>
+                                                        <span className="text-xs text-gray-500">
+                                                            Demand:{" "}
+                                                            {crop.market_demand}
+                                                        </span>
+                                                    </div>
+                                                </label>
+                                            ))
+                                    )}
+                                </div>
+
+                                {/* Show More/Less Button */}
+                                {!loadingCrops &&
+                                    cropsData.filter((crop) =>
+                                        crop.name
+                                            .toLowerCase()
+                                            .includes(searchQuery.toLowerCase())
+                                    ).length > 6 && (
+                                        <button
+                                            type="button"
+                                            onClick={() =>
+                                                setShowAllCrops(!showAllCrops)
+                                            }
+                                            className="mt-4 text-primary hover:text-primary-dark text-sm font-medium flex items-center gap-1"
+                                        >
+                                            <Icon
+                                                icon={
+                                                    showAllCrops
+                                                        ? "mingcute:up-line"
+                                                        : "mingcute:down-line"
+                                                }
+                                                width="16"
+                                                height="16"
+                                            />
+                                            {showAllCrops
+                                                ? "Show Less"
+                                                : "Show More"}
+                                        </button>
+                                    )}
+
                                 {errors.crops && (
                                     <p className="text-red-600 text-sm mt-1">
                                         {errors.crops}
-                                    </p>
-                                )}
-                            </div>
-
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
-                                    Business Permit *
-                                </label>
-                                <div className="space-y-2">
-                                    <label className="flex items-center">
-                                        <input
-                                            type="radio"
-                                            name="businessPermit"
-                                            value="Yes"
-                                            checked={
-                                                formData.businessPermit ===
-                                                "Yes"
-                                            }
-                                            onChange={handleInputChange}
-                                            className="mr-2 text-primary focus:ring-primary"
-                                        />
-                                        <span className="text-sm">
-                                            Yes, I have a valid business permit
-                                        </span>
-                                    </label>
-                                    <label className="flex items-center">
-                                        <input
-                                            type="radio"
-                                            name="businessPermit"
-                                            value="No"
-                                            checked={
-                                                formData.businessPermit === "No"
-                                            }
-                                            onChange={handleInputChange}
-                                            className="mr-2 text-primary focus:ring-primary"
-                                        />
-                                        <span className="text-sm">
-                                            No, but I plan to obtain one
-                                        </span>
-                                    </label>
-                                </div>
-                                {errors.businessPermit && (
-                                    <p className="text-red-600 text-sm mt-1">
-                                        {errors.businessPermit}
                                     </p>
                                 )}
                             </div>
@@ -521,6 +583,13 @@ function SellerApplication() {
 
                     {/* Submit Button */}
                     <div className="bg-white rounded-lg shadow-md p-6">
+                        {errors.submit && (
+                            <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-md">
+                                <p className="text-sm text-red-700">
+                                    {errors.submit}
+                                </p>
+                            </div>
+                        )}
                         <button
                             type="submit"
                             disabled={loading}
@@ -538,14 +607,15 @@ function SellerApplication() {
                                         width="20"
                                         height="20"
                                     />
-                                    Submit Application
+                                    Submit Application for Verification
                                 </>
                             )}
                         </button>
                         <p className="text-sm text-gray-600 text-center mt-3">
                             By submitting this application, you agree to our
                             terms and conditions for sellers on the Agrilink
-                            platform.
+                            platform. Your application will be reviewed by our
+                            admin team.
                         </p>
                     </div>
                 </form>
