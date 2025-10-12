@@ -3,6 +3,7 @@ import { Icon } from "@iconify/react";
 import AdminNavigationBar from "../../components/AdminNavigationBar";
 import ConfirmModal from "../../components/ConfirmModal";
 import RejectModal from "../../components/RejectModal";
+import SuspendUserModal from "../../components/SuspendUserModal";
 import supabase from "../../SupabaseClient";
 import { deleteImageFromUrl } from "../../utils/imageUpload";
 import { toast } from "react-hot-toast";
@@ -28,6 +29,8 @@ function AdminUserManagement() {
         direction: "asc",
     });
     const [processingId, setProcessingId] = useState(null);
+    const [showSuspendModal, setShowSuspendModal] = useState(false);
+    const [userToSuspend, setUserToSuspend] = useState(null);
 
     // Data states with loading and error handling
     const [producerApplications, setProducerApplications] = useState([]);
@@ -139,6 +142,19 @@ function AdminUserManagement() {
             setLoadingUsers(true);
             setError(null);
 
+            // First, get the status mappings
+            const { data: statuses, error: statusError } = await supabase
+                .from("statuses")
+                .select("id, name")
+                .eq("category", "Users & Products");
+
+            if (statusError) throw statusError;
+
+            const statusMap = Object.fromEntries(
+                statuses.map((status) => [status.id, status.name])
+            );
+
+            // Then fetch users with their roles and status
             const { data: users, error: usersError } = await supabase
                 .from("profiles")
                 .select(
@@ -157,11 +173,16 @@ function AdminUserManagement() {
                 name: user.name,
                 email: user.email,
                 role: user.roles.name,
-                status: user.statuses.name,
+                status: statusMap[user.status_id] || "Unknown",
+                statusLabel: (statusMap[user.status_id] || "unknown").replace(
+                    /\b\w/g,
+                    (l) => l.toUpperCase()
+                ),
                 roleId: user.role_id,
                 statusId: user.status_id,
                 joinDate: user.created_at,
                 lastLogin: user.last_login,
+                suspensionReason: user.suspension_reason,
             }));
 
             setAllUsers(formattedUsers);
@@ -419,23 +440,83 @@ function AdminUserManagement() {
 
     const handleUserAction = async (userId, action) => {
         try {
-            const statusId = action === "suspend" ? 2 : 1; // 2 for suspended, 1 for active
+            if (action === "suspend") {
+                const user = allUsers.find((u) => u.id === userId);
+                if (!user) {
+                    throw new Error("User not found");
+                }
+                setUserToSuspend(user);
+                setShowSuspendModal(true);
+                return;
+            }
 
+            // Handle activation
             const { error } = await supabase
                 .from("profiles")
-                .update({ status_id: statusId })
+                .update({
+                    status_id: 1, // active
+                    suspension_reason: null, // Clear suspension reason
+                })
                 .eq("id", userId);
 
             if (error) throw error;
 
-            await fetchUsers();
-            toast.success(
-                "User successfully " +
-                    (action === "suspend" ? "suspended" : "activated")
+            // Update UI optimistically
+            setAllUsers((prev) =>
+                prev.map((user) => {
+                    if (user.id === userId) {
+                        return {
+                            ...user,
+                            status: "Active",
+                            statusId: 1,
+                        };
+                    }
+                    return user;
+                })
             );
+
+            toast.success("User successfully activated");
         } catch (err) {
             toast.error("Failed to update user status");
             console.error("User action error:", err);
+        }
+    };
+
+    const handleSuspendUser = async (reason) => {
+        try {
+            if (!userToSuspend)
+                throw new Error("No user selected for suspension");
+
+            const { error } = await supabase
+                .from("profiles")
+                .update({
+                    status_id: 2, // suspended
+                    suspension_reason: reason,
+                })
+                .eq("id", userToSuspend.id);
+
+            if (error) throw error;
+
+            // Update UI optimistically
+            setAllUsers((prev) =>
+                prev.map((user) => {
+                    if (user.id === userToSuspend.id) {
+                        return {
+                            ...user,
+                            status: "Suspended",
+                            statusId: 2,
+                        };
+                    }
+                    return user;
+                })
+            );
+
+            toast.success("User successfully suspended");
+            setShowSuspendModal(false);
+            setUserToSuspend(null);
+        } catch (err) {
+            toast.error("Failed to suspend user");
+            console.error("User suspension error:", err);
         }
     };
 
@@ -915,16 +996,44 @@ function AdminUserManagement() {
                                                         </span>
                                                     </td>
                                                     <td className="px-6 py-4 whitespace-nowrap">
-                                                        <span
-                                                            className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                                                                user.status ===
-                                                                "Active"
-                                                                    ? "bg-green-100 text-green-800"
-                                                                    : "bg-red-100 text-red-800"
-                                                            }`}
-                                                        >
-                                                            {user.status}
-                                                        </span>
+                                                        <div className="flex items-center gap-2">
+                                                            <span
+                                                                className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium rounded-full cursor-help transition-all duration-200 ${
+                                                                    user.statusId ===
+                                                                    1
+                                                                        ? "bg-green-100 text-green-800"
+                                                                        : user.statusId ===
+                                                                          2
+                                                                        ? "bg-red-100 text-red-800"
+                                                                        : "bg-gray-100 text-gray-800"
+                                                                }`}
+                                                                title={
+                                                                    user.suspensionReason
+                                                                        ? `Suspension Reason: ${user.suspensionReason}`
+                                                                        : "User Active"
+                                                                }
+                                                            >
+                                                                <Icon
+                                                                    icon={
+                                                                        user.statusId ===
+                                                                        1
+                                                                            ? "mingcute:check-circle-fill"
+                                                                            : user.statusId ===
+                                                                              2
+                                                                            ? "mingcute:user-forbid-line"
+                                                                            : "mingcute:question-fill"
+                                                                    }
+                                                                    className="w-3.5 h-3.5"
+                                                                />
+                                                                {user.statusId ===
+                                                                1
+                                                                    ? "Active"
+                                                                    : user.statusId ===
+                                                                      2
+                                                                    ? "Suspended"
+                                                                    : "Pending"}
+                                                            </span>
+                                                        </div>
                                                     </td>
                                                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                                                         {new Date(
@@ -937,28 +1046,31 @@ function AdminUserManagement() {
                                                         ).toLocaleDateString()}
                                                     </td>
                                                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                                                        <button
-                                                            onClick={() =>
-                                                                handleUserAction(
-                                                                    user.id,
-                                                                    user.status ===
-                                                                        "Active"
-                                                                        ? "suspend"
-                                                                        : "activate"
-                                                                )
-                                                            }
-                                                            className={`inline-flex items-center px-3 py-1 border border-transparent text-sm leading-4 font-medium rounded-md text-white ${
-                                                                user.status ===
-                                                                "Active"
-                                                                    ? "bg-red-600 hover:bg-red-700"
-                                                                    : "bg-green-600 hover:bg-green-700"
-                                                            } focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500`}
-                                                        >
-                                                            {user.status ===
-                                                            "Active"
-                                                                ? "Suspend"
-                                                                : "Activate"}
-                                                        </button>
+                                                        {user.role !==
+                                                            "Admin" && (
+                                                            <button
+                                                                onClick={() =>
+                                                                    handleUserAction(
+                                                                        user.id,
+                                                                        user.statusId ===
+                                                                            1
+                                                                            ? "suspend"
+                                                                            : "activate"
+                                                                    )
+                                                                }
+                                                                className={`inline-flex items-center px-3 py-1 border border-transparent text-sm leading-4 font-medium rounded-md text-white transition-all duration-200 ${
+                                                                    user.statusId ===
+                                                                    1
+                                                                        ? "bg-red-600 hover:bg-red-700"
+                                                                        : "bg-green-600 hover:bg-green-700"
+                                                                } focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500`}
+                                                            >
+                                                                {user.statusId ===
+                                                                1
+                                                                    ? "Suspend"
+                                                                    : "Activate"}
+                                                            </button>
+                                                        )}
                                                     </td>
                                                 </tr>
                                             )
@@ -1051,6 +1163,19 @@ function AdminUserManagement() {
                     onConfirm={handleReject}
                     title="Reject Application"
                     message="Please provide a reason for rejecting this producer application. This will be visible to the applicant."
+                />
+            )}
+
+            {/* Suspend User Modal */}
+            {showSuspendModal && userToSuspend && (
+                <SuspendUserModal
+                    isOpen={showSuspendModal}
+                    onClose={() => {
+                        setShowSuspendModal(false);
+                        setUserToSuspend(null);
+                    }}
+                    onConfirm={handleSuspendUser}
+                    userName={userToSuspend.name}
                 />
             )}
 
