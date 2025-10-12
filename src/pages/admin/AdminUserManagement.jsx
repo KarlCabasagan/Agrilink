@@ -2,11 +2,12 @@ import { useState, useEffect } from "react";
 import { Icon } from "@iconify/react";
 import AdminNavigationBar from "../../components/AdminNavigationBar";
 import ConfirmModal from "../../components/ConfirmModal";
+import RejectModal from "../../components/RejectModal";
 import supabase from "../../SupabaseClient";
 import { toast } from "react-hot-toast";
 
 function AdminUserManagement() {
-    // Get initial tab from localStorage or default to "applications"
+    // Get                         {filterData(producerApplications).length === 0 ? (al tab from localStorage or default to "applications"
     const [activeTab, setActiveTab] = useState(() => {
         return localStorage.getItem("adminUsersActiveTab") || "applications";
     });
@@ -15,6 +16,7 @@ function AdminUserManagement() {
     useEffect(() => {
         localStorage.setItem("adminUsersActiveTab", activeTab);
     }, [activeTab]);
+    const [showRejectModal, setShowRejectModal] = useState(false);
     const [showConfirmModal, setShowConfirmModal] = useState(false);
     const [confirmAction, setConfirmAction] = useState(null);
     const [showImageModal, setShowImageModal] = useState(false);
@@ -24,6 +26,7 @@ function AdminUserManagement() {
         key: null,
         direction: "asc",
     });
+    const [processingId, setProcessingId] = useState(null);
 
     // Data states with loading and error handling
     const [producerApplications, setProducerApplications] = useState([]);
@@ -83,30 +86,32 @@ function AdminUserManagement() {
                     .from("seller_applications")
                     .select(
                         `
-                    *,
-                    profiles:user_id (
-                        id,
-                        name,
-                        email,
-                        contact,
-                        address,
-                        avatar_url
-                    ),
-                    application_crops!inner (
-                        crops:crop_id (
+                        *,
+                        profiles:user_id (
                             id,
-                            name
+                            name,
+                            email,
+                            contact,
+                            address,
+                            avatar_url
+                        ),
+                        application_crops!inner (
+                            crops:crop_id (
+                                id,
+                                name
+                            )
                         )
+                    `
                     )
-                `
-                    )
+                    .is("rejection_reason", null) // Only get applications that haven't been rejected
                     .order("created_at", { ascending: false });
 
             if (applicationsError) throw applicationsError;
 
             const formattedApplications = applications.map((app) => ({
                 id: app.id,
-                userId: app.user_id,
+                userId: app.user_id, // Keep this as userId for component use, but map from user_id
+                user_id: app.user_id, // Keep original field name for database operations
                 name: app.profiles.name,
                 email: app.profiles.email,
                 contact: app.profiles.contact,
@@ -114,11 +119,9 @@ function AdminUserManagement() {
                 profileImage: app.profiles.avatar_url,
                 experience: app.farming_experience,
                 crops: app.application_crops.map((ac) => ac.crops.name),
-                status: app.status || "pending",
                 applicationDate: app.created_at,
                 rejectionReason: app.rejection_reason,
             }));
-
             setProducerApplications(formattedApplications);
         } catch (err) {
             setError(err.message);
@@ -174,65 +177,220 @@ function AdminUserManagement() {
         fetchUsers();
     }, []);
 
+    // Monitor modal state changes
+    useEffect(() => {
+        console.log("🔄 Modal state changed:", {
+            showConfirmModal,
+            confirmAction,
+            processingId,
+        });
+    }, [showConfirmModal, confirmAction, processingId]);
+
     const handleApplicationAction = (applicationId, action) => {
-        setConfirmAction({ id: applicationId, type: action });
-        setShowConfirmModal(true);
+        console.log("🔵 handleApplicationAction called:", {
+            applicationId,
+            action,
+            currentState: {
+                showConfirmModal,
+                showRejectModal,
+                confirmAction,
+                processingId,
+            },
+        });
+
+        try {
+            // First, validate the application exists
+            const application = producerApplications.find(
+                (app) => app.id === applicationId
+            );
+            if (!application) {
+                console.error("❌ Application not found:", applicationId);
+                return;
+            }
+
+            // Clear previous state
+            setConfirmAction(null);
+            setShowConfirmModal(false);
+            setShowRejectModal(false);
+            setProcessingId(null);
+
+            console.log("🔄 Setting new state for:", application.name);
+
+            // Set new state
+            setConfirmAction({ id: applicationId, type: action });
+
+            if (action === "approved") {
+                console.log("📢 Opening approval modal for:", application.name);
+                setShowConfirmModal(true);
+
+                // Verify state update
+                setTimeout(() => {
+                    console.log("🔍 State after update:", {
+                        showConfirmModal,
+                        confirmAction,
+                    });
+                }, 0);
+            } else {
+                console.log(
+                    "📢 Opening rejection modal for:",
+                    application.name
+                );
+                setShowRejectModal(true);
+            }
+        } catch (error) {
+            console.error("❌ Error in handleApplicationAction:", error);
+        }
     };
 
-    const confirmApplicationAction = async () => {
+    const handleReject = async (reason) => {
         if (!confirmAction) return;
-
-        const { id, type } = confirmAction;
+        const { id } = confirmAction;
         const application = producerApplications.find((app) => app.id === id);
 
         try {
-            setLoadingApplications(true);
+            setProcessingId(id);
 
-            if (type === "approved") {
-                // First update the seller application
-                const { error: applicationError } = await supabase
-                    .from("seller_applications")
-                    .update({ status: "approved" })
-                    .eq("id", id);
+            // Update seller application with rejection reason
+            const { error: rejectError } = await supabase
+                .from("seller_applications")
+                .update({
+                    rejection_reason: reason,
+                })
+                .eq("id", id);
 
-                if (applicationError) throw applicationError;
-
-                // Then update the user's role and verification status
-                const { error: profileError } = await supabase
-                    .from("profiles")
-                    .update({
-                        role_id: 2, // Producer role
-                        producer_verified: true,
-                    })
-                    .eq("id", application.userId);
-
-                if (profileError) throw profileError;
-            } else {
-                // Reject the application
-                const { error: rejectError } = await supabase
-                    .from("seller_applications")
-                    .update({
-                        status: "rejected",
-                        rejection_reason: "Application rejected by admin",
-                    })
-                    .eq("id", id);
-
-                if (rejectError) throw rejectError;
-            }
+            if (rejectError) throw rejectError;
 
             // Refresh data
             await fetchProducerApplications();
             await fetchUsers();
 
+            toast.success("Application rejected successfully");
+            setShowRejectModal(false);
+        } catch (err) {
+            toast.error("Failed to reject application");
+            console.error("Rejection error:", err);
+        } finally {
+            setProcessingId(null);
+            setConfirmAction(null);
+        }
+    };
+
+    const confirmApplicationAction = async () => {
+        if (!confirmAction || !confirmAction.id) {
+            console.error("❌ No application selected for approval");
+            return;
+        }
+
+        const { id } = confirmAction;
+        console.log("🔍 Looking for application:", id);
+        const application = producerApplications.find((app) => app.id === id);
+        console.log("📄 Found application:", application);
+
+        if (!application || !application.user_id) {
+            console.error(
+                "❌ Application or user data not found:",
+                application
+            );
+            toast.error("Could not process application: missing data");
+            return;
+        }
+
+        try {
+            console.log("🚀 Starting approval process for:", {
+                applicationId: id,
+                userId: application.user_id,
+                name: application.name,
+            });
+            setProcessingId(id);
+
+            // First verify the user exists and isn't already a producer
+            const { data: existingProfile, error: profileCheckError } =
+                await supabase
+                    .from("profiles")
+                    .select("role_id, producer_verified, id")
+                    .eq("id", application.user_id)
+                    .single();
+
+            if (profileCheckError) {
+                throw new Error(
+                    "Failed to verify user profile: " +
+                        profileCheckError.message
+                );
+            }
+            console.log("👤 Current user profile:", existingProfile);
+            if (existingProfile.role_id === 2) {
+                throw new Error("User is already a producer");
+            }
+
+            // Correct Supabase update: use .select() and .single() to get updated row
+            const { data: updatedProfile, error: profileError } = await supabase
+                .from("profiles")
+                .update({
+                    role_id: 2,
+                    producer_verified: true,
+                    updated_at: new Date().toISOString(),
+                })
+                .eq("id", application.user_id)
+                .select("id, role_id, producer_verified, name")
+                .single();
+
+            if (profileError || !updatedProfile) {
+                console.error("❌ Profile update error:", profileError);
+                throw new Error(
+                    profileError?.message ||
+                        "Failed to update user profile - no data returned"
+                );
+            }
+            console.log("✅ Profile updated successfully:", updatedProfile);
+
+            // Delete the seller application
+            const { error: applicationError } = await supabase
+                .from("seller_applications")
+                .delete()
+                .eq("id", id)
+                .eq("user_id", application.user_id);
+
+            if (applicationError) {
+                console.error(
+                    "❌ Application deletion error:",
+                    applicationError
+                );
+                // Revert the profile changes
+                const { error: revertError } = await supabase
+                    .from("profiles")
+                    .update({
+                        role_id: 1,
+                        producer_verified: false,
+                        updated_at: new Date().toISOString(),
+                    })
+                    .eq("id", application.user_id);
+                if (revertError) {
+                    console.error(
+                        "❌ Failed to revert profile changes:",
+                        revertError
+                    );
+                }
+                throw new Error(
+                    "Failed to delete application. Changes have been reverted."
+                );
+            }
+            console.log(
+                "✅ Application deleted for user:",
+                application.user_id
+            );
+
+            // Refresh data
+            console.log("🔄 Refreshing data...");
+            await Promise.all([fetchProducerApplications(), fetchUsers()]);
+            console.log("✨ Approval process completed successfully");
             toast.success(
-                "Application successfully " +
-                    (type === "approved" ? "approved" : "rejected")
+                `Successfully approved ${application.name}'s application`
             );
         } catch (err) {
-            toast.error("Failed to process application");
-            console.error("Application action error:", err);
+            console.error("❌ Approval error:", err);
+            toast.error(err.message || "Failed to approve application");
         } finally {
-            setLoadingApplications(false);
+            setProcessingId(null);
             setShowConfirmModal(false);
             setConfirmAction(null);
         }
@@ -310,15 +468,9 @@ function AdminUserManagement() {
                             }
                         >
                             Producer Applications
-                            {producerApplications.filter(
-                                (app) => app.status === "pending"
-                            ).length > 0 && (
+                            {producerApplications.length > 0 && (
                                 <span className="ml-2 bg-red-500 text-white text-xs px-2 py-1 rounded-full">
-                                    {
-                                        producerApplications.filter(
-                                            (app) => app.status === "pending"
-                                        ).length
-                                    }
+                                    {producerApplications.length}
                                 </span>
                             )}
                         </button>
@@ -379,11 +531,7 @@ function AdminUserManagement() {
                                 </h3>
                                 <p className="text-gray-600">{error}</p>
                             </div>
-                        ) : filterData(
-                              producerApplications.filter(
-                                  (app) => app.status === "pending"
-                              )
-                          ).length === 0 ? (
+                        ) : filterData(producerApplications).length === 0 ? (
                             <div className="bg-white rounded-lg shadow-md p-8 text-center">
                                 <Icon
                                     icon="mingcute:user-add-line"
@@ -392,135 +540,173 @@ function AdminUserManagement() {
                                     className="mx-auto text-gray-300 mb-4"
                                 />
                                 <h3 className="text-lg font-semibold text-gray-600 mb-2">
-                                    No Pending Applications
+                                    No Applications Found
                                 </h3>
                                 <p className="text-gray-500">
-                                    All producer applications have been
-                                    reviewed.
+                                    There are no producer applications to
+                                    review.
                                 </p>
                             </div>
                         ) : (
-                            filterData(
-                                sortData(
-                                    producerApplications.filter(
-                                        (app) => app.status === "pending"
-                                    )
-                                )
-                            ).map((application) => (
-                                <div
-                                    key={application.id}
-                                    className="bg-white rounded-lg shadow-md p-6"
-                                >
-                                    <div className="flex items-start justify-between mb-4">
-                                        <div className="flex items-center gap-4">
-                                            <img
-                                                src={application.profileImage}
-                                                alt={application.name}
-                                                className="w-16 h-16 object-cover rounded-full cursor-pointer hover:opacity-80 transition-opacity"
-                                                onClick={() =>
-                                                    handleImageClick(
+                            filterData(sortData(producerApplications)).map(
+                                (application) => (
+                                    <div
+                                        key={application.id}
+                                        className="bg-white rounded-lg shadow-md p-6"
+                                    >
+                                        <div className="flex items-start justify-between mb-4">
+                                            <div className="flex items-center gap-4">
+                                                <img
+                                                    src={
                                                         application.profileImage
-                                                    )
-                                                }
-                                            />
-                                            <div>
-                                                <h3 className="text-lg font-semibold text-gray-800">
-                                                    {application.name}
-                                                </h3>
-                                                <p className="text-sm text-gray-600">
-                                                    Applied on{" "}
-                                                    {new Date(
-                                                        application.applicationDate
-                                                    ).toLocaleDateString()}
-                                                </p>
-                                            </div>
-                                        </div>
-                                        <span className="bg-yellow-100 text-yellow-800 px-3 py-1 rounded-full text-sm">
-                                            Pending Review
-                                        </span>
-                                    </div>
-
-                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
-                                        <div>
-                                            <h4 className="font-medium text-gray-700 mb-1">
-                                                Contact Information
-                                            </h4>
-                                            <p className="text-sm text-gray-600">
-                                                {application.email}
-                                            </p>
-                                            <p className="text-sm text-gray-600">
-                                                {application.contact}
-                                            </p>
-                                        </div>
-                                        <div>
-                                            <h4 className="font-medium text-gray-700 mb-1">
-                                                Farming Experience
-                                            </h4>
-                                            <p className="text-sm text-gray-600">
-                                                {application.experience}
-                                            </p>
-                                        </div>
-                                        <div>
-                                            <h4 className="font-medium text-gray-700 mb-1">
-                                                Crops{" "}
-                                                <span className="text-gray-400 text-xs">
-                                                    ({application.crops.length})
-                                                </span>
-                                            </h4>
-                                            <div className="max-h-[4.5rem] overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-transparent hover:scrollbar-thumb-gray-400 pr-2">
-                                                <div className="flex flex-wrap gap-1">
-                                                    {application.crops.map(
-                                                        (crop, index) => (
-                                                            <span
-                                                                key={index}
-                                                                className="bg-green-100 text-green-800 px-2 py-1 rounded text-xs whitespace-nowrap"
-                                                            >
-                                                                {crop}
-                                                            </span>
+                                                    }
+                                                    alt={application.name}
+                                                    className="w-16 h-16 object-cover rounded-full cursor-pointer hover:opacity-80 transition-opacity"
+                                                    onClick={() =>
+                                                        handleImageClick(
+                                                            application.profileImage
                                                         )
-                                                    )}
+                                                    }
+                                                />
+                                                <div>
+                                                    <h3 className="text-lg font-semibold text-gray-800">
+                                                        {application.name}
+                                                    </h3>
+                                                    <p className="text-sm text-gray-600">
+                                                        Applied on{" "}
+                                                        {new Date(
+                                                            application.applicationDate
+                                                        ).toLocaleDateString()}
+                                                    </p>
                                                 </div>
                                             </div>
                                         </div>
-                                    </div>
 
-                                    <div className="mb-4">
-                                        <h4 className="font-medium text-gray-700 mb-1">
-                                            Address
-                                        </h4>
-                                        <p className="text-sm text-gray-600">
-                                            {application.address}
-                                        </p>
-                                    </div>
+                                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
+                                            <div>
+                                                <h4 className="font-medium text-gray-700 mb-1">
+                                                    Contact Information
+                                                </h4>
+                                                <p className="text-sm text-gray-600">
+                                                    {application.email}
+                                                </p>
+                                                <p className="text-sm text-gray-600">
+                                                    {application.contact}
+                                                </p>
+                                            </div>
+                                            <div>
+                                                <h4 className="font-medium text-gray-700 mb-1">
+                                                    Farming Experience
+                                                </h4>
+                                                <p className="text-sm text-gray-600">
+                                                    {application.experience}
+                                                </p>
+                                            </div>
+                                            <div>
+                                                <h4 className="font-medium text-gray-700 mb-1">
+                                                    Crops{" "}
+                                                    <span className="text-gray-400 text-xs">
+                                                        (
+                                                        {
+                                                            application.crops
+                                                                .length
+                                                        }
+                                                        )
+                                                    </span>
+                                                </h4>
+                                                <div className="max-h-[4.5rem] overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-transparent hover:scrollbar-thumb-gray-400 pr-2">
+                                                    <div className="flex flex-wrap gap-1">
+                                                        {application.crops.map(
+                                                            (crop, index) => (
+                                                                <span
+                                                                    key={index}
+                                                                    className="bg-green-100 text-green-800 px-2 py-1 rounded text-xs whitespace-nowrap"
+                                                                >
+                                                                    {crop}
+                                                                </span>
+                                                            )
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
 
-                                    <div className="flex justify-end gap-3">
-                                        <button
-                                            onClick={() =>
-                                                handleApplicationAction(
-                                                    application.id,
-                                                    "approved"
-                                                )
-                                            }
-                                            className="flex items-center gap-2 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors"
-                                        >
-                                            <Icon icon="mingcute:check-line" />
-                                            Approve
-                                        </button>
-                                        <button
-                                            onClick={() =>
-                                                handleApplicationAction(
-                                                    application.id,
-                                                    "rejected"
-                                                )
-                                            }
-                                            className="flex items-center gap-2 bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors"
-                                        >
-                                            <Icon icon="mingcute:close-line" />
-                                            Reject
-                                        </button>
+                                        <div className="mb-4">
+                                            <h4 className="font-medium text-gray-700 mb-1">
+                                                Address
+                                            </h4>
+                                            <p className="text-sm text-gray-600">
+                                                {application.address}
+                                            </p>
+                                        </div>
+
+                                        <div className="flex justify-end gap-3">
+                                            <button
+                                                onClick={() =>
+                                                    handleApplicationAction(
+                                                        application.id,
+                                                        "approved"
+                                                    )
+                                                }
+                                                disabled={
+                                                    processingId ===
+                                                    application.id
+                                                }
+                                                className="flex items-center gap-2 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                            >
+                                                {processingId ===
+                                                    application.id &&
+                                                confirmAction?.type ===
+                                                    "approved" ? (
+                                                    <>
+                                                        <Icon
+                                                            icon="mingcute:loading-line"
+                                                            className="animate-spin"
+                                                        />
+                                                        Approving...
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        <Icon icon="mingcute:check-line" />
+                                                        Approve
+                                                    </>
+                                                )}
+                                            </button>
+                                            <button
+                                                onClick={() =>
+                                                    handleApplicationAction(
+                                                        application.id,
+                                                        "rejected"
+                                                    )
+                                                }
+                                                disabled={
+                                                    processingId ===
+                                                    application.id
+                                                }
+                                                className="flex items-center gap-2 bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                            >
+                                                {processingId ===
+                                                    application.id &&
+                                                confirmAction?.type ===
+                                                    "rejected" ? (
+                                                    <>
+                                                        <Icon
+                                                            icon="mingcute:loading-line"
+                                                            className="animate-spin"
+                                                        />
+                                                        Rejecting...
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        <Icon icon="mingcute:close-line" />
+                                                        Reject
+                                                    </>
+                                                )}
+                                            </button>
+                                        </div>
                                     </div>
-                                </div>
-                            ))
+                                )
+                            )
                         )}
                     </div>
                 )}
@@ -753,33 +939,38 @@ function AdminUserManagement() {
             </div>
 
             {/* Confirmation Modal */}
-            {showConfirmModal && (
-                <ConfirmModal
-                    isOpen={showConfirmModal}
-                    onClose={() => setShowConfirmModal(false)}
-                    onConfirm={confirmApplicationAction}
-                    title={`${
-                        confirmAction?.type === "approved"
-                            ? "Approve"
-                            : "Reject"
-                    } Application`}
-                    message={`Are you sure you want to ${
-                        confirmAction?.type === "approved"
-                            ? "approve"
-                            : "reject"
-                    } this producer application?`}
-                    confirmText={
-                        confirmAction?.type === "approved"
-                            ? "Approve"
-                            : "Reject"
+            <ConfirmModal
+                open={showConfirmModal}
+                onClose={() => {
+                    console.log("🔵 Modal closing...");
+                    setShowConfirmModal(false);
+                    setConfirmAction(null);
+                    setProcessingId(null);
+                }}
+                onConfirm={() => {
+                    console.log("🔵 Confirming application approval...");
+                    if (confirmAction) {
+                        console.log("📝 Approval details:", confirmAction);
+                        confirmApplicationAction();
+                    } else {
+                        console.error(
+                            "❌ No application selected for approval"
+                        );
                     }
-                    confirmButtonClass={
-                        confirmAction?.type === "approved"
-                            ? "bg-green-600 hover:bg-green-700"
-                            : "bg-red-600 hover:bg-red-700"
-                    }
-                />
-            )}
+                }}
+                title="Approve Producer Application"
+                message={
+                    confirmAction
+                        ? `Are you sure you want to approve ${
+                              producerApplications.find(
+                                  (app) => app.id === confirmAction.id
+                              )?.name
+                          }'s application? This will grant them seller privileges.`
+                        : "Loading application details..."
+                }
+                confirmText="Yes, Approve"
+                confirmButtonClass="bg-green-600 hover:bg-green-700"
+            />
 
             {/* Image Modal */}
             {showImageModal && (
@@ -810,6 +1001,20 @@ function AdminUserManagement() {
                         />
                     </div>
                 </div>
+            )}
+
+            {/* Reject Modal */}
+            {showRejectModal && (
+                <RejectModal
+                    isOpen={showRejectModal}
+                    onClose={() => {
+                        setShowRejectModal(false);
+                        setConfirmAction(null);
+                    }}
+                    onConfirm={handleReject}
+                    title="Reject Application"
+                    message="Please provide a reason for rejecting this producer application. This will be visible to the applicant."
+                />
             )}
 
             <AdminNavigationBar />
