@@ -220,7 +220,7 @@ function AdminUserManagement() {
     const deleteValidIdFile = async (fileUrl) => {
         if (!fileUrl) return null;
         try {
-            const success = await deleteImageFromUrl(fileUrl, "valid-ids");
+            const success = await deleteImageFromUrl(fileUrl, "valid_ids");
             if (!success) {
                 return new Error("Failed to delete valid ID file");
             }
@@ -306,11 +306,14 @@ function AdminUserManagement() {
             });
             setProcessingId(id);
 
+            // Store valid ID URL for later deletion
+            const validIdUrl = application.validIdUrl;
+
             // First verify the user exists and isn't already a producer
             const { data: existingProfile, error: profileCheckError } =
                 await supabase
                     .from("profiles")
-                    .select("role_id, producer_verified, id")
+                    .select("role_id, id")
                     .eq("id", application.user_id)
                     .single();
 
@@ -330,11 +333,10 @@ function AdminUserManagement() {
                 .from("profiles")
                 .update({
                     role_id: 2,
-                    producer_verified: true,
                     updated_at: new Date().toISOString(),
                 })
                 .eq("id", application.user_id)
-                .select("id, role_id, producer_verified, name")
+                .select("id, role_id, name")
                 .single();
 
             if (profileError || !updatedProfile) {
@@ -363,7 +365,6 @@ function AdminUserManagement() {
                     .from("profiles")
                     .update({
                         role_id: 1,
-                        producer_verified: false,
                         updated_at: new Date().toISOString(),
                     })
                     .eq("id", application.user_id);
@@ -381,6 +382,18 @@ function AdminUserManagement() {
                 "✅ Application deleted for user:",
                 application.user_id
             );
+
+            // Delete the valid ID file
+            if (validIdUrl) {
+                console.log("🗑️ Deleting valid ID file...");
+                const deleteError = await deleteValidIdFile(validIdUrl);
+                if (deleteError) {
+                    console.error(
+                        "Warning: Failed to delete valid ID file:",
+                        deleteError
+                    );
+                }
+            }
 
             // Refresh data
             console.log("🔄 Refreshing data...");
