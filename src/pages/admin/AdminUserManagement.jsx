@@ -4,6 +4,7 @@ import AdminNavigationBar from "../../components/AdminNavigationBar";
 import ConfirmModal from "../../components/ConfirmModal";
 import RejectModal from "../../components/RejectModal";
 import supabase from "../../SupabaseClient";
+import { deleteImageFromUrl } from "../../utils/imageUpload";
 import { toast } from "react-hot-toast";
 
 function AdminUserManagement() {
@@ -110,13 +111,14 @@ function AdminUserManagement() {
 
             const formattedApplications = applications.map((app) => ({
                 id: app.id,
-                userId: app.user_id, // Keep this as userId for component use, but map from user_id
-                user_id: app.user_id, // Keep original field name for database operations
+                userId: app.user_id,
+                user_id: app.user_id,
                 name: app.profiles.name,
                 email: app.profiles.email,
                 contact: app.profiles.contact,
                 address: app.profiles.address,
                 profileImage: app.profiles.avatar_url,
+                validIdUrl: app.valid_id_url,
                 experience: app.farming_experience,
                 crops: app.application_crops.map((ac) => ac.crops.name),
                 applicationDate: app.created_at,
@@ -177,34 +179,21 @@ function AdminUserManagement() {
         fetchUsers();
     }, []);
 
-    // Monitor modal state changes
+    // Monitor and cleanup modal state
     useEffect(() => {
-        console.log("🔄 Modal state changed:", {
-            showConfirmModal,
-            confirmAction,
-            processingId,
-        });
-    }, [showConfirmModal, confirmAction, processingId]);
+        if (!showConfirmModal && !showRejectModal) {
+            setConfirmAction(null);
+            setProcessingId(null);
+        }
+    }, [showConfirmModal, showRejectModal]);
 
     const handleApplicationAction = (applicationId, action) => {
-        console.log("🔵 handleApplicationAction called:", {
-            applicationId,
-            action,
-            currentState: {
-                showConfirmModal,
-                showRejectModal,
-                confirmAction,
-                processingId,
-            },
-        });
-
         try {
-            // First, validate the application exists
             const application = producerApplications.find(
                 (app) => app.id === applicationId
             );
             if (!application) {
-                console.error("❌ Application not found:", applicationId);
+                toast.error("Application not found");
                 return;
             }
 
@@ -214,31 +203,30 @@ function AdminUserManagement() {
             setShowRejectModal(false);
             setProcessingId(null);
 
-            console.log("🔄 Setting new state for:", application.name);
-
             // Set new state
             setConfirmAction({ id: applicationId, type: action });
 
+            // Open appropriate modal
             if (action === "approved") {
-                console.log("📢 Opening approval modal for:", application.name);
                 setShowConfirmModal(true);
-
-                // Verify state update
-                setTimeout(() => {
-                    console.log("🔍 State after update:", {
-                        showConfirmModal,
-                        confirmAction,
-                    });
-                }, 0);
             } else {
-                console.log(
-                    "📢 Opening rejection modal for:",
-                    application.name
-                );
                 setShowRejectModal(true);
             }
         } catch (error) {
-            console.error("❌ Error in handleApplicationAction:", error);
+            toast.error("Failed to process application action");
+        }
+    };
+
+    const deleteValidIdFile = async (fileUrl) => {
+        if (!fileUrl) return null;
+        try {
+            const success = await deleteImageFromUrl(fileUrl, "valid-ids");
+            if (!success) {
+                return new Error("Failed to delete valid ID file");
+            }
+            return null;
+        } catch (err) {
+            return err;
         }
     };
 
@@ -246,6 +234,11 @@ function AdminUserManagement() {
         if (!confirmAction) return;
         const { id } = confirmAction;
         const application = producerApplications.find((app) => app.id === id);
+
+        if (!application) {
+            toast.error("Application not found");
+            return;
+        }
 
         try {
             setProcessingId(id);
@@ -260,6 +253,16 @@ function AdminUserManagement() {
 
             if (rejectError) throw rejectError;
 
+            // Delete valid ID file after successful rejection
+            if (application.validIdUrl) {
+                const deleteError = await deleteValidIdFile(
+                    application.validIdUrl
+                );
+                if (deleteError) {
+                    console.error("Warning: Failed to delete valid ID file");
+                }
+            }
+
             // Refresh data
             await fetchProducerApplications();
             await fetchUsers();
@@ -268,7 +271,7 @@ function AdminUserManagement() {
             setShowRejectModal(false);
         } catch (err) {
             toast.error("Failed to reject application");
-            console.error("Rejection error:", err);
+            console.error("Error in handleReject:", err);
         } finally {
             setProcessingId(null);
             setConfirmAction(null);
@@ -631,13 +634,30 @@ function AdminUserManagement() {
                                             </div>
                                         </div>
 
-                                        <div className="mb-4">
-                                            <h4 className="font-medium text-gray-700 mb-1">
-                                                Address
-                                            </h4>
-                                            <p className="text-sm text-gray-600">
-                                                {application.address}
-                                            </p>
+                                        <div className="mb-4 flex w-1/2 justify-between">
+                                            <div>
+                                                <h4 className="font-medium text-gray-700 mb-1">
+                                                    Address
+                                                </h4>
+                                                <p className="text-sm text-gray-600">
+                                                    {application.address}
+                                                </p>
+                                            </div>
+
+                                            <button
+                                                onClick={() =>
+                                                    handleImageClick(
+                                                        application.validIdUrl
+                                                    )
+                                                }
+                                                className="mt-2 text-primary hover:text-primary-dark flex items-center gap-1 text-sm font-semibold"
+                                            >
+                                                <Icon
+                                                    icon="mingcute:idcard-line"
+                                                    className="w-4 h-4"
+                                                />
+                                                Click to view Valid ID
+                                            </button>
                                         </div>
 
                                         <div className="flex justify-end gap-3">
@@ -942,20 +962,13 @@ function AdminUserManagement() {
             <ConfirmModal
                 open={showConfirmModal}
                 onClose={() => {
-                    console.log("🔵 Modal closing...");
                     setShowConfirmModal(false);
-                    setConfirmAction(null);
-                    setProcessingId(null);
                 }}
                 onConfirm={() => {
-                    console.log("🔵 Confirming application approval...");
                     if (confirmAction) {
-                        console.log("📝 Approval details:", confirmAction);
                         confirmApplicationAction();
                     } else {
-                        console.error(
-                            "❌ No application selected for approval"
-                        );
+                        toast.error("No application selected for approval");
                     }
                 }}
                 title="Approve Producer Application"
@@ -965,27 +978,33 @@ function AdminUserManagement() {
                               producerApplications.find(
                                   (app) => app.id === confirmAction.id
                               )?.name
-                          }'s application? This will grant them seller privileges.`
+                          }'s application?`
                         : "Loading application details..."
                 }
-                confirmText="Yes, Approve"
+                confirmText="Approve"
                 confirmButtonClass="bg-green-600 hover:bg-green-700"
             />
 
             {/* Image Modal */}
             {showImageModal && (
-                <div
-                    className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[9999]"
-                    onClick={() => setShowImageModal(false)}
-                >
-                    <div className="bg-white p-4 rounded-lg max-w-2xl max-h-[80vh] overflow-auto">
+                <>
+                    <div
+                        className="fixed inset-0 bg-black opacity-70 flex items-center justify-center z-[9999]"
+                        onClick={() => setShowImageModal(false)}
+                    ></div>
+                    <div
+                        className="bg-white p-4 rounded-lg max-w-3xl max-h-[90vh] overflow-auto transform transition-all duration-300 ease-in-out z-[10000] fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-11/12"
+                        onClick={(e) => e.stopPropagation()}
+                    >
                         <div className="flex justify-between items-center mb-4">
-                            <h3 className="text-lg font-semibold">
-                                Profile Image
+                            <h3 className="text-lg font-semibold text-gray-900">
+                                {selectedImage?.includes("valid-ids")
+                                    ? "Valid ID"
+                                    : "Profile Image"}
                             </h3>
                             <button
                                 onClick={() => setShowImageModal(false)}
-                                className="text-gray-500 hover:text-gray-700"
+                                className="text-gray-500 hover:text-gray-700 transition-colors"
                             >
                                 <Icon
                                     icon="mingcute:close-line"
@@ -996,11 +1015,16 @@ function AdminUserManagement() {
                         </div>
                         <img
                             src={selectedImage}
-                            alt="Profile"
-                            className="w-full h-auto rounded-lg"
+                            alt={
+                                selectedImage?.includes("valid-ids")
+                                    ? "Valid ID"
+                                    : "Profile"
+                            }
+                            className="w-full h-auto rounded-lg shadow-lg object-contain"
+                            style={{ maxHeight: "70vh" }}
                         />
                     </div>
-                </div>
+                </>
             )}
 
             {/* Reject Modal */}
