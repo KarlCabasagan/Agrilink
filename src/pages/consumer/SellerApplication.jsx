@@ -17,10 +17,10 @@ function SellerApplication() {
         experience: "",
     });
     const [errors, setErrors] = useState({});
-    // Store both URL and file for valid ID
+    // Store file and preview for valid ID (no URL until submission)
     const [validId, setValidId] = useState({
-        url: "",
         file: null,
+        preview: "",
     });
 
     // UI states
@@ -33,6 +33,7 @@ function SellerApplication() {
     const [userData, setUserData] = useState(null);
     const [cropsData, setCropsData] = useState([]);
     const [loadingCrops, setLoadingCrops] = useState(true);
+    const [existingApplication, setExistingApplication] = useState(null);
 
     // Helper function to format phone numbers (e.g., +63 912 345 6789)
     const formatPhoneNumber = (phoneNumber) => {
@@ -68,7 +69,7 @@ function SellerApplication() {
         if (formData.crops.length === 0) {
             newErrors.crops = "Please select at least one crop";
         }
-        if (!validId?.url) {
+        if (!validId?.file) {
             newErrors.validId = "Please upload a valid ID";
         }
 
@@ -84,42 +85,59 @@ function SellerApplication() {
     };
 
     useEffect(() => {
-        // Fetch user data on mount
-        const fetchUserData = async () => {
+        // Fetch all initial data on mount
+        const fetchInitialData = async () => {
             try {
-                const { data: profile, error } = await supabase
+                // Check for existing seller application
+                const { data: application, error: applicationError } =
+                    await supabase
+                        .from("seller_applications")
+                        .select("*")
+                        .eq("user_id", user.id)
+                        .single();
+
+                if (applicationError && applicationError.code !== "PGRST116") {
+                    // PGRST116 means no rows found, which is expected for new applicants
+                    console.error(
+                        "Error checking existing application:",
+                        applicationError
+                    );
+                }
+
+                setExistingApplication(application || null);
+
+                // Fetch user profile
+                const { data: profile, error: profileError } = await supabase
                     .from("profiles")
                     .select("*")
                     .eq("id", user.id)
                     .single();
 
-                if (error) throw error;
+                if (profileError) throw profileError;
                 setUserData(profile);
-            } catch (err) {
-                console.error("Error fetching user data:", err);
-            }
-        };
 
-        // Fetch available crops on mount
-        const fetchCrops = async () => {
-            try {
-                setLoadingCrops(true);
-                const { data, error } = await supabase
-                    .from("crops")
-                    .select("*");
+                // Only fetch crops if there's no existing application
+                if (!application) {
+                    setLoadingCrops(true);
+                    const { data: crops, error: cropsError } = await supabase
+                        .from("crops")
+                        .select("*");
 
-                if (error) throw error;
-                setCropsData(data || []);
+                    if (cropsError) throw cropsError;
+                    setCropsData(crops || []);
+                }
             } catch (err) {
-                console.error("Error fetching crops:", err);
-                setCropsData([]);
+                console.error("Error fetching initial data:", err);
+                setErrors((prev) => ({
+                    ...prev,
+                    submit: "Failed to load application data",
+                }));
             } finally {
                 setLoadingCrops(false);
             }
         };
 
-        fetchUserData();
-        fetchCrops();
+        fetchInitialData();
     }, []); // ✅ Run only once on mount
 
     const handleSubmit = async (e) => {
@@ -130,10 +148,22 @@ function SellerApplication() {
         setErrors({}); // Clear any previous errors
 
         try {
-            // Since the image is already uploaded in ValidIdUpload component,
-            // we can use the URL directly
-            if (!validId.url) {
+            // Upload the valid ID only during form submission
+            if (!validId.file) {
                 setErrors({ submit: "Valid ID image is required" });
+                return;
+            }
+
+            // Upload the image to Supabase storage
+            const uploadResult = await uploadImage(
+                validId.file,
+                "valid_ids",
+                user.id
+            );
+            if (!uploadResult.success) {
+                setErrors({
+                    submit: uploadResult.error || "Failed to upload valid ID",
+                });
                 return;
             }
 
@@ -143,7 +173,7 @@ function SellerApplication() {
                 .insert([
                     {
                         user_id: user.id,
-                        valid_id_url: validId.url,
+                        valid_id_url: uploadResult.url, // Use the URL from the upload result
                         farming_experience: formData.experience,
                         rejection_reason: null,
                     },
@@ -254,6 +284,39 @@ function SellerApplication() {
             </div>
 
             <div className="w-full max-w-2xl mx-4 sm:mx-auto my-16">
+                {existingApplication && (
+                    <div className="mb-6 bg-yellow-50 border-l-4 border-yellow-500 text-yellow-700 p-4 rounded-lg">
+                        <div className="flex items-start gap-3">
+                            <Icon
+                                icon="mingcute:time-line"
+                                width="24"
+                                height="24"
+                                className="mt-0.5"
+                            />
+                            <div>
+                                <h3 className="font-semibold mb-1">
+                                    Application Under Review
+                                </h3>
+                                <p className="text-sm">
+                                    Your seller application is currently being
+                                    reviewed by our admin team. We will notify
+                                    you via email once the review is complete.
+                                </p>
+                                <button
+                                    onClick={() => navigate("/profile")}
+                                    className="mt-3 text-sm font-medium text-yellow-800 hover:text-yellow-900 flex items-center gap-1"
+                                >
+                                    <Icon
+                                        icon="mingcute:user-4-line"
+                                        width="16"
+                                        height="16"
+                                    />
+                                    Go to Profile
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
                 {/* Info Banner */}
                 <div className="mb-6 bg-blue-50 border border-blue-200 rounded-lg p-4 mt-4">
                     <div className="flex items-start gap-3">
@@ -277,7 +340,14 @@ function SellerApplication() {
                 </div>
 
                 {/* Application Form */}
-                <form onSubmit={handleSubmit} className="space-y-6">
+                <form
+                    onSubmit={handleSubmit}
+                    className="space-y-6"
+                    style={{
+                        pointerEvents: existingApplication ? "none" : "auto",
+                        opacity: existingApplication ? 0.6 : 1,
+                    }}
+                >
                     {/* Personal Information */}
                     <div className="bg-white rounded-lg shadow-md overflow-hidden">
                         <div className="p-6 border-b border-gray-200">
@@ -341,10 +411,11 @@ function SellerApplication() {
                                     Valid ID *
                                 </label>
                                 <ValidIdUpload
-                                    currentImage={validId?.url || ""}
-                                    onImageChange={(url) =>
-                                        setValidId((prev) => ({ ...prev, url }))
+                                    currentImage={validId?.preview || ""}
+                                    onImageChange={(file, preview) =>
+                                        setValidId({ file, preview })
                                     }
+                                    disableAutoUpload={true}
                                     userId={user?.id}
                                     className="w-full"
                                     disabled={loading}

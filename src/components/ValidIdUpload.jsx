@@ -6,15 +6,30 @@ const ValidIdUpload = ({
     onImageChange,
     userId,
     className = "",
+    disabled = false,
+    disableAutoUpload = false,
 }) => {
+    const handleChange = async (file) => {
+        if (disableAutoUpload) {
+            // For delayed upload - just create a preview
+            const preview = URL.createObjectURL(file);
+            onImageChange(file, preview);
+        } else {
+            // Legacy behavior - upload immediately
+            onImageChange(file);
+        }
+    };
+
     return (
         <ImageUpload
             currentImage={currentImage}
-            onImageChange={onImageChange}
+            onImageChange={handleChange}
             userId={userId}
             bucket="valid_ids"
             type="valid_id"
             className={className}
+            disabled={disabled}
+            disableAutoUpload={disableAutoUpload}
             customText={{
                 uploadTitle: "Upload Valid ID",
                 uploadSubtext:

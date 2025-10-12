@@ -14,6 +14,7 @@ const ImageUpload = ({
     className = "",
     type = "product", // 'product' or 'avatar' or 'valid_id'
     disabled = false,
+    disableAutoUpload = false,
     customText = null,
 }) => {
     const [uploading, setUploading] = useState(false);
@@ -43,10 +44,6 @@ const ImageUpload = ({
         try {
             setUploading(true);
 
-            // Create preview
-            const previewUrl = URL.createObjectURL(file);
-            setPreviewUrl(previewUrl);
-
             // Compress image based on type
             let processedFile = file;
             if (type === "avatar") {
@@ -55,7 +52,17 @@ const ImageUpload = ({
                 processedFile = await compressImage(file, 800, 0.85); // Larger for products
             }
 
-            // Upload image
+            // Create local preview URL
+            const previewUrl = URL.createObjectURL(processedFile);
+            setPreviewUrl(previewUrl);
+
+            // If auto-upload is disabled, just pass the processed file and preview
+            if (disableAutoUpload) {
+                onImageChange(processedFile, previewUrl);
+                return;
+            }
+
+            // Upload image immediately (legacy behavior)
             const result = await uploadImage(
                 processedFile,
                 bucket,
@@ -69,6 +76,8 @@ const ImageUpload = ({
             } else {
                 setError(result.error);
                 setPreviewUrl(currentImage || "");
+                // Clean up the preview URL
+                URL.revokeObjectURL(previewUrl);
             }
         } catch (error) {
             console.error("Upload error:", error);
@@ -83,9 +92,21 @@ const ImageUpload = ({
         }
     };
 
+    // Cleanup preview URLs on unmount or when preview changes
+    useEffect(() => {
+        return () => {
+            if (previewUrl && !previewUrl.startsWith("http")) {
+                URL.revokeObjectURL(previewUrl);
+            }
+        };
+    }, [previewUrl]);
+
     const handleRemoveImage = () => {
+        if (previewUrl && !previewUrl.startsWith("http")) {
+            URL.revokeObjectURL(previewUrl);
+        }
         setPreviewUrl("");
-        onImageChange("");
+        onImageChange(null);
         if (fileInputRef.current) {
             fileInputRef.current.value = "";
         }
