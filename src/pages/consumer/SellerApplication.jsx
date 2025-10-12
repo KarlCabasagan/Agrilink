@@ -1,231 +1,183 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useContext } from "react";
 import { Icon } from "@iconify/react";
 import { useNavigate, Link } from "react-router-dom";
 import NavigationBar from "../../components/NavigationBar";
 import supabase from "../../SupabaseClient";
 import ValidIdUpload from "../../components/ValidIdUpload";
+import { AuthContext } from "../../App";
+import { uploadImage } from "../../utils/imageUpload";
 
 function SellerApplication() {
+    const { user } = useContext(AuthContext);
     const navigate = useNavigate();
-    const [loading, setLoading] = useState(false);
-    const [showSuccess, setShowSuccess] = useState(false);
-    const [validId, setValidId] = useState("");
-    const [searchQuery, setSearchQuery] = useState("");
-    const [showAllCrops, setShowAllCrops] = useState(false);
-    const [userData, setUserData] = useState(null);
-    const [cropsData, setCropsData] = useState([]);
-    const [loadingCrops, setLoadingCrops] = useState(true);
 
+    // Form and validation states
     const [formData, setFormData] = useState({
         crops: [],
         experience: "",
     });
-
     const [errors, setErrors] = useState({});
+    // Store both URL and file for valid ID
+    const [validId, setValidId] = useState({
+        url: "",
+        file: null,
+    });
 
-    useEffect(() => {
-        const fetchCrops = async () => {
-            const { data, error } = await supabase
-                .from("crops")
-                .select("id, name, category_id, market_demand")
-                .order("name");
+    // UI states
+    const [loading, setLoading] = useState(false);
+    const [showSuccess, setShowSuccess] = useState(false);
+    const [searchQuery, setSearchQuery] = useState("");
+    const [showAllCrops, setShowAllCrops] = useState(false);
 
-            if (error) {
-                console.error("Error fetching crops:", error);
-                return;
-            }
+    // Data states
+    const [userData, setUserData] = useState(null);
+    const [cropsData, setCropsData] = useState([]);
+    const [loadingCrops, setLoadingCrops] = useState(true);
 
-            setCropsData(data);
-            setLoadingCrops(false);
-        };
-
-        fetchCrops();
-    }, []);
-
-    useEffect(() => {
-        const getUserData = async () => {
-            const {
-                data: { session },
-            } = await supabase.auth.getSession();
-            if (!session) {
-                navigate("/login");
-                return;
-            }
-
-            const { data, error } = await supabase
-                .from("profiles")
-                .select("*")
-                .eq("id", session.user.id)
-                .single();
-
-            if (error) {
-                console.error("Error fetching user data:", error);
-                return;
-            }
-
-            setUserData(data);
-        };
-
-        getUserData();
-    }, [navigate]);
-
-    const handleInputChange = (e) => {
-        const { name, value } = e.target;
-
-        if (name === "contact") {
-            // Remove all non-digits
-            const cleanValue = value.replace(/\D/g, "");
-            // Limit to 10 digits (excluding +63)
-            const limitedValue = cleanValue.slice(0, 10);
-            setFormData((prev) => ({
-                ...prev,
-                [name]: limitedValue,
-            }));
-        } else {
-            setFormData((prev) => ({
-                ...prev,
-                [name]: value,
-            }));
-        }
-
-        // Clear error when user starts typing
-        if (errors[name]) {
-            setErrors((prev) => ({
-                ...prev,
-                [name]: "",
-            }));
-        }
-    };
-
+    // Helper function to format phone numbers (e.g., +63 912 345 6789)
     const formatPhoneNumber = (phoneNumber) => {
         if (!phoneNumber) return "";
-        // Remove all non-digits
         const cleaned = phoneNumber.replace(/\D/g, "");
-
-        // Format as: +63 912 345 6789
-        if (cleaned.length >= 10) {
-            return `+63 ${cleaned.slice(0, 3)} ${cleaned.slice(
-                3,
-                6
-            )} ${cleaned.slice(6, 10)}`;
-        } else if (cleaned.length >= 6) {
-            return `+63 ${cleaned.slice(0, 3)} ${cleaned.slice(
-                3,
-                6
-            )} ${cleaned.slice(6)}`;
-        } else if (cleaned.length >= 3) {
-            return `+63 ${cleaned.slice(0, 3)} ${cleaned.slice(3)}`;
-        } else if (cleaned.length > 0) {
-            return `+63 ${cleaned}`;
-        }
-        return "+63 ";
+        const parts = [
+            "+63",
+            cleaned.slice(0, 3),
+            cleaned.slice(3, 6),
+            cleaned.slice(6, 10),
+        ].filter(Boolean);
+        return parts.join(" ");
     };
 
-    const displayPhoneNumber = (phoneNumber) => {
-        if (!phoneNumber) return "";
-        const cleaned = phoneNumber.replace(/\D/g, "");
-
-        if (cleaned.length >= 7) {
-            return `${cleaned.slice(0, 3)} ${cleaned.slice(
-                3,
-                6
-            )} ${cleaned.slice(6)}`;
-        } else if (cleaned.length >= 3) {
-            return `${cleaned.slice(0, 3)} ${cleaned.slice(3)}`;
-        }
-        return cleaned;
-    };
-
-    const handleCropToggle = (crop) => {
+    // Handle toggling crop selection
+    const handleCropToggle = (cropId) => {
         setFormData((prev) => ({
             ...prev,
-            crops: prev.crops.includes(crop)
-                ? prev.crops.filter((c) => c !== crop)
-                : [...prev.crops, crop],
+            crops: prev.crops.includes(cropId)
+                ? prev.crops.filter((c) => c !== cropId)
+                : [...prev.crops, cropId],
         }));
+        setErrors((prev) => ({ ...prev, crops: undefined }));
     };
 
     const validateForm = () => {
         const newErrors = {};
 
-        if (!formData.experience.trim())
+        // Required field validation
+        if (!formData.experience.trim()) {
             newErrors.experience = "Experience is required";
-        if (formData.crops.length === 0)
+        }
+        if (formData.crops.length === 0) {
             newErrors.crops = "Please select at least one crop";
-        if (!validId) newErrors.validId = "Please upload a valid ID";
+        }
+        if (!validId?.url) {
+            newErrors.validId = "Please upload a valid ID";
+        }
 
         setErrors(newErrors);
         return Object.keys(newErrors).length === 0;
     };
 
+    const handleInputChange = (e) => {
+        const { name, value } = e.target;
+        setFormData((prev) => ({ ...prev, [name]: value }));
+        // Clear error when user starts typing
+        setErrors((prev) => ({ ...prev, [name]: undefined }));
+    };
+
+    useEffect(() => {
+        // Fetch user data on mount
+        const fetchUserData = async () => {
+            try {
+                const { data: profile, error } = await supabase
+                    .from("profiles")
+                    .select("*")
+                    .eq("id", user.id)
+                    .single();
+
+                if (error) throw error;
+                setUserData(profile);
+            } catch (err) {
+                console.error("Error fetching user data:", err);
+            }
+        };
+
+        // Fetch available crops on mount
+        const fetchCrops = async () => {
+            try {
+                setLoadingCrops(true);
+                const { data, error } = await supabase
+                    .from("crops")
+                    .select("*");
+
+                if (error) throw error;
+                setCropsData(data || []);
+            } catch (err) {
+                console.error("Error fetching crops:", err);
+                setCropsData([]);
+            } finally {
+                setLoadingCrops(false);
+            }
+        };
+
+        fetchUserData();
+        fetchCrops();
+    }, []); // ✅ Run only once on mount
+
     const handleSubmit = async (e) => {
         e.preventDefault();
-
-        if (!validateForm()) {
-            return;
-        }
+        if (!validateForm()) return;
 
         setLoading(true);
+        setErrors({}); // Clear any previous errors
 
         try {
-            const {
-                data: { session },
-            } = await supabase.auth.getSession();
-            if (!session) {
-                throw new Error("Not authenticated");
+            // Since the image is already uploaded in ValidIdUpload component,
+            // we can use the URL directly
+            if (!validId.url) {
+                setErrors({ submit: "Valid ID image is required" });
+                return;
             }
 
-            // Create seller application record
+            // 2. Insert seller application record
             const { data: appData, error: appError } = await supabase
                 .from("seller_applications")
                 .insert([
                     {
-                        user_id: session.user.id,
+                        user_id: user.id,
+                        valid_id_url: validId.url,
                         farming_experience: formData.experience,
-                        valid_id_url: validId,
+                        rejection_reason: null,
                     },
                 ])
                 .select()
                 .single();
 
-            if (appError) throw appError;
-
-            // Insert crop associations
-            if (formData.crops.length > 0) {
-                const { error: cropError } = await supabase
-                    .from("application_crops")
-                    .insert(
-                        formData.crops.map((cropId) => ({
-                            application_id: appData.id,
-                            crop_id: cropId,
-                        }))
-                    );
-
-                if (cropError) throw cropError;
+            if (appError) {
+                throw new Error(appError.message);
             }
 
-            // Update user's role to producer (pending verification)
-            const { error: updateError } = await supabase
-                .from("profiles")
-                .update({
-                    role_id: 2, // Producer role
-                    producer_verified: false,
-                    valid_id_url: validId,
-                })
-                .eq("id", session.user.id);
+            // 3. Insert selected crops into application_crops
+            const { error: cropError } = await supabase
+                .from("application_crops")
+                .insert(
+                    formData.crops.map((cropId) => ({
+                        application_id: appData.id,
+                        crop_id: cropId,
+                    }))
+                );
 
-            if (updateError) {
-                throw updateError;
+            if (cropError) {
+                throw new Error(cropError.message);
             }
 
+            // Success! Show success message and redirect
             setShowSuccess(true);
-            setTimeout(() => {
-                navigate("/profile");
-            }, 3000);
+            setTimeout(() => navigate("/profile"), 3000);
         } catch (error) {
             console.error("Error submitting application:", error);
             setErrors({
-                submit: "Failed to submit application. Please try again.",
+                submit:
+                    error.message ||
+                    "Failed to submit application. Please try again.",
             });
         } finally {
             setLoading(false);
@@ -389,10 +341,13 @@ function SellerApplication() {
                                     Valid ID *
                                 </label>
                                 <ValidIdUpload
-                                    currentImage={validId}
-                                    onImageChange={setValidId}
-                                    userId={userData?.id}
+                                    currentImage={validId?.url || ""}
+                                    onImageChange={(url) =>
+                                        setValidId((prev) => ({ ...prev, url }))
+                                    }
+                                    userId={user?.id}
                                     className="w-full"
+                                    disabled={loading}
                                 />
                                 {errors.validId && (
                                     <p className="text-red-600 text-sm mt-1">
