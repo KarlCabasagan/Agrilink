@@ -74,6 +74,7 @@ create table public.profiles (
   delivery_cost numeric(10, 2) null default 50.0,
   minimum_order_quantity numeric(10, 2) null default 1.0,
   status_id bigint not null default '1'::bigint,
+  suspension_reason text null,
   constraint profiles_pkey primary key (id),
   constraint profiles_id_fkey foreign KEY (id) references auth.users (id) on delete CASCADE,
   constraint profiles_role_id_fkey foreign KEY (role_id) references roles (id),
