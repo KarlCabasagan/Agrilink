@@ -37,7 +37,7 @@ import AdminUserManagement from "./pages/admin/AdminUserManagement";
 import AdminProductManagement from "./pages/admin/AdminProductManagement";
 import AdminProductReviews from "./pages/admin/AdminProductReviews";
 import AdminMessages from "./pages/admin/AdminMessages";
-import AdminLogs from "./pages/admin/AdminLogs";
+import AdminTransactions from "./pages/admin/AdminTransactions.jsx";
 import AdminCropManagement from "./pages/admin/AdminCropManagement";
 import FarmingGuides from "./pages/producer/FarmingGuides";
 import ThesisOnlyPage from "./pages/ThesisOnlyPage";
@@ -529,7 +529,7 @@ function App() {
                         }
                     />
                     <Route
-                        path="/admin/products/:productId/reviews"
+                        path="/admin/product/:productId"
                         element={
                             <RoleGuard allowedRoles={[3]}>
                                 <AdminProductReviews />
@@ -545,10 +545,10 @@ function App() {
                         }
                     />
                     <Route
-                        path="/admin/logs"
+                        path="/admin/transactions"
                         element={
                             <RoleGuard allowedRoles={[3]}>
-                                <AdminLogs />
+                                <AdminTransactions />
                             </RoleGuard>
                         }
                     />

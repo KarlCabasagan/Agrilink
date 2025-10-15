@@ -11,6 +11,13 @@ button {
     cursor: pointer;
 }
 
+button:disabled,
+button[disabled],
+.disabled,
+.cursor-not-allowed {
+    cursor: not-allowed !important;
+}
+
 :root {
     font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
     line-height: 1.5;

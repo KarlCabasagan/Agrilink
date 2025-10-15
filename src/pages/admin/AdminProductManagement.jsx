@@ -21,10 +21,9 @@ const ActionModal = ({
     const title = isRejection ? "Reject" : "Suspend";
     const actionText = isRejection ? "rejection" : "suspension";
 
-    const handleSubmit = (e) => {
-        e.preventDefault();
+    const handleSubmit = () => {
         if (!reason.trim()) {
-            setError(`Please provide a reason for ${actionText}`);
+            setError(`Please provide a ${actionText} reason`);
             return;
         }
         onConfirm(reason.trim());
@@ -34,75 +33,82 @@ const ActionModal = ({
 
     return (
         <>
-            <div
-                className="fixed inset-0 z-[9999] bg-black opacity-50"
-                onClick={onClose}
-            ></div>
-            <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4">
-                <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-md">
-                    <h3 className="text-xl font-bold text-gray-900 mb-2">
-                        {title} Product
-                    </h3>
-                    <p className="text-gray-600 mb-4">
-                        You are about to {actionText.toLowerCase()} "
-                        {productName}". Please provide a reason for {actionText}
-                        .
-                    </p>
-
-                    <form onSubmit={handleSubmit}>
-                        <div className="mb-4">
-                            <label className="block text-sm font-medium text-gray-700 mb-2">
-                                {title} Reason{" "}
-                                <span className="text-red-500">*</span>
-                            </label>
-                            <textarea
-                                value={reason}
-                                onChange={(e) => {
-                                    setReason(e.target.value);
-                                    if (error) setError("");
-                                }}
-                                className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent ${
-                                    error ? "border-red-500" : "border-gray-300"
-                                }`}
-                                rows="3"
-                                placeholder={`Please provide a detailed reason for ${actionText.toLowerCase()} this product...`}
-                            />
-                            {error && (
-                                <p className="mt-1 text-sm text-red-500">
-                                    {error}
+            <div className="fixed inset-0 bg-black opacity-50 flex items-center justify-center z-[9990] px-4"></div>
+            <div className="bg-white rounded-lg shadow-xl max-w-md w-full z-[9999] fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2">
+                <div className="p-6">
+                    <div className="flex justify-between items-start mb-4">
+                        <div className="flex items-center gap-3">
+                            <div className="p-2 bg-red-100 rounded-full">
+                                <Icon
+                                    icon="mingcute:close-circle-line"
+                                    className="w-6 h-6 text-red-600"
+                                />
+                            </div>
+                            <div>
+                                <h3 className="text-lg font-semibold text-gray-900">
+                                    {title} Product
+                                </h3>
+                                <p className="text-sm text-gray-600 mt-1">
+                                    You are about to {actionText.toLowerCase()}{" "}
+                                    "{productName}". Please provide a reason for{" "}
+                                    {actionText}.
                                 </p>
-                            )}
+                            </div>
                         </div>
+                    </div>
 
-                        <div className="flex justify-end gap-4">
-                            <button
-                                type="button"
-                                onClick={onClose}
-                                className="px-4 py-2 rounded bg-gray-200 text-gray-700 hover:bg-gray-300 font-medium transition-colors"
-                            >
-                                Cancel
-                            </button>
-                            <button
-                                type="submit"
-                                disabled={!reason.trim() || isSubmitting}
-                                className={`px-4 py-2 rounded text-white font-medium transition-colors 
-                                    ${
-                                        !reason.trim() || isSubmitting
-                                            ? "bg-red-400 cursor-not-allowed"
-                                            : "bg-red-600 hover:bg-red-700"
-                                    }`}
-                            >
-                                {isSubmitting ? (
-                                    <div className="flex items-center gap-2">
-                                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                                        {`${title}ing...`}
-                                    </div>
-                                ) : (
-                                    `${title} Product`
-                                )}
-                            </button>
-                        </div>
-                    </form>
+                    <div className="mb-4">
+                        <label
+                            htmlFor="actionReason"
+                            className="block text-sm font-medium text-gray-700 mb-1"
+                        >
+                            {title} Reason{" "}
+                            <span className="text-red-500">*</span>
+                        </label>
+                        <textarea
+                            id="actionReason"
+                            rows={3}
+                            className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent ${
+                                error ? "border-red-300" : "border-gray-300"
+                            }`}
+                            placeholder={`Please provide a detailed reason for ${actionText.toLowerCase()} this product...`}
+                            value={reason}
+                            onChange={(e) => {
+                                setReason(e.target.value);
+                                setError("");
+                            }}
+                        />
+                        {error && (
+                            <p className="mt-1 text-sm text-red-600">{error}</p>
+                        )}
+                    </div>
+
+                    <div className="flex justify-end gap-3">
+                        <button
+                            onClick={onClose}
+                            className="px-4 py-2 text-sm font-medium text-gray-700 hover:text-gray-800"
+                            disabled={isSubmitting}
+                        >
+                            Cancel
+                        </button>
+                        <button
+                            onClick={handleSubmit}
+                            disabled={isSubmitting}
+                            className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:opacity-50"
+                        >
+                            {isSubmitting ? (
+                                <>
+                                    <Icon
+                                        icon="mingcute:loading-line"
+                                        className="animate-spin mr-2"
+                                    />
+                                    {`${title}ing...`}
+                                </>
+                            ) : (
+                                `${title} Product`
+                            )}
+                        </button>
+                    </div>
                 </div>
             </div>
         </>
@@ -225,12 +231,22 @@ function AdminProductManagement() {
                 .select(
                     `
                     *,
-                    user_id:profiles!products_user_id_fkey(name),
-                    category_id:categories!products_category_id_fkey(name),
-                    status_id:statuses!products_status_id_fkey(name)
+                    user_id:profiles!products_user_id_fkey(
+                        name,
+                        status_id(name),
+                        suspension_reason
+                    ),
+                    crop:crops!products_crop_id_fkey(name),
+                    status_id:statuses!products_status_id_fkey(name),
+                    order_items(
+                        quantity,
+                        order:orders!order_items_order_id_fkey(
+                            status_id:statuses!orders_status_id_fkey(name)
+                        )
+                    )
                 `
                 )
-                .not("approval_date", "is", null) // Not pending
+                .not("approval_date", "is", null)
                 .not("approval_date", "eq", "1970-01-01T00:00:00Z"); // Not rejected
 
             console.log("Approved products query result:", { products, error });
@@ -240,46 +256,39 @@ function AdminProductManagement() {
                 return;
             }
 
-            // Fetch sales data for each product
-            const { data: orderItems, error: orderError } = await supabase
-                .from("order_items")
-                .select("product_id, quantity");
+            const formattedProducts = products.map((product) => {
+                // Calculate total sales from completed orders
+                const completedSales = product.order_items.reduce(
+                    (total, item) => {
+                        if (item.order.status_id.name === "completed") {
+                            return total + Number(item.quantity);
+                        }
+                        return total;
+                    },
+                    0
+                );
 
-            if (orderError) {
-                console.error("Error fetching order items:", orderError);
-                return;
-            }
-
-            // Calculate total sales for each product
-            const salesByProduct = {};
-            orderItems?.forEach((item) => {
-                if (!salesByProduct[item.product_id]) {
-                    salesByProduct[item.product_id] = 0;
-                }
-                salesByProduct[item.product_id] += item.quantity;
+                return {
+                    id: product.id,
+                    name: product.name,
+                    producer: product.user_id.name,
+                    cropType: product.crop.name,
+                    price: product.price,
+                    description: product.description,
+                    image: product.image_url,
+                    approvedDate: new Date(product.approval_date)
+                        .toISOString()
+                        .split("T")[0],
+                    status:
+                        product.status_id.name === "active"
+                            ? "Active"
+                            : "Suspended",
+                    stock: product.stock,
+                    sales: completedSales,
+                    ownerStatus: product.user_id.status_id.name,
+                    ownerSuspensionReason: product.user_id.suspension_reason,
+                };
             });
-
-            const formattedProducts = products.map((product) => ({
-                id: product.id,
-                name: product.name,
-                producer: product.user_id.name,
-                category: product.category_id.name,
-                cropType: product.crop_type,
-                price: product.price,
-                description: product.description,
-                image: product.image_url,
-                approvedDate: new Date(product.approval_date)
-                    .toISOString()
-                    .split("T")[0],
-                status:
-                    product.status_id.name === "active"
-                        ? "Active"
-                        : "Suspended",
-                stock: product.stock,
-                sales: salesByProduct[product.id] || 0,
-                rating: "N/A",
-                reviews: 0,
-            }));
 
             setApprovedProducts(formattedProducts);
         };
@@ -318,13 +327,7 @@ function AdminProductManagement() {
                 item.producer
                     .toLowerCase()
                     .includes(searchTerm.toLowerCase()) ||
-                item.category
-                    .toLowerCase()
-                    .includes(searchTerm.toLowerCase()) ||
-                (item.cropType &&
-                    item.cropType
-                        .toLowerCase()
-                        .includes(searchTerm.toLowerCase()))
+                item.cropType.toLowerCase().includes(searchTerm.toLowerCase())
         );
     };
 
@@ -562,14 +565,21 @@ function AdminProductManagement() {
 
     // Handle product status change (suspend/activate)
     const handleProductStatusAction = async (productId, action) => {
+        const product = approvedProducts.find((p) => p.id === productId);
+        if (!product) {
+            console.error("Product not found:", productId);
+            return;
+        }
+
         if (action === "suspend") {
-            const product = approvedProducts.find((p) => p.id === productId);
-            if (!product) {
-                console.error("Product not found:", productId);
-                return;
-            }
             setSelectedProductForSuspension(product);
             setShowSuspensionModal(true);
+            return;
+        }
+
+        // Check if owner is suspended before activation
+        if (action === "activate" && product.ownerStatus === "suspended") {
+            console.error("Cannot activate product: Owner is suspended");
             return;
         }
 
@@ -1058,8 +1068,25 @@ function AdminProductManagement() {
                                                     />
                                                 )}
                                             </th>
-                                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                                Category
+                                            <th
+                                                className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                                                onClick={() =>
+                                                    handleSort("cropType")
+                                                }
+                                            >
+                                                Crop Type{" "}
+                                                {sortConfig.key ===
+                                                    "cropType" && (
+                                                    <Icon
+                                                        icon={
+                                                            sortConfig.direction ===
+                                                            "asc"
+                                                                ? "mingcute:up-line"
+                                                                : "mingcute:down-line"
+                                                        }
+                                                        className="inline ml-1"
+                                                    />
+                                                )}
                                             </th>
                                             <th
                                                 className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
@@ -1139,9 +1166,12 @@ function AdminProductManagement() {
                                                             className="w-16 h-16 object-cover rounded-lg"
                                                         />
                                                         <div className="ml-4">
-                                                            <div className="text-sm font-medium text-gray-900">
+                                                            <Link
+                                                                to={`/admin/product/${product.id}`}
+                                                                className="text-sm font-medium text-primary hover:text-primary-dark"
+                                                            >
                                                                 {product.name}
-                                                            </div>
+                                                            </Link>
                                                             <div className="text-sm text-gray-500">
                                                                 {product.description.substring(
                                                                     0,
@@ -1155,42 +1185,8 @@ function AdminProductManagement() {
                                                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                                                     {product.producer}
                                                 </td>
-                                                <td className="px-6 py-4 whitespace-nowrap">
-                                                    <select
-                                                        value={product.category}
-                                                        onChange={(e) => {
-                                                            setApprovedProducts(
-                                                                (prev) =>
-                                                                    prev.map(
-                                                                        (p) =>
-                                                                            p.id ===
-                                                                            product.id
-                                                                                ? {
-                                                                                      ...p,
-                                                                                      category:
-                                                                                          e
-                                                                                              .target
-                                                                                              .value,
-                                                                                  }
-                                                                                : p
-                                                                    )
-                                                            );
-                                                        }}
-                                                        className="text-sm border-gray-300 rounded-md focus:ring-primary focus:border-primary"
-                                                    >
-                                                        {categories.map(
-                                                            (cat) => (
-                                                                <option
-                                                                    key={cat.id}
-                                                                    value={
-                                                                        cat.name
-                                                                    }
-                                                                >
-                                                                    {cat.name}
-                                                                </option>
-                                                            )
-                                                        )}
-                                                    </select>
+                                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                                    {product.cropType}
                                                 </td>
                                                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                                                     ₱{product.price}/kg
@@ -1199,7 +1195,7 @@ function AdminProductManagement() {
                                                     {product.stock} kg
                                                 </td>
                                                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                                    {product.sales} sold
+                                                    {product.sales} kg sold
                                                 </td>
                                                 <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                                                     <button
@@ -1212,10 +1208,25 @@ function AdminProductManagement() {
                                                                     : "activate"
                                                             )
                                                         }
+                                                        disabled={
+                                                            product.status !==
+                                                                "Active" &&
+                                                            product.ownerStatus ===
+                                                                "suspended"
+                                                        }
+                                                        title={
+                                                            product.ownerStatus ===
+                                                            "suspended"
+                                                                ? `Product owner suspended: ${product.ownerSuspensionReason}`
+                                                                : ""
+                                                        }
                                                         className={`inline-flex items-center px-3 py-1 border border-transparent text-sm leading-4 font-medium rounded-md text-white ${
                                                             product.status ===
                                                             "Active"
                                                                 ? "bg-red-600 hover:bg-red-700"
+                                                                : product.ownerStatus ===
+                                                                  "suspended"
+                                                                ? "bg-gray-400 cursor-not-allowed"
                                                                 : "bg-green-600 hover:bg-green-700"
                                                         } focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500`}
                                                     >
