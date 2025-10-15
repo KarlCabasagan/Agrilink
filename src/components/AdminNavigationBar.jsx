@@ -52,10 +52,10 @@ function AdminNavigationBar() {
         //     badge: 12, // Mock unread messages
         // },
         {
-            path: "/admin/logs",
+            path: "/admin/transactions",
             icon: "mingcute:history-anticlockwise-line",
             activeIcon: "mingcute:history-anticlockwise-fill",
-            label: "Logs",
+            label: "Transactions",
         },
         {
             path: "/admin/crops",
