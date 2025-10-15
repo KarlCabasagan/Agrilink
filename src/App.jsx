@@ -529,7 +529,7 @@ function App() {
                         }
                     />
                     <Route
-                        path="/admin/products/:productId/reviews"
+                        path="/admin/product/:productId"
                         element={
                             <RoleGuard allowedRoles={[3]}>
                                 <AdminProductReviews />

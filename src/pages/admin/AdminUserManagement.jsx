@@ -1109,7 +1109,7 @@ function AdminUserManagement() {
                                                                     icon={
                                                                         user.statusId ===
                                                                         1
-                                                                            ? "mingcute:check-circle-fill"
+                                                                            ? "mingcute:user-follow-2-line"
                                                                             : user.statusId ===
                                                                               2
                                                                             ? "mingcute:user-forbid-line"
