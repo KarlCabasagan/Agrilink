@@ -225,7 +225,11 @@ function AdminProductManagement() {
                 .select(
                     `
                     *,
-                    user_id:profiles!products_user_id_fkey(name),
+                    user_id:profiles!products_user_id_fkey(
+                        name,
+                        status_id(name),
+                        suspension_reason
+                    ),
                     category_id:categories!products_category_id_fkey(name),
                     status_id:statuses!products_status_id_fkey(name)
                 `
@@ -279,6 +283,8 @@ function AdminProductManagement() {
                 sales: salesByProduct[product.id] || 0,
                 rating: "N/A",
                 reviews: 0,
+                ownerStatus: product.user_id.status_id.name,
+                ownerSuspensionReason: product.user_id.suspension_reason,
             }));
 
             setApprovedProducts(formattedProducts);
@@ -562,14 +568,21 @@ function AdminProductManagement() {
 
     // Handle product status change (suspend/activate)
     const handleProductStatusAction = async (productId, action) => {
+        const product = approvedProducts.find((p) => p.id === productId);
+        if (!product) {
+            console.error("Product not found:", productId);
+            return;
+        }
+
         if (action === "suspend") {
-            const product = approvedProducts.find((p) => p.id === productId);
-            if (!product) {
-                console.error("Product not found:", productId);
-                return;
-            }
             setSelectedProductForSuspension(product);
             setShowSuspensionModal(true);
+            return;
+        }
+
+        // Check if owner is suspended before activation
+        if (action === "activate" && product.ownerStatus === "suspended") {
+            console.error("Cannot activate product: Owner is suspended");
             return;
         }
 
@@ -1212,10 +1225,25 @@ function AdminProductManagement() {
                                                                     : "activate"
                                                             )
                                                         }
+                                                        disabled={
+                                                            product.status !==
+                                                                "Active" &&
+                                                            product.ownerStatus ===
+                                                                "suspended"
+                                                        }
+                                                        title={
+                                                            product.ownerStatus ===
+                                                            "suspended"
+                                                                ? `Product owner suspended: ${product.ownerSuspensionReason}`
+                                                                : ""
+                                                        }
                                                         className={`inline-flex items-center px-3 py-1 border border-transparent text-sm leading-4 font-medium rounded-md text-white ${
                                                             product.status ===
                                                             "Active"
                                                                 ? "bg-red-600 hover:bg-red-700"
+                                                                : product.ownerStatus ===
+                                                                  "suspended"
+                                                                ? "bg-gray-400 cursor-not-allowed"
                                                                 : "bg-green-600 hover:bg-green-700"
                                                         } focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500`}
                                                     >
