@@ -440,15 +440,18 @@ function AdminUserManagement() {
 
     const handleUserAction = async (userId, action) => {
         try {
+            const user = allUsers.find((u) => u.id === userId);
+            if (!user) {
+                throw new Error("User not found");
+            }
+
             if (action === "suspend") {
-                const user = allUsers.find((u) => u.id === userId);
-                if (!user) {
-                    throw new Error("User not found");
-                }
                 setUserToSuspend(user);
                 setShowSuspendModal(true);
                 return;
             }
+
+            const previousSuspensionReason = user.suspensionReason;
 
             // Handle activation
             const { error } = await supabase
@@ -461,17 +464,85 @@ function AdminUserManagement() {
 
             if (error) throw error;
 
+            if (user.roleId === 2) {
+                const { data: userProducts, error: userProductsError } =
+                    await supabase
+                        .from("products")
+                        .select("id")
+                        .eq("user_id", userId);
+
+                if (userProductsError) {
+                    await supabase
+                        .from("profiles")
+                        .update({
+                            status_id: 2,
+                            suspension_reason: previousSuspensionReason,
+                        })
+                        .eq("id", userId);
+                    throw userProductsError;
+                }
+
+                if (userProducts?.length) {
+                    const {
+                        data: suspendedProducts,
+                        error: suspendedProductsError,
+                    } = await supabase
+                        .from("suspended_products")
+                        .select("product_id");
+
+                    if (suspendedProductsError) {
+                        await supabase
+                            .from("profiles")
+                            .update({
+                                status_id: 2,
+                                suspension_reason: previousSuspensionReason,
+                            })
+                            .eq("id", userId);
+                        throw suspendedProductsError;
+                    }
+
+                    const suspendedProductSet = new Set(
+                        suspendedProducts?.map((item) => item.product_id) || []
+                    );
+
+                    const productIdsToActivate = userProducts
+                        .filter(
+                            (product) => !suspendedProductSet.has(product.id)
+                        )
+                        .map((product) => product.id);
+
+                    if (productIdsToActivate.length) {
+                        const { error: productActivationError } = await supabase
+                            .from("products")
+                            .update({ status_id: 1 })
+                            .in("id", productIdsToActivate);
+
+                        if (productActivationError) {
+                            await supabase
+                                .from("profiles")
+                                .update({
+                                    status_id: 2,
+                                    suspension_reason: previousSuspensionReason,
+                                })
+                                .eq("id", userId);
+                            throw productActivationError;
+                        }
+                    }
+                }
+            }
+
             // Update UI optimistically
             setAllUsers((prev) =>
-                prev.map((user) => {
-                    if (user.id === userId) {
+                prev.map((currentUser) => {
+                    if (currentUser.id === userId) {
                         return {
-                            ...user,
+                            ...currentUser,
                             status: "Active",
                             statusId: 1,
+                            suspensionReason: null,
                         };
                     }
-                    return user;
+                    return currentUser;
                 })
             );
 
@@ -487,6 +558,8 @@ function AdminUserManagement() {
             if (!userToSuspend)
                 throw new Error("No user selected for suspension");
 
+            const previousSuspensionReason = userToSuspend.suspensionReason;
+
             const { error } = await supabase
                 .from("profiles")
                 .update({
@@ -497,6 +570,24 @@ function AdminUserManagement() {
 
             if (error) throw error;
 
+            if (userToSuspend.roleId === 2) {
+                const { error: productSuspensionError } = await supabase
+                    .from("products")
+                    .update({ status_id: 2 })
+                    .eq("user_id", userToSuspend.id);
+
+                if (productSuspensionError) {
+                    await supabase
+                        .from("profiles")
+                        .update({
+                            status_id: 1,
+                            suspension_reason: previousSuspensionReason,
+                        })
+                        .eq("id", userToSuspend.id);
+                    throw productSuspensionError;
+                }
+            }
+
             // Update UI optimistically
             setAllUsers((prev) =>
                 prev.map((user) => {
@@ -505,6 +596,7 @@ function AdminUserManagement() {
                             ...user,
                             status: "Suspended",
                             statusId: 2,
+                            suspensionReason: reason,
                         };
                     }
                     return user;
