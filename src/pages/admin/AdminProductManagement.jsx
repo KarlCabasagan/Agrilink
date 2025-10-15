@@ -499,6 +499,46 @@ function AdminProductManagement() {
                 );
             }
 
+            const { data: existingSuspension, error: fetchSuspensionError } =
+                await supabase
+                    .from("suspended_products")
+                    .select("id")
+                    .eq("product_id", selectedProductForSuspension.id)
+                    .maybeSingle();
+
+            if (fetchSuspensionError) {
+                throw new Error(
+                    `Error checking suspended product: ${fetchSuspensionError.message}`
+                );
+            }
+
+            if (existingSuspension) {
+                const { error: updateSuspendedError } = await supabase
+                    .from("suspended_products")
+                    .update({
+                        updated_at: new Date().toISOString(),
+                    })
+                    .eq("id", existingSuspension.id);
+
+                if (updateSuspendedError) {
+                    throw new Error(
+                        `Error updating suspended product: ${updateSuspendedError.message}`
+                    );
+                }
+            } else {
+                const { error: insertSuspendedError } = await supabase
+                    .from("suspended_products")
+                    .insert({
+                        product_id: selectedProductForSuspension.id,
+                    });
+
+                if (insertSuspendedError) {
+                    throw new Error(
+                        `Error storing suspended product: ${insertSuspendedError.message}`
+                    );
+                }
+            }
+
             setApprovedProducts((prev) =>
                 prev.map((product) =>
                     product.id === selectedProductForSuspension.id
@@ -555,6 +595,19 @@ function AdminProductManagement() {
 
         if (updateError) {
             console.error("Error updating product status:", updateError);
+            return;
+        }
+
+        const { error: deleteSuspensionError } = await supabase
+            .from("suspended_products")
+            .delete()
+            .eq("product_id", productId);
+
+        if (deleteSuspensionError) {
+            console.error(
+                "Error removing suspended product record:",
+                deleteSuspensionError
+            );
             return;
         }
 

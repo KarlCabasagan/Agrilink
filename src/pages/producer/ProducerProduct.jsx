@@ -431,6 +431,20 @@ function ProducerProduct() {
                 };
 
                 setProduct(updatedProduct);
+
+                // 🚫 Remove any suspension record since product was successfully updated
+                const { error: suspendedDeleteError } = await supabase
+                    .from("suspended_products")
+                    .delete()
+                    .eq("product_id", product.id);
+
+                if (suspendedDeleteError) {
+                    console.error(
+                        "Error removing product from suspended_products:",
+                        suspendedDeleteError
+                    );
+                }
+
                 setIsEditing(false);
             }
         } catch (error) {
