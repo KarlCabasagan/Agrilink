@@ -13,41 +13,6 @@ function AdminDashboard() {
         totalReviews: 156,
     };
 
-    const recentActivities = [
-        {
-            id: 1,
-            type: "user_application",
-            message: "New producer application from John Farmer",
-            timestamp: "5 minutes ago",
-            icon: "mingcute:user-add-line",
-            color: "text-blue-600",
-        },
-        {
-            id: 2,
-            type: "product_approval",
-            message: "Product 'Organic Tomatoes' approved",
-            timestamp: "15 minutes ago",
-            icon: "mingcute:check-circle-line",
-            color: "text-green-600",
-        },
-        {
-            id: 3,
-            type: "transaction",
-            message: "New transaction completed: ₱2,500",
-            timestamp: "1 hour ago",
-            icon: "mingcute:currency-dollar-line",
-            color: "text-yellow-600",
-        },
-        {
-            id: 4,
-            type: "crop_update",
-            message: "Rice crop data updated",
-            timestamp: "2 hours ago",
-            icon: "mingcute:leaf-line",
-            color: "text-emerald-600",
-        },
-    ];
-
     return (
         <div className="min-h-screen w-full flex flex-col relative items-center scrollbar-hide bg-background overflow-x-hidden text-text pb-20">
             {/* Header */}
@@ -212,36 +177,6 @@ function AdminDashboard() {
                                 View Logs
                             </span>
                         </Link>
-                    </div>
-                </div>
-
-                {/* Recent Activities */}
-                <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-                    <h2 className="text-lg font-semibold text-gray-800 mb-4">
-                        Recent Activities
-                    </h2>
-                    <div className="space-y-3">
-                        {recentActivities.map((activity) => (
-                            <div
-                                key={activity.id}
-                                className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg"
-                            >
-                                <Icon
-                                    icon={activity.icon}
-                                    width="20"
-                                    height="20"
-                                    className={activity.color}
-                                />
-                                <div className="flex-1">
-                                    <p className="text-sm text-gray-800">
-                                        {activity.message}
-                                    </p>
-                                    <p className="text-xs text-gray-500">
-                                        {activity.timestamp}
-                                    </p>
-                                </div>
-                            </div>
-                        ))}
                     </div>
                 </div>
 
