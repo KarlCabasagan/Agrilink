@@ -140,16 +140,22 @@ function AdminTransactions() {
     const getStatusConfig = (status, deliveryMethod) => {
         // Handle ready for pickup/delivery status based on delivery method
         if (status?.toLowerCase() === "ready for pickup") {
-            const statusValue = deliveryMethod?.toLowerCase() === "farm pickup" 
-                ? "ready for pickup"
-                : "in delivery";
-            
-            return orderStatuses.find(s => s.value === statusValue) || {
-                value: statusValue,
-                label: deliveryMethod?.toLowerCase() === "farm pickup" ? "Ready for Pickup" : "In Delivery",
-                color: "bg-purple-100 text-purple-800",
-                icon: "mingcute:truck-line",
-            };
+            const statusValue =
+                deliveryMethod?.toLowerCase() === "farm pickup"
+                    ? "ready for pickup"
+                    : "in delivery";
+
+            return (
+                orderStatuses.find((s) => s.value === statusValue) || {
+                    value: statusValue,
+                    label:
+                        deliveryMethod?.toLowerCase() === "farm pickup"
+                            ? "Ready for Pickup"
+                            : "In Delivery",
+                    color: "bg-purple-100 text-purple-800",
+                    icon: "mingcute:truck-line",
+                }
+            );
         }
 
         return (
