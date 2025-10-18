@@ -1,17 +1,78 @@
 import { Icon } from "@iconify/react";
 import { Link } from "react-router-dom";
+import { useState, useEffect } from "react";
 import AdminNavigationBar from "../../components/AdminNavigationBar";
+import supabase from "../../SupabaseClient";
+
+import useUpdateLastLogin from "../../hooks/useUpdateLastLogin";
+import { useContext } from "react";
+import { AuthContext } from "../../App";
 
 function AdminDashboard() {
-    const stats = {
-        totalUsers: 1245,
-        pendingApplications: 5,
-        totalProducts: 892,
-        pendingProducts: 3,
-        totalTransactions: 3421,
-        activeCrops: 24,
-        totalReviews: 156,
-    };
+    const { user } = useContext(AuthContext);
+    useUpdateLastLogin(user?.id);
+
+    const [stats, setStats] = useState({
+        totalUsers: 0,
+        pendingApplications: 0,
+        totalProducts: 0,
+        pendingProducts: 0,
+        activeCrops: 0,
+        totalReviews: 0,
+    });
+    const [isLoading, setIsLoading] = useState(true);
+
+    useEffect(() => {
+        const fetchDashboardStats = async () => {
+            try {
+                // Get total users count
+                const { count: usersCount } = await supabase
+                    .from("profiles")
+                    .select("*", { count: "exact", head: true });
+
+                // Get pending seller applications count
+                const { count: pendingApplicationsCount } = await supabase
+                    .from("seller_applications")
+                    .select("*", { count: "exact", head: true })
+                    .is("rejection_reason", null);
+
+                // Get total products count
+                const { count: productsCount } = await supabase
+                    .from("products")
+                    .select("*", { count: "exact", head: true });
+
+                // Get pending products count
+                const { count: pendingProductsCount } = await supabase
+                    .from("products")
+                    .select("*", { count: "exact", head: true })
+                    .is("approval_date", null);
+
+                // Get active crops count
+                const { count: activeCropsCount } = await supabase
+                    .from("crops")
+                    .select("*", { count: "exact", head: true });
+
+                // Get total reviews count (from future reviews table)
+                // This will need to be updated once the reviews table is implemented
+                const totalReviews = 0;
+
+                setStats({
+                    totalUsers: usersCount || 0,
+                    pendingApplications: pendingApplicationsCount || 0,
+                    totalProducts: productsCount || 0,
+                    pendingProducts: pendingProductsCount || 0,
+                    activeCrops: activeCropsCount || 0,
+                    totalReviews: totalReviews,
+                });
+                setIsLoading(false);
+            } catch (error) {
+                console.error("Error fetching dashboard stats:", error);
+                setIsLoading(false);
+            }
+        };
+
+        fetchDashboardStats();
+    }, []);
 
     return (
         <div className="min-h-screen w-full flex flex-col relative items-center scrollbar-hide bg-background overflow-x-hidden text-text pb-20">
@@ -32,14 +93,35 @@ function AdminDashboard() {
                             height="32"
                             className="mx-auto mb-2 text-blue-600"
                         />
-                        <p className="text-2xl font-bold text-gray-800">
-                            {stats.totalUsers}
-                        </p>
-                        <p className="text-sm text-gray-600">Total Users</p>
-                        {stats.pendingApplications > 0 && (
-                            <p className="text-xs text-red-600 mt-1">
-                                {stats.pendingApplications} pending
-                            </p>
+                        {isLoading ? (
+                            <div className="animate-pulse">
+                                <div className="h-8 bg-gray-200 rounded w-24 mx-auto mb-2"></div>
+                                <div className="h-4 bg-gray-200 rounded w-20 mx-auto"></div>
+                            </div>
+                        ) : (
+                            <>
+                                <p className="text-2xl font-bold text-gray-800">
+                                    {stats.totalUsers.toLocaleString()}
+                                </p>
+                                <p className="text-sm text-gray-600">
+                                    Total Users
+                                </p>
+                                {stats.pendingApplications > 0 && (
+                                    <div className="flex items-center justify-center gap-1 mt-1">
+                                        <Icon
+                                            icon="mingcute:time-line"
+                                            className="w-3 h-3 text-orange-500"
+                                        />
+                                        <p className="text-xs text-orange-600">
+                                            {stats.pendingApplications} seller{" "}
+                                            {stats.pendingApplications === 1
+                                                ? "application"
+                                                : "applications"}{" "}
+                                            pending
+                                        </p>
+                                    </div>
+                                )}
+                            </>
                         )}
                     </div>
 
@@ -50,28 +132,33 @@ function AdminDashboard() {
                             height="32"
                             className="mx-auto mb-2 text-green-600"
                         />
-                        <p className="text-2xl font-bold text-gray-800">
-                            {stats.totalProducts}
-                        </p>
-                        <p className="text-sm text-gray-600">Products</p>
-                        {stats.pendingProducts > 0 && (
-                            <p className="text-xs text-red-600 mt-1">
-                                {stats.pendingProducts} pending
-                            </p>
+                        {isLoading ? (
+                            <div className="animate-pulse">
+                                <div className="h-8 bg-gray-200 rounded w-24 mx-auto mb-2"></div>
+                                <div className="h-4 bg-gray-200 rounded w-20 mx-auto"></div>
+                            </div>
+                        ) : (
+                            <>
+                                <p className="text-2xl font-bold text-gray-800">
+                                    {stats.totalProducts.toLocaleString()}
+                                </p>
+                                <p className="text-sm text-gray-600">
+                                    Products
+                                </p>
+                                {stats.pendingProducts > 0 && (
+                                    <div className="flex items-center justify-center gap-1 mt-1">
+                                        <Icon
+                                            icon="mingcute:time-line"
+                                            className="w-3 h-3 text-orange-500"
+                                        />
+                                        <p className="text-xs text-orange-600">
+                                            {stats.pendingProducts} pending
+                                            approval
+                                        </p>
+                                    </div>
+                                )}
+                            </>
                         )}
-                    </div>
-
-                    <div className="bg-white rounded-lg shadow-md p-4 text-center">
-                        <Icon
-                            icon="mingcute:currency-dollar-line"
-                            width="32"
-                            height="32"
-                            className="mx-auto mb-2 text-yellow-600"
-                        />
-                        <p className="text-2xl font-bold text-gray-800">
-                            {stats.totalTransactions}
-                        </p>
-                        <p className="text-sm text-gray-600">Transactions</p>
                     </div>
 
                     <div className="bg-white rounded-lg shadow-md p-4 text-center">
@@ -81,34 +168,21 @@ function AdminDashboard() {
                             height="32"
                             className="mx-auto mb-2 text-emerald-600"
                         />
-                        <p className="text-2xl font-bold text-gray-800">
-                            {stats.activeCrops}
-                        </p>
-                        <p className="text-sm text-gray-600">Active Crops</p>
-                    </div>
-
-                    <div className="bg-white rounded-lg shadow-md p-4 text-center">
-                        <Icon
-                            icon="mingcute:notification-line"
-                            width="32"
-                            height="32"
-                            className="mx-auto mb-2 text-purple-600"
-                        />
-                        <p className="text-2xl font-bold text-gray-800">12</p>
-                        <p className="text-sm text-gray-600">Unread Messages</p>
-                    </div>
-
-                    <div className="bg-white rounded-lg shadow-md p-4 text-center">
-                        <Icon
-                            icon="mingcute:comment-line"
-                            width="32"
-                            height="32"
-                            className="mx-auto mb-2 text-indigo-600"
-                        />
-                        <p className="text-2xl font-bold text-gray-800">
-                            {stats.totalReviews}
-                        </p>
-                        <p className="text-sm text-gray-600">Total Reviews</p>
+                        {isLoading ? (
+                            <div className="animate-pulse">
+                                <div className="h-8 bg-gray-200 rounded w-24 mx-auto mb-2"></div>
+                                <div className="h-4 bg-gray-200 rounded w-20 mx-auto"></div>
+                            </div>
+                        ) : (
+                            <>
+                                <p className="text-2xl font-bold text-gray-800">
+                                    {stats.activeCrops.toLocaleString()}
+                                </p>
+                                <p className="text-sm text-gray-600">
+                                    Active Crops
+                                </p>
+                            </>
+                        )}
                     </div>
                 </div>
 
@@ -174,7 +248,7 @@ function AdminDashboard() {
                                 className="text-purple-600 mb-2"
                             />
                             <span className="text-sm font-medium text-purple-700">
-                                View Logs
+                                View Transactions
                             </span>
                         </Link>
                     </div>
@@ -232,7 +306,7 @@ function AdminDashboard() {
                                         by {product.producer}
                                     </p>
                                     <p className="text-sm text-gray-500">
-                                        {product.sales} sold
+                                        {product.sales} kg sold
                                     </p>
                                 </div>
                                 <div className="text-right">
