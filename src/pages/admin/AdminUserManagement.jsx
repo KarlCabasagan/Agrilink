@@ -619,17 +619,54 @@ function AdminUserManagement() {
         try {
             const newRoleId = user.roleId === 1 ? 2 : 1; // Toggle between Consumer (1) and Producer (2)
 
-            const { error } = await supabase
-                .from("profiles")
-                .update({ role_id: newRoleId })
-                .eq("id", userId);
+            if (newRoleId === 2) {
+                // When promoting to producer, use RPC function that handles application cleanup
+                const { data, error: promoteError } = await supabase.rpc(
+                    "promote_to_producer",
+                    {
+                        target_user_id: userId,
+                    }
+                );
 
-            if (error) throw error;
+                if (promoteError) {
+                    console.error("Promotion error:", promoteError);
+                    throw new Error(
+                        promoteError.message ||
+                            "Failed to promote user to producer"
+                    );
+                }
 
-            await fetchUsers();
-            toast.success("User role updated successfully");
+                if (!data) {
+                    throw new Error(
+                        "No response received from promotion function"
+                    );
+                }
+            } else {
+                // For demoting to consumer, just update the role
+                const { error: updateError } = await supabase
+                    .from("profiles")
+                    .update({
+                        role_id: newRoleId,
+                        updated_at: new Date().toISOString(),
+                    })
+                    .eq("id", userId);
+
+                if (updateError) {
+                    console.error("Demotion error:", updateError);
+                    throw new Error("Failed to demote user to consumer");
+                }
+            }
+
+            // Refresh both users and applications lists since we might have cleaned up applications
+            await Promise.all([fetchUsers(), fetchProducerApplications()]);
+
+            toast.success(
+                `User role changed to ${
+                    newRoleId === 2 ? "Producer" : "Consumer"
+                } successfully`
+            );
         } catch (err) {
-            toast.error("Failed to update user role");
+            toast.error(err.message || "Failed to update user role");
             console.error("Role toggle error:", err);
         }
     };

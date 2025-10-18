@@ -16,6 +16,8 @@ import { deleteImageFromUrl, uploadImage } from "../../utils/imageUpload";
 import supabase from "../../SupabaseClient.jsx";
 
 // Memoized ProductModal component to prevent unnecessary re-renders
+import useUpdateLastLogin from "../../hooks/useUpdateLastLogin";
+
 const ProductModal = memo(
     ({
         isEdit = false,
@@ -562,6 +564,8 @@ ProductModal.displayName = "ProductModal";
 
 function ProducerHome() {
     const { user } = useContext(AuthContext);
+    // Update last login timestamp
+    useUpdateLastLogin(user?.id);
     const [selectedCategory, setSelectedCategory] = useState("All");
     const [search, setSearch] = useState("");
     const [products, setProducts] = useState([]);

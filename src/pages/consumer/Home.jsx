@@ -8,8 +8,12 @@ import supabase from "../../SupabaseClient.jsx";
 import { AuthContext } from "../../App.jsx";
 import { getCartCount } from "../../utils/cartUtils.js";
 
+import useUpdateLastLogin from "../../hooks/useUpdateLastLogin";
+
 function Home() {
     const { user } = useContext(AuthContext);
+    useUpdateLastLogin(user?.id);
+
     const [selectedCategory, setSelectedCategory] = useState("All");
     const [search, setSearch] = useState("");
     const [products, setProducts] = useState([]);
