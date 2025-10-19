@@ -488,25 +488,29 @@ function AdminCropManagement() {
     const validateForm = () => {
         // Required fields except icon
         const requiredFields = [
-            'name',
-            'category_id',
-            'growing_season',
-            'harvest_time',
-            'market_demand',
-            'description'
+            "name",
+            "category_id",
+            "growing_season",
+            "harvest_time",
+            "market_demand",
+            "description",
         ];
-        
+
         // Check if any required field is empty
-        const hasEmptyFields = requiredFields.some(field => !formData[field]);
+        const hasEmptyFields = requiredFields.some((field) => !formData[field]);
         if (hasEmptyFields) return false;
 
         // Validate price ranges
         const minPrice = parseFloat(formData.min_price);
         const maxPrice = parseFloat(formData.max_price);
-        
-        if (isNaN(minPrice) || isNaN(maxPrice) || 
-            minPrice < 0 || maxPrice < 0 || 
-            maxPrice < minPrice) {
+
+        if (
+            isNaN(minPrice) ||
+            isNaN(maxPrice) ||
+            minPrice < 0 ||
+            maxPrice < 0 ||
+            maxPrice < minPrice
+        ) {
             return false;
         }
 
@@ -1303,8 +1307,8 @@ function AdminCropManagement() {
                                     isSaving ||
                                     (showAddModal && !isFormValid) ||
                                     (!showAddModal && !hasFormChanges())
-                                        ? 'bg-gray-300 cursor-not-allowed'
-                                        : 'bg-primary text-white hover:bg-primary-dark'
+                                        ? "bg-gray-300 cursor-not-allowed"
+                                        : "bg-primary text-white hover:bg-primary-dark"
                                 }`}
                             >
                                 {isSaving ? (
@@ -1313,7 +1317,9 @@ function AdminCropManagement() {
                                             icon="mingcute:loading-line"
                                             className="animate-spin w-5 h-5 mr-2"
                                         />
-                                        {showAddModal ? "Adding..." : "Saving..."}
+                                        {showAddModal
+                                            ? "Adding..."
+                                            : "Saving..."}
                                     </>
                                 ) : (
                                     <>
