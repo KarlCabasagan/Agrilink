@@ -7,14 +7,7 @@ import ConfirmModal from "../../components/ConfirmModal";
 import { deleteImageFromUrl, uploadImage } from "../../utils/imageUpload";
 import supabase from "../../SupabaseClient.jsx";
 
-const categories = [
-    "Vegetables",
-    "Fruits",
-    "Grains",
-    "Spices",
-    "Root and Tuber",
-    "Legumes",
-];
+// No longer needed as categories are determined by the selected crop
 
 function ProducerProduct() {
     const { id } = useParams();
@@ -37,7 +30,7 @@ function ProducerProduct() {
             try {
                 const { data, error } = await supabase
                     .from("crops")
-                    .select("id, name")
+                    .select("id, name, category_id")
                     .order("name", { ascending: true });
 
                 if (error) {
@@ -65,7 +58,6 @@ function ProducerProduct() {
     const [editForm, setEditForm] = useState({
         name: "",
         price: "",
-        category: "Vegetables",
         description: "",
         stock: "",
         image_url: "",
@@ -73,139 +65,6 @@ function ProducerProduct() {
         imagePreview: "",
         cropType: "",
     });
-
-    // Sample products data (replace with actual data fetching)
-    const sampleProducts = [
-        {
-            id: 1,
-            name: "Fresh Organic Tomatoes",
-            price: 45.0,
-            category: "Vegetables",
-            cropType: "Tomatoes",
-            description:
-                "Locally grown organic tomatoes, perfect for cooking and salads. These tomatoes are grown without pesticides and are harvested at peak ripeness.",
-            stock: 50,
-            image: "https://images.unsplash.com/photo-1546470427-e70c6b9a5e9c?w=400&h=300&fit=crop",
-            created_at: "2024-09-01T10:00:00Z",
-            updated_at: "2024-09-03T14:30:00Z",
-            rating: 4.5,
-            reviewCount: 23,
-            reviews: [
-                {
-                    id: 1,
-                    userName: "Maria Santos",
-                    rating: 5,
-                    comment:
-                        "Excellent quality! Very fresh and flavorful tomatoes. Will definitely buy again.",
-                    date: "2024-09-02T10:30:00Z",
-                    userImage:
-                        "https://images.unsplash.com/photo-1494790108755-2616b612b786?w=40&h=40&fit=crop&crop=face",
-                },
-                {
-                    id: 2,
-                    userName: "Juan Dela Cruz",
-                    rating: 4,
-                    comment:
-                        "Good quality tomatoes, perfect for my restaurant. Fast delivery too!",
-                    date: "2024-09-01T15:45:00Z",
-                    userImage:
-                        "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=40&h=40&fit=crop&crop=face",
-                },
-                {
-                    id: 3,
-                    userName: "Ana Rodriguez",
-                    rating: 5,
-                    comment:
-                        "These are the best tomatoes I've ever bought online. So fresh and organic!",
-                    date: "2024-08-30T09:15:00Z",
-                    userImage:
-                        "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=40&h=40&fit=crop&crop=face",
-                },
-            ],
-        },
-        {
-            id: 2,
-            name: "Premium Rice",
-            price: 55.0,
-            category: "Grains",
-            cropType: "Rice",
-            description:
-                "High-quality jasmine rice from local farms. Perfect for daily meals with excellent texture and aroma.",
-            stock: 100,
-            image: "https://images.unsplash.com/photo-1586201375761-83865001e31c?w=400&h=300&fit=crop",
-            created_at: "2024-08-28T09:15:00Z",
-            updated_at: "2024-09-02T16:45:00Z",
-            rating: 4.2,
-            reviewCount: 15,
-            reviews: [
-                {
-                    id: 1,
-                    userName: "Carlos Mendoza",
-                    rating: 4,
-                    comment: "Great quality rice. My family loves it!",
-                    date: "2024-09-01T12:20:00Z",
-                    userImage:
-                        "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=40&h=40&fit=crop&crop=face",
-                },
-                {
-                    id: 2,
-                    userName: "Lisa Garcia",
-                    rating: 5,
-                    comment:
-                        "Perfect texture and very aromatic. Highly recommended!",
-                    date: "2024-08-29T14:10:00Z",
-                    userImage:
-                        "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=40&h=40&fit=crop&crop=face",
-                },
-            ],
-        },
-        {
-            id: 3,
-            name: "Sweet Mangoes",
-            price: 80.0,
-            category: "Fruits",
-            cropType: "Mango",
-            description:
-                "Sweet and juicy mangoes, perfectly ripe. These mangoes are hand-picked at optimal ripeness for the best flavor.",
-            stock: 25,
-            image: "https://images.unsplash.com/photo-1605027990121-cbae9d0541ba?w=400&h=300&fit=crop",
-            created_at: "2024-08-30T11:20:00Z",
-            updated_at: "2024-09-01T13:10:00Z",
-            rating: 4.8,
-            reviewCount: 31,
-            reviews: [
-                {
-                    id: 1,
-                    userName: "Patricia Torres",
-                    rating: 5,
-                    comment:
-                        "Absolutely delicious! The mangoes were perfectly ripe and sweet.",
-                    date: "2024-08-31T16:30:00Z",
-                    userImage:
-                        "https://images.unsplash.com/photo-1487412720507-e7ab37603c6f?w=40&h=40&fit=crop&crop=face",
-                },
-                {
-                    id: 2,
-                    userName: "Roberto Silva",
-                    rating: 4,
-                    comment: "Very good quality mangoes. My kids loved them!",
-                    date: "2024-08-30T18:45:00Z",
-                    userImage:
-                        "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=40&h=40&fit=crop&crop=face",
-                },
-                {
-                    id: 3,
-                    userName: "Elena Morales",
-                    rating: 5,
-                    comment:
-                        "Best mangoes I've ever tasted! Will order again soon.",
-                    date: "2024-08-29T11:20:00Z",
-                    userImage:
-                        "https://images.unsplash.com/photo-1485875437342-9b39470b3d95?w=40&h=40&fit=crop&crop=face",
-                },
-            ],
-        },
-    ];
 
     // Sort reviews function
     const sortReviews = (reviews) => {
@@ -237,7 +96,6 @@ function ProducerProduct() {
             setEditForm({
                 name: product.name,
                 price: product.price.toString(),
-                category: product.category,
                 cropType: product.cropType || "",
                 description: product.description,
                 stock: product.stock.toString(),
@@ -306,9 +164,9 @@ function ProducerProduct() {
             return;
         }
 
-        // Validate crop type
+        // Validate crop type and ensure it's selected
         if (
-            editForm.cropType &&
+            !editForm.cropType ||
             !crops.some((crop) => crop.name === editForm.cropType)
         ) {
             alert(
@@ -318,27 +176,25 @@ function ProducerProduct() {
         }
 
         try {
-            // Get category_id if category is selected
-            let category_id = null;
-            if (editForm.category && editForm.category !== "All") {
-                const { data: categoryData } = await supabase
-                    .from("categories")
-                    .select("id")
-                    .eq("name", editForm.category)
-                    .single();
-                category_id = categoryData?.id;
+            // Get crop and its associated category
+            const { data: cropData, error: cropError } = await supabase
+                .from("crops")
+                .select("id, category_id")
+                .eq("name", editForm.cropType)
+                .single();
+
+            if (cropError) {
+                console.error("Error fetching crop data:", cropError);
+                alert("Error validating crop type. Please try again.");
+                return;
             }
 
-            // Get crop_id
-            let crop_id = null;
-            if (editForm.cropType) {
-                const { data: cropData } = await supabase
-                    .from("crops")
-                    .select("id")
-                    .eq("name", editForm.cropType)
-                    .single();
-                crop_id = cropData?.id;
+            if (!cropData) {
+                alert("Selected crop type not found. Please try again.");
+                return;
             }
+
+            // Note: We already have cropData with both id and category_id from above
 
             // Handle image upload and deletion
             let image_url = product.image_url; // Keep existing image by default
@@ -366,23 +222,18 @@ function ProducerProduct() {
             // 🔎 Determine whether changes are non-price/stock (i.e. require re-approval)
             const hasNonPriceStockChanges =
                 editForm.name !== product.name ||
-                editForm.category !== product.category ||
                 editForm.description !== product.description ||
                 editForm.cropType !== product.cropType ||
                 editForm.imageFile !== null ||
                 (!editForm.image_url && product.image_url) ||
                 (editForm.image_url && !product.image_url);
 
-            const hasPriceStockChanges =
-                editForm.price !== product.price.toString() ||
-                editForm.stock !== product.stock.toString();
-
-            // Build update payload
+            // Build update payload using crop data's category_id
             const updatePayload = {
                 name: editForm.name,
                 price: parseFloat(editForm.price),
-                category_id,
-                crop_id,
+                category_id: cropData.category_id,
+                crop_id: cropData.id,
                 description: editForm.description,
                 stock: parseFloat(editForm.stock),
                 image_url,
@@ -417,7 +268,7 @@ function ProducerProduct() {
                     ...product,
                     name: data.name,
                     price: parseFloat(data.price),
-                    category: data.categories?.name || editForm.category,
+                    category: data.categories?.name,
                     description: data.description,
                     stock: parseFloat(data.stock),
                     image_url: data.image_url,
@@ -489,7 +340,6 @@ function ProducerProduct() {
         setEditForm({
             name: product.name,
             price: product.price.toString(),
-            category: product.category,
             cropType: product.cropType || "",
             description: product.description,
             stock: product.stock.toString(),
@@ -933,7 +783,7 @@ function ProducerProduct() {
                                     />
                                 </div>
 
-                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                     <div>
                                         <label className="block text-sm font-medium text-gray-700 mb-1">
                                             Price per kg (₱) *
@@ -971,28 +821,6 @@ function ProducerProduct() {
                                             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-primary focus:border-primary"
                                             required
                                         />
-                                    </div>
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                                            Category *
-                                        </label>
-                                        <select
-                                            value={editForm.category}
-                                            onChange={(e) =>
-                                                setEditForm((prev) => ({
-                                                    ...prev,
-                                                    category: e.target.value,
-                                                }))
-                                            }
-                                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-primary focus:border-primary"
-                                            required
-                                        >
-                                            {categories.map((cat) => (
-                                                <option key={cat} value={cat}>
-                                                    {cat}
-                                                </option>
-                                            ))}
-                                        </select>
                                     </div>
                                 </div>
 
