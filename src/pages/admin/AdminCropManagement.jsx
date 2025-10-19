@@ -20,6 +20,32 @@ function AdminCropManagement() {
     const [selectedCrop, setSelectedCrop] = useState(null);
     const [selectedGuide, setSelectedGuide] = useState(null);
     const [searchTerm, setSearchTerm] = useState("");
+    const [isSaving, setIsSaving] = useState(false);
+    const [originalCropData, setOriginalCropData] = useState(null);
+    const [formErrors, setFormErrors] = useState({});
+    const [showErrorToast, setShowErrorToast] = useState(false);
+    const [errorMessage, setErrorMessage] = useState("");
+    const [isFormValid, setIsFormValid] = useState(false);
+
+    const [formData, setFormData] = useState({
+        name: "",
+        category_id: "",
+        icon: "",
+        growing_season: "",
+        harvest_time: "",
+        market_demand: "",
+        description: "",
+        min_price: 0,
+        max_price: 0,
+    });
+
+    // Effect to validate form on data changes
+    useEffect(() => {
+        if (showAddModal || showEditModal) {
+            const isValid = validateForm();
+            setIsFormValid(isValid);
+        }
+    }, [formData, showAddModal, showEditModal]);
 
     const [crops, setCrops] = useState([]);
     const [categories, setCategories] = useState([]);
@@ -118,16 +144,6 @@ function AdminCropManagement() {
         }
     };
 
-    const [formData, setFormData] = useState({
-        name: "",
-        category_id: "",
-        icon: "",
-        growing_season: "",
-        harvest_time: "",
-        market_demand: "",
-        description: "",
-    });
-
     const [guideFormData, setGuideFormData] = useState({
         name: "",
         description: "",
@@ -150,7 +166,12 @@ function AdminCropManagement() {
             harvest_time: "",
             market_demand: "",
             description: "",
+            min_price: 0,
+            max_price: 0,
         });
+        setFormErrors({});
+        setShowErrorToast(false);
+        setErrorMessage("");
     };
 
     const resetGuideForm = () => {
@@ -165,11 +186,12 @@ function AdminCropManagement() {
     const handleAdd = () => {
         setShowAddModal(true);
         resetForm();
+        setOriginalCropData(null);
     };
 
     const handleEdit = (crop) => {
         setSelectedCrop(crop);
-        setFormData({
+        const initialData = {
             name: crop.name,
             category_id: crop.category_id,
             icon: crop.icon,
@@ -177,7 +199,11 @@ function AdminCropManagement() {
             harvest_time: crop.harvest_time,
             market_demand: crop.market_demand,
             description: crop.description || "",
-        });
+            min_price: crop.min_price || 0,
+            max_price: crop.max_price || 0,
+        };
+        setFormData(initialData);
+        setOriginalCropData(initialData);
         setShowEditModal(true);
     };
 
@@ -187,41 +213,49 @@ function AdminCropManagement() {
     };
 
     const saveCrop = async () => {
-        let error;
-        const cropData = {
-            name: formData.name,
-            category_id: formData.category_id,
-            icon: formData.icon,
-            growing_season: formData.growing_season,
-            harvest_time: formData.harvest_time,
-            market_demand: formData.market_demand,
-            description: formData.description,
-            updated_at: new Date().toISOString(),
-        };
+        if (isSaving || !isFormValid) return;
+        setIsSaving(true);
 
-        if (selectedCrop) {
-            // Update
-            const { error: updateError } = await supabase
-                .from("crops")
-                .update(cropData)
-                .eq("id", selectedCrop.id);
-            error = updateError;
-        } else {
-            // Insert
-            const { error: insertError } = await supabase
-                .from("crops")
-                .insert(cropData);
-            error = insertError;
-        }
+        try {
+            const cropData = {
+                name: formData.name,
+                category_id: formData.category_id,
+                icon: formData.icon,
+                growing_season: formData.growing_season,
+                harvest_time: formData.harvest_time,
+                market_demand: formData.market_demand,
+                description: formData.description,
+                min_price: parseFloat(formData.min_price),
+                max_price: parseFloat(formData.max_price),
+                updated_at: new Date().toISOString(),
+            };
 
-        if (error) {
-            console.error("Error saving crop:", error);
-        } else {
+            let error;
+            if (selectedCrop) {
+                const { error: updateError } = await supabase
+                    .from("crops")
+                    .update(cropData)
+                    .eq("id", selectedCrop.id);
+                error = updateError;
+            } else {
+                const { error: insertError } = await supabase
+                    .from("crops")
+                    .insert(cropData);
+                error = insertError;
+            }
+
+            if (error) throw error;
+
             await fetchCrops();
             setShowAddModal(false);
             setShowEditModal(false);
             resetForm();
             setSelectedCrop(null);
+        } catch (error) {
+            console.error("Error saving crop:", error);
+            setFormErrors({ submit: error.message });
+        } finally {
+            setIsSaving(false);
         }
     };
 
@@ -405,6 +439,83 @@ function AdminCropManagement() {
         }
     };
 
+    const hasFormChanges = () => {
+        if (!originalCropData && showAddModal) return true;
+        if (!originalCropData) return false;
+
+        return Object.keys(formData).some((key) => {
+            if (key === "min_price" || key === "max_price") {
+                return (
+                    parseFloat(formData[key]) !==
+                    parseFloat(originalCropData[key])
+                );
+            }
+            return formData[key] !== originalCropData[key];
+        });
+    };
+
+    const validatePrices = () => {
+        const errors = {};
+        const minPrice = parseFloat(formData.min_price);
+        const maxPrice = parseFloat(formData.max_price);
+
+        if (isNaN(minPrice)) {
+            errors.min_price = "Please enter a valid number";
+        } else if (minPrice < 0) {
+            errors.min_price = "Price cannot be negative";
+        }
+
+        if (isNaN(maxPrice)) {
+            errors.max_price = "Please enter a valid number";
+        } else if (maxPrice < 0) {
+            errors.max_price = "Price cannot be negative";
+        }
+
+        if (!errors.min_price && !errors.max_price && maxPrice < minPrice) {
+            errors.max_price =
+                "Maximum price must be greater than minimum price";
+        }
+
+        return errors;
+    };
+
+    const showError = (message) => {
+        setErrorMessage(message);
+        setShowErrorToast(true);
+        setTimeout(() => setShowErrorToast(false), 5000);
+    };
+
+    const validateForm = () => {
+        // Required fields except icon
+        const requiredFields = [
+            "name",
+            "category_id",
+            "growing_season",
+            "harvest_time",
+            "market_demand",
+            "description",
+        ];
+
+        // Check if any required field is empty
+        const hasEmptyFields = requiredFields.some((field) => !formData[field]);
+        if (hasEmptyFields) return false;
+
+        // Validate price ranges
+        const minPrice = parseFloat(formData.min_price);
+        const maxPrice = parseFloat(formData.max_price);
+
+        if (
+            isNaN(minPrice) ||
+            isNaN(maxPrice) ||
+            minPrice < 0 ||
+            maxPrice < 0 ||
+            maxPrice < minPrice
+        ) {
+            return false;
+        }
+
+        return true;
+    };
     const renderCropCard = (crop) => (
         <div
             key={crop.id}
@@ -516,6 +627,21 @@ function AdminCropManagement() {
                             />
                             <span className="text-sm text-gray-900">
                                 {crop.harvest_time}
+                            </span>
+                        </div>
+                    </div>
+                    <div>
+                        <p className="text-sm font-medium text-gray-500 mb-1">
+                            Price Range
+                        </p>
+                        <div className="flex items-center">
+                            <Icon
+                                icon="mingcute:money-peso-line"
+                                className="w-4 h-4 mr-1 text-gray-400"
+                            />
+                            <span className="text-sm text-gray-900">
+                                ₱{crop.min_price.toFixed(2)} - ₱
+                                {crop.max_price.toFixed(2)}
                             </span>
                         </div>
                     </div>
@@ -861,6 +987,27 @@ function AdminCropManagement() {
                             </button>
                         </div>
 
+                        {Object.keys(formErrors).length > 0 && (
+                            <div className="mb-4 p-3 bg-red-50 border border-red-100 rounded-lg">
+                                <div className="flex items-center text-red-600 text-sm">
+                                    <Icon
+                                        icon="mingcute:warning-fill"
+                                        className="w-5 h-5 mr-2"
+                                    />
+                                    <span>
+                                        Please correct the following errors:
+                                    </span>
+                                </div>
+                                <ul className="mt-2 list-disc list-inside text-sm text-red-600">
+                                    {Object.values(formErrors).map(
+                                        (error, index) => (
+                                            <li key={index}>{error}</li>
+                                        )
+                                    )}
+                                </ul>
+                            </div>
+                        )}
+
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -919,18 +1066,45 @@ function AdminCropManagement() {
                                         />
                                     </button>
                                 </label>
-                                <input
-                                    type="text"
-                                    value={formData.icon}
-                                    onChange={(e) =>
-                                        setFormData({
-                                            ...formData,
-                                            icon: e.target.value,
-                                        })
-                                    }
-                                    placeholder="e.g., twemoji:tomato"
-                                    className="w-full px-3 py-3 border border-gray-300 rounded-lg text-base outline-none focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
-                                />
+                                <div className="relative">
+                                    <input
+                                        type="text"
+                                        value={formData.icon}
+                                        onChange={(e) => {
+                                            setFormData({
+                                                ...formData,
+                                                icon: e.target.value,
+                                            });
+                                            if (formErrors.icon) {
+                                                setFormErrors({
+                                                    ...formErrors,
+                                                    icon: null,
+                                                });
+                                            }
+                                        }}
+                                        placeholder="e.g., twemoji:tomato"
+                                        className="w-full pl-3 pr-12 py-3 border border-gray-300 rounded-lg text-base outline-none focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
+                                    />
+                                    {formData.icon && (
+                                        <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                                            <Icon
+                                                icon={formData.icon}
+                                                className="w-6 h-6"
+                                                onError={() => {
+                                                    setFormErrors({
+                                                        ...formErrors,
+                                                        icon: "Invalid icon name",
+                                                    });
+                                                }}
+                                            />
+                                        </div>
+                                    )}
+                                </div>
+                                {formErrors.icon && (
+                                    <p className="mt-1 text-sm text-red-600">
+                                        {formErrors.icon}
+                                    </p>
+                                )}
                                 <p className="text-xs text-gray-500 mt-1">
                                     Browse icons at:{" "}
                                     <a
@@ -942,18 +1116,6 @@ function AdminCropManagement() {
                                         https://icon-sets.iconify.design/twemoji/
                                     </a>
                                 </p>
-                                {formData.icon && (
-                                    <div className="mt-2 flex items-center gap-2">
-                                        <span className="text-sm text-gray-600">
-                                            Preview:
-                                        </span>
-                                        <Icon
-                                            icon={formData.icon}
-                                            width="24"
-                                            height="24"
-                                        />
-                                    </div>
-                                )}
                             </div>
 
                             <div>
@@ -1029,6 +1191,81 @@ function AdminCropManagement() {
                                 </select>
                             </div>
 
+                            {/* Price Range Fields */}
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    Minimum Price (₱) *
+                                </label>
+                                <div className="relative">
+                                    <input
+                                        type="number"
+                                        step="0.01"
+                                        value={formData.min_price}
+                                        onChange={(e) => {
+                                            setFormData({
+                                                ...formData,
+                                                min_price: e.target.value,
+                                            });
+                                            // Clear error when user starts typing
+                                            if (formErrors.min_price) {
+                                                setFormErrors({
+                                                    ...formErrors,
+                                                    min_price: null,
+                                                });
+                                            }
+                                        }}
+                                        className={`w-full px-3 py-3 border rounded-lg text-base outline-none focus:outline-none focus:ring-2 transition-all ${
+                                            formErrors.min_price
+                                                ? "border-red-500 focus:border-red-500 focus:ring-red-200"
+                                                : "border-gray-300 focus:ring-primary focus:border-primary"
+                                        }`}
+                                        required
+                                    />
+                                    {formErrors.min_price && (
+                                        <p className="mt-1 text-sm text-red-600">
+                                            {formErrors.min_price}
+                                        </p>
+                                    )}
+                                </div>
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    Maximum Price (₱) *
+                                </label>
+                                <div className="relative">
+                                    <input
+                                        type="number"
+                                        step="0.01"
+                                        value={formData.max_price}
+                                        onChange={(e) => {
+                                            setFormData({
+                                                ...formData,
+                                                max_price: e.target.value,
+                                            });
+                                            // Clear error when user starts typing
+                                            if (formErrors.max_price) {
+                                                setFormErrors({
+                                                    ...formErrors,
+                                                    max_price: null,
+                                                });
+                                            }
+                                        }}
+                                        className={`w-full px-3 py-3 border rounded-lg text-base outline-none focus:outline-none focus:ring-2 transition-all ${
+                                            formErrors.max_price
+                                                ? "border-red-500 focus:border-red-500 focus:ring-red-200"
+                                                : "border-gray-300 focus:ring-primary focus:border-primary"
+                                        }`}
+                                        required
+                                    />
+                                    {formErrors.max_price && (
+                                        <p className="mt-1 text-sm text-red-600">
+                                            {formErrors.max_price}
+                                        </p>
+                                    )}
+                                </div>
+                            </div>
+
                             <div className="md:col-span-2">
                                 <label className="block text-sm font-medium text-gray-700 mb-2">
                                     Description *
@@ -1061,9 +1298,44 @@ function AdminCropManagement() {
                             </button>
                             <button
                                 onClick={saveCrop}
-                                className="flex-1 px-4 py-3 bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors font-medium"
+                                disabled={
+                                    isSaving ||
+                                    (showAddModal && !isFormValid) ||
+                                    (!showAddModal && !hasFormChanges())
+                                }
+                                className={`flex-1 px-4 py-3 rounded-lg transition-all font-medium flex items-center justify-center ${
+                                    isSaving ||
+                                    (showAddModal && !isFormValid) ||
+                                    (!showAddModal && !hasFormChanges())
+                                        ? "bg-gray-300 cursor-not-allowed"
+                                        : "bg-primary text-white hover:bg-primary-dark"
+                                }`}
                             >
-                                {showAddModal ? "Add Crop" : "Save Changes"}
+                                {isSaving ? (
+                                    <>
+                                        <Icon
+                                            icon="mingcute:loading-line"
+                                            className="animate-spin w-5 h-5 mr-2"
+                                        />
+                                        {showAddModal
+                                            ? "Adding..."
+                                            : "Saving..."}
+                                    </>
+                                ) : (
+                                    <>
+                                        <Icon
+                                            icon={
+                                                showAddModal
+                                                    ? "mingcute:add-line"
+                                                    : "mingcute:save-line"
+                                            }
+                                            className="w-5 h-5 mr-2"
+                                        />
+                                        {showAddModal
+                                            ? "Add Crop"
+                                            : "Save Changes"}
+                                    </>
+                                )}
                             </button>
                         </div>
                     </div>
@@ -1266,6 +1538,19 @@ function AdminCropManagement() {
             )}
 
             <AdminNavigationBar />
+
+            {/* Error Toast */}
+            {showErrorToast && (
+                <div className="fixed bottom-4 right-4 bg-red-100 border-l-4 border-red-500 text-red-700 p-4 rounded-lg shadow-lg transition-all duration-500 ease-in-out transform translate-y-0 opacity-100">
+                    <div className="flex items-center">
+                        <Icon
+                            icon="mingcute:warning-fill"
+                            className="w-5 h-5 mr-2"
+                        />
+                        <p>{errorMessage}</p>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

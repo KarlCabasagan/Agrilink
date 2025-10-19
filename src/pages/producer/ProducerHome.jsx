@@ -35,7 +35,59 @@ const ProductModal = memo(
         categories,
         isSubmitting = false,
         selectedProduct = null,
+        allCrops,
     }) => {
+        const [priceRange, setPriceRange] = useState({ min: 0, max: 0 });
+        const [isPriceValid, setIsPriceValid] = useState(true);
+        const [isStockValid, setIsStockValid] = useState(true);
+        const [cropPriceRanges, setCropPriceRanges] = useState({});
+
+        // Validate stock whenever it changes
+        useEffect(() => {
+            const stockValue = parseFloat(productForm.stock);
+            setIsStockValid(!isNaN(stockValue) && stockValue > 0);
+        }, [productForm.stock]);
+
+        // Load all crop price ranges once when modal opens
+        useEffect(() => {
+            if (isOpen && Object.keys(cropPriceRanges).length === 0) {
+                const ranges = {};
+                allCrops.forEach((crop) => {
+                    ranges[crop.id] = {
+                        min: parseFloat(crop.min_price),
+                        max: parseFloat(crop.max_price),
+                    };
+                });
+                setCropPriceRanges(ranges);
+
+                // If we're editing, initialize with the current crop's price range
+                if (isEdit && productForm.crop_id) {
+                    const currentRange = ranges[productForm.crop_id];
+                    if (currentRange) {
+                        setPriceRange(currentRange);
+                    }
+                }
+            }
+        }, [isOpen, allCrops, isEdit, productForm.crop_id]);
+
+        // Update price range when crop changes
+        useEffect(() => {
+            if (productForm.crop_id && cropPriceRanges[productForm.crop_id]) {
+                setPriceRange(cropPriceRanges[productForm.crop_id]);
+            } else {
+                setPriceRange({ min: 0, max: 0 });
+            }
+        }, [productForm.crop_id, cropPriceRanges]);
+
+        useEffect(() => {
+            const price = parseFloat(productForm.price);
+            setIsPriceValid(
+                !isNaN(price) &&
+                    price >= priceRange.min &&
+                    price <= priceRange.max
+            );
+        }, [productForm.price, priceRange]);
+
         if (!isOpen) return null;
 
         return (
@@ -343,9 +395,9 @@ const ProductModal = memo(
                             {/* Product Information */}
                             <div className="space-y-4">
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    <div className="md:col-span-2">
+                                    <div className="">
                                         <label className="block text-sm font-medium text-gray-700 mb-1">
-                                            Product Name *
+                                            Display Name *
                                         </label>
                                         <input
                                             type="text"
@@ -360,76 +412,6 @@ const ProductModal = memo(
                                             placeholder="Enter product name"
                                             required
                                         />
-                                    </div>
-
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                                            Price per kg (₱) *
-                                        </label>
-                                        <input
-                                            type="number"
-                                            step="0.01"
-                                            min="0"
-                                            value={productForm.price}
-                                            onChange={(e) =>
-                                                onInputChange(
-                                                    "price",
-                                                    e.target.value
-                                                )
-                                            }
-                                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-primary focus:border-primary"
-                                            placeholder="0.00"
-                                            required
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                                            Stock (kg) *
-                                        </label>
-                                        <input
-                                            type="number"
-                                            min="0"
-                                            step="0.1"
-                                            value={productForm.stock}
-                                            onChange={(e) =>
-                                                onInputChange(
-                                                    "stock",
-                                                    e.target.value
-                                                )
-                                            }
-                                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-primary focus:border-primary"
-                                            placeholder="0.0"
-                                            required
-                                        />
-                                    </div>
-
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                                            Category *
-                                        </label>
-                                        <select
-                                            value={productForm.category}
-                                            onChange={(e) =>
-                                                onInputChange(
-                                                    "category",
-                                                    e.target.value
-                                                )
-                                            }
-                                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-primary focus:border-primary"
-                                            required
-                                        >
-                                            {categories.length > 1 &&
-                                                categories
-                                                    .slice(1)
-                                                    .map((cat) => (
-                                                        <option
-                                                            key={cat.name}
-                                                            value={cat.name}
-                                                        >
-                                                            {cat.name}
-                                                        </option>
-                                                    ))}
-                                        </select>
                                     </div>
 
                                     <div>
@@ -473,7 +455,12 @@ const ProductModal = memo(
                                                                             crop
                                                                         )
                                                                     }
-                                                                    className="px-3 py-2 hover:bg-gray-100 cursor-pointer"
+                                                                    className={`px-3 py-2 hover:bg-gray-100 cursor-pointer ${
+                                                                        crop.toLowerCase() ===
+                                                                        cropTypeSearch.toLowerCase()
+                                                                            ? "bg-gray-50"
+                                                                            : ""
+                                                                    }`}
                                                                 >
                                                                     {crop}
                                                                 </div>
@@ -482,6 +469,124 @@ const ProductModal = memo(
                                                     </div>
                                                 )}
                                         </div>
+                                    </div>
+
+                                    <div>
+                                        <div>
+                                            <div className="flex items-center justify-between">
+                                                <label className="block text-sm font-medium text-gray-700 mb-1">
+                                                    Price per kg *
+                                                </label>
+                                                <div
+                                                    className={`transition-opacity duration-200 ${
+                                                        productForm.crop_id
+                                                            ? "opacity-100"
+                                                            : "opacity-0"
+                                                    }`}
+                                                >
+                                                    <span className="text-sm font-medium text-primary">
+                                                        ₱
+                                                        {priceRange.min.toFixed(
+                                                            2
+                                                        )}{" "}
+                                                        - ₱
+                                                        {priceRange.max.toFixed(
+                                                            2
+                                                        )}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                            <div className="relative">
+                                                <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">
+                                                    ₱
+                                                </span>
+                                                <input
+                                                    type="number"
+                                                    step="0.01"
+                                                    min={priceRange.min}
+                                                    max={priceRange.max}
+                                                    value={productForm.price}
+                                                    onChange={(e) =>
+                                                        onInputChange(
+                                                            "price",
+                                                            e.target.value
+                                                        )
+                                                    }
+                                                    disabled={
+                                                        !productForm.crop_id
+                                                    }
+                                                    className={`w-full pl-8 pr-3 py-2 border rounded-lg focus:ring-primary focus:border-primary transition-colors
+                                                        ${
+                                                            !productForm.crop_id
+                                                                ? "bg-gray-50 cursor-not-allowed"
+                                                                : ""
+                                                        }
+                                                        ${
+                                                            productForm.price &&
+                                                            !isPriceValid
+                                                                ? "border-red-300 bg-red-50"
+                                                                : "border-gray-300"
+                                                        }`}
+                                                    placeholder={
+                                                        productForm.crop_id
+                                                            ? "0.00"
+                                                            : "Select a crop type first"
+                                                    }
+                                                    required
+                                                />
+                                            </div>
+                                            {productForm.price &&
+                                                !isPriceValid && (
+                                                    <p className="mt-1 text-sm text-red-600">
+                                                        Price must be between ₱
+                                                        {priceRange.min.toFixed(
+                                                            2
+                                                        )}{" "}
+                                                        and ₱
+                                                        {priceRange.max.toFixed(
+                                                            2
+                                                        )}
+                                                    </p>
+                                                )}
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <div className="flex items-center justify-between">
+                                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                                                Stock (kg) *
+                                            </label>
+                                            <span className="text-sm text-gray-500">
+                                                Must be greater than 0
+                                            </span>
+                                        </div>
+                                        <div className="relative">
+                                            <input
+                                                type="number"
+                                                min="0.1"
+                                                step="0.1"
+                                                value={productForm.stock}
+                                                onChange={(e) =>
+                                                    onInputChange(
+                                                        "stock",
+                                                        e.target.value
+                                                    )
+                                                }
+                                                className={`w-full px-3 py-2 border rounded-lg focus:ring-primary focus:border-primary transition-colors
+                                                    ${
+                                                        productForm.stock &&
+                                                        !isStockValid
+                                                            ? "border-red-300 bg-red-50"
+                                                            : "border-gray-300"
+                                                    }`}
+                                                placeholder="Enter stock quantity"
+                                                required
+                                            />
+                                        </div>
+                                        {productForm.stock && !isStockValid && (
+                                            <p className="mt-1 text-sm text-red-600">
+                                                Stock must be greater than 0 kg
+                                            </p>
+                                        )}
                                     </div>
 
                                     <div className="md:col-span-2">
@@ -518,7 +623,9 @@ const ProductModal = memo(
                                         !productForm.name ||
                                         !productForm.price ||
                                         !productForm.stock ||
-                                        !productForm.category ||
+                                        !productForm.cropType ||
+                                        !isPriceValid ||
+                                        !isStockValid ||
                                         isSubmitting ||
                                         (isEdit && // Only check for changes in edit mode
                                             productForm.name ===
@@ -527,8 +634,6 @@ const ProductModal = memo(
                                                 selectedProduct?.price.toString() &&
                                             productForm.stock ===
                                                 selectedProduct?.stock.toString() &&
-                                            productForm.category ===
-                                                selectedProduct?.category &&
                                             productForm.description ===
                                                 (selectedProduct?.description ||
                                                     "") &&
@@ -587,13 +692,13 @@ function ProducerHome() {
     const [productForm, setProductForm] = useState({
         name: "",
         price: "",
-        category: "Vegetables",
         description: "",
         stock: "",
         image_url: "",
         imageFile: null,
         imagePreview: "",
         cropType: "",
+        crop_id: null,
         user_id: user?.id || "",
     });
     const [cropTypeSearch, setCropTypeSearch] = useState("");
@@ -633,7 +738,7 @@ function ProducerHome() {
         const fetchAllCrops = async () => {
             const { data, error } = await supabase
                 .from("crops")
-                .select("id, name");
+                .select("id, name, min_price, max_price");
             if (error) {
                 console.error("Error fetching crops:", error);
             } else {
@@ -648,9 +753,11 @@ function ProducerHome() {
         [allCrops]
     );
 
-    const filteredCrops = availableCrops.filter((crop) =>
-        crop.toLowerCase().includes((cropTypeSearch || "").toLowerCase())
-    );
+    const filteredCrops = availableCrops.filter((crop) => {
+        // Case-insensitive comparison while preserving original case for display
+        const searchTerm = cropTypeSearch.trim().toLowerCase();
+        return crop.toLowerCase().includes(searchTerm);
+    });
 
     // Fetch user's products
     useEffect(() => {
@@ -809,27 +916,29 @@ function ProducerHome() {
         setIsSubmitting(true);
 
         try {
-            // Get category_id if category is selected
-            let category_id = null;
-            if (productForm.category && productForm.category !== "All") {
-                const { data: categoryData } = await supabase
-                    .from("categories")
-                    .select("id")
-                    .eq("name", productForm.category)
-                    .single();
-                category_id = categoryData?.id;
-            }
-
-            // Get crop_id - it's required by the schema
-            const selectedCrop = allCrops.find(
-                (c) => c.name === productForm.cropType
-            );
-            if (!selectedCrop) {
+            // Get crop and its category
+            if (!productForm.crop_id) {
                 alert("Please select a valid crop type");
                 setIsSubmitting(false);
                 return;
             }
-            const crop_id = selectedCrop.id;
+
+            // Fetch the crop's category_id
+            const { data: cropData, error: cropError } = await supabase
+                .from("crops")
+                .select("category_id")
+                .eq("id", productForm.crop_id)
+                .single();
+
+            if (cropError || !cropData) {
+                console.error("Error fetching crop category:", cropError);
+                alert("Error fetching crop category. Please try again.");
+                setIsSubmitting(false);
+                return;
+            }
+
+            const category_id = cropData.category_id;
+            const crop_id = productForm.crop_id;
 
             // Upload image if provided
             let image_url = null;
@@ -948,25 +1057,29 @@ function ProducerHome() {
         setIsSubmitting(true);
 
         try {
-            let category_id = null;
-            if (productForm.category && productForm.category !== "All") {
-                const { data: categoryData } = await supabase
-                    .from("categories")
-                    .select("id")
-                    .eq("name", productForm.category)
-                    .single();
-                category_id = categoryData?.id;
-            }
-
-            const selectedCrop = allCrops.find(
-                (c) => c.name === productForm.cropType
-            );
-            if (!selectedCrop) {
+            // Get crop and its category
+            if (!productForm.crop_id) {
                 alert("Please select a valid crop type");
                 setIsSubmitting(false);
                 return;
             }
-            const crop_id = selectedCrop.id;
+
+            // Fetch the crop's category_id
+            const { data: cropData, error: cropError } = await supabase
+                .from("crops")
+                .select("category_id")
+                .eq("id", productForm.crop_id)
+                .single();
+
+            if (cropError || !cropData) {
+                console.error("Error fetching crop category:", cropError);
+                alert("Error fetching crop category. Please try again.");
+                setIsSubmitting(false);
+                return;
+            }
+
+            const category_id = cropData.category_id;
+            const crop_id = productForm.crop_id;
 
             let image_url = selectedProduct.image_url;
 
@@ -1140,42 +1253,74 @@ function ProducerHome() {
         setProductForm({
             name: "",
             price: "",
-            category: categories.length > 1 ? categories[1].name : "",
             description: "",
             stock: "",
             image_url: "",
             imageFile: null,
             imagePreview: "",
             cropType: "",
+            crop_id: null,
             user_id: user?.id || "",
         });
         setCropTypeSearch("");
         setShowCropDropdown(false);
         setSelectedProduct(null);
-    }, [user, categories]);
+    }, [user]);
 
     // Memoized input handlers to prevent modal refresh
     const handleInputChange = useCallback((field, value) => {
         setProductForm((prev) => ({ ...prev, [field]: value }));
     }, []);
 
-    const handleCropTypeSelect = useCallback((cropType) => {
-        setProductForm((prev) => ({
-            ...prev,
-            cropType: typeof cropType === "string" ? cropType : "",
-        }));
-        setCropTypeSearch(typeof cropType === "string" ? cropType : "");
-        setShowCropDropdown(false);
-    }, []);
+    const handleCropTypeSelect = useCallback(
+        (cropType) => {
+            // Find crop by case-insensitive match but preserve original case
+            const selectedCrop = allCrops.find(
+                (crop) => crop.name.toLowerCase() === cropType.toLowerCase()
+            );
 
-    const handleCropTypeSearch = useCallback((value) => {
-        setCropTypeSearch(typeof value === "string" ? value : "");
-        setShowCropDropdown(true);
-        setProductForm((prev) => ({
-            ...prev,
-            cropType: typeof value === "string" ? value : "",
-        }));
-    }, []);
+            if (selectedCrop) {
+                setProductForm((prev) => ({
+                    ...prev,
+                    // Use the original case from the database
+                    cropType: selectedCrop.name,
+                    crop_id: selectedCrop.id,
+                }));
+                // Use the original case in the search field
+                setCropTypeSearch(selectedCrop.name);
+            } else {
+                setProductForm((prev) => ({
+                    ...prev,
+                    cropType: "",
+                    crop_id: null,
+                }));
+                setCropTypeSearch("");
+            }
+            setShowCropDropdown(false);
+        },
+        [allCrops]
+    );
+
+    const handleCropTypeSearch = useCallback(
+        (value) => {
+            const inputValue = typeof value === "string" ? value : "";
+            setCropTypeSearch(inputValue);
+            setShowCropDropdown(true);
+
+            // Check if the entered value exactly matches a crop (case-insensitive)
+            const matchingCrop = allCrops.find(
+                (crop) => crop.name.toLowerCase() === inputValue.toLowerCase()
+            );
+
+            setProductForm((prev) => ({
+                ...prev,
+                cropType: inputValue,
+                // Clear crop_id if no exact match is found
+                crop_id: matchingCrop ? matchingCrop.id : null,
+            }));
+        },
+        [allCrops]
+    );
 
     const openEditModal = useCallback(
         (product) => {
@@ -1189,13 +1334,13 @@ function ProducerHome() {
             setProductForm({
                 name: product.name,
                 price: product.price.toString(),
-                category: product.category,
                 description: product.description || "",
                 stock: product.stock?.toString() || "",
                 image_url: product.image_url || "",
                 imageFile: null,
                 imagePreview: "",
                 cropType: productCropName || "",
+                crop_id: product.cropId || null,
                 user_id: user?.id || "",
             });
 
@@ -1241,6 +1386,7 @@ function ProducerHome() {
                 categories={categories}
                 isSubmitting={isSubmitting}
                 selectedProduct={null}
+                allCrops={allCrops}
             />
             <ProductModal
                 isOpen={showEditModal}
@@ -1258,6 +1404,7 @@ function ProducerHome() {
                 categories={categories}
                 isSubmitting={isSubmitting}
                 selectedProduct={selectedProduct}
+                allCrops={allCrops}
             />
             <ConfirmModal
                 open={showDeleteModal}
