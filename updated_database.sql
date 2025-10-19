@@ -68,7 +68,7 @@ create table public.profiles (
   avatar_url text null,
   role_id integer null default 1,
   email_verified boolean null default false,
-  last_login timestamp with time zone null default now(),
+  last_login timestamp with time zone not null default now(),
   created_at timestamp with time zone null default now(),
   updated_at timestamp with time zone null default now(),
   delivery_cost numeric(10, 2) null default 50.0,
@@ -226,6 +226,9 @@ create table public.crops (
   icon text null,
   created_at timestamp with time zone not null default now(),
   updated_at timestamp with time zone null default now(),
+  description text null,
+  min_price numeric not null default '0'::numeric,
+  max_price numeric not null default '0'::numeric,
   constraint crops_pkey primary key (id),
   constraint crops_category_id_fkey foreign KEY (category_id) references categories (id) on update CASCADE on delete set null
 ) TABLESPACE pg_default;
