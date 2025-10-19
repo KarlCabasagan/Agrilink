@@ -30,7 +30,7 @@ function ProducerProduct() {
             try {
                 const { data, error } = await supabase
                     .from("crops")
-                    .select("id, name, category_id")
+                    .select("id, name, category_id, min_price, max_price")
                     .order("name", { ascending: true });
 
                 if (error) {
@@ -46,14 +46,33 @@ function ProducerProduct() {
         fetchCrops();
     }, []);
 
-    // Filter crops based on search term
+    // Filter and sort crops based on search term (case-insensitive)
     const filteredCrops = crops
-        .map((crop) => crop.name)
-        .filter((cropName) =>
-            cropName
+        .map((crop) => ({
+            name: crop.name,
+            exactMatch:
+                crop.name.toLowerCase() ===
+                (cropSearchTerm || "").toLowerCase(),
+            startsWithMatch: crop.name
                 .toLowerCase()
-                .includes((cropSearchTerm || "").toLowerCase())
-        );
+                .startsWith((cropSearchTerm || "").toLowerCase()),
+        }))
+        .filter(
+            ({ name, exactMatch, startsWithMatch }) =>
+                exactMatch ||
+                startsWithMatch ||
+                name
+                    .toLowerCase()
+                    .includes((cropSearchTerm || "").toLowerCase())
+        )
+        .sort((a, b) => {
+            if (a.exactMatch && !b.exactMatch) return -1;
+            if (!a.exactMatch && b.exactMatch) return 1;
+            if (a.startsWithMatch && !b.startsWithMatch) return -1;
+            if (!a.startsWithMatch && b.startsWithMatch) return 1;
+            return a.name.localeCompare(b.name);
+        })
+        .map(({ name }) => name);
 
     const [editForm, setEditForm] = useState({
         name: "",
@@ -158,6 +177,60 @@ function ProducerProduct() {
         fetchProduct();
     }, [id, user, navigate]);
 
+    // Get selected crop's price range (case-insensitive)
+    const getSelectedCrop = () => {
+        if (!editForm.cropType) return null;
+        // Try exact match first (case-insensitive)
+        const exactMatch = crops.find(
+            (crop) =>
+                crop.name.toLowerCase() === editForm.cropType.toLowerCase()
+        );
+        if (exactMatch) return exactMatch;
+
+        // Try partial match if no exact match found
+        return crops.find((crop) =>
+            crop.name.toLowerCase().startsWith(editForm.cropType.toLowerCase())
+        );
+    };
+
+    // Check if the price is within the valid range
+    const isPriceValid = () => {
+        const selectedCrop = getSelectedCrop();
+        if (!selectedCrop) return false;
+
+        const price = parseFloat(editForm.price);
+        return (
+            price >= selectedCrop.min_price && price <= selectedCrop.max_price
+        );
+    };
+
+    // Validate individual form fields
+    const isStockValid = () => {
+        const stockValue = parseFloat(editForm.stock);
+        return !isNaN(stockValue) && stockValue > 0;
+    };
+
+    const isCropTypeValid = () => {
+        return crops.some(
+            (crop) =>
+                crop.name.toLowerCase() === editForm.cropType.toLowerCase()
+        );
+    };
+
+    // Check if form data is valid
+    const isFormValid = () => {
+        return (
+            editForm.name &&
+            editForm.price &&
+            parseFloat(editForm.price) >= 0 &&
+            editForm.stock &&
+            isStockValid() &&
+            editForm.cropType &&
+            isCropTypeValid() &&
+            isPriceValid()
+        );
+    };
+
     const handleSave = async () => {
         if (!editForm.name || !editForm.price || !editForm.stock) {
             alert("Please fill in all required fields.");
@@ -238,12 +311,12 @@ function ProducerProduct() {
                 stock: parseFloat(editForm.stock),
                 image_url,
                 status_id: 1, // Set status to active on update
-                rejection_reason: null, // Clear rejection reason on update
             };
 
-            // If non-price/stock fields changed, reset approval_date (always include null)
+            // If non-price/stock fields changed, reset rejection reason and approval_date (always include null)
             if (hasNonPriceStockChanges) {
                 updatePayload.approval_date = null;
+                updatePayload.rejection_reason = null;
             }
 
             const { data, error } = await supabase
@@ -334,6 +407,20 @@ function ProducerProduct() {
             console.error("Unexpected error:", error);
             alert("An unexpected error occurred. Please try again.");
         }
+    };
+
+    // Check if any changes have been made to the form
+    const hasFormChanges = () => {
+        return (
+            editForm.name !== product.name ||
+            editForm.price !== product.price.toString() ||
+            editForm.cropType !== (product.cropType || "") ||
+            editForm.description !== product.description ||
+            editForm.stock !== product.stock.toString() ||
+            editForm.imageFile !== null || // New image selected
+            (!editForm.image_url && product.image_url) || // Image removed
+            (editForm.image_url && !product.image_url) // Image added
+        );
     };
 
     const handleCancel = () => {
@@ -452,7 +539,14 @@ function ProducerProduct() {
                                 </button>
                                 <button
                                     onClick={handleSave}
-                                    className="text-green-600 hover:text-green-800 transition-colors"
+                                    disabled={
+                                        !hasFormChanges() || !isFormValid()
+                                    }
+                                    className={`transition-colors ${
+                                        !hasFormChanges() || !isFormValid()
+                                            ? "text-gray-400 cursor-not-allowed"
+                                            : "text-green-600 hover:text-green-800"
+                                    }`}
                                 >
                                     <Icon
                                         icon="mingcute:check-line"
@@ -765,43 +859,198 @@ function ProducerProduct() {
                     <div className="p-6">
                         {isEditing ? (
                             <div className="space-y-4">
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                                        Product Name *
-                                    </label>
-                                    <input
-                                        type="text"
-                                        value={editForm.name}
-                                        onChange={(e) =>
-                                            setEditForm((prev) => ({
-                                                ...prev,
-                                                name: e.target.value,
-                                            }))
-                                        }
-                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-primary focus:border-primary"
-                                        required
-                                    />
-                                </div>
-
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                     <div>
                                         <label className="block text-sm font-medium text-gray-700 mb-1">
-                                            Price per kg (₱) *
+                                            Display Name *
                                         </label>
                                         <input
-                                            type="number"
-                                            step="0.01"
-                                            min="0"
-                                            value={editForm.price}
+                                            type="text"
+                                            value={editForm.name}
                                             onChange={(e) =>
                                                 setEditForm((prev) => ({
                                                     ...prev,
-                                                    price: e.target.value,
+                                                    name: e.target.value,
                                                 }))
                                             }
                                             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-primary focus:border-primary"
                                             required
                                         />
+                                    </div>
+                                    {/* Crop Type Field */}
+                                    <div className="relative">
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                                            Crop Type
+                                        </label>
+                                        <div className="relative">
+                                            <input
+                                                type="text"
+                                                value={editForm.cropType}
+                                                onChange={(e) => {
+                                                    const value =
+                                                        e.target.value;
+                                                    const matchingCrop =
+                                                        crops.find(
+                                                            (crop) =>
+                                                                crop.name.toLowerCase() ===
+                                                                value.toLowerCase()
+                                                        );
+                                                    setEditForm((prev) => ({
+                                                        ...prev,
+                                                        cropType: matchingCrop
+                                                            ? matchingCrop.name
+                                                            : value,
+                                                    }));
+                                                    setCropSearchTerm(value);
+                                                    setShowCropDropdown(
+                                                        value.length > 0
+                                                    );
+                                                }}
+                                                onBlur={() => {
+                                                    setTimeout(() => {
+                                                        setShowCropDropdown(
+                                                            false
+                                                        );
+                                                        // Correct case on blur if there's a match
+                                                        const matchingCrop =
+                                                            crops.find(
+                                                                (crop) =>
+                                                                    crop.name.toLowerCase() ===
+                                                                    editForm.cropType.toLowerCase()
+                                                            );
+                                                        if (matchingCrop) {
+                                                            setEditForm(
+                                                                (prev) => ({
+                                                                    ...prev,
+                                                                    cropType:
+                                                                        matchingCrop.name,
+                                                                })
+                                                            );
+                                                        }
+                                                    }, 150);
+                                                }}
+                                                className={`w-full px-3 py-2 border rounded-lg focus:ring-primary focus:border-primary
+        ${
+            editForm.cropType && !isCropTypeValid()
+                ? "border-red-300 bg-red-50/25"
+                : getSelectedCrop()
+                ? "border-green-300 bg-green-50/25"
+                : "border-gray-300"
+        }`}
+                                                placeholder="Search for crop type..."
+                                            />
+                                            <Icon
+                                                icon="material-symbols:search"
+                                                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5"
+                                            />
+
+                                            {/* Dropdown */}
+                                            {showCropDropdown &&
+                                                filteredCrops.length > 0 && (
+                                                    <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                                                        {filteredCrops.map(
+                                                            (crop) => (
+                                                                <div
+                                                                    key={crop}
+                                                                    className="px-3 py-2 hover:bg-primary/10 cursor-pointer text-sm"
+                                                                    onMouseDown={(
+                                                                        e
+                                                                    ) => {
+                                                                        e.preventDefault();
+                                                                        setEditForm(
+                                                                            (
+                                                                                prev
+                                                                            ) => ({
+                                                                                ...prev,
+                                                                                cropType:
+                                                                                    crop,
+                                                                            })
+                                                                        );
+                                                                        setCropSearchTerm(
+                                                                            crop
+                                                                        );
+                                                                        setShowCropDropdown(
+                                                                            false
+                                                                        );
+                                                                    }}
+                                                                >
+                                                                    {crop}
+                                                                </div>
+                                                            )
+                                                        )}
+                                                    </div>
+                                                )}
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                    <div>
+                                        <div className="flex items-center justify-between mb-1">
+                                            <label className="block text-sm font-medium text-gray-700">
+                                                Price per kg *
+                                            </label>
+                                            {getSelectedCrop() && (
+                                                <span className="text-sm font-medium text-primary">
+                                                    Range: ₱
+                                                    {getSelectedCrop().min_price.toFixed(
+                                                        2
+                                                    )}
+                                                    – ₱
+                                                    {getSelectedCrop().max_price.toFixed(
+                                                        2
+                                                    )}
+                                                </span>
+                                            )}
+                                        </div>
+                                        <div className="relative">
+                                            <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">
+                                                ₱
+                                            </span>
+                                            <input
+                                                type="number"
+                                                step="0.01"
+                                                min={
+                                                    getSelectedCrop()
+                                                        ?.min_price || 0
+                                                }
+                                                max={
+                                                    getSelectedCrop()
+                                                        ?.max_price || 999999
+                                                }
+                                                value={editForm.price}
+                                                onChange={(e) =>
+                                                    setEditForm((prev) => ({
+                                                        ...prev,
+                                                        price: e.target.value,
+                                                    }))
+                                                }
+                                                disabled={!editForm.cropType}
+                                                className={`w-full pl-7 pr-3 py-2 border rounded-lg focus:ring-primary focus:border-primary
+                                                    ${
+                                                        !editForm.cropType
+                                                            ? "bg-gray-100 cursor-not-allowed"
+                                                            : editForm.price &&
+                                                              !isPriceValid()
+                                                            ? "border-red-300 bg-red-50/25"
+                                                            : "border-gray-300 bg-white"
+                                                    }
+                                                `}
+                                                required
+                                            />
+                                        </div>
+                                        {editForm.price && !isPriceValid() && (
+                                            <p className="mt-1 text-sm text-red-600">
+                                                Price must be within the crop's
+                                                valid range
+                                            </p>
+                                        )}
+                                        {!editForm.cropType && (
+                                            <p className="mt-1 text-sm text-gray-500">
+                                                Select a crop type first to set
+                                                the price
+                                            </p>
+                                        )}
                                     </div>
                                     <div>
                                         <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -809,7 +1058,7 @@ function ProducerProduct() {
                                         </label>
                                         <input
                                             type="number"
-                                            min="0"
+                                            min="0.1"
                                             step="0.1"
                                             value={editForm.stock}
                                             onChange={(e) =>
@@ -818,91 +1067,20 @@ function ProducerProduct() {
                                                     stock: e.target.value,
                                                 }))
                                             }
-                                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-primary focus:border-primary"
+                                            className={`w-full px-3 py-2 border rounded-lg focus:ring-primary focus:border-primary
+                                                ${
+                                                    editForm.stock &&
+                                                    !isStockValid()
+                                                        ? "border-red-300 bg-red-50/25"
+                                                        : "border-gray-300 bg-white"
+                                                }`}
                                             required
                                         />
-                                    </div>
-                                </div>
-
-                                {/* Crop Type Field */}
-                                <div className="relative">
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                                        Crop Type
-                                    </label>
-                                    <div className="relative">
-                                        <input
-                                            type="text"
-                                            value={editForm.cropType}
-                                            onChange={(e) => {
-                                                const value = e.target.value;
-                                                setEditForm((prev) => ({
-                                                    ...prev,
-                                                    cropType: value,
-                                                }));
-                                                setCropSearchTerm(value);
-                                                setShowCropDropdown(
-                                                    value.length > 0
-                                                );
-                                            }}
-                                            onFocus={() => {
-                                                setCropSearchTerm(
-                                                    editForm.cropType
-                                                );
-                                                setShowCropDropdown(true);
-                                            }}
-                                            onBlur={() => {
-                                                setTimeout(
-                                                    () =>
-                                                        setShowCropDropdown(
-                                                            false
-                                                        ),
-                                                    150
-                                                );
-                                            }}
-                                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-primary focus:border-primary"
-                                            placeholder="Search for crop type..."
-                                        />
-                                        <Icon
-                                            icon="material-symbols:search"
-                                            className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5"
-                                        />
-
-                                        {/* Dropdown */}
-                                        {showCropDropdown &&
-                                            filteredCrops.length > 0 && (
-                                                <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-48 overflow-y-auto">
-                                                    {filteredCrops.map(
-                                                        (crop) => (
-                                                            <div
-                                                                key={crop}
-                                                                className="px-3 py-2 hover:bg-primary/10 cursor-pointer text-sm"
-                                                                onMouseDown={(
-                                                                    e
-                                                                ) => {
-                                                                    e.preventDefault();
-                                                                    setEditForm(
-                                                                        (
-                                                                            prev
-                                                                        ) => ({
-                                                                            ...prev,
-                                                                            cropType:
-                                                                                crop,
-                                                                        })
-                                                                    );
-                                                                    setCropSearchTerm(
-                                                                        crop
-                                                                    );
-                                                                    setShowCropDropdown(
-                                                                        false
-                                                                    );
-                                                                }}
-                                                            >
-                                                                {crop}
-                                                            </div>
-                                                        )
-                                                    )}
-                                                </div>
-                                            )}
+                                        {editForm.stock && !isStockValid() && (
+                                            <p className="mt-1 text-sm text-red-600">
+                                                Stock must be greater than 0 kg
+                                            </p>
+                                        )}
                                     </div>
                                 </div>
 
