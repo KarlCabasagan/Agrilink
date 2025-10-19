@@ -294,7 +294,7 @@ function Orders() {
 
         try {
             // Find the order to be cancelled
-            const order = orders.find(o => o.id === orderId);
+            const order = orders.find((o) => o.id === orderId);
             if (!order) {
                 throw new Error("Order not found");
             }
@@ -306,14 +306,17 @@ function Orders() {
             // Collect current stock levels and prepare updates
             for (const item of order.items) {
                 // Get current stock
-                const { data: currentProduct, error: stockCheckError } = await supabase
-                    .from('products')
-                    .select('stock')
-                    .eq('id', item.product_id)
-                    .single();
+                const { data: currentProduct, error: stockCheckError } =
+                    await supabase
+                        .from("products")
+                        .select("stock")
+                        .eq("id", item.product_id)
+                        .single();
 
                 if (stockCheckError) {
-                    throw new Error(`Failed to check product stock: ${stockCheckError.message}`);
+                    throw new Error(
+                        `Failed to check product stock: ${stockCheckError.message}`
+                    );
                 }
 
                 // Store original stock for potential rollback
@@ -323,7 +326,7 @@ function Orders() {
                 stockUpdates.push({
                     id: item.product_id,
                     currentStock: currentProduct.stock,
-                    quantity: item.quantity
+                    quantity: item.quantity,
                 });
             }
 
@@ -332,66 +335,76 @@ function Orders() {
                 .from("orders")
                 .update({
                     status_id: 8, // "cancelled" status ID
-                    updated_at: new Date().toISOString()
+                    updated_at: new Date().toISOString(),
                 })
                 .eq("id", orderId)
                 .eq("user_id", user.id);
 
             if (statusError) {
-                throw new Error(`Failed to update order status: ${statusError.message}`);
+                throw new Error(
+                    `Failed to update order status: ${statusError.message}`
+                );
             }
 
             // Process all stock updates
             for (const update of stockUpdates) {
                 const { error: updateError } = await supabase
-                    .from('products')
-                    .update({ 
+                    .from("products")
+                    .update({
                         stock: update.currentStock + update.quantity,
-                        updated_at: new Date().toISOString()
+                        updated_at: new Date().toISOString(),
                     })
-                    .eq('id', update.id);
+                    .eq("id", update.id);
 
                 if (updateError) {
                     // Attempt to rollback stock updates
-                    console.error('Stock update failed, attempting rollback...');
-                    
+                    console.error(
+                        "Stock update failed, attempting rollback..."
+                    );
+
                     // Rollback previous stock updates
                     for (const [productId, originalStock] of originalStocks) {
                         await supabase
-                            .from('products')
-                            .update({ 
+                            .from("products")
+                            .update({
                                 stock: originalStock,
-                                updated_at: new Date().toISOString()
+                                updated_at: new Date().toISOString(),
                             })
-                            .eq('id', productId);
+                            .eq("id", productId);
                     }
 
                     // Revert order status
                     await supabase
-                        .from('orders')
-                        .update({ 
+                        .from("orders")
+                        .update({
                             status_id: order.status_id,
-                            updated_at: new Date().toISOString()
+                            updated_at: new Date().toISOString(),
                         })
-                        .eq('id', orderId);
+                        .eq("id", orderId);
 
-                    throw new Error('Failed to update product stocks. Changes have been rolled back.');
+                    throw new Error(
+                        "Failed to update product stocks. Changes have been rolled back."
+                    );
                 }
             }
 
             // Update local state
-            setOrders(prev =>
-                prev.map(order =>
+            setOrders((prev) =>
+                prev.map((order) =>
                     order.id === orderId
                         ? { ...order, status: "cancelled" }
                         : order
                 )
             );
 
-            toast.success("Order cancelled successfully and stock quantities restored");
+            toast.success(
+                "Order cancelled successfully and stock quantities restored"
+            );
         } catch (error) {
             console.error("Error cancelling order:", error);
-            toast.error(error.message || "Failed to cancel order. Please try again.");
+            toast.error(
+                error.message || "Failed to cancel order. Please try again."
+            );
         }
     };
 
