@@ -35,6 +35,9 @@ function Product() {
                 reported: false,
                 helpfulCount: 0,
                 isUpdating: false,
+                isEditing: false,
+                editRating: 0,
+                editComment: "",
             };
             const next = { ...current, ...updates };
             const newMap = new Map(prev);
@@ -51,6 +54,9 @@ function Product() {
             reported: false,
             helpfulCount: 0,
             isUpdating: false,
+            isEditing: false,
+            editRating: 0,
+            editComment: "",
         };
 
         if (currentState.isUpdating) return;
@@ -120,6 +126,155 @@ function Product() {
         }
     };
 
+    const handleEditReview = (reviewId) => {
+        const review = product.reviews.find((r) => r.id === reviewId);
+        if (!review) return;
+
+        updateReviewState(reviewId, {
+            isEditing: true,
+            editRating: review.rating,
+            editComment: review.comment || "",
+        });
+    };
+
+    const handleCancelEdit = (reviewId) => {
+        updateReviewState(reviewId, {
+            isEditing: false,
+            editRating: 0,
+            editComment: "",
+        });
+    };
+
+    const handleDeleteReview = async (reviewId) => {
+        if (!user) return;
+
+        const review = product.reviews.find((r) => r.id === reviewId);
+        if (!review || review.user_id !== user.id) return;
+
+        // Calculate new rating stats for optimistic update
+        const remainingReviews = product.reviews.filter(
+            (r) => r.id !== reviewId
+        );
+        const newAvgRating =
+            remainingReviews.length > 0
+                ? remainingReviews.reduce((sum, r) => sum + r.rating, 0) /
+                  remainingReviews.length
+                : 0;
+
+        // Optimistic update
+        updateReviewState(reviewId, { isUpdating: true });
+        setProduct((prev) => ({
+            ...prev,
+            rating: newAvgRating,
+            reviews: prev.reviews.filter((r) => r.id !== reviewId),
+        }));
+
+        try {
+            const { error } = await supabase
+                .from("reviews")
+                .delete()
+                .eq("id", reviewId)
+                .eq("user_id", user.id)
+                .single();
+
+            if (error) throw error;
+
+            toast.success("Review deleted successfully");
+        } catch (error) {
+            console.error("Error deleting review:", error);
+            // Roll back optimistic update
+            setProduct((prev) => ({
+                ...prev,
+                rating: review.rating,
+                reviews: [...prev.reviews, review].sort(
+                    (a, b) => new Date(b.created_at) - new Date(a.created_at)
+                ),
+            }));
+            toast.error("Failed to delete review. Please try again.");
+        } finally {
+            updateReviewState(reviewId, { isUpdating: false });
+        }
+    };
+
+    const handleSaveEdit = async (reviewId) => {
+        if (!user) return;
+
+        const currentState = reviewStates.get(reviewId) || {
+            isEditing: false,
+            editRating: 0,
+            editComment: "",
+            isUpdating: false,
+        };
+
+        if (currentState.isUpdating) return;
+
+        const review = product.reviews.find((r) => r.id === reviewId);
+        if (!review) return;
+
+        // Save current values for rollback
+        const originalRating = review.rating;
+        const originalComment = review.comment;
+
+        // Optimistic update
+        updateReviewState(reviewId, { isUpdating: true });
+        setProduct((prev) => ({
+            ...prev,
+            reviews: prev.reviews.map((r) =>
+                r.id === reviewId
+                    ? {
+                          ...r,
+                          rating: currentState.editRating,
+                          comment: currentState.editComment,
+                      }
+                    : r
+            ),
+        }));
+
+        try {
+            const { error } = await supabase
+                .from("reviews")
+                .update({
+                    rating: currentState.editRating,
+                    review: currentState.editComment,
+                    updated_at: new Date().toISOString(),
+                })
+                .eq("id", reviewId)
+                .eq("user_id", user.id)
+                .single();
+
+            if (error) throw error;
+
+            // Success - exit edit mode
+            updateReviewState(reviewId, {
+                isEditing: false,
+                isUpdating: false,
+                editRating: 0,
+                editComment: "",
+            });
+        } catch (error) {
+            console.error("Error updating review:", error);
+            // Roll back optimistic update
+            setProduct((prev) => ({
+                ...prev,
+                reviews: prev.reviews.map((r) =>
+                    r.id === reviewId
+                        ? {
+                              ...r,
+                              rating: originalRating,
+                              comment: originalComment,
+                          }
+                        : r
+                ),
+            }));
+            updateReviewState(reviewId, {
+                isUpdating: false,
+                editRating: originalRating,
+                editComment: originalComment,
+            });
+            toast.error("Failed to update review. Please try again.");
+        }
+    };
+
     const handleToggleReport = async (reviewId) => {
         if (!user) return;
 
@@ -128,6 +283,9 @@ function Product() {
             reported: false,
             helpfulCount: 0,
             isUpdating: false,
+            isEditing: false,
+            editRating: 0,
+            editComment: "",
         };
 
         if (currentState.isUpdating) return;
@@ -324,6 +482,9 @@ function Product() {
                         reported: userReportedReviews.has(review.id),
                         helpfulCount: review.helpful_count?.[0]?.count || 0,
                         isUpdating: false,
+                        isEditing: false,
+                        editRating: 0,
+                        editComment: "",
                     });
                 });
                 setReviewStates(initialReviewStates);
@@ -331,11 +492,12 @@ function Product() {
                 const reviews = (reviewsData || []).map((review) => ({
                     id: review.id,
                     user: review.profiles?.name || "Anonymous User",
+                    user_id: review.user_id,
                     avatar: review.profiles?.avatar_url || null,
                     rating: parseFloat(review.rating),
                     comment: review.review || "",
-                    rawDate: review.created_at,
-                    date: new Date(review.created_at).toLocaleDateString(
+                    rawDate: review.updated_at,
+                    date: new Date(review.updated_at).toLocaleDateString(
                         "en-US",
                         {
                             year: "numeric",
@@ -922,7 +1084,73 @@ function Product() {
                                                                         reported: false,
                                                                         helpfulCount: 0,
                                                                         isUpdating: false,
+                                                                        isEditing: false,
+                                                                        editRating:
+                                                                            review.rating,
+                                                                        editComment:
+                                                                            review.comment ||
+                                                                            "",
                                                                     };
+
+                                                                const isOwner =
+                                                                    user?.id ===
+                                                                    review.user_id;
+
+                                                                if (isOwner) {
+                                                                    return (
+                                                                        <>
+                                                                            <button
+                                                                                onClick={() =>
+                                                                                    handleEditReview(
+                                                                                        review.id
+                                                                                    )
+                                                                                }
+                                                                                disabled={
+                                                                                    state.isUpdating
+                                                                                }
+                                                                                className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-sm transition-colors bg-gray-50 text-gray-600 hover:bg-gray-100"
+                                                                            >
+                                                                                <Icon
+                                                                                    icon="mingcute:edit-line"
+                                                                                    width="16"
+                                                                                    height="16"
+                                                                                />
+                                                                                <span>
+                                                                                    Edit
+                                                                                    Review
+                                                                                </span>
+                                                                            </button>
+                                                                            <button
+                                                                                key={`delete-${review.id}`}
+                                                                                onClick={() =>
+                                                                                    handleDeleteReview(
+                                                                                        review.id
+                                                                                    )
+                                                                                }
+                                                                                disabled={
+                                                                                    state.isUpdating
+                                                                                }
+                                                                                className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-sm transition-colors bg-red-50 text-red-600 hover:bg-red-100"
+                                                                                aria-label="Delete review"
+                                                                            >
+                                                                                <Icon
+                                                                                    icon="mingcute:delete-line"
+                                                                                    width="16"
+                                                                                    height="16"
+                                                                                    className={
+                                                                                        state.isUpdating
+                                                                                            ? "animate-pulse"
+                                                                                            : ""
+                                                                                    }
+                                                                                />
+                                                                                <span>
+                                                                                    Delete
+                                                                                </span>
+                                                                            </button>
+                                                                        </>
+                                                                    );
+                                                                }
+
                                                                 return (
                                                                     <>
                                                                         <button
@@ -1015,7 +1243,9 @@ function Product() {
                                                                                 height="16"
                                                                             />
                                                                             <span>
-                                                                                Report
+                                                                                {state.reported
+                                                                                    ? "Reported"
+                                                                                    : "Report"}
                                                                             </span>
                                                                         </button>
                                                                     </>
@@ -1023,6 +1253,144 @@ function Product() {
                                                             })()}
                                                         </div>
                                                     </div>
+                                                </div>
+                                                <div className="w-full mt-3">
+                                                    {(() => {
+                                                        const state =
+                                                            reviewStates.get(
+                                                                review.id
+                                                            ) || {
+                                                                helpful: false,
+                                                                reported: false,
+                                                                helpfulCount: 0,
+                                                                isUpdating: false,
+                                                                isEditing: false,
+                                                                editRating:
+                                                                    review.rating,
+                                                                editComment:
+                                                                    review.comment ||
+                                                                    "",
+                                                            };
+
+                                                        const isOwner =
+                                                            user?.id ===
+                                                            review.user_id;
+
+                                                        if (isOwner) {
+                                                            if (
+                                                                state.isEditing
+                                                            ) {
+                                                                return (
+                                                                    <div className="space-y-4">
+                                                                        <div className="flex items-center gap-4">
+                                                                            <label className="text-sm font-medium text-gray-700">
+                                                                                Rating:
+                                                                            </label>
+                                                                            <div className="flex gap-1">
+                                                                                {[
+                                                                                    1,
+                                                                                    2,
+                                                                                    3,
+                                                                                    4,
+                                                                                    5,
+                                                                                ].map(
+                                                                                    (
+                                                                                        star
+                                                                                    ) => (
+                                                                                        <button
+                                                                                            key={
+                                                                                                star
+                                                                                            }
+                                                                                            type="button"
+                                                                                            onClick={() =>
+                                                                                                updateReviewState(
+                                                                                                    review.id,
+                                                                                                    {
+                                                                                                        editRating:
+                                                                                                            star,
+                                                                                                    }
+                                                                                                )
+                                                                                            }
+                                                                                            className="focus:outline-none focus:ring-2 focus:ring-primary"
+                                                                                        >
+                                                                                            <Icon
+                                                                                                icon={
+                                                                                                    star <=
+                                                                                                    state.editRating
+                                                                                                        ? "mingcute:star-fill"
+                                                                                                        : "mingcute:star-line"
+                                                                                                }
+                                                                                                className="text-yellow-400"
+                                                                                                width="20"
+                                                                                                height="20"
+                                                                                            />
+                                                                                        </button>
+                                                                                    )
+                                                                                )}
+                                                                            </div>
+                                                                        </div>
+                                                                        <textarea
+                                                                            value={
+                                                                                state.editComment
+                                                                            }
+                                                                            onChange={(
+                                                                                e
+                                                                            ) =>
+                                                                                updateReviewState(
+                                                                                    review.id,
+                                                                                    {
+                                                                                        editComment:
+                                                                                            e
+                                                                                                .target
+                                                                                                .value,
+                                                                                    }
+                                                                                )
+                                                                            }
+                                                                            className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary resize-none"
+                                                                            rows="3"
+                                                                            placeholder="Write your review here..."
+                                                                        />
+                                                                        <div className="flex justify-end gap-2">
+                                                                            <button
+                                                                                onClick={() =>
+                                                                                    handleCancelEdit(
+                                                                                        review.id
+                                                                                    )
+                                                                                }
+                                                                                disabled={
+                                                                                    state.isUpdating
+                                                                                }
+                                                                                className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-primary"
+                                                                            >
+                                                                                Cancel
+                                                                            </button>
+                                                                            <button
+                                                                                onClick={() =>
+                                                                                    handleSaveEdit(
+                                                                                        review.id
+                                                                                    )
+                                                                                }
+                                                                                disabled={
+                                                                                    !state.editRating ||
+                                                                                    state.isUpdating
+                                                                                }
+                                                                                className={`px-4 py-2 text-sm font-medium text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-primary ${
+                                                                                    !state.editRating ||
+                                                                                    state.isUpdating
+                                                                                        ? "bg-gray-400 cursor-not-allowed"
+                                                                                        : "bg-primary hover:bg-primary-dark"
+                                                                                }`}
+                                                                            >
+                                                                                {state.isUpdating
+                                                                                    ? "Saving..."
+                                                                                    : "Save"}
+                                                                            </button>
+                                                                        </div>
+                                                                    </div>
+                                                                );
+                                                            }
+                                                        }
+                                                    })()}
                                                 </div>
                                             </div>
                                         ))}
