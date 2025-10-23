@@ -792,15 +792,23 @@ function Orders() {
                                                                                                     item
                                                                                                         .product_id
                                                                                                 ] ? (
-                                                                                                    <div className="px-3 py-1.5 text-sm text-gray-500 flex items-center gap-1.5">
+                                                                                                    <Link
+                                                                                                        to={`/product/${item.product_id}?reviewFocus=user`}
+                                                                                                        onClick={(
+                                                                                                            e
+                                                                                                        ) =>
+                                                                                                            e.stopPropagation()
+                                                                                                        }
+                                                                                                        className="px-3 py-1.5 text-sm text-gray-500 hover:text-gray-700 flex items-center gap-1.5 group transition-colors"
+                                                                                                    >
                                                                                                         <Icon
                                                                                                             icon="mingcute:star-fill"
                                                                                                             width="14"
                                                                                                             height="14"
-                                                                                                            className="text-yellow-400"
+                                                                                                            className="text-yellow-400 group-hover:text-yellow-500"
                                                                                                         />
                                                                                                         Reviewed
-                                                                                                    </div>
+                                                                                                    </Link>
                                                                                                 ) : (
                                                                                                     <button
                                                                                                         type="button"
