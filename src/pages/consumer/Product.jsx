@@ -1,5 +1,5 @@
 import { useParams, useNavigate } from "react-router-dom";
-import { useState, useMemo, useEffect, useContext } from "react";
+import { useState, useMemo, useEffect, useContext, useCallback } from "react";
 import { Icon } from "@iconify/react";
 import { Link } from "react-router-dom";
 import NavigationBar from "../../components/NavigationBar";
@@ -7,12 +7,14 @@ import Modal from "../../components/Modal";
 import supabase from "../../SupabaseClient";
 import { AuthContext } from "../../App.jsx";
 import { addToCart } from "../../utils/cartUtils.js";
+import { toast } from "react-hot-toast";
 
 function Product() {
     const { id } = useParams();
     const navigate = useNavigate();
     const { user } = useContext(AuthContext);
     const [quantity, setQuantity] = useState(0.1);
+    const [quantityError, setQuantityError] = useState("");
     const [product, setProduct] = useState(null);
     const [loading, setLoading] = useState(true);
     const [addingToCart, setAddingToCart] = useState(false);
@@ -24,6 +26,181 @@ function Product() {
         onConfirm: null,
     });
     const [reviewSort, setReviewSort] = useState("newest");
+    const [reviewStates, setReviewStates] = useState(new Map()); // Map<reviewId, { helpful: boolean, reported: boolean, helpfulCount: number, isUpdating: boolean }>
+
+    const updateReviewState = useCallback((reviewId, updates) => {
+        setReviewStates((prev) => {
+            const current = prev.get(reviewId) || {
+                helpful: false,
+                reported: false,
+                helpfulCount: 0,
+                isUpdating: false,
+            };
+            const next = { ...current, ...updates };
+            const newMap = new Map(prev);
+            newMap.set(reviewId, next);
+            return newMap;
+        });
+    }, []);
+
+    const handleMarkHelpful = async (reviewId) => {
+        if (!user) return;
+
+        const currentState = reviewStates.get(reviewId) || {
+            helpful: false,
+            reported: false,
+            helpfulCount: 0,
+            isUpdating: false,
+        };
+
+        if (currentState.isUpdating) return;
+
+        const isCurrentlyHelpful = currentState.helpful;
+        const helpfulDelta = isCurrentlyHelpful ? -1 : 1;
+
+        // Optimistic update
+        updateReviewState(reviewId, {
+            helpful: !isCurrentlyHelpful,
+            helpfulCount: currentState.helpfulCount + helpfulDelta,
+            isUpdating: true,
+        });
+
+        // If currently reported, remove the report first
+        if (currentState.reported) {
+            updateReviewState(reviewId, { reported: false });
+            try {
+                const { error: reportError } = await supabase
+                    .from("reported_reviews")
+                    .delete()
+                    .eq("user_id", user.id)
+                    .eq("review_id", reviewId);
+
+                if (reportError) throw reportError;
+            } catch (error) {
+                console.error("Error removing report:", error);
+                // Report removal failed, revert reported state
+                updateReviewState(reviewId, { reported: true });
+            }
+        }
+
+        try {
+            let error;
+            if (isCurrentlyHelpful) {
+                ({ error } = await supabase
+                    .from("helpful_reviews")
+                    .delete()
+                    .eq("user_id", user.id)
+                    .eq("review_id", reviewId));
+            } else {
+                ({ error } = await supabase
+                    .from("helpful_reviews")
+                    .insert({
+                        user_id: user.id,
+                        review_id: reviewId,
+                    })
+                    .single());
+
+                if (error?.code === "23505") {
+                    error = null; // Already exists - treat as success
+                }
+            }
+
+            if (error) throw error;
+        } catch (error) {
+            console.error("Error toggling helpful review:", error);
+            // Roll back optimistic update
+            updateReviewState(reviewId, {
+                helpful: isCurrentlyHelpful,
+                helpfulCount: currentState.helpfulCount,
+                isUpdating: false,
+            });
+            toast.error("Failed to update review status. Please try again.");
+        } finally {
+            updateReviewState(reviewId, { isUpdating: false });
+        }
+    };
+
+    const handleToggleReport = async (reviewId) => {
+        if (!user) return;
+
+        const currentState = reviewStates.get(reviewId) || {
+            helpful: false,
+            reported: false,
+            helpfulCount: 0,
+            isUpdating: false,
+        };
+
+        if (currentState.isUpdating) return;
+
+        const isCurrentlyReported = currentState.reported;
+
+        // Optimistic update
+        updateReviewState(reviewId, {
+            reported: !isCurrentlyReported,
+            isUpdating: true,
+        });
+
+        // If currently helpful, remove the helpful mark first
+        if (currentState.helpful) {
+            const helpfulDelta = -1;
+            updateReviewState(reviewId, {
+                helpful: false,
+                helpfulCount: currentState.helpfulCount + helpfulDelta,
+            });
+
+            try {
+                const { error: helpfulError } = await supabase
+                    .from("helpful_reviews")
+                    .delete()
+                    .eq("user_id", user.id)
+                    .eq("review_id", reviewId);
+
+                if (helpfulError) throw helpfulError;
+            } catch (error) {
+                console.error("Error removing helpful mark:", error);
+                // Helpful removal failed, revert helpful state
+                updateReviewState(reviewId, {
+                    helpful: true,
+                    helpfulCount: currentState.helpfulCount,
+                });
+            }
+        }
+
+        try {
+            let error;
+            if (isCurrentlyReported) {
+                ({ error } = await supabase
+                    .from("reported_reviews")
+                    .delete()
+                    .eq("user_id", user.id)
+                    .eq("review_id", reviewId));
+            } else {
+                ({ error } = await supabase
+                    .from("reported_reviews")
+                    .insert({
+                        user_id: user.id,
+                        review_id: reviewId,
+                    })
+                    .single());
+
+                if (error?.code === "23505") {
+                    error = null; // Already exists - treat as success
+                }
+            }
+
+            if (error) throw error;
+        } catch (error) {
+            console.error("Error toggling review report:", error);
+            // Roll back optimistic update
+            updateReviewState(reviewId, {
+                reported: isCurrentlyReported,
+                isUpdating: false,
+            });
+            toast.error("Failed to update report status. Please try again.");
+        } finally {
+            updateReviewState(reviewId, { isUpdating: false });
+        }
+    };
 
     const showModal = (type, title, message, onConfirm = null) => {
         setModal({ open: true, type, title, message, onConfirm });
@@ -61,7 +238,12 @@ function Product() {
             setLoading(true);
             try {
                 // Fetch product details and reviews in parallel
-                const [productResult, reviewsResult] = await Promise.all([
+                const [
+                    productResult,
+                    reviewsResult,
+                    helpfulResult,
+                    reportedResult,
+                ] = await Promise.all([
                     supabase
                         .from("products")
                         .select(
@@ -87,10 +269,26 @@ function Product() {
                             profiles:user_id(
                                 name,
                                 avatar_url
-                            )
+                            ),
+                            helpful_count:helpful_reviews(count),
+                            reported_count:reported_reviews(count)
                         `
                         )
                         .eq("product_id", id),
+
+                    user
+                        ? supabase
+                              .from("helpful_reviews")
+                              .select("review_id")
+                              .eq("user_id", user.id)
+                        : Promise.resolve({ data: [] }),
+
+                    user
+                        ? supabase
+                              .from("reported_reviews")
+                              .select("review_id")
+                              .eq("user_id", user.id)
+                        : Promise.resolve({ data: [] }),
                 ]);
 
                 const { data: productData, error: productError } =
@@ -110,6 +308,26 @@ function Product() {
                 }
 
                 // Process reviews
+                // Initialize review states
+                const userHelpfulReviews = new Set(
+                    (helpfulResult.data || []).map((hr) => hr.review_id)
+                );
+                const userReportedReviews = new Set(
+                    (reportedResult.data || []).map((rr) => rr.review_id)
+                );
+
+                // Initialize review states Map
+                const initialReviewStates = new Map();
+                (reviewsData || []).forEach((review) => {
+                    initialReviewStates.set(review.id, {
+                        helpful: userHelpfulReviews.has(review.id),
+                        reported: userReportedReviews.has(review.id),
+                        helpfulCount: review.helpful_count?.[0]?.count || 0,
+                        isUpdating: false,
+                    });
+                });
+                setReviewStates(initialReviewStates);
+
                 const reviews = (reviewsData || []).map((review) => ({
                     id: review.id,
                     user: review.profiles?.name || "Anonymous User",
@@ -125,6 +343,8 @@ function Product() {
                             day: "numeric",
                         }
                     ),
+                    helpfulCount: review.helpful_count?.[0]?.count || 0,
+                    reportedCount: review.reported_count?.[0]?.count || 0,
                 }));
 
                 // Calculate average rating
@@ -298,13 +518,49 @@ function Product() {
         }
     };
 
+    const validateQuantity = (value) => {
+        if (!product) return "";
+        if (isNaN(value) || value === "") return "Please enter a valid number";
+        if (value <= 0) return "Quantity must be greater than 0";
+        if (value < 0.1) return "Minimum quantity is 0.1 kg";
+        if (value > product.stock)
+            return `Maximum quantity available is ${product.stock} kg`;
+        return "";
+    };
+
     const handleQuantityChange = (e) => {
         if (!product) return;
-        const value = parseFloat(e.target.value);
-        if (!isNaN(value) && value >= 0.1 && value <= product.stock) {
-            setQuantity(Math.round(value * 10) / 10);
-        } else if (e.target.value === "") {
+        const inputValue = e.target.value;
+        const numValue = parseFloat(inputValue);
+
+        // Allow empty input for typing
+        if (inputValue === "") {
+            setQuantity(inputValue);
+            setQuantityError("Please enter a valid number");
+            return;
+        }
+
+        // Allow typing any number but show error if invalid
+        setQuantity(inputValue);
+        const error = validateQuantity(numValue);
+        setQuantityError(error);
+    };
+
+    const handleQuantityBlur = () => {
+        if (!product) return;
+        const numValue = parseFloat(quantity);
+
+        // On blur, enforce valid value
+        if (isNaN(numValue) || numValue < 0.1) {
             setQuantity(0.1);
+            setQuantityError("");
+        } else if (numValue > product.stock) {
+            setQuantity(product.stock);
+            setQuantityError("");
+        } else {
+            // Round to 1 decimal place
+            setQuantity(Math.round(numValue * 10) / 10);
+            setQuantityError("");
         }
     };
 
@@ -491,20 +747,32 @@ function Product() {
                             <span className="font-semibold">
                                 Quantity (kg):
                             </span>
-                            <div className="flex items-center">
-                                <input
-                                    type="number"
-                                    value={quantity}
-                                    onChange={handleQuantityChange}
-                                    step="0.1"
-                                    min="0.1"
-                                    max={product.stock}
-                                    className="px-4 py-2 border border-gray-300 rounded-lg w-24 text-center focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary"
-                                />
+                            <div className="flex-1 max-w-[200px]">
+                                <div className="relative">
+                                    <input
+                                        type="number"
+                                        value={quantity}
+                                        onChange={handleQuantityChange}
+                                        onBlur={handleQuantityBlur}
+                                        step="0.1"
+                                        className={`w-full px-4 py-2 border rounded-lg text-center focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary ${
+                                            quantityError
+                                                ? "border-red-300 bg-red-50"
+                                                : "border-gray-300"
+                                        }`}
+                                    />
+                                </div>
                             </div>
-                            <span className="text-sm text-gray-500">
-                                Max: {product.stock} kg
-                            </span>
+
+                            {quantityError ? (
+                                <p className="left-0 top-full mt-1 text-sm text-red-500">
+                                    {quantityError}
+                                </p>
+                            ) : (
+                                <span className="text-sm text-gray-500 whitespace-nowrap">
+                                    Max: {product.stock} kg
+                                </span>
+                            )}
                         </div>
 
                         <div className="flex flex-col sm:flex-row gap-3 mb-6">
@@ -640,10 +908,120 @@ function Product() {
                                                             </span>
                                                         </div>
                                                         {review.comment && (
-                                                            <p className="mt-3 text-gray-700 text-sm">
+                                                            <p className="mt-3 text-gray-700 text-sm object-contain text-wrap">
                                                                 {review.comment}
                                                             </p>
                                                         )}
+                                                        <div className="w-full mt-3 flex items-center justify-end gap-2">
+                                                            {(() => {
+                                                                const state =
+                                                                    reviewStates.get(
+                                                                        review.id
+                                                                    ) || {
+                                                                        helpful: false,
+                                                                        reported: false,
+                                                                        helpfulCount: 0,
+                                                                        isUpdating: false,
+                                                                    };
+                                                                return (
+                                                                    <>
+                                                                        <button
+                                                                            onClick={() =>
+                                                                                handleMarkHelpful(
+                                                                                    review.id
+                                                                                )
+                                                                            }
+                                                                            disabled={
+                                                                                !user ||
+                                                                                state.isUpdating
+                                                                            }
+                                                                            aria-pressed={
+                                                                                state.helpful
+                                                                            }
+                                                                            className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-sm transition-colors ${
+                                                                                state.helpful
+                                                                                    ? "bg-primary/10 text-primary"
+                                                                                    : "bg-gray-50 text-gray-600 hover:bg-gray-100"
+                                                                            } ${
+                                                                                !user
+                                                                                    ? "cursor-not-allowed opacity-50"
+                                                                                    : ""
+                                                                            }`}
+                                                                        >
+                                                                            <Icon
+                                                                                icon={
+                                                                                    state.helpful
+                                                                                        ? "mingcute:thumb-up-fill"
+                                                                                        : "mingcute:thumb-up-line"
+                                                                                }
+                                                                                className={
+                                                                                    state.isUpdating
+                                                                                        ? "animate-pulse"
+                                                                                        : ""
+                                                                                }
+                                                                                width="16"
+                                                                                height="16"
+                                                                            />
+                                                                            <span>
+                                                                                Helpful
+                                                                            </span>
+                                                                            {state.helpfulCount >
+                                                                                0 && (
+                                                                                <span className="text-xs ml-1">
+                                                                                    (
+                                                                                    {
+                                                                                        state.helpfulCount
+                                                                                    }
+
+                                                                                    )
+                                                                                </span>
+                                                                            )}
+                                                                        </button>
+                                                                        <button
+                                                                            onClick={() =>
+                                                                                handleToggleReport(
+                                                                                    review.id
+                                                                                )
+                                                                            }
+                                                                            disabled={
+                                                                                !user ||
+                                                                                state.isUpdating
+                                                                            }
+                                                                            aria-pressed={
+                                                                                state.reported
+                                                                            }
+                                                                            className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-sm transition-colors ${
+                                                                                state.reported
+                                                                                    ? "bg-red-50 text-red-600"
+                                                                                    : "bg-gray-50 text-gray-600 hover:bg-gray-100"
+                                                                            } ${
+                                                                                !user
+                                                                                    ? "cursor-not-allowed opacity-50"
+                                                                                    : ""
+                                                                            }`}
+                                                                        >
+                                                                            <Icon
+                                                                                icon={
+                                                                                    state.reported
+                                                                                        ? "mingcute:flag-2-fill"
+                                                                                        : "mingcute:flag-2-line"
+                                                                                }
+                                                                                className={
+                                                                                    state.isUpdating
+                                                                                        ? "animate-pulse"
+                                                                                        : ""
+                                                                                }
+                                                                                width="16"
+                                                                                height="16"
+                                                                            />
+                                                                            <span>
+                                                                                Report
+                                                                            </span>
+                                                                        </button>
+                                                                    </>
+                                                                );
+                                                            })()}
+                                                        </div>
                                                     </div>
                                                 </div>
                                             </div>
