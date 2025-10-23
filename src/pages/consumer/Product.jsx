@@ -390,6 +390,28 @@ function Product() {
         }
     };
 
+    // Create a memoized array of reviews with owner's review first
+    const sortedReviews = useMemo(() => {
+        if (!product?.reviews) return [];
+
+        // Find owner's review if user is authenticated
+        const ownerReview =
+            user && product.reviews.find((r) => r.user_id === user.id);
+
+        // Get non-owner reviews
+        const otherReviews = ownerReview
+            ? product.reviews.filter((r) => r.user_id !== user.id)
+            : product.reviews;
+
+        // Sort non-owner reviews using existing sort function
+        const sortedOtherReviews = sortReviews(otherReviews, reviewSort);
+
+        // Combine owner review (if exists) with sorted other reviews
+        return ownerReview
+            ? [ownerReview, ...sortedOtherReviews]
+            : sortedOtherReviews;
+    }, [product?.reviews, reviewSort, user?.id]);
+
     // Fetch product details
     useEffect(() => {
         const fetchProduct = async () => {
@@ -1015,10 +1037,7 @@ function Product() {
 
                                 {product.reviews.length > 0 ? (
                                     <div className="space-y-6 divide-y divide-gray-100">
-                                        {sortReviews(
-                                            product.reviews,
-                                            reviewSort
-                                        ).map((review) => (
+                                        {sortedReviews.map((review) => (
                                             <div
                                                 key={review.id}
                                                 className="pt-6 first:pt-0"

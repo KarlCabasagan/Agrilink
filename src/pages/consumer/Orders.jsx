@@ -799,7 +799,7 @@ function Orders() {
                                                                                                         ) =>
                                                                                                             e.stopPropagation()
                                                                                                         }
-                                                                                                        className="px-3 py-1.5 text-sm text-gray-500 hover:text-gray-700 flex items-center gap-1.5 group transition-colors"
+                                                                                                        className="px-3 py-1.5 text-sm text-green-500 hover:text-green-700 flex items-center gap-1.5 group transition-colors"
                                                                                                     >
                                                                                                         <Icon
                                                                                                             icon="mingcute:star-fill"
