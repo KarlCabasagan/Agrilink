@@ -608,7 +608,7 @@ function Orders() {
                                     {isExpanded && (
                                         <div className="p-4">
                                             {/* Farmer Groups */}
-                                            <div className="space-y-4 mb-6">
+                                            <div className="space-y-4 mb-2">
                                                 <h4 className="font-semibold text-gray-800 text-sm mb-3 flex items-center gap-2">
                                                     <Icon
                                                         icon="mingcute:group-line"
@@ -629,84 +629,57 @@ function Orders() {
 
                                                     return (
                                                         <div
-                                                            key={
-                                                                farmer.farmerId
-                                                            }
+                                                            key={farmerKey}
                                                             className="border border-gray-200 rounded-lg overflow-hidden"
                                                         >
-                                                            {/* Farmer Header - Clickable if multiple items */}
+                                                            {/* Farmer Header */}
                                                             <div
-                                                                className={`bg-green-50 p-3 border-b border-green-200 ${
-                                                                    hasMultipleItems
-                                                                        ? "cursor-pointer hover:bg-green-100 transition-colors"
-                                                                        : ""
-                                                                }`}
+                                                                className="bg-gray-50 p-3 flex justify-between items-center cursor-pointer hover:bg-gray-100 transition-colors"
                                                                 onClick={() =>
-                                                                    hasMultipleItems &&
                                                                     toggleFarmerExpansion(
                                                                         order.id,
                                                                         farmer.farmerId
                                                                     )
                                                                 }
                                                             >
-                                                                <div className="flex justify-between items-center">
-                                                                    <div className="flex items-center gap-2">
-                                                                        <Icon
-                                                                            icon="mingcute:user-3-line"
-                                                                            width="16"
-                                                                            height="16"
-                                                                            className="text-green-600"
-                                                                        />
-                                                                        <h5 className="font-semibold text-green-800 text-sm flex items-center gap-2">
-                                                                            {
-                                                                                farmer.farmerName
-                                                                            }
-                                                                            {hasMultipleItems && (
-                                                                                <Icon
-                                                                                    icon={
-                                                                                        isFarmerExpanded
-                                                                                            ? "mingcute:up-line"
-                                                                                            : "mingcute:down-line"
-                                                                                    }
-                                                                                    width="14"
-                                                                                    height="14"
-                                                                                    className="text-green-600"
-                                                                                />
-                                                                            )}
-                                                                        </h5>
-                                                                        {hasMultipleItems && (
-                                                                            <span className="text-xs text-green-600 bg-green-200 px-2 py-1 rounded-full">
-                                                                                {
-                                                                                    farmer
-                                                                                        .items
-                                                                                        .length
-                                                                                }{" "}
-                                                                                items
-                                                                            </span>
-                                                                        )}
+                                                                <div className="flex items-center gap-2">
+                                                                    <Icon
+                                                                        icon="mingcute:user-4-line"
+                                                                        width="16"
+                                                                        height="16"
+                                                                        className="text-primary"
+                                                                    />
+                                                                    <span className="font-medium text-sm">
+                                                                        {
+                                                                            farmer.farmerName
+                                                                        }
+                                                                    </span>
+                                                                </div>
+                                                                <div className="flex items-center gap-3">
+                                                                    <div className="text-sm text-gray-600">
+                                                                        {
+                                                                            farmer
+                                                                                .items
+                                                                                .length
+                                                                        }{" "}
+                                                                        items
                                                                     </div>
-                                                                    <div className="text-right">
-                                                                        <p className="text-xs text-green-700">
-                                                                            {farmer.totalQuantity.toFixed(
-                                                                                1
-                                                                            )}
-                                                                            kg
-                                                                            total
-                                                                        </p>
-                                                                        <p className="text-sm font-bold text-green-800">
-                                                                            ₱
-                                                                            {farmer.totalPrice.toFixed(
-                                                                                2
-                                                                            )}
-                                                                        </p>
-                                                                    </div>
+                                                                    <Icon
+                                                                        icon={
+                                                                            isFarmerExpanded
+                                                                                ? "mingcute:up-line"
+                                                                                : "mingcute:down-line"
+                                                                        }
+                                                                        width="16"
+                                                                        height="16"
+                                                                        className="text-gray-400"
+                                                                    />
                                                                 </div>
                                                             </div>
 
-                                                            {/* Farmer's Items - Collapsible for multiple items */}
-                                                            {(!hasMultipleItems ||
-                                                                isFarmerExpanded) && (
-                                                                <div className="divide-y divide-gray-100">
+                                                            {/* Product Items */}
+                                                            {isFarmerExpanded && (
+                                                                <div className="divide-y divide-gray-200">
                                                                     {farmer.items.map(
                                                                         (
                                                                             item
@@ -715,47 +688,57 @@ function Orders() {
                                                                                 key={
                                                                                     item.id
                                                                                 }
-                                                                                className="p-3"
+                                                                                className="p-4"
                                                                             >
-                                                                                <div className="flex items-center gap-3">
-                                                                                    <img
-                                                                                        src={
-                                                                                            item.image
-                                                                                        }
-                                                                                        alt={
-                                                                                            item.name
-                                                                                        }
-                                                                                        className="w-12 h-12 object-cover rounded-lg"
-                                                                                    />
+                                                                                <div className="flex justify-between gap-4">
                                                                                     <div className="flex-1">
-                                                                                        <h6 className="font-medium text-gray-800 text-sm">
+                                                                                        <div className="flex items-start justify-between mb-1">
+                                                                                            <h5 className="font-medium text-gray-900">
+                                                                                                {
+                                                                                                    item.name
+                                                                                                }
+                                                                                            </h5>
+                                                                                            {order.status ===
+                                                                                                "completed" && (
+                                                                                                <button
+                                                                                                    onClick={(
+                                                                                                        e
+                                                                                                    ) => {
+                                                                                                        e.stopPropagation();
+                                                                                                        // Review functionality to be implemented
+                                                                                                    }}
+                                                                                                    className="px-3 py-1.5 text-sm border border-gray-300 text-gray-600 rounded-lg hover:bg-gray-50 transition-colors flex items-center gap-1.5"
+                                                                                                >
+                                                                                                    <Icon
+                                                                                                        icon="mingcute:star-line"
+                                                                                                        width="14"
+                                                                                                        height="14"
+                                                                                                    />
+                                                                                                    Review
+                                                                                                </button>
+                                                                                            )}
+                                                                                        </div>
+                                                                                        <div className="text-sm text-gray-600">
                                                                                             {
-                                                                                                item.name
-                                                                                            }
-                                                                                        </h6>
-                                                                                        <p className="text-xs text-gray-500">
+                                                                                                item.quantity
+                                                                                            }{" "}
+                                                                                            kg
+                                                                                            x
                                                                                             ₱
                                                                                             {item.price.toFixed(
                                                                                                 2
                                                                                             )}
-                                                                                            /kg
-                                                                                            ×{" "}
-                                                                                            {
-                                                                                                item.quantity
-                                                                                            }
-                                                                                            kg
-                                                                                        </p>
-                                                                                    </div>
-                                                                                    <div className="text-right">
-                                                                                        <p className="text-sm font-medium text-gray-800">
+                                                                                        </div>
+                                                                                        <div className="text-sm text-primary font-medium mt-1">
+                                                                                            Total:
                                                                                             ₱
                                                                                             {(
-                                                                                                item.price *
-                                                                                                item.quantity
+                                                                                                item.quantity *
+                                                                                                item.price
                                                                                             ).toFixed(
                                                                                                 2
                                                                                             )}
-                                                                                        </p>
+                                                                                        </div>
                                                                                     </div>
                                                                                 </div>
                                                                             </div>
@@ -763,113 +746,9 @@ function Orders() {
                                                                     )}
                                                                 </div>
                                                             )}
-
-                                                            {/* Collapsed summary for multiple items */}
-                                                            {hasMultipleItems &&
-                                                                !isFarmerExpanded && (
-                                                                    <div className="p-3 bg-gray-50 text-center">
-                                                                        <p className="text-sm text-gray-600">
-                                                                            Click
-                                                                            to
-                                                                            view{" "}
-                                                                            {
-                                                                                farmer
-                                                                                    .items
-                                                                                    .length
-                                                                            }{" "}
-                                                                            items
-                                                                            from
-                                                                            this
-                                                                            farmer
-                                                                        </p>
-                                                                    </div>
-                                                                )}
                                                         </div>
                                                     );
                                                 })}
-                                            </div>
-
-                                            {/* Order Details */}
-                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
-                                                {/* Delivery/Pickup Method */}
-                                                <div className="bg-gray-50 rounded-lg p-3">
-                                                    <div className="flex items-center gap-2 mb-1">
-                                                        <Icon
-                                                            icon={
-                                                                order.deliveryMethod ===
-                                                                "delivery"
-                                                                    ? "mingcute:truck-line"
-                                                                    : "mingcute:location-line"
-                                                            }
-                                                            width="16"
-                                                            height="16"
-                                                            className="text-gray-500"
-                                                        />
-                                                        <span className="text-sm font-medium text-gray-700">
-                                                            {order.deliveryMethod ===
-                                                            "delivery"
-                                                                ? "Home Delivery"
-                                                                : "Farm Pickup"}
-                                                        </span>
-                                                    </div>
-                                                    <div className="ml-5">
-                                                        <p className="text-sm text-gray-600 mb-1">
-                                                            {order.deliveryMethod ===
-                                                            "Home Delivery"
-                                                                ? "Delivery to your address"
-                                                                : `Pickup from: ${order.sellerAddress}`}
-                                                        </p>
-                                                        <p className="text-xs text-blue-600">
-                                                            Seller:{" "}
-                                                            {order.sellerName}
-                                                        </p>
-                                                    </div>
-                                                </div>
-
-                                                {/* Payment Method */}
-                                                <div className="bg-gray-50 rounded-lg p-3">
-                                                    <div className="flex items-center gap-2 mb-1">
-                                                        <Icon
-                                                            icon={
-                                                                order.paymentMethod ===
-                                                                "cod"
-                                                                    ? "mingcute:cash-line"
-                                                                    : "mingcute:credit-card-line"
-                                                            }
-                                                            width="16"
-                                                            height="16"
-                                                            className="text-gray-500"
-                                                        />
-                                                        <span className="text-sm font-medium text-gray-700">
-                                                            Payment Method
-                                                        </span>
-                                                    </div>
-                                                    <div className="ml-5">
-                                                        <p className="text-sm text-gray-600">
-                                                            {order.paymentMethod ===
-                                                            "cod"
-                                                                ? `Cash on ${
-                                                                      order.deliveryMethod ===
-                                                                      "delivery"
-                                                                          ? "Delivery"
-                                                                          : "Pickup"
-                                                                  }`
-                                                                : "Online Payment"}
-                                                        </p>
-                                                        {order.status !==
-                                                            "cancelled" &&
-                                                            order.paymentMethod ===
-                                                                "cod" && (
-                                                                <p className="text-xs text-orange-600">
-                                                                    Payment due:
-                                                                    ₱
-                                                                    {order.total.toFixed(
-                                                                        2
-                                                                    )}
-                                                                </p>
-                                                            )}
-                                                    </div>
-                                                </div>
                                             </div>
 
                                             {/* Order Breakdown */}
@@ -901,7 +780,7 @@ function Orders() {
                                                     <div className="flex justify-between text-sm">
                                                         <span className="text-gray-600">
                                                             {order.deliveryMethod ===
-                                                            "delivery"
+                                                            "Home Delivery"
                                                                 ? "Delivery Fee"
                                                                 : "Pickup Fee"}
                                                         </span>
@@ -924,6 +803,89 @@ function Orders() {
                                                                 2
                                                             )}
                                                         </span>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            {/* Order Details */}
+                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
+                                                {/* Delivery/Pickup Method */}
+                                                <div className="bg-gray-50 rounded-lg p-3">
+                                                    <div className="flex items-center gap-2 mb-1">
+                                                        <Icon
+                                                            icon={
+                                                                order.deliveryMethod ===
+                                                                "delivery"
+                                                                    ? "mingcute:truck-line"
+                                                                    : "mingcute:location-line"
+                                                            }
+                                                            width="16"
+                                                            height="16"
+                                                            className="text-gray-500"
+                                                        />
+                                                        <span className="text-sm font-medium text-gray-700">
+                                                            {order.deliveryMethod ===
+                                                            "Home Delivery"
+                                                                ? "Home Delivery"
+                                                                : "Farm Pickup"}
+                                                        </span>
+                                                    </div>
+                                                    <div className="ml-5">
+                                                        <p className="text-sm text-gray-600 mb-1">
+                                                            {order.deliveryMethod ===
+                                                            "Home Delivery"
+                                                                ? "Delivery to your address"
+                                                                : `Pickup from: ${order.sellerAddress}`}
+                                                        </p>
+                                                        <p className="text-xs text-blue-600">
+                                                            Seller:{" "}
+                                                            {order.sellerName}
+                                                        </p>
+                                                    </div>
+                                                </div>
+
+                                                {/* Payment Method */}
+                                                <div className="bg-gray-50 rounded-lg p-3">
+                                                    <div className="flex items-center gap-2 mb-1">
+                                                        <Icon
+                                                            icon={
+                                                                order.paymentMethod ===
+                                                                "COD/COP"
+                                                                    ? "mingcute:cash-line"
+                                                                    : "mingcute:credit-card-line"
+                                                            }
+                                                            width="16"
+                                                            height="16"
+                                                            className="text-gray-500"
+                                                        />
+                                                        <span className="text-sm font-medium text-gray-700">
+                                                            Payment Method
+                                                        </span>
+                                                    </div>
+                                                    <div className="ml-5">
+                                                        <p className="text-sm text-gray-600">
+                                                            {order.paymentMethod ===
+                                                            "COD/COP"
+                                                                ? `Cash on ${
+                                                                      order.deliveryMethod ===
+                                                                      "Home Delivery"
+                                                                          ? "Home Delivery"
+                                                                          : "Pickup"
+                                                                  }`
+                                                                : "Online Payment"}
+                                                        </p>
+                                                        {order.status !==
+                                                            "cancelled" &&
+                                                            order.paymentMethod ===
+                                                                "cod" && (
+                                                                <p className="text-xs text-orange-600">
+                                                                    Payment due:
+                                                                    ₱
+                                                                    {order.total.toFixed(
+                                                                        2
+                                                                    )}
+                                                                </p>
+                                                            )}
                                                     </div>
                                                 </div>
                                             </div>
@@ -1013,14 +975,6 @@ function Orders() {
                                                             className="px-4 py-2 text-sm bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors"
                                                         >
                                                             Order Again
-                                                        </button>
-                                                        <button
-                                                            onClick={(e) =>
-                                                                e.stopPropagation()
-                                                            }
-                                                            className="px-4 py-2 text-sm border border-gray-300 text-gray-600 rounded-lg hover:bg-gray-50 transition-colors"
-                                                        >
-                                                            Leave Review
                                                         </button>
                                                     </>
                                                 )}
