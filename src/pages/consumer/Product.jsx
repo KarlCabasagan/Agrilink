@@ -4,7 +4,7 @@ import { Icon } from "@iconify/react";
 import { Link } from "react-router-dom";
 import NavigationBar from "../../components/NavigationBar";
 import Modal from "../../components/Modal";
-import supabase from "../../SupabaseClient.jsx";
+import supabase from "../../SupabaseClient";
 import { AuthContext } from "../../App.jsx";
 import { addToCart } from "../../utils/cartUtils.js";
 
@@ -23,9 +23,36 @@ function Product() {
         message: "",
         onConfirm: null,
     });
+    const [reviewSort, setReviewSort] = useState("newest");
 
     const showModal = (type, title, message, onConfirm = null) => {
         setModal({ open: true, type, title, message, onConfirm });
+    };
+
+    const sortOptions = [
+        { id: "newest", label: "Newest First", icon: "mingcute:time-line" },
+        { id: "oldest", label: "Oldest First", icon: "mingcute:time-fill" },
+        { id: "highest", label: "Highest Rating", icon: "mingcute:star-fill" },
+        { id: "lowest", label: "Lowest Rating", icon: "mingcute:star-line" },
+    ];
+
+    const sortReviews = (reviews, sortType) => {
+        const sorted = [...reviews];
+        switch (sortType) {
+            case "oldest":
+                return sorted.sort(
+                    (a, b) => new Date(a.rawDate) - new Date(b.rawDate)
+                );
+            case "highest":
+                return sorted.sort((a, b) => b.rating - a.rating);
+            case "lowest":
+                return sorted.sort((a, b) => a.rating - b.rating);
+            case "newest":
+            default:
+                return sorted.sort(
+                    (a, b) => new Date(b.rawDate) - new Date(a.rawDate)
+                );
+        }
     };
 
     // Fetch product details
@@ -33,49 +60,105 @@ function Product() {
         const fetchProduct = async () => {
             setLoading(true);
             try {
-                const { data, error } = await supabase
-                    .from("products")
-                    .select(
+                // Fetch product details and reviews in parallel
+                const [productResult, reviewsResult] = await Promise.all([
+                    supabase
+                        .from("products")
+                        .select(
+                            `
+                            *,
+                            categories(name),
+                            profiles!user_id(name, address, delivery_cost, minimum_order_quantity),
+                            statuses(name)
                         `
-                    *,
-                    categories(name),
-                    profiles!user_id(name, address, delivery_cost, minimum_order_quantity),
-                    statuses(name)
-                `
-                    )
-                    .eq("id", id)
-                    .neq("status_id", 2) // exclude status_id = 2
-                    .not("approval_date", "is", null) // exclude NULL approval_date
-                    .neq("approval_date", "1970-01-01 00:00:00+00") // exclude invalid approval_date
-                    .eq("statuses.name", "active")
-                    .single();
+                        )
+                        .eq("id", id)
+                        .neq("status_id", 2)
+                        .not("approval_date", "is", null)
+                        .neq("approval_date", "1970-01-01 00:00:00+00")
+                        .eq("statuses.name", "active")
+                        .single(),
 
-                if (error || !data) {
-                    console.error("Error fetching product:", error);
-                    setProduct(null); // show "Product not found"
+                    supabase
+                        .from("reviews")
+                        .select(
+                            `
+                            *,
+                            profiles:user_id(
+                                name,
+                                avatar_url
+                            )
+                        `
+                        )
+                        .eq("product_id", id),
+                ]);
+
+                const { data: productData, error: productError } =
+                    productResult;
+                const { data: reviewsData, error: reviewsError } =
+                    reviewsResult;
+
+                if (productError || !productData) {
+                    console.error("Error fetching product:", productError);
+                    setProduct(null);
                     return;
                 }
 
+                if (reviewsError) {
+                    console.error("Error fetching reviews:", reviewsError);
+                    // Continue without reviews rather than failing completely
+                }
+
+                // Process reviews
+                const reviews = (reviewsData || []).map((review) => ({
+                    id: review.id,
+                    user: review.profiles?.name || "Anonymous User",
+                    avatar: review.profiles?.avatar_url || null,
+                    rating: parseFloat(review.rating),
+                    comment: review.review || "",
+                    rawDate: review.created_at,
+                    date: new Date(review.created_at).toLocaleDateString(
+                        "en-US",
+                        {
+                            year: "numeric",
+                            month: "short",
+                            day: "numeric",
+                        }
+                    ),
+                }));
+
+                // Calculate average rating
+                const avgRating =
+                    reviews.length > 0
+                        ? reviews.reduce((sum, r) => sum + r.rating, 0) /
+                          reviews.length
+                        : 0;
+
                 const formattedProduct = {
-                    id: data.id,
-                    name: data.name,
-                    price: parseFloat(data.price),
+                    id: productData.id,
+                    name: productData.name,
+                    price: parseFloat(productData.price),
                     image:
-                        data.image_url ||
+                        productData.image_url ||
                         "https://via.placeholder.com/300x200?text=No+Image",
-                    address: data.profiles?.address || "Location not available",
-                    category: data.categories?.name || "Other",
-                    farmerName: data.profiles?.name || "Unknown Farmer",
-                    description: data.description,
-                    stock: parseFloat(data.stock) || 0,
-                    rating: 4.5,
+                    address:
+                        productData.profiles?.address ||
+                        "Location not available",
+                    category: productData.categories?.name || "Other",
+                    farmerName: productData.profiles?.name || "Unknown Farmer",
+                    description: productData.description,
+                    stock: parseFloat(productData.stock) || 0,
+                    rating: avgRating,
                     minimumOrderQuantity:
-                        parseFloat(data.profiles?.minimum_order_quantity) || 1,
+                        parseFloat(
+                            productData.profiles?.minimum_order_quantity
+                        ) || 1,
                     deliveryCost:
-                        parseFloat(data.profiles?.delivery_cost) || 50,
-                    pickupLocation: data.profiles?.address || "Farm location",
-                    farmerId: data.user_id,
-                    reviews: [],
+                        parseFloat(productData.profiles?.delivery_cost) || 50,
+                    pickupLocation:
+                        productData.profiles?.address || "Farm location",
+                    farmerId: productData.user_id,
+                    reviews: reviews,
                 };
 
                 setProduct(formattedProduct);
@@ -358,10 +441,17 @@ function Product() {
                                 {renderStars(product.rating)}
                             </div>
                             <span className="text-gray-600 text-sm">
-                                ({product.rating}/5)
+                                (
+                                {product.rating
+                                    ? product.rating.toFixed(1)
+                                    : "0"}
+                                /5)
                             </span>
                             <span className="text-gray-500 text-sm">
-                                • {product.reviews.length} reviews
+                                • {product.reviews.length}{" "}
+                                {product.reviews.length === 1
+                                    ? "review"
+                                    : "reviews"}
                             </span>
                         </div>
 
@@ -450,37 +540,131 @@ function Product() {
                                 Message Farmer
                             </button>
                         </div>
-
-                        {product.reviews.length > 0 && (
-                            <div className="mt-8">
-                                <h3 className="font-semibold mb-4 text-lg">
-                                    Customer Reviews
-                                </h3>
-                                <div className="space-y-4">
-                                    {product.reviews.map((review, index) => (
-                                        <div
-                                            key={index}
-                                            className="border-b pb-4 last:border-b-0"
-                                        >
-                                            <div className="flex justify-between items-start mb-2">
-                                                <span className="font-medium">
-                                                    {review.user}
-                                                </span>
-                                                <span className="text-gray-500 text-sm">
-                                                    {review.date}
-                                                </span>
-                                            </div>
-                                            <div className="flex mb-2">
-                                                {renderStars(review.rating)}
-                                            </div>
-                                            <p className="text-gray-700">
-                                                {review.comment}
-                                            </p>
+                        <hr className="my-6 border-gray-300" />
+                        <div className="mt-8 mb-20">
+                            <div className="space-y-4">
+                                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                                    <div className="flex items-center justify-between sm:justify-start gap-3">
+                                        <h3 className="font-semibold text-lg">
+                                            Customer Reviews
+                                        </h3>
+                                        <div className="text-sm text-gray-500">
+                                            {product.reviews.length}{" "}
+                                            {product.reviews.length === 1
+                                                ? "review"
+                                                : "reviews"}
                                         </div>
-                                    ))}
+                                    </div>
+
+                                    {product.reviews.length > 0 && (
+                                        <div className="flex items-center gap-2 self-end">
+                                            <span className="text-sm text-gray-500">
+                                                Sort by:
+                                            </span>
+                                            <select
+                                                value={reviewSort}
+                                                onChange={(e) =>
+                                                    setReviewSort(
+                                                        e.target.value
+                                                    )
+                                                }
+                                                className="text-sm border border-gray-200 rounded-lg px-3 py-2 bg-white focus:ring-2 focus:ring-primary focus:border-primary"
+                                            >
+                                                {sortOptions.map((option) => (
+                                                    <option
+                                                        key={option.id}
+                                                        value={option.id}
+                                                    >
+                                                        {option.label}
+                                                    </option>
+                                                ))}
+                                            </select>
+                                        </div>
+                                    )}
                                 </div>
+
+                                {product.reviews.length > 0 ? (
+                                    <div className="space-y-6 divide-y divide-gray-100">
+                                        {sortReviews(
+                                            product.reviews,
+                                            reviewSort
+                                        ).map((review) => (
+                                            <div
+                                                key={review.id}
+                                                className="pt-6 first:pt-0"
+                                            >
+                                                <div className="flex items-start gap-4">
+                                                    <div className="flex-shrink-0">
+                                                        {review.avatar ? (
+                                                            <img
+                                                                src={
+                                                                    review.avatar
+                                                                }
+                                                                alt={
+                                                                    review.user
+                                                                }
+                                                                className="w-10 h-10 rounded-full object-cover"
+                                                            />
+                                                        ) : (
+                                                            <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                                                                <Icon
+                                                                    icon="mingcute:user-4-fill"
+                                                                    className="w-6 h-6 text-primary/60"
+                                                                />
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                    <div className="flex-1 min-w-0 mb-4">
+                                                        <div className="flex justify-between items-start">
+                                                            <div className="space-y-1">
+                                                                <span className="font-medium text-gray-900 block">
+                                                                    {
+                                                                        review.user
+                                                                    }
+                                                                </span>
+                                                                <div className="flex items-center gap-2">
+                                                                    <div className="flex">
+                                                                        {renderStars(
+                                                                            review.rating
+                                                                        )}
+                                                                    </div>
+                                                                    <span className="text-sm text-gray-500">
+                                                                        {review.rating.toFixed(
+                                                                            1
+                                                                        )}
+                                                                    </span>
+                                                                </div>
+                                                            </div>
+                                                            <span className="text-sm text-gray-500 whitespace-nowrap">
+                                                                {review.date}
+                                                            </span>
+                                                        </div>
+                                                        {review.comment && (
+                                                            <p className="mt-3 text-gray-700 text-sm">
+                                                                {review.comment}
+                                                            </p>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                ) : (
+                                    <div className="text-center py-8 bg-gray-50 rounded-lg">
+                                        <Icon
+                                            icon="mingcute:comment-line"
+                                            className="mx-auto mb-3 text-gray-300"
+                                            width="32"
+                                            height="32"
+                                        />
+                                        <p className="text-gray-500">
+                                            No reviews yet. Be the first to
+                                            review this product!
+                                        </p>
+                                    </div>
+                                )}
                             </div>
-                        )}
+                        </div>
                     </div>
                 </div>
             ) : (
