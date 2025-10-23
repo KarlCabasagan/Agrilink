@@ -2,8 +2,10 @@ import { useState, useEffect, useContext } from "react";
 import { Icon } from "@iconify/react";
 import { Link, useNavigate } from "react-router-dom";
 import NavigationBar from "../../components/NavigationBar";
+import ReviewModal from "../../components/ReviewModal";
 import supabase from "../../SupabaseClient";
 import { AuthContext } from "../../App.jsx";
+import { toast } from "react-hot-toast";
 
 function Orders() {
     const navigate = useNavigate();
@@ -14,6 +16,54 @@ function Orders() {
     const [orders, setOrders] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
+    const [reviewModal, setReviewModal] = useState({
+        isOpen: false,
+        productId: null,
+        productName: "",
+    });
+    const [productReviews, setProductReviews] = useState({});
+
+    const checkExistingReview = async (productId) => {
+        try {
+            const { data, error } = await supabase
+                .from("reviews")
+                .select("id")
+                .eq("product_id", productId)
+                .eq("user_id", user.id)
+                .single();
+
+            if (error && error.code !== "PGRST116") {
+                console.error("Error checking review:", error);
+                return false;
+            }
+
+            return !!data;
+        } catch (error) {
+            console.error("Error checking review:", error);
+            return false;
+        }
+    };
+
+    // Check for existing reviews when orders are loaded or updated
+    useEffect(() => {
+        const checkReviews = async () => {
+            const reviews = {};
+            for (const order of orders) {
+                for (const item of order.items) {
+                    if (!reviews[item.product_id]) {
+                        reviews[item.product_id] = await checkExistingReview(
+                            item.product_id
+                        );
+                    }
+                }
+            }
+            setProductReviews(reviews);
+        };
+
+        if (user && orders.length > 0) {
+            checkReviews();
+        }
+    }, [orders, user]);
 
     useEffect(() => {
         if (!user) {
@@ -285,6 +335,25 @@ function Orders() {
     const handleTrackOrder = (orderId) => {
         console.log("Tracking order:", orderId);
         alert("Order tracking feature coming soon!");
+    };
+
+    const handleOpenReviewModal = (productId, productName) => {
+        setReviewModal({
+            isOpen: true,
+            productId,
+            productName,
+        });
+    };
+
+    const handleReviewSubmitted = () => {
+        // Update local state immediately for optimistic UI
+        setProductReviews((prev) => ({
+            ...prev,
+            [reviewModal.productId]: true,
+        }));
+
+        // Refresh order data to ensure everything is in sync
+        fetchOrders();
     };
 
     const handleCancelOrder = async (orderId) => {
@@ -718,26 +787,44 @@ function Orders() {
                                                                                                 }
                                                                                             </h5>
                                                                                             {order.status ===
-                                                                                                "completed" && (
-                                                                                                <button
-                                                                                                    onClick={(
-                                                                                                        e
-                                                                                                    ) => {
-                                                                                                        e.stopPropagation();
-                                                                                                        // Review functionality to be implemented
-                                                                                                    }}
-                                                                                                    className="px-3 py-1.5 text-sm border border-gray-300 text-gray-600 rounded-lg hover:bg-gray-50 transition-colors flex items-center gap-1.5"
-                                                                                                >
-                                                                                                    <Icon
-                                                                                                        icon="mingcute:star-line"
-                                                                                                        width="14"
-                                                                                                        height="14"
-                                                                                                    />
-                                                                                                    Rate
-                                                                                                    &
-                                                                                                    Review
-                                                                                                </button>
-                                                                                            )}
+                                                                                                "completed" &&
+                                                                                                (productReviews[
+                                                                                                    item
+                                                                                                        .product_id
+                                                                                                ] ? (
+                                                                                                    <div className="px-3 py-1.5 text-sm text-gray-500 flex items-center gap-1.5">
+                                                                                                        <Icon
+                                                                                                            icon="mingcute:star-fill"
+                                                                                                            width="14"
+                                                                                                            height="14"
+                                                                                                            className="text-yellow-400"
+                                                                                                        />
+                                                                                                        Reviewed
+                                                                                                    </div>
+                                                                                                ) : (
+                                                                                                    <button
+                                                                                                        type="button"
+                                                                                                        onClick={(
+                                                                                                            e
+                                                                                                        ) => {
+                                                                                                            e.stopPropagation(); // prevent collapsing the row
+                                                                                                            handleOpenReviewModal(
+                                                                                                                item.product_id,
+                                                                                                                item.name
+                                                                                                            );
+                                                                                                        }}
+                                                                                                        className="px-3 py-1.5 text-sm border border-gray-300 text-gray-600 rounded-lg hover:bg-gray-50 transition-colors flex items-center gap-1.5"
+                                                                                                    >
+                                                                                                        <Icon
+                                                                                                            icon="mingcute:star-line"
+                                                                                                            width="14"
+                                                                                                            height="14"
+                                                                                                        />
+                                                                                                        Rate
+                                                                                                        &
+                                                                                                        Review
+                                                                                                    </button>
+                                                                                                ))}
                                                                                         </div>
                                                                                         <div className="text-sm text-gray-600">
                                                                                             {
@@ -1025,6 +1112,24 @@ function Orders() {
             </div>
 
             <NavigationBar />
+
+            {/* Review Modal */}
+            {reviewModal.isOpen && (
+                <ReviewModal
+                    isOpen
+                    onClose={() =>
+                        setReviewModal({
+                            isOpen: false,
+                            productId: null,
+                            productName: "",
+                        })
+                    }
+                    productId={reviewModal.productId}
+                    productName={reviewModal.productName}
+                    userId={user?.id}
+                    onReviewSubmitted={handleReviewSubmitted}
+                />
+            )}
         </div>
     );
 }
