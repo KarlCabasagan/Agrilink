@@ -1,5 +1,12 @@
 import { useParams, useNavigate } from "react-router-dom";
-import { useState, useMemo, useEffect, useContext, useCallback } from "react";
+import {
+    useState,
+    useMemo,
+    useEffect,
+    useContext,
+    useCallback,
+    useRef,
+} from "react";
 import { Icon } from "@iconify/react";
 import { Link } from "react-router-dom";
 import NavigationBar from "../../components/NavigationBar";
@@ -26,6 +33,9 @@ function Product() {
         onConfirm: null,
     });
     const [reviewSort, setReviewSort] = useState("newest");
+    const [highlightedReviewId, setHighlightedReviewId] = useState(null);
+    const reviewRefs = useRef(new Map());
+    const searchParams = new URLSearchParams(window.location.search);
     const [reviewStates, setReviewStates] = useState(new Map()); // Map<reviewId, { helpful: boolean, reported: boolean, helpfulCount: number, isUpdating: boolean }>
 
     const updateReviewState = useCallback((reviewId, updates) => {
@@ -748,6 +758,60 @@ function Product() {
         }
     };
 
+    // Handle scrolling to user's review when ?reviewFocus=user is present
+    useEffect(() => {
+        const shouldFocusUserReview =
+            searchParams.get("reviewFocus") === "user";
+        if (!shouldFocusUserReview || !user || !product?.reviews || loading)
+            return;
+
+        // Find the user's review
+        const userReview = product.reviews.find((r) => r.user_id === user.id);
+        if (!userReview) return;
+
+        // Get the ref for the review
+        const reviewRef = reviewRefs.current.get(userReview.id);
+        if (!reviewRef) return;
+
+        // Short delay to ensure the DOM is ready
+        const timer = setTimeout(() => {
+            reviewRef.scrollIntoView({ behavior: "smooth", block: "center" });
+            setHighlightedReviewId(userReview.id);
+
+            // Remove highlight after animation
+            setTimeout(() => setHighlightedReviewId(null), 2000);
+        }, 100);
+
+        return () => clearTimeout(timer);
+    }, [product?.reviews, user?.id, loading, searchParams]);
+
+    // Handle scrolling to user's review when ?reviewFocus=user is present
+    useEffect(() => {
+        const shouldFocusUserReview =
+            searchParams.get("reviewFocus") === "user";
+        if (!shouldFocusUserReview || !user || !product?.reviews || loading)
+            return;
+
+        // Find the user's review
+        const userReview = product.reviews.find((r) => r.user_id === user.id);
+        if (!userReview) return;
+
+        // Get the ref for the review
+        const reviewRef = reviewRefs.current.get(userReview.id);
+        if (!reviewRef) return;
+
+        // Short delay to ensure the DOM is ready
+        const timer = setTimeout(() => {
+            reviewRef.scrollIntoView({ behavior: "smooth", block: "center" });
+            setHighlightedReviewId(userReview.id);
+
+            // Remove highlight after animation
+            setTimeout(() => setHighlightedReviewId(null), 2000);
+        }, 100);
+
+        return () => clearTimeout(timer);
+    }, [product?.reviews, user?.id, loading, searchParams]);
+
     if (loading) {
         return (
             <div className="min-h-screen w-full flex items-center justify-center bg-background">
@@ -1040,7 +1104,18 @@ function Product() {
                                         {sortedReviews.map((review) => (
                                             <div
                                                 key={review.id}
-                                                className="pt-6 first:pt-0"
+                                                ref={(el) =>
+                                                    reviewRefs.current.set(
+                                                        review.id,
+                                                        el
+                                                    )
+                                                }
+                                                className={`pt-6 first:pt-0 ${
+                                                    highlightedReviewId ===
+                                                    review.id
+                                                        ? "bg-primary/5 -mx-4 px-4 transition-colors duration-1000"
+                                                        : ""
+                                                }`}
                                             >
                                                 <div className="flex items-start gap-4">
                                                     <div className="flex-shrink-0">

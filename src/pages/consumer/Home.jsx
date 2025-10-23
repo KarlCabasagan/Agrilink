@@ -178,7 +178,10 @@ function Home() {
                     *,
                     categories(name),
                     profiles!user_id(name, address, delivery_cost, minimum_order_quantity),
-                    statuses(name)
+                    statuses(name),
+                    reviews!reviews_product_id_fkey(
+                        rating
+                    )
                 `
                     )
                     .neq("status_id", 2) // exclude status_id = 2
@@ -212,7 +215,13 @@ function Home() {
                     farmerName: product.profiles?.name || "Unknown Farmer",
                     description: product.description,
                     stock: parseFloat(product.stock) || 0,
-                    rating: 4.5,
+                    rating: product.reviews?.length
+                        ? product.reviews.reduce(
+                              (sum, review) => sum + parseFloat(review.rating),
+                              0
+                          ) / product.reviews.length
+                        : 0,
+                    reviewCount: product.reviews?.length || 0,
                     minimumOrderQuantity:
                         parseFloat(product.profiles?.minimum_order_quantity) ||
                         1,
@@ -459,7 +468,6 @@ function Home() {
                                     <h3 className="font-semibold text-gray-800 line-clamp-2 mb-1 text-sm">
                                         {product.name}
                                     </h3>
-
                                     <div className="flex items-center gap-2 mb-2">
                                         <Icon
                                             icon="mingcute:user-3-line"
@@ -471,16 +479,19 @@ function Home() {
                                             {product.farmerName}
                                         </span>
                                     </div>
-
                                     <div className="flex items-center gap-1 mb-2">
                                         <div className="flex">
                                             {renderStars(product.rating)}
                                         </div>
                                         <span className="text-xs text-gray-500">
-                                            ({product.rating})
+                                            {product.reviewCount > 0
+                                                ? product.rating.toFixed(1)
+                                                : "No"}{" "}
+                                            {product.reviewCount === 1
+                                                ? "review"
+                                                : "reviews"}
                                         </span>
-                                    </div>
-
+                                    </div>{" "}
                                     <div className="flex items-center gap-1 mb-2">
                                         <Icon
                                             icon="mingcute:location-line"
@@ -492,7 +503,6 @@ function Home() {
                                             {product.address}
                                         </span>
                                     </div>
-
                                     <div className="flex items-center justify-between">
                                         <p className="text-primary font-bold text-lg">
                                             ₱{product.price.toFixed(2)}/kg

@@ -781,11 +781,14 @@ function Orders() {
                                                                                     </div>
                                                                                     <div className="flex-1">
                                                                                         <div className="flex items-start justify-between mb-1">
-                                                                                            <h5 className="font-medium text-gray-900">
+                                                                                            <Link
+                                                                                                to={`/product/${item.product_id}`}
+                                                                                                className="font-medium text-green-700"
+                                                                                            >
                                                                                                 {
                                                                                                     item.name
                                                                                                 }
-                                                                                            </h5>
+                                                                                            </Link>
                                                                                             {order.status ===
                                                                                                 "completed" &&
                                                                                                 (productReviews[
@@ -807,7 +810,8 @@ function Orders() {
                                                                                                             height="14"
                                                                                                             className="text-yellow-400 group-hover:text-yellow-500"
                                                                                                         />
-                                                                                                        Reviewed
+                                                                                                        View
+                                                                                                        Review
                                                                                                     </Link>
                                                                                                 ) : (
                                                                                                     <button
