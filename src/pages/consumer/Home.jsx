@@ -305,12 +305,8 @@ function Home() {
             {/* Header with Search and Cart */}
             <div className="fixed top-0 left-0 w-full bg-white shadow-md z-50 px-4 py-3 flex justify-between items-center">
                 <h1 className="text-lg font-semibold text-primary">AgriLink</h1>
-                <Link to="/cart" className="text-gray-600 hover:text-primary">
-                    <Icon
-                        icon="mingcute:shopping-cart-1-line"
-                        width="24"
-                        height="24"
-                    />
+                <Link to="/orders" className="text-gray-600 hover:text-primary">
+                    <Icon icon="mingcute:truck-line" width="24" height="24" />
                 </Link>
             </div>
 

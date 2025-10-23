@@ -892,12 +892,8 @@ function Product() {
                     <Icon icon="mingcute:left-line" width="24" height="24" />
                 </Link>
                 <h1 className="text-lg font-semibold">Product Details</h1>
-                <Link to="/cart" className="text-gray-600 hover:text-primary">
-                    <Icon
-                        icon="mingcute:shopping-cart-1-line"
-                        width="24"
-                        height="24"
-                    />
+                <Link to="/orders" className="text-gray-600 hover:text-primary">
+                    <Icon icon="mingcute:truck-line" width="24" height="24" />
                 </Link>
             </div>
 
