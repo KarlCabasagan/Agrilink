@@ -1192,156 +1192,224 @@ function Product() {
 
                                                                 if (isOwner) {
                                                                     return (
-                                                                        <>
-                                                                            <button
-                                                                                onClick={() =>
-                                                                                    handleEditReview(
-                                                                                        review.id
-                                                                                    )
-                                                                                }
-                                                                                disabled={
-                                                                                    state.isUpdating
-                                                                                }
-                                                                                className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-sm transition-colors bg-gray-50 text-gray-600 hover:bg-gray-100"
-                                                                            >
-                                                                                <Icon
-                                                                                    icon="mingcute:edit-line"
-                                                                                    width="16"
-                                                                                    height="16"
-                                                                                />
-                                                                                <span>
-                                                                                    Edit
-                                                                                    Review
-                                                                                </span>
-                                                                            </button>
-                                                                            <button
-                                                                                key={`delete-${review.id}`}
-                                                                                onClick={() =>
-                                                                                    handleDeleteReview(
-                                                                                        review.id
-                                                                                    )
-                                                                                }
-                                                                                disabled={
-                                                                                    state.isUpdating
-                                                                                }
-                                                                                className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-sm transition-colors bg-red-50 text-red-600 hover:bg-red-100"
-                                                                                aria-label="Delete review"
-                                                                            >
-                                                                                <Icon
-                                                                                    icon="mingcute:delete-line"
-                                                                                    width="16"
-                                                                                    height="16"
-                                                                                    className={
-                                                                                        state.isUpdating
-                                                                                            ? "animate-pulse"
-                                                                                            : ""
+                                                                        <div className="w-full flex items-center just justify-between gap-2">
+                                                                            {state.helpfulCount >
+                                                                                0 && (
+                                                                                <div
+                                                                                    className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-sm transition-colors`}
+                                                                                >
+                                                                                    <Icon
+                                                                                        icon={
+                                                                                            "mingcute:thumb-up-line"
+                                                                                        }
+                                                                                        className="text-gray-500"
+                                                                                        width="16"
+                                                                                        height="16"
+                                                                                    />
+                                                                                    <span className="text-gray-500">
+                                                                                        Helpful
+                                                                                    </span>
+                                                                                    {state.helpfulCount >
+                                                                                        0 && (
+                                                                                        <span className="text-xs text-gray-500">
+                                                                                            (
+                                                                                            {
+                                                                                                state.helpfulCount
+                                                                                            }
+
+                                                                                            )
+                                                                                        </span>
+                                                                                    )}
+                                                                                </div>
+                                                                            )}
+                                                                            <span></span>
+                                                                            <div className="flex items-center justify-end gap-2">
+                                                                                <button
+                                                                                    onClick={() =>
+                                                                                        handleEditReview(
+                                                                                            review.id
+                                                                                        )
                                                                                     }
-                                                                                />
-                                                                                <span>
-                                                                                    Delete
-                                                                                </span>
-                                                                            </button>
-                                                                        </>
+                                                                                    disabled={
+                                                                                        state.isUpdating
+                                                                                    }
+                                                                                    className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-sm transition-colors bg-gray-50 text-gray-600 hover:bg-gray-100"
+                                                                                >
+                                                                                    <Icon
+                                                                                        icon="mingcute:edit-line"
+                                                                                        width="16"
+                                                                                        height="16"
+                                                                                    />
+                                                                                    <span className="hidden sm:block">
+                                                                                        Edit
+                                                                                        Review
+                                                                                    </span>
+                                                                                </button>
+                                                                                <button
+                                                                                    key={`delete-${review.id}`}
+                                                                                    onClick={() =>
+                                                                                        handleDeleteReview(
+                                                                                            review.id
+                                                                                        )
+                                                                                    }
+                                                                                    disabled={
+                                                                                        state.isUpdating
+                                                                                    }
+                                                                                    className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-sm transition-colors bg-red-50 text-red-600 hover:bg-red-100"
+                                                                                    aria-label="Delete review"
+                                                                                >
+                                                                                    <Icon
+                                                                                        icon="mingcute:delete-line"
+                                                                                        width="16"
+                                                                                        height="16"
+                                                                                        className={
+                                                                                            state.isUpdating
+                                                                                                ? "animate-pulse"
+                                                                                                : ""
+                                                                                        }
+                                                                                    />
+                                                                                    <span className="hidden sm:block">
+                                                                                        Delete
+                                                                                    </span>
+                                                                                </button>
+                                                                            </div>
+                                                                        </div>
                                                                     );
                                                                 }
 
                                                                 return (
                                                                     <>
-                                                                        <button
-                                                                            onClick={() =>
-                                                                                handleMarkHelpful(
-                                                                                    review.id
-                                                                                )
-                                                                            }
-                                                                            disabled={
-                                                                                !user ||
-                                                                                state.isUpdating
-                                                                            }
-                                                                            aria-pressed={
-                                                                                state.helpful
-                                                                            }
-                                                                            className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-sm transition-colors ${
-                                                                                state.helpful
-                                                                                    ? "bg-primary/10 text-primary"
-                                                                                    : "bg-gray-50 text-gray-600 hover:bg-gray-100"
-                                                                            } ${
-                                                                                !user
-                                                                                    ? "cursor-not-allowed opacity-50"
-                                                                                    : ""
-                                                                            }`}
-                                                                        >
-                                                                            <Icon
-                                                                                icon={
-                                                                                    state.helpful
-                                                                                        ? "mingcute:thumb-up-fill"
-                                                                                        : "mingcute:thumb-up-line"
-                                                                                }
-                                                                                className={
-                                                                                    state.isUpdating
-                                                                                        ? "animate-pulse"
-                                                                                        : ""
-                                                                                }
-                                                                                width="16"
-                                                                                height="16"
-                                                                            />
-                                                                            <span>
-                                                                                Helpful
-                                                                            </span>
-                                                                            {state.helpfulCount >
-                                                                                0 && (
-                                                                                <span className="text-xs ml-1">
-                                                                                    (
-                                                                                    {
-                                                                                        state.helpfulCount
-                                                                                    }
+                                                                        <div className="w-full flex items-center justify-between gap-2">
+                                                                            <div>
+                                                                                {state.helpfulCount >
+                                                                                    0 && (
+                                                                                    <div
+                                                                                        className={`sm:hidden inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-sm transition-colors`}
+                                                                                    >
+                                                                                        <Icon
+                                                                                            icon={
+                                                                                                "mingcute:thumb-up-line"
+                                                                                            }
+                                                                                            className="text-gray-500"
+                                                                                            width="16"
+                                                                                            height="16"
+                                                                                        />
+                                                                                        <span className="text-gray-500">
+                                                                                            Helpful
+                                                                                        </span>
+                                                                                        {state.helpfulCount >
+                                                                                            0 && (
+                                                                                            <span className="text-xs text-gray-500">
+                                                                                                (
+                                                                                                {
+                                                                                                    state.helpfulCount
+                                                                                                }
 
-                                                                                    )
-                                                                                </span>
-                                                                            )}
-                                                                        </button>
-                                                                        <button
-                                                                            onClick={() =>
-                                                                                handleToggleReport(
-                                                                                    review.id
-                                                                                )
-                                                                            }
-                                                                            disabled={
-                                                                                !user ||
-                                                                                state.isUpdating
-                                                                            }
-                                                                            aria-pressed={
-                                                                                state.reported
-                                                                            }
-                                                                            className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-sm transition-colors ${
-                                                                                state.reported
-                                                                                    ? "bg-red-50 text-red-600"
-                                                                                    : "bg-gray-50 text-gray-600 hover:bg-gray-100"
-                                                                            } ${
-                                                                                !user
-                                                                                    ? "cursor-not-allowed opacity-50"
-                                                                                    : ""
-                                                                            }`}
-                                                                        >
-                                                                            <Icon
-                                                                                icon={
-                                                                                    state.reported
-                                                                                        ? "mingcute:flag-2-fill"
-                                                                                        : "mingcute:flag-2-line"
-                                                                                }
-                                                                                className={
-                                                                                    state.isUpdating
-                                                                                        ? "animate-pulse"
-                                                                                        : ""
-                                                                                }
-                                                                                width="16"
-                                                                                height="16"
-                                                                            />
-                                                                            <span>
-                                                                                {state.reported
-                                                                                    ? "Reported"
-                                                                                    : "Report"}
-                                                                            </span>
-                                                                        </button>
+                                                                                                )
+                                                                                            </span>
+                                                                                        )}
+                                                                                    </div>
+                                                                                )}
+                                                                            </div>
+                                                                            <div />
+                                                                            <div className="flex items-center justify-end gap-2">
+                                                                                <button
+                                                                                    onClick={() =>
+                                                                                        handleMarkHelpful(
+                                                                                            review.id
+                                                                                        )
+                                                                                    }
+                                                                                    disabled={
+                                                                                        !user ||
+                                                                                        state.isUpdating
+                                                                                    }
+                                                                                    aria-pressed={
+                                                                                        state.helpful
+                                                                                    }
+                                                                                    className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-sm transition-colors ${
+                                                                                        state.helpful
+                                                                                            ? "bg-primary/10 text-primary"
+                                                                                            : "bg-gray-50 text-gray-600 hover:bg-gray-100"
+                                                                                    } ${
+                                                                                        !user
+                                                                                            ? "cursor-not-allowed opacity-50"
+                                                                                            : ""
+                                                                                    }`}
+                                                                                >
+                                                                                    <Icon
+                                                                                        icon={
+                                                                                            state.helpful
+                                                                                                ? "mingcute:thumb-up-fill"
+                                                                                                : "mingcute:thumb-up-line"
+                                                                                        }
+                                                                                        className={
+                                                                                            state.isUpdating
+                                                                                                ? "animate-pulse"
+                                                                                                : ""
+                                                                                        }
+                                                                                        width="16"
+                                                                                        height="16"
+                                                                                    />
+                                                                                    <span className="hidden sm:block">
+                                                                                        Helpful
+                                                                                    </span>
+                                                                                    {state.helpfulCount >
+                                                                                        0 && (
+                                                                                        <span className="text-xs ml-1 hidden sm:inline-block">
+                                                                                            (
+                                                                                            {
+                                                                                                state.helpfulCount
+                                                                                            }
+
+                                                                                            )
+                                                                                        </span>
+                                                                                    )}
+                                                                                </button>
+                                                                                <button
+                                                                                    onClick={() =>
+                                                                                        handleToggleReport(
+                                                                                            review.id
+                                                                                        )
+                                                                                    }
+                                                                                    disabled={
+                                                                                        !user ||
+                                                                                        state.isUpdating
+                                                                                    }
+                                                                                    aria-pressed={
+                                                                                        state.reported
+                                                                                    }
+                                                                                    className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-sm transition-colors ${
+                                                                                        state.reported
+                                                                                            ? "bg-red-50 text-red-600"
+                                                                                            : "bg-gray-50 text-gray-600 hover:bg-gray-100"
+                                                                                    } ${
+                                                                                        !user
+                                                                                            ? "cursor-not-allowed opacity-50"
+                                                                                            : ""
+                                                                                    }`}
+                                                                                >
+                                                                                    <Icon
+                                                                                        icon={
+                                                                                            state.reported
+                                                                                                ? "mingcute:flag-2-fill"
+                                                                                                : "mingcute:flag-2-line"
+                                                                                        }
+                                                                                        className={
+                                                                                            state.isUpdating
+                                                                                                ? "animate-pulse"
+                                                                                                : ""
+                                                                                        }
+                                                                                        width="16"
+                                                                                        height="16"
+                                                                                    />
+                                                                                    <span className="hidden sm:block">
+                                                                                        {state.reported
+                                                                                            ? "Reported"
+                                                                                            : "Report"}
+                                                                                    </span>
+                                                                                </button>
+                                                                            </div>
+                                                                        </div>
                                                                     </>
                                                                 );
                                                             })()}
