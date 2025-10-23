@@ -690,7 +690,26 @@ function Orders() {
                                                                                 }
                                                                                 className="p-4"
                                                                             >
-                                                                                <div className="flex justify-between gap-4">
+                                                                                <div className="flex gap-4">
+                                                                                    {/* Product Image */}
+                                                                                    <div className="flex-shrink-0 w-20 h-20 rounded-lg overflow-hidden bg-gray-100">
+                                                                                        <img
+                                                                                            src={
+                                                                                                item.image ||
+                                                                                                "/assets/blank-profile.jpg"
+                                                                                            }
+                                                                                            alt={
+                                                                                                item.name
+                                                                                            }
+                                                                                            className="w-full h-full object-cover"
+                                                                                            onError={(
+                                                                                                e
+                                                                                            ) => {
+                                                                                                e.target.src =
+                                                                                                    "/assets/blank-profile.jpg";
+                                                                                            }}
+                                                                                        />
+                                                                                    </div>
                                                                                     <div className="flex-1">
                                                                                         <div className="flex items-start justify-between mb-1">
                                                                                             <h5 className="font-medium text-gray-900">
@@ -714,6 +733,8 @@ function Orders() {
                                                                                                         width="14"
                                                                                                         height="14"
                                                                                                     />
+                                                                                                    Rate
+                                                                                                    &
                                                                                                     Review
                                                                                                 </button>
                                                                                             )}
