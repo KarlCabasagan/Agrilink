@@ -112,9 +112,12 @@ function ProducerProduct() {
                 case "lowest":
                     return a.rating - b.rating;
                 case "helpful":
-                    return (b.helpfulCount || 0) - (a.helpfulCount || 0);
+                    // Convert helpfulCount to integer and handle undefined values
+                    const aCount = parseInt(a.helpfulCount) || 0;
+                    const bCount = parseInt(b.helpfulCount) || 0;
+                    return bCount - aCount;
                 default:
-                    return 0;
+                    return new Date(b.date) - new Date(a.date);
             }
         });
     };
@@ -164,13 +167,16 @@ function ProducerProduct() {
                     console.error("Error fetching product:", error);
                     navigate("/");
                 } else {
-                    // Fetch reviews for the product
+                    // First, fetch reviews with basic info
                     const { data: reviewsData, error: reviewsError } =
                         await supabase
                             .from("reviews")
                             .select(
                                 `
-                            *,
+                            id,
+                            rating,
+                            review,
+                            created_at,
                             profiles:user_id (
                                 name,
                                 avatar_url
@@ -183,6 +189,34 @@ function ProducerProduct() {
                     if (reviewsError) {
                         console.error("Error fetching reviews:", reviewsError);
                     }
+
+                    // Then fetch helpful review counts separately
+                    const reviewIds = (reviewsData || []).map(
+                        (review) => review.id
+                    );
+                    const {
+                        data: helpfulReviewsData,
+                        error: helpfulReviewsError,
+                    } = await supabase
+                        .from("helpful_reviews")
+                        .select("review_id")
+                        .in("review_id", reviewIds);
+
+                    if (helpfulReviewsError) {
+                        console.error(
+                            "Error fetching helpful reviews:",
+                            helpfulReviewsError
+                        );
+                    }
+
+                    // Count helpful reviews per review
+                    const helpfulCounts = (helpfulReviewsData || []).reduce(
+                        (acc, hr) => {
+                            acc[hr.review_id] = (acc[hr.review_id] || 0) + 1;
+                            return acc;
+                        },
+                        {}
+                    );
 
                     // Fetch reported reviews for the current user
                     const { data: reportedReviews, error: reportedError } =
@@ -213,7 +247,7 @@ function ProducerProduct() {
                     });
                     setReviewStates(initialReviewStates);
 
-                    // Transform reviews data
+                    // Transform reviews data with correct helpful count per review
                     const reviews = (reviewsData || []).map((review) => ({
                         id: review.id,
                         rating: review.rating,
@@ -223,7 +257,7 @@ function ProducerProduct() {
                         userImage:
                             review.profiles.avatar_url ||
                             "/assets/blank-profile.jpg",
-                        helpfulCount: review.helpful_reviews?.length || 0,
+                        helpfulCount: helpfulCounts[review.id] || 0, // Now using the correctly counted helpful reviews
                     }));
 
                     // Calculate average rating
@@ -1435,12 +1469,6 @@ function ProducerProduct() {
                                                 {sortReviews(product.reviews)
                                                     .slice(0, 3)
                                                     .map((review, index) => {
-                                                        // Generate consistent helpful count for demo
-                                                        const helpfulCount =
-                                                            Math.floor(
-                                                                Math.random() *
-                                                                    15
-                                                            ) + 5;
                                                         return (
                                                             <div
                                                                 key={`${review.id}-${reviewSortBy}-${index}`}
@@ -1528,6 +1556,7 @@ function ProducerProduct() {
                                                                                         helpful
                                                                                     </span>
                                                                                 )}
+
                                                                                 <div />
                                                                                 {/* Report Review Button */}
                                                                                 <button
