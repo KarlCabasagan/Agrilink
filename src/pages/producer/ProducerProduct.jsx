@@ -100,10 +100,7 @@ function ProducerProduct() {
                 case "lowest":
                     return a.rating - b.rating;
                 case "helpful":
-                    // Generate consistent "helpful" counts for demo
-                    const aHelpful = Math.floor(Math.random() * 15) + 5;
-                    const bHelpful = Math.floor(Math.random() * 15) + 5;
-                    return bHelpful - aHelpful;
+                    return (b.helpfulCount || 0) - (a.helpfulCount || 0);
                 default:
                     return 0;
             }
@@ -137,17 +134,67 @@ function ProducerProduct() {
                         `
                         *,
                         categories(name),
-                        crops(name)
+                        crops(name),
+                        reviews(
+                            *,
+                            profiles:user_id (
+                                name,
+                                avatar_url
+                            ),
+                            helpful_reviews(count)
+                        )
                     `
                     )
                     .eq("id", parseInt(id))
                     .eq("user_id", user.id)
                     .single();
-
                 if (error) {
                     console.error("Error fetching product:", error);
                     navigate("/");
                 } else {
+                    // Fetch reviews for the product
+                    const { data: reviewsData, error: reviewsError } =
+                        await supabase
+                            .from("reviews")
+                            .select(
+                                `
+                            *,
+                            profiles:user_id (
+                                name,
+                                avatar_url
+                            )
+                        `
+                            )
+                            .eq("product_id", data.id)
+                            .order("created_at", { ascending: false });
+
+                    if (reviewsError) {
+                        console.error("Error fetching reviews:", reviewsError);
+                    }
+
+                    // Transform reviews data
+                    const reviews = (reviewsData || []).map((review) => ({
+                        id: review.id,
+                        rating: review.rating,
+                        comment: review.review,
+                        date: review.created_at,
+                        userName: review.profiles.name,
+                        userImage:
+                            review.profiles.avatar_url ||
+                            "/assets/blank-profile.jpg",
+                        helpfulCount: review.helpful_reviews?.length || 0,
+                    }));
+
+                    // Calculate average rating
+                    const totalRating = reviews.reduce(
+                        (acc, curr) => acc + curr.rating,
+                        0
+                    );
+                    const averageRating =
+                        reviews.length > 0
+                            ? (totalRating / reviews.length).toFixed(1)
+                            : "No ratings";
+
                     const productData = {
                         id: data.id,
                         name: data.name,
@@ -162,7 +209,9 @@ function ProducerProduct() {
                         approval_date: data.approval_date,
                         created_at: data.created_at,
                         updated_at: data.updated_at,
-                        reviews: [], // TODO: Fetch reviews separately if needed
+                        rating: averageRating,
+                        reviewCount: reviews.length,
+                        reviews,
                     };
                     setProduct(productData);
                 }
@@ -1166,7 +1215,7 @@ function ProducerProduct() {
                                     <div className="flex items-center justify-center mb-6 p-4 bg-gray-50 rounded-lg">
                                         <div className="text-center">
                                             <div className="text-4xl font-bold text-gray-800 mb-2">
-                                                {product.rating}
+                                                {product.ratingDisplay}
                                             </div>
                                             <div className="flex items-center justify-center gap-1 mb-2">
                                                 {[1, 2, 3, 4, 5].map((star) => (
@@ -1202,46 +1251,52 @@ function ProducerProduct() {
                                     {/* Rating Breakdown */}
                                     <div className="space-y-2">
                                         {[5, 4, 3, 2, 1].map((rating) => {
-                                            const count =
-                                                rating === 5
-                                                    ? 12
-                                                    : rating === 4
-                                                    ? 7
-                                                    : rating === 3
-                                                    ? 3
-                                                    : rating === 2
-                                                    ? 1
+                                            // Count reviews for this rating
+                                            const ratingCount =
+                                                product.reviews?.filter(
+                                                    (review) =>
+                                                        Math.floor(
+                                                            review.rating
+                                                        ) === rating
+                                                ).length || 0;
+
+                                            // Calculate percentage for the bar width
+                                            const percentage =
+                                                product.reviewCount > 0
+                                                    ? (
+                                                          (ratingCount /
+                                                              product.reviewCount) *
+                                                          100
+                                                      ).toFixed(1)
                                                     : 0;
-                                            const percentage = Math.round(
-                                                (count / product.reviewCount) *
-                                                    100
-                                            );
+
                                             return (
                                                 <div
                                                     key={rating}
-                                                    className="flex items-center gap-3"
+                                                    className="flex items-center gap-2"
                                                 >
-                                                    <div className="flex items-center gap-1 w-12">
-                                                        <span className="text-sm text-gray-700">
+                                                    <div className="flex items-center gap-1 w-16">
+                                                        <span className="text-sm font-medium text-gray-700">
                                                             {rating}
                                                         </span>
                                                         <Icon
                                                             icon="mingcute:star-fill"
-                                                            className="text-yellow-400"
-                                                            width="14"
-                                                            height="14"
+                                                            className="w-4 h-4 text-yellow-400"
                                                         />
                                                     </div>
-                                                    <div className="flex-1 bg-gray-200 rounded-full h-2">
+                                                    <div className="flex-1 h-2 bg-gray-200 rounded-full overflow-hidden">
                                                         <div
-                                                            className="bg-yellow-400 h-2 rounded-full"
+                                                            className="h-full bg-yellow-400 rounded-full transition-all duration-300 ease-in-out"
                                                             style={{
                                                                 width: `${percentage}%`,
                                                             }}
-                                                        ></div>
+                                                        />
                                                     </div>
-                                                    <div className="text-sm text-gray-600 w-12 text-right">
-                                                        {count}
+                                                    <div className="w-20 text-right">
+                                                        <span className="text-sm text-gray-600">
+                                                            {ratingCount} (
+                                                            {percentage}%)
+                                                        </span>
                                                     </div>
                                                 </div>
                                             );
@@ -1322,8 +1377,7 @@ function ProducerProduct() {
                                                                                     }
                                                                                 </h4>
                                                                                 <span className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded">
-                                                                                    Verified
-                                                                                    Purchase
+                                                                                    Purchased
                                                                                 </span>
                                                                             </div>
                                                                             <div className="flex items-center gap-2 mb-3">
@@ -1372,17 +1426,20 @@ function ProducerProduct() {
                                                                                 }
                                                                             </p>
                                                                             <div className="flex items-center gap-4 text-sm text-gray-500">
-                                                                                <span className="flex items-center gap-1">
-                                                                                    <Icon
-                                                                                        icon="mingcute:thumb-up-line"
-                                                                                        width="14"
-                                                                                        height="14"
-                                                                                    />
-                                                                                    {
-                                                                                        helpfulCount
-                                                                                    }{" "}
-                                                                                    helpful
-                                                                                </span>
+                                                                                {review.helpfulCount >
+                                                                                    0 && (
+                                                                                    <span className="flex items-center gap-1">
+                                                                                        <Icon
+                                                                                            icon="mingcute:thumb-up-line"
+                                                                                            width="14"
+                                                                                            height="14"
+                                                                                        />
+                                                                                        {
+                                                                                            review.helpfulCount
+                                                                                        }{" "}
+                                                                                        helpful
+                                                                                    </span>
+                                                                                )}
                                                                             </div>
                                                                         </div>
                                                                     </div>
