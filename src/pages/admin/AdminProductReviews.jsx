@@ -13,6 +13,7 @@ function AdminProductReviews() {
         direction: "desc",
     });
     const [filterRating, setFilterRating] = useState("all");
+    const [deletingReviews, setDeletingReviews] = useState(new Set());
 
     // Sample product data
     const [product, setProduct] = useState(null);
@@ -199,6 +200,12 @@ function AdminProductReviews() {
             if (sortConfig.key === "date") {
                 aValue = new Date(aValue);
                 bValue = new Date(bValue);
+            } else if (
+                sortConfig.key === "reported" ||
+                sortConfig.key === "helpful"
+            ) {
+                aValue = Number(aValue) || 0;
+                bValue = Number(bValue) || 0;
             }
 
             if (aValue < bValue) {
@@ -240,11 +247,35 @@ function AdminProductReviews() {
         return filtered;
     };
 
-    // Removed review action handlers since status management is not supported
+    const handleDeleteReview = async (reviewId) => {
+        // Optimistically update UI
+        setDeletingReviews((prev) => new Set(prev).add(reviewId));
+        const reviewToDelete = reviews.find((r) => r.id === reviewId);
+        setReviews((prev) => prev.filter((review) => review.id !== reviewId));
 
-    const handleReviewAction = (reviewId, action) => {
-        // Removed status management functionality since it's not in schema
-        return;
+        try {
+            const { error } = await supabase
+                .from("reviews")
+                .delete()
+                .eq("id", reviewId);
+
+            if (error) throw error;
+        } catch (err) {
+            // Revert the optimistic update on error
+            setReviews((prev) =>
+                [...prev, reviewToDelete].sort(
+                    (a, b) => new Date(b.created_at) - new Date(a.created_at)
+                )
+            );
+            setError("Failed to delete review. Please try again.");
+            console.error("Error deleting review:", err);
+        } finally {
+            setDeletingReviews((prev) => {
+                const next = new Set(prev);
+                next.delete(reviewId);
+                return next;
+            });
+        }
     };
 
     const renderStars = (rating) => {
@@ -469,6 +500,7 @@ function AdminProductReviews() {
                             <option value="rating-desc">Highest Rated</option>
                             <option value="rating-asc">Lowest Rated</option>
                             <option value="helpful-desc">Most Helpful</option>
+                            <option value="reported-desc">Most Reported</option>
                         </select>
                     </div>
                 </div>
@@ -494,7 +526,11 @@ function AdminProductReviews() {
                         filteredAndSortedReviews.map((review) => (
                             <div
                                 key={review.id}
-                                className="bg-white rounded-xl shadow-lg p-6 border border-gray-100 hover:border-primary transition-colors"
+                                className={`bg-white rounded-xl shadow-lg p-6 border border-gray-100 hover:border-primary transition-all transform ${
+                                    deletingReviews.has(review.id)
+                                        ? "opacity-0 scale-95 -translate-y-2"
+                                        : "opacity-100 scale-100 translate-y-0"
+                                }`}
                             >
                                 <div className="flex items-start justify-between mb-6">
                                     <div className="flex-1">
@@ -563,7 +599,29 @@ function AdminProductReviews() {
                                     </div>
                                 </div>
 
-                                {/* Removed action buttons since status management is not supported */}
+                                {/* Delete action */}
+                                <div className="flex justify-end pt-4 border-t border-gray-100">
+                                    <button
+                                        onClick={() =>
+                                            handleDeleteReview(review.id)
+                                        }
+                                        disabled={deletingReviews.has(
+                                            review.id
+                                        )}
+                                        className={`inline-flex items-center px-4 py-2 text-sm font-medium rounded-lg border transition-all ${
+                                            deletingReviews.has(review.id)
+                                                ? "bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed"
+                                                : "bg-red-50 text-red-700 border-red-200 hover:bg-red-100"
+                                        }`}
+                                    >
+                                        <Icon
+                                            icon="mingcute:delete-line"
+                                            className="mr-2"
+                                            width="18"
+                                        />
+                                        Delete Review
+                                    </button>
+                                </div>
                             </div>
                         ))
                     )}
