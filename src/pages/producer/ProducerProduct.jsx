@@ -1,4 +1,4 @@
-import { useState, useEffect, useContext } from "react";
+import { useState, useEffect, useContext, useCallback } from "react";
 import { Icon } from "@iconify/react";
 import { useParams, useNavigate } from "react-router-dom";
 import { AuthContext } from "../../App.jsx";
@@ -19,10 +19,22 @@ function ProducerProduct() {
     const [isEditing, setIsEditing] = useState(false);
     const [showDeleteModal, setShowDeleteModal] = useState(false);
     const [reviewSortBy, setReviewSortBy] = useState("newest");
+    const [reviewStates, setReviewStates] = useState(new Map()); // Map<reviewId, { reported: boolean, isUpdating: boolean }>
 
     const [crops, setCrops] = useState([]);
     const [cropSearchTerm, setCropSearchTerm] = useState("");
     const [showCropDropdown, setShowCropDropdown] = useState(false);
+
+    const updateReviewState = useCallback((reviewId, updates) => {
+        setReviewStates((prevStates) => {
+            const newStates = new Map(prevStates);
+            newStates.set(reviewId, {
+                ...(prevStates.get(reviewId) || {}),
+                ...updates,
+            });
+            return newStates;
+        });
+    }, []);
 
     // Fetch available crops when component mounts
     useEffect(() => {
@@ -171,6 +183,35 @@ function ProducerProduct() {
                     if (reviewsError) {
                         console.error("Error fetching reviews:", reviewsError);
                     }
+
+                    // Fetch reported reviews for the current user
+                    const { data: reportedReviews, error: reportedError } =
+                        await supabase
+                            .from("reported_reviews")
+                            .select("review_id")
+                            .eq("user_id", user.id);
+
+                    if (reportedError) {
+                        console.error(
+                            "Error fetching reported reviews:",
+                            reportedError
+                        );
+                    }
+
+                    // Create set of reported review IDs
+                    const reportedReviewIds = new Set(
+                        (reportedReviews || []).map((r) => r.review_id)
+                    );
+
+                    // Initialize review states
+                    const initialReviewStates = new Map();
+                    reviewsData?.forEach((review) => {
+                        initialReviewStates.set(review.id, {
+                            reported: reportedReviewIds.has(review.id),
+                            isUpdating: false,
+                        });
+                    });
+                    setReviewStates(initialReviewStates);
 
                     // Transform reviews data
                     const reviews = (reviewsData || []).map((review) => ({
@@ -486,6 +527,53 @@ function ProducerProduct() {
         setCropSearchTerm("");
         setShowCropDropdown(false);
         setIsEditing(false);
+    };
+
+    const handleToggleReport = async (reviewId) => {
+        // Get current review state
+        const currentState = reviewStates.get(reviewId);
+        const isReported = currentState?.reported ?? false;
+
+        // If already updating, ignore
+        if (currentState?.isUpdating) return;
+
+        // Set updating state
+        updateReviewState(reviewId, { isUpdating: true });
+
+        try {
+            if (!isReported) {
+                // Add report
+                const { error: insertError } = await supabase
+                    .from("reported_reviews")
+                    .insert([
+                        {
+                            review_id: reviewId,
+                            user_id: user.id,
+                        },
+                    ]);
+
+                if (insertError) throw insertError;
+            } else {
+                // Remove report
+                const { error: deleteError } = await supabase
+                    .from("reported_reviews")
+                    .delete()
+                    .eq("review_id", reviewId)
+                    .eq("user_id", user.id);
+
+                if (deleteError) throw deleteError;
+            }
+
+            // Update local state on success
+            updateReviewState(reviewId, {
+                reported: !isReported,
+                isUpdating: false,
+            });
+        } catch (error) {
+            console.error("Error toggling review report:", error);
+            alert("Failed to report review. Please try again.");
+            updateReviewState(reviewId, { isUpdating: false });
+        }
     };
 
     if (loading) {
@@ -1425,7 +1513,7 @@ function ProducerProduct() {
                                                                                     review.comment
                                                                                 }
                                                                             </p>
-                                                                            <div className="flex items-center gap-4 text-sm text-gray-500">
+                                                                            <div className="flex items-center justify-between gap-4 text-sm text-gray-500">
                                                                                 {review.helpfulCount >
                                                                                     0 && (
                                                                                     <span className="flex items-center gap-1">
@@ -1440,6 +1528,49 @@ function ProducerProduct() {
                                                                                         helpful
                                                                                     </span>
                                                                                 )}
+                                                                                <div />
+                                                                                {/* Report Review Button */}
+                                                                                <button
+                                                                                    onClick={() =>
+                                                                                        handleToggleReport(
+                                                                                            review.id
+                                                                                        )
+                                                                                    }
+                                                                                    disabled={
+                                                                                        reviewStates.get(
+                                                                                            review.id
+                                                                                        )
+                                                                                            ?.isUpdating
+                                                                                    }
+                                                                                    className={`flex items-center gap-1 hover:text-red-600 transition-colors
+                                                                                        ${
+                                                                                            reviewStates.get(
+                                                                                                review.id
+                                                                                            )
+                                                                                                ?.reported
+                                                                                                ? "text-red-600"
+                                                                                                : ""
+                                                                                        }`}
+                                                                                >
+                                                                                    <Icon
+                                                                                        icon={
+                                                                                            reviewStates.get(
+                                                                                                review.id
+                                                                                            )
+                                                                                                ?.reported
+                                                                                                ? "mingcute:flag-2-fill"
+                                                                                                : "mingcute:flag-2-line"
+                                                                                        }
+                                                                                        width="14"
+                                                                                        height="14"
+                                                                                    />
+                                                                                    {reviewStates.get(
+                                                                                        review.id
+                                                                                    )
+                                                                                        ?.reported
+                                                                                        ? "Reported"
+                                                                                        : "Report"}
+                                                                                </button>
                                                                             </div>
                                                                         </div>
                                                                     </div>
