@@ -238,7 +238,7 @@ function AdminDashboard() {
                         </Link>
 
                         <Link
-                            to="/admin/logs"
+                            to="/admin/transactions"
                             className="flex flex-col items-center p-4 bg-purple-50 rounded-lg hover:bg-purple-100 transition-colors"
                         >
                             <Icon
@@ -322,7 +322,7 @@ function AdminDashboard() {
                                         </span>
                                     </div>
                                     <Link
-                                        to={`/admin/products/${product.id}/reviews`}
+                                        to={`/admin/product/${product.id}`}
                                         className="text-blue-600 hover:text-blue-800 text-sm font-medium"
                                     >
                                         {product.reviews} reviews →

@@ -1,4 +1,4 @@
-import { useState, useEffect, useContext } from "react";
+import { useState, useEffect, useContext, useCallback } from "react";
 import { Icon } from "@iconify/react";
 import { useParams, useNavigate } from "react-router-dom";
 import { AuthContext } from "../../App.jsx";
@@ -19,10 +19,22 @@ function ProducerProduct() {
     const [isEditing, setIsEditing] = useState(false);
     const [showDeleteModal, setShowDeleteModal] = useState(false);
     const [reviewSortBy, setReviewSortBy] = useState("newest");
+    const [reviewStates, setReviewStates] = useState(new Map()); // Map<reviewId, { reported: boolean, isUpdating: boolean }>
 
     const [crops, setCrops] = useState([]);
     const [cropSearchTerm, setCropSearchTerm] = useState("");
     const [showCropDropdown, setShowCropDropdown] = useState(false);
+
+    const updateReviewState = useCallback((reviewId, updates) => {
+        setReviewStates((prevStates) => {
+            const newStates = new Map(prevStates);
+            newStates.set(reviewId, {
+                ...(prevStates.get(reviewId) || {}),
+                ...updates,
+            });
+            return newStates;
+        });
+    }, []);
 
     // Fetch available crops when component mounts
     useEffect(() => {
@@ -100,12 +112,12 @@ function ProducerProduct() {
                 case "lowest":
                     return a.rating - b.rating;
                 case "helpful":
-                    // Generate consistent "helpful" counts for demo
-                    const aHelpful = Math.floor(Math.random() * 15) + 5;
-                    const bHelpful = Math.floor(Math.random() * 15) + 5;
-                    return bHelpful - aHelpful;
+                    // Convert helpfulCount to integer and handle undefined values
+                    const aCount = parseInt(a.helpfulCount) || 0;
+                    const bCount = parseInt(b.helpfulCount) || 0;
+                    return bCount - aCount;
                 default:
-                    return 0;
+                    return new Date(b.date) - new Date(a.date);
             }
         });
     };
@@ -137,17 +149,127 @@ function ProducerProduct() {
                         `
                         *,
                         categories(name),
-                        crops(name)
+                        crops(name),
+                        reviews(
+                            *,
+                            profiles:user_id (
+                                name,
+                                avatar_url
+                            ),
+                            helpful_reviews(count)
+                        )
                     `
                     )
                     .eq("id", parseInt(id))
                     .eq("user_id", user.id)
                     .single();
-
                 if (error) {
                     console.error("Error fetching product:", error);
                     navigate("/");
                 } else {
+                    // First, fetch reviews with basic info
+                    const { data: reviewsData, error: reviewsError } =
+                        await supabase
+                            .from("reviews")
+                            .select(
+                                `
+                            id,
+                            rating,
+                            review,
+                            created_at,
+                            profiles:user_id (
+                                name,
+                                avatar_url
+                            )
+                        `
+                            )
+                            .eq("product_id", data.id)
+                            .order("created_at", { ascending: false });
+
+                    if (reviewsError) {
+                        console.error("Error fetching reviews:", reviewsError);
+                    }
+
+                    // Then fetch helpful review counts separately
+                    const reviewIds = (reviewsData || []).map(
+                        (review) => review.id
+                    );
+                    const {
+                        data: helpfulReviewsData,
+                        error: helpfulReviewsError,
+                    } = await supabase
+                        .from("helpful_reviews")
+                        .select("review_id")
+                        .in("review_id", reviewIds);
+
+                    if (helpfulReviewsError) {
+                        console.error(
+                            "Error fetching helpful reviews:",
+                            helpfulReviewsError
+                        );
+                    }
+
+                    // Count helpful reviews per review
+                    const helpfulCounts = (helpfulReviewsData || []).reduce(
+                        (acc, hr) => {
+                            acc[hr.review_id] = (acc[hr.review_id] || 0) + 1;
+                            return acc;
+                        },
+                        {}
+                    );
+
+                    // Fetch reported reviews for the current user
+                    const { data: reportedReviews, error: reportedError } =
+                        await supabase
+                            .from("reported_reviews")
+                            .select("review_id")
+                            .eq("user_id", user.id);
+
+                    if (reportedError) {
+                        console.error(
+                            "Error fetching reported reviews:",
+                            reportedError
+                        );
+                    }
+
+                    // Create set of reported review IDs
+                    const reportedReviewIds = new Set(
+                        (reportedReviews || []).map((r) => r.review_id)
+                    );
+
+                    // Initialize review states
+                    const initialReviewStates = new Map();
+                    reviewsData?.forEach((review) => {
+                        initialReviewStates.set(review.id, {
+                            reported: reportedReviewIds.has(review.id),
+                            isUpdating: false,
+                        });
+                    });
+                    setReviewStates(initialReviewStates);
+
+                    // Transform reviews data with correct helpful count per review
+                    const reviews = (reviewsData || []).map((review) => ({
+                        id: review.id,
+                        rating: review.rating,
+                        comment: review.review,
+                        date: review.created_at,
+                        userName: review.profiles.name,
+                        userImage:
+                            review.profiles.avatar_url ||
+                            "/assets/blank-profile.jpg",
+                        helpfulCount: helpfulCounts[review.id] || 0, // Now using the correctly counted helpful reviews
+                    }));
+
+                    // Calculate average rating
+                    const totalRating = reviews.reduce(
+                        (acc, curr) => acc + curr.rating,
+                        0
+                    );
+                    const averageRating =
+                        reviews.length > 0
+                            ? (totalRating / reviews.length).toFixed(1)
+                            : "No ratings";
+
                     const productData = {
                         id: data.id,
                         name: data.name,
@@ -162,7 +284,9 @@ function ProducerProduct() {
                         approval_date: data.approval_date,
                         created_at: data.created_at,
                         updated_at: data.updated_at,
-                        reviews: [], // TODO: Fetch reviews separately if needed
+                        rating: averageRating,
+                        reviewCount: reviews.length,
+                        reviews,
                     };
                     setProduct(productData);
                 }
@@ -437,6 +561,53 @@ function ProducerProduct() {
         setCropSearchTerm("");
         setShowCropDropdown(false);
         setIsEditing(false);
+    };
+
+    const handleToggleReport = async (reviewId) => {
+        // Get current review state
+        const currentState = reviewStates.get(reviewId);
+        const isReported = currentState?.reported ?? false;
+
+        // If already updating, ignore
+        if (currentState?.isUpdating) return;
+
+        // Set updating state
+        updateReviewState(reviewId, { isUpdating: true });
+
+        try {
+            if (!isReported) {
+                // Add report
+                const { error: insertError } = await supabase
+                    .from("reported_reviews")
+                    .insert([
+                        {
+                            review_id: reviewId,
+                            user_id: user.id,
+                        },
+                    ]);
+
+                if (insertError) throw insertError;
+            } else {
+                // Remove report
+                const { error: deleteError } = await supabase
+                    .from("reported_reviews")
+                    .delete()
+                    .eq("review_id", reviewId)
+                    .eq("user_id", user.id);
+
+                if (deleteError) throw deleteError;
+            }
+
+            // Update local state on success
+            updateReviewState(reviewId, {
+                reported: !isReported,
+                isUpdating: false,
+            });
+        } catch (error) {
+            console.error("Error toggling review report:", error);
+            alert("Failed to report review. Please try again.");
+            updateReviewState(reviewId, { isUpdating: false });
+        }
     };
 
     if (loading) {
@@ -1166,7 +1337,7 @@ function ProducerProduct() {
                                     <div className="flex items-center justify-center mb-6 p-4 bg-gray-50 rounded-lg">
                                         <div className="text-center">
                                             <div className="text-4xl font-bold text-gray-800 mb-2">
-                                                {product.rating}
+                                                {product.ratingDisplay}
                                             </div>
                                             <div className="flex items-center justify-center gap-1 mb-2">
                                                 {[1, 2, 3, 4, 5].map((star) => (
@@ -1202,46 +1373,52 @@ function ProducerProduct() {
                                     {/* Rating Breakdown */}
                                     <div className="space-y-2">
                                         {[5, 4, 3, 2, 1].map((rating) => {
-                                            const count =
-                                                rating === 5
-                                                    ? 12
-                                                    : rating === 4
-                                                    ? 7
-                                                    : rating === 3
-                                                    ? 3
-                                                    : rating === 2
-                                                    ? 1
+                                            // Count reviews for this rating
+                                            const ratingCount =
+                                                product.reviews?.filter(
+                                                    (review) =>
+                                                        Math.floor(
+                                                            review.rating
+                                                        ) === rating
+                                                ).length || 0;
+
+                                            // Calculate percentage for the bar width
+                                            const percentage =
+                                                product.reviewCount > 0
+                                                    ? (
+                                                          (ratingCount /
+                                                              product.reviewCount) *
+                                                          100
+                                                      ).toFixed(1)
                                                     : 0;
-                                            const percentage = Math.round(
-                                                (count / product.reviewCount) *
-                                                    100
-                                            );
+
                                             return (
                                                 <div
                                                     key={rating}
-                                                    className="flex items-center gap-3"
+                                                    className="flex items-center gap-2"
                                                 >
-                                                    <div className="flex items-center gap-1 w-12">
-                                                        <span className="text-sm text-gray-700">
+                                                    <div className="flex items-center gap-1 w-16">
+                                                        <span className="text-sm font-medium text-gray-700">
                                                             {rating}
                                                         </span>
                                                         <Icon
                                                             icon="mingcute:star-fill"
-                                                            className="text-yellow-400"
-                                                            width="14"
-                                                            height="14"
+                                                            className="w-4 h-4 text-yellow-400"
                                                         />
                                                     </div>
-                                                    <div className="flex-1 bg-gray-200 rounded-full h-2">
+                                                    <div className="flex-1 h-2 bg-gray-200 rounded-full overflow-hidden">
                                                         <div
-                                                            className="bg-yellow-400 h-2 rounded-full"
+                                                            className="h-full bg-yellow-400 rounded-full transition-all duration-300 ease-in-out"
                                                             style={{
                                                                 width: `${percentage}%`,
                                                             }}
-                                                        ></div>
+                                                        />
                                                     </div>
-                                                    <div className="text-sm text-gray-600 w-12 text-right">
-                                                        {count}
+                                                    <div className="w-20 text-right">
+                                                        <span className="text-sm text-gray-600">
+                                                            {ratingCount} (
+                                                            {percentage}%)
+                                                        </span>
                                                     </div>
                                                 </div>
                                             );
@@ -1292,12 +1469,6 @@ function ProducerProduct() {
                                                 {sortReviews(product.reviews)
                                                     .slice(0, 3)
                                                     .map((review, index) => {
-                                                        // Generate consistent helpful count for demo
-                                                        const helpfulCount =
-                                                            Math.floor(
-                                                                Math.random() *
-                                                                    15
-                                                            ) + 5;
                                                         return (
                                                             <div
                                                                 key={`${review.id}-${reviewSortBy}-${index}`}
@@ -1322,8 +1493,7 @@ function ProducerProduct() {
                                                                                     }
                                                                                 </h4>
                                                                                 <span className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded">
-                                                                                    Verified
-                                                                                    Purchase
+                                                                                    Purchased
                                                                                 </span>
                                                                             </div>
                                                                             <div className="flex items-center gap-2 mb-3">
@@ -1371,18 +1541,65 @@ function ProducerProduct() {
                                                                                     review.comment
                                                                                 }
                                                                             </p>
-                                                                            <div className="flex items-center gap-4 text-sm text-gray-500">
-                                                                                <span className="flex items-center gap-1">
+                                                                            <div className="flex items-center justify-between gap-4 text-sm text-gray-500">
+                                                                                {review.helpfulCount >
+                                                                                    0 && (
+                                                                                    <span className="flex items-center gap-1">
+                                                                                        <Icon
+                                                                                            icon="mingcute:thumb-up-line"
+                                                                                            width="14"
+                                                                                            height="14"
+                                                                                        />
+                                                                                        {
+                                                                                            review.helpfulCount
+                                                                                        }{" "}
+                                                                                        helpful
+                                                                                    </span>
+                                                                                )}
+
+                                                                                <div />
+                                                                                {/* Report Review Button */}
+                                                                                <button
+                                                                                    onClick={() =>
+                                                                                        handleToggleReport(
+                                                                                            review.id
+                                                                                        )
+                                                                                    }
+                                                                                    disabled={
+                                                                                        reviewStates.get(
+                                                                                            review.id
+                                                                                        )
+                                                                                            ?.isUpdating
+                                                                                    }
+                                                                                    className={`flex items-center gap-1 hover:text-red-600 transition-colors
+                                                                                        ${
+                                                                                            reviewStates.get(
+                                                                                                review.id
+                                                                                            )
+                                                                                                ?.reported
+                                                                                                ? "text-red-600"
+                                                                                                : ""
+                                                                                        }`}
+                                                                                >
                                                                                     <Icon
-                                                                                        icon="mingcute:thumb-up-line"
+                                                                                        icon={
+                                                                                            reviewStates.get(
+                                                                                                review.id
+                                                                                            )
+                                                                                                ?.reported
+                                                                                                ? "mingcute:flag-2-fill"
+                                                                                                : "mingcute:flag-2-line"
+                                                                                        }
                                                                                         width="14"
                                                                                         height="14"
                                                                                     />
-                                                                                    {
-                                                                                        helpfulCount
-                                                                                    }{" "}
-                                                                                    helpful
-                                                                                </span>
+                                                                                    {reviewStates.get(
+                                                                                        review.id
+                                                                                    )
+                                                                                        ?.reported
+                                                                                        ? "Reported"
+                                                                                        : "Report"}
+                                                                                </button>
                                                                             </div>
                                                                         </div>
                                                                     </div>
