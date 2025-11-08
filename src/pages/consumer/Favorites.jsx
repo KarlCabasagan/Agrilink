@@ -302,25 +302,34 @@ function Favorites() {
                 });
             }
 
-            // Separate products into new and existing
+            // Separate products into new and existing, tracking stock limits
             const newProducts = [];
             const existingProductsToUpdate = [];
+            const maxedOutCount = [];
 
             availableProducts.forEach((product) => {
                 if (existingProductsMap[product.id]) {
-                    // Product already exists in cart - add 1kg more
-                    existingProductsToUpdate.push({
-                        product_id: product.id,
-                        current_quantity: existingProductsMap[product.id],
-                        new_quantity: existingProductsMap[product.id] + 1,
-                    });
+                    const currentQuantity = existingProductsMap[product.id];
+                    // Only update if current quantity is less than available stock
+                    if (currentQuantity < product.stock) {
+                        existingProductsToUpdate.push({
+                            product_id: product.id,
+                            current_quantity: currentQuantity,
+                            new_quantity: currentQuantity + 1,
+                        });
+                    } else {
+                        maxedOutCount.push(product.id);
+                    }
                 } else {
-                    // New product - add with minimum order quantity
-                    newProducts.push({
-                        cart_id: cartData.id,
-                        product_id: product.id,
-                        quantity: product.minimumOrderQuantity || 1,
-                    });
+                    // New product - add with minimum order quantity if it won't exceed stock
+                    const minQuantity = product.minimumOrderQuantity || 1;
+                    if (minQuantity <= product.stock) {
+                        newProducts.push({
+                            cart_id: cartData.id,
+                            product_id: product.id,
+                            quantity: minQuantity,
+                        });
+                    }
                 }
             });
 
@@ -333,7 +342,7 @@ function Favorites() {
                 if (insertError) throw insertError;
             }
 
-            // Update existing products in cart (add 1kg to each)
+            // Update existing products in cart (add 1kg where possible)
             for (const existingProduct of existingProductsToUpdate) {
                 const { error: updateError } = await supabase
                     .from("cart_items")
@@ -348,30 +357,47 @@ function Favorites() {
                 filteredFavorites.length - availableProducts.length;
             const newItemsCount = newProducts.length;
             const updatedItemsCount = existingProductsToUpdate.length;
-
-            let message = "";
-            if (newItemsCount > 0 && updatedItemsCount > 0) {
-                message = `Added ${newItemsCount} new items and updated ${updatedItemsCount} existing items (+1kg each) in cart!`;
-            } else if (newItemsCount > 0) {
-                message = `Successfully added ${newItemsCount} new items to cart!`;
-            } else if (updatedItemsCount > 0) {
-                message = `Updated ${updatedItemsCount} existing items in cart (+1kg each)!`;
-            }
-
-            if (outOfStockCount > 0) {
-                message += ` (${outOfStockCount} out-of-stock items were skipped)`;
-            }
+            const maxedItemsCount = maxedOutCount.length;
 
             setAddToCartResult({
                 type: "success",
-                message,
+                details: {
+                    actions: [
+                        newItemsCount > 0 && {
+                            type: "new",
+                            count: newItemsCount,
+                            text: `${newItemsCount} new ${
+                                newItemsCount === 1 ? "item" : "items"
+                            } added`,
+                        },
+                        updatedItemsCount > 0 && {
+                            type: "updated",
+                            count: updatedItemsCount,
+                            text: `${updatedItemsCount} ${
+                                updatedItemsCount === 1 ? "item" : "items"
+                            } updated (+1kg each)`,
+                        },
+                    ].filter(Boolean),
+                    skipped: [
+                        outOfStockCount > 0 && {
+                            type: "out-of-stock",
+                            count: outOfStockCount,
+                            text: `${outOfStockCount} out of stock`,
+                        },
+                        maxedItemsCount > 0 && {
+                            type: "max-stock",
+                            count: maxedItemsCount,
+                            text: `${maxedItemsCount} at max stock`,
+                        },
+                    ].filter(Boolean),
+                },
             });
             setIsModalOpen(false);
         } catch (error) {
             console.error("Error adding items to cart:", error);
             setAddToCartResult({
                 type: "error",
-                message: "Failed to add items to cart",
+                message: "Failed to add items to cart. Please try again.",
                 error,
             });
         } finally {
@@ -605,49 +631,109 @@ function Favorites() {
                 {/* Toast Notification */}
                 {addToCartResult && (
                     <div
-                        className={`fixed bottom-20 left-1/2 -translate-x-1/2 transform px-4 py-3 rounded-lg shadow-lg 
+                        className={`fixed bottom-23 left-1/2 sm:left-auto -translate-x-1/2 sm:-translate-x-0 sm:bottom-25 sm:right-8 transform px-4 py-3 rounded-lg shadow-xl
                             ${
                                 addToCartResult.type === "success"
-                                    ? "bg-primary text-white"
-                                    : "bg-red-00 text-white"
-                            } 
-                            flex items-center gap-3 min-w-[320px] max-w-md mx-auto z-50
-                            animate-[slide-up_0.3s_ease-out,fade-out_0.3s_ease-in_forwards_3s]`}
+                                    ? "bg-white border-l-4 border-l-primary"
+                                    : "bg-white border-l-4 border-l-red-500"
+                            }
+                            flex flex-col min-w-[320px] max-w-md z-50 animate-[slide-up_0.3s_ease-out]`}
                         role="alert"
                     >
-                        <Icon
-                            icon={
-                                addToCartResult.type === "success"
-                                    ? "mingcute:check-circle-fill"
-                                    : "mingcute:warning-fill"
-                            }
-                            width="24"
-                            height="24"
-                            className="flex-shrink-0"
-                        />
-                        <p className="text-sm font-medium flex-grow">
-                            {addToCartResult.message}
-                        </p>
-                        {addToCartResult.type === "error" && (
+                        {/* Header */}
+                        <div className="flex items-center justify-between pb-2">
+                            <div className="flex items-center gap-2">
+                                <Icon
+                                    icon={
+                                        addToCartResult.type === "success"
+                                            ? "mingcute:check-circle-fill"
+                                            : "mingcute:warning-fill"
+                                    }
+                                    width="20"
+                                    height="20"
+                                    className={
+                                        addToCartResult.type === "success"
+                                            ? "text-primary"
+                                            : "text-red-500"
+                                    }
+                                />
+                                <h4
+                                    className={`font-medium ${
+                                        addToCartResult.type === "success"
+                                            ? "text-primary"
+                                            : "text-red-500"
+                                    }`}
+                                >
+                                    {addToCartResult.type === "success"
+                                        ? "Cart Updated Successfully"
+                                        : "Failed to Update Cart"}
+                                </h4>
+                            </div>
                             <button
-                                onClick={handleAddAllToCart}
-                                className="text-sm font-medium text-white hover:text-red-100 underline underline-offset-2 mr-2"
-                                disabled={isAddingToCart}
+                                onClick={() => setAddToCartResult(null)}
+                                className="text-gray-400 hover:text-gray-600"
+                                aria-label="Close notification"
                             >
-                                Retry
+                                <Icon
+                                    icon="mingcute:close-line"
+                                    width="18"
+                                    height="18"
+                                />
                             </button>
-                        )}
-                        <button
-                            onClick={() => setAddToCartResult(null)}
-                            className="text-white/80 hover:text-white"
-                            aria-label="Close notification"
-                        >
-                            <Icon
-                                icon="mingcute:close-line"
-                                width="20"
-                                height="20"
-                            />
-                        </button>
+                        </div>
+
+                        {/* Content */}
+                        <div className="space-y-1.5">
+                            {addToCartResult.type === "success" ? (
+                                <>
+                                    {/* Actions Summary */}
+                                    {addToCartResult.details?.actions.map(
+                                        (action, idx) => (
+                                            <div
+                                                key={`action-${idx}`}
+                                                className="flex items-center gap-2"
+                                            >
+                                                <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-primary/10 text-primary">
+                                                    {action.text}
+                                                </span>
+                                            </div>
+                                        )
+                                    )}
+
+                                    {/* Skipped Items */}
+                                    {addToCartResult.details?.skipped.length >
+                                        0 && (
+                                        <div className="pt-1 space-y-1">
+                                            {addToCartResult.details.skipped.map(
+                                                (skip, idx) => (
+                                                    <div
+                                                        key={`skip-${idx}`}
+                                                        className="flex items-center gap-2"
+                                                    >
+                                                        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-600">
+                                                            {skip.text}
+                                                        </span>
+                                                    </div>
+                                                )
+                                            )}
+                                        </div>
+                                    )}
+                                </>
+                            ) : (
+                                <div className="flex items-center justify-between">
+                                    <p className="text-sm text-gray-600">
+                                        {addToCartResult.message}
+                                    </p>
+                                    <button
+                                        onClick={handleAddAllToCart}
+                                        className="text-sm font-medium text-red-500 hover:text-red-600 underline underline-offset-2"
+                                        disabled={isAddingToCart}
+                                    >
+                                        Retry
+                                    </button>
+                                </div>
+                            )}
+                        </div>
                     </div>
                 )}
                 {/* Add to Cart Modal */}
