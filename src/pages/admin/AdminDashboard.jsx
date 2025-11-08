@@ -22,7 +22,8 @@ function AdminDashboard() {
     });
     const [topProducts, setTopProducts] = useState([]);
     const [selectedTimeRange, setSelectedTimeRange] = useState("all");
-    const [isLoading, setIsLoading] = useState(true);
+    const [isStatsLoading, setIsStatsLoading] = useState(true);
+    const [isLoading, setIsLoading] = useState(true); // Now only for products
 
     // Backend time range filter with Supabase
     const fetchFilteredProducts = async (timeRange) => {
@@ -132,6 +133,8 @@ function AdminDashboard() {
     useEffect(() => {
         const fetchDashboardStats = async () => {
             try {
+                setIsStatsLoading(true);
+
                 // Get total users count
                 const { count: usersCount } = await supabase
                     .from("profiles")
@@ -171,10 +174,19 @@ function AdminDashboard() {
                     activeCrops: activeCropsCount || 0,
                     totalReviews: totalReviews,
                 });
-                setIsLoading(false);
             } catch (error) {
                 console.error("Error fetching dashboard stats:", error);
-                setIsLoading(false);
+                // Reset stats on error
+                setStats({
+                    totalUsers: 0,
+                    pendingApplications: 0,
+                    totalProducts: 0,
+                    pendingProducts: 0,
+                    activeCrops: 0,
+                    totalReviews: 0,
+                });
+            } finally {
+                setIsStatsLoading(false);
             }
         };
 
@@ -208,7 +220,7 @@ function AdminDashboard() {
                             height="32"
                             className="mx-auto mb-2 text-blue-600"
                         />
-                        {isLoading ? (
+                        {isStatsLoading ? (
                             <div className="animate-pulse">
                                 <div className="h-8 bg-gray-200 rounded w-24 mx-auto mb-2"></div>
                                 <div className="h-4 bg-gray-200 rounded w-20 mx-auto"></div>
@@ -247,7 +259,7 @@ function AdminDashboard() {
                             height="32"
                             className="mx-auto mb-2 text-green-600"
                         />
-                        {isLoading ? (
+                        {isStatsLoading ? (
                             <div className="animate-pulse">
                                 <div className="h-8 bg-gray-200 rounded w-24 mx-auto mb-2"></div>
                                 <div className="h-4 bg-gray-200 rounded w-20 mx-auto"></div>
@@ -283,7 +295,7 @@ function AdminDashboard() {
                             height="32"
                             className="mx-auto mb-2 text-emerald-600"
                         />
-                        {isLoading ? (
+                        {isStatsLoading ? (
                             <div className="animate-pulse">
                                 <div className="h-8 bg-gray-200 rounded w-24 mx-auto mb-2"></div>
                                 <div className="h-4 bg-gray-200 rounded w-20 mx-auto"></div>
