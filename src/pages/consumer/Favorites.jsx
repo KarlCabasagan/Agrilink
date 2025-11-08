@@ -12,7 +12,9 @@ function Favorites() {
     const [favoriteProducts, setFavoriteProducts] = useState([]);
     const [loading, setLoading] = useState(true);
     const [isModalOpen, setIsModalOpen] = useState(false);
+    const [isClearModalOpen, setIsClearModalOpen] = useState(false);
     const [isAddingToCart, setIsAddingToCart] = useState(false);
+    const [isClearingFavorites, setIsClearingFavorites] = useState(false);
     const [addToCartResult, setAddToCartResult] = useState(null);
 
     // Auto-dismiss toast after 5 seconds
@@ -199,35 +201,54 @@ function Favorites() {
         }
     };
 
-    // Handle clearing all favorites
-    const handleClearAllFavorites = async () => {
+    // Handle opening clear favorites modal
+    const handleOpenClearModal = () => {
         if (!user) {
-            alert("Please log in to clear favorites");
+            setAddToCartResult({
+                type: "error",
+                message: "Please log in to clear favorites",
+            });
             return;
         }
+        setIsClearModalOpen(true);
+    };
 
-        const confirmClear = window.confirm(
-            "Are you sure you want to remove all favorites? This action cannot be undone."
-        );
-        if (!confirmClear) return;
+    // Handle actual clearing of favorites
+    const handleClearAllFavorites = async () => {
+        if (!user) return;
 
+        setIsClearingFavorites(true);
         try {
             const { error } = await supabase
                 .from("favorites")
                 .delete()
                 .eq("user_id", user.id);
 
-            if (error) {
-                console.error("Error clearing favorites:", error);
-                alert("Failed to clear favorites. Please try again.");
-                return;
-            }
+            if (error) throw error;
 
             setFavoriteProducts([]);
-            alert("All favorites have been removed!");
+            setAddToCartResult({
+                type: "success",
+                title: "Favorites Cleared",
+                details: {
+                    actions: [
+                        {
+                            type: "clear",
+                            text: "All favorites have been removed",
+                        },
+                    ],
+                    skipped: [],
+                },
+            });
         } catch (error) {
             console.error("Error clearing favorites:", error);
-            alert("Failed to clear favorites. Please try again.");
+            setAddToCartResult({
+                type: "error",
+                message: "Failed to clear favorites. Please try again.",
+            });
+        } finally {
+            setIsClearingFavorites(false);
+            setIsClearModalOpen(false);
         }
     };
 
@@ -467,7 +488,7 @@ function Favorites() {
                                 </button>
                                 <button
                                     className="flex items-center gap-2 bg-red-50 text-red-600 px-4 py-2 rounded-lg hover:bg-red-100 transition-colors"
-                                    onClick={handleClearAllFavorites}
+                                    onClick={handleOpenClearModal}
                                 >
                                     <Icon
                                         icon="mingcute:delete-2-line"
@@ -741,7 +762,7 @@ function Favorites() {
                     <>
                         <div className="fixed inset-0 bg-black opacity-50 z-[9998] flex items-center justify-center p-4" />
                         <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
-                            <div className="bg-white rounded-lg shadow-xl z-[9999] max-w-md w-full mx-auto ">
+                            <div className="bg-white rounded-lg shadow-xl z-[9999] max-w-md w-full mx-auto">
                                 <div className="p-6">
                                     <h3 className="text-lg font-semibold text-gray-800 mb-4">
                                         Add All to Cart
@@ -814,6 +835,82 @@ function Favorites() {
                         </div>
                     </>
                 )}
+
+                {/* Clear Favorites Modal */}
+                {isClearModalOpen && (
+                    <>
+                        <div className="fixed inset-0 bg-black opacity-50 z-[9998] flex items-center justify-center p-4" />
+                        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
+                            <div className="bg-white rounded-lg shadow-xl z-[9999] max-w-md w-full mx-auto">
+                                <div className="p-6">
+                                    <h3 className="text-lg font-semibold text-gray-800 mb-4">
+                                        Remove All Favorites
+                                    </h3>
+                                    <div className="space-y-3 mb-6">
+                                        <div className="flex items-center gap-2 text-gray-600">
+                                            <Icon
+                                                icon="mingcute:warning-fill"
+                                                className="text-yellow-500"
+                                                width="20"
+                                                height="20"
+                                            />
+                                            <p>
+                                                Are you sure you want to remove
+                                                all favorites? This action
+                                                cannot be undone.
+                                            </p>
+                                        </div>
+                                        <p className="text-gray-500 text-sm">
+                                            You currently have{" "}
+                                            {filteredFavorites.length} favorite{" "}
+                                            {filteredFavorites.length === 1
+                                                ? "product"
+                                                : "products"}
+                                            .
+                                        </p>
+                                    </div>
+                                    <div className="flex items-center justify-end gap-3">
+                                        <button
+                                            onClick={() =>
+                                                setIsClearModalOpen(false)
+                                            }
+                                            className="px-4 py-2 text-gray-600 hover:text-gray-800 font-medium disabled:opacity-50"
+                                            disabled={isClearingFavorites}
+                                        >
+                                            Cancel
+                                        </button>
+                                        <button
+                                            onClick={handleClearAllFavorites}
+                                            className="flex items-center gap-2 bg-red-500 text-white px-6 py-2 rounded-lg hover:bg-red-600 transition-all disabled:opacity-50"
+                                            disabled={isClearingFavorites}
+                                        >
+                                            {isClearingFavorites ? (
+                                                <>
+                                                    <Icon
+                                                        icon="mingcute:loading-line"
+                                                        className="animate-spin"
+                                                        width="20"
+                                                        height="20"
+                                                    />
+                                                    Removing...
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <Icon
+                                                        icon="mingcute:delete-2-line"
+                                                        width="20"
+                                                        height="20"
+                                                    />
+                                                    Remove All
+                                                </>
+                                            )}
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </>
+                )}
                 {/* Quick Actions */}
                 {filteredFavorites.length > 0 && (
                     <div className="mt-8 px-2 sm:hidden">
@@ -835,7 +932,7 @@ function Favorites() {
                                 </button>
                                 <button
                                     className="flex items-center gap-2 bg-red-50 text-red-600 px-4 py-2 rounded-lg hover:bg-red-100 transition-colors"
-                                    onClick={handleClearAllFavorites}
+                                    onClick={handleOpenClearModal}
                                 >
                                     <Icon
                                         icon="mingcute:delete-2-line"
