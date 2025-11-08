@@ -30,7 +30,8 @@ function Favorites() {
                         products (
                             *,
                             categories(name),
-                            profiles!products_user_id_fkey(name, address)
+                            profiles!products_user_id_fkey(name, address),
+                            reviews!reviews_product_id_fkey(rating)
                         )
                     `
                     )
@@ -46,6 +47,15 @@ function Favorites() {
                     .filter((fav) => fav.products) // Filter out any null products
                     .map((fav) => {
                         const product = fav.products;
+                        // Calculate average rating
+                        const ratings =
+                            product.reviews?.map((r) => r.rating) || [];
+                        const averageRating =
+                            ratings.length > 0
+                                ? ratings.reduce((a, b) => a + b, 0) /
+                                  ratings.length
+                                : 0;
+
                         return {
                             id: product.id,
                             name: product.name,
@@ -61,7 +71,7 @@ function Favorites() {
                                 product.profiles?.name || "Unknown Farmer",
                             description: product.description,
                             stock: parseFloat(product.stock) || 0,
-                            rating: 4.5, // We'll implement real ratings later
+                            rating: averageRating, // Real calculated rating
                             unit: product.unit || "kg",
                             minimumOrderQuantity:
                                 parseFloat(product.minimum_order_quantity) || 1,
@@ -327,13 +337,21 @@ function Favorites() {
                     <Icon icon="mingcute:left-line" width="24" height="24" />
                 </Link>
                 <h1 className="text-lg font-semibold">My Favorites</h1>
-                <Link to="/cart" className="text-gray-600 hover:text-primary">
-                    <Icon
-                        icon="mingcute:shopping-cart-1-line"
-                        width="24"
-                        height="24"
-                    />
-                </Link>
+                <div className="fixed top-0 left-0 w-full bg-white shadow-md z-50 px-4 py-3 flex justify-between items-center">
+                    <h1 className="text-lg font-semibold text-primary">
+                        AgriLink
+                    </h1>
+                    <Link
+                        to="/orders"
+                        className="text-gray-600 hover:text-primary"
+                    >
+                        <Icon
+                            icon="mingcute:truck-line"
+                            width="24"
+                            height="24"
+                        />
+                    </Link>
+                </div>
             </div>
 
             <div className="w-full max-w-6xl mx-4 sm:mx-auto my-16">
@@ -347,16 +365,44 @@ function Favorites() {
 
                 {/* Section Header */}
                 <div className="mb-6 px-2">
-                    <div className="flex items-center gap-3 mb-2">
-                        <Icon
-                            icon="mingcute:heart-fill"
-                            width="24"
-                            height="24"
-                            className="text-red-500"
-                        />
-                        <h2 className="text-xl font-bold text-gray-800">
-                            Favorite Products
-                        </h2>
+                    <div className="flex items-center w-full gap-3 mb-2 justify-between">
+                        <div className="flex items-center gap-2">
+                            <Icon
+                                icon="mingcute:heart-fill"
+                                width="24"
+                                height="24"
+                                className="text-red-500"
+                            />
+                            <h2 className="text-xl font-bold text-gray-800">
+                                Favorite Products
+                            </h2>
+                        </div>
+                        {filteredFavorites.length > 0 && (
+                            <div className="hidden flex-wrap gap-3 sm:flex">
+                                <button
+                                    onClick={handleAddAllToCart}
+                                    className="flex items-center gap-2 bg-primary text-white px-4 py-2 rounded-lg hover:bg-primary-dark transition-colors"
+                                >
+                                    <Icon
+                                        icon="mingcute:shopping-cart-1-line"
+                                        width="16"
+                                        height="16"
+                                    />
+                                    Add All to Cart
+                                </button>
+                                <button
+                                    className="flex items-center gap-2 bg-red-50 text-red-600 px-4 py-2 rounded-lg hover:bg-red-100 transition-colors"
+                                    onClick={handleClearAllFavorites}
+                                >
+                                    <Icon
+                                        icon="mingcute:delete-2-line"
+                                        width="16"
+                                        height="16"
+                                    />
+                                    Clear All
+                                </button>
+                            </div>
+                        )}
                     </div>
                     <p className="text-gray-600 text-sm">
                         {filteredFavorites.length} favorite products
@@ -511,7 +557,7 @@ function Favorites() {
 
                 {/* Quick Actions */}
                 {filteredFavorites.length > 0 && (
-                    <div className="mt-8 px-2">
+                    <div className="mt-8 px-2 sm:hidden">
                         <div className="bg-white rounded-lg shadow-md p-4">
                             <h3 className="font-semibold text-gray-800 mb-3">
                                 Quick Actions
@@ -527,14 +573,6 @@ function Favorites() {
                                         height="16"
                                     />
                                     Add All to Cart
-                                </button>
-                                <button className="flex items-center gap-2 bg-gray-100 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-200 transition-colors">
-                                    <Icon
-                                        icon="mingcute:share-2-line"
-                                        width="16"
-                                        height="16"
-                                    />
-                                    Share Favorites
                                 </button>
                                 <button
                                     className="flex items-center gap-2 bg-red-50 text-red-600 px-4 py-2 rounded-lg hover:bg-red-100 transition-colors"
