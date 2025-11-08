@@ -409,7 +409,7 @@ function AdminDashboard() {
                     <div className="space-y-4">
                         {isLoading ? (
                             // Loading skeleton
-                            Array.from({ length: 3 }).map((_, index) => (
+                            Array.from({ length: 2 }).map((_, index) => (
                                 <div
                                     key={index}
                                     className="animate-pulse flex items-center gap-4 p-4 bg-gray-50 rounded-lg"
