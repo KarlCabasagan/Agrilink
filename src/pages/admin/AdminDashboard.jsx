@@ -21,7 +21,113 @@ function AdminDashboard() {
         totalReviews: 0,
     });
     const [topProducts, setTopProducts] = useState([]);
+    const [selectedTimeRange, setSelectedTimeRange] = useState("all");
     const [isLoading, setIsLoading] = useState(true);
+
+    // Backend time range filter with Supabase
+    const fetchFilteredProducts = async (timeRange) => {
+        try {
+            setIsLoading(true);
+            // Add a small delay for smooth transition
+            await new Promise((resolve) => setTimeout(resolve, 300));
+
+            // Get all approved and active products with their orders and reviews
+            const { data: productsData, error: productsError } = await supabase
+                .from("products")
+                .select(
+                    `
+                    id,
+                    name,
+                    image_url,
+                    user_id,
+                    producer:profiles!products_user_id_fkey(name),
+                    reviews!reviews_product_id_fkey (
+                        rating
+                    ),
+                    order_items!order_items_product_id_fkey (
+                        quantity,
+                        order:orders!order_items_order_id_fkey (
+                            status_id,
+                            created_at
+                        )
+                    )
+                `
+                )
+                .not("approval_date", "is", null)
+                .eq("status_id", 1);
+
+            if (productsError) throw productsError;
+
+            // Calculate time range cutoff
+            const now = new Date();
+            let cutoff = null;
+
+            if (timeRange !== "all") {
+                cutoff = new Date();
+                switch (timeRange) {
+                    case "today":
+                        cutoff.setHours(0, 0, 0, 0);
+                        break;
+                    case "week":
+                        cutoff.setDate(now.getDate() - 7);
+                        break;
+                    case "month":
+                        cutoff.setMonth(now.getMonth() - 1);
+                        break;
+                    case "year":
+                        cutoff.setFullYear(now.getFullYear() - 1);
+                        break;
+                }
+            }
+
+            // Process the data with client-side filtering
+            const processedProducts = productsData.map((product) => {
+                // Calculate average rating
+                const ratings = product.reviews.map((r) => r.rating);
+                const avgRating =
+                    ratings.length > 0
+                        ? ratings.reduce((a, b) => a + b, 0) / ratings.length
+                        : 0;
+
+                // Calculate total sales (only from completed orders within time range)
+                const totalSales = product.order_items.reduce((sum, item) => {
+                    if (item.order?.status_id === 7) {
+                        if (
+                            timeRange === "all" ||
+                            (cutoff &&
+                                new Date(item.order.created_at) >= cutoff)
+                        ) {
+                            return sum + (item.quantity || 0);
+                        }
+                    }
+                    return sum;
+                }, 0);
+
+                return {
+                    id: product.id,
+                    name: product.name,
+                    producer: product.producer?.name || "Unknown Producer",
+                    rating: avgRating,
+                    reviews: ratings.length,
+                    sales: totalSales,
+                    image: product.image_url || "/assets/blank-profile.jpg",
+                };
+            });
+
+            // Sort by total sales and then by number of reviews
+            const sortedProducts = processedProducts
+                .filter((product) => product.sales > 0) // Only show products with sales
+                .sort((a, b) => b.sales - a.sales || b.reviews - a.reviews)
+                .slice(0, 10); // Limit to top 10 products
+
+            setTopProducts(sortedProducts);
+        } catch (error) {
+            console.error("Error fetching filtered products:", error);
+            setTopProducts([]); // Ensure empty state is shown on error
+        } finally {
+            setIsLoading(false);
+        }
+    };
 
     useEffect(() => {
         const fetchDashboardStats = async () => {
@@ -74,83 +180,14 @@ function AdminDashboard() {
 
         fetchDashboardStats();
 
-        // Fetch top approved products
-        const fetchTopProducts = async () => {
-            try {
-                // Get approved products with their reviews
-                const { data: productsData, error: productsError } =
-                    await supabase
-                        .from("products")
-                        .select(
-                            `
-                        id,
-                        name,
-                        image_url,
-                        user_id,
-                        producer:profiles!products_user_id_fkey(name),
-                        reviews!reviews_product_id_fkey (
-                            rating
-                        ),
-                        order_items!order_items_product_id_fkey (
-                            quantity,
-                            order:orders!order_items_order_id_fkey (
-                                status_id
-                            )
-                        )
-                    `
-                        )
-                        .not("approval_date", "is", null)
-                        .eq("status_id", 1) // active products
-                        .limit(10);
-
-                if (productsError) throw productsError;
-
-                // Process the data
-                const processedProducts = productsData.map((product) => {
-                    // Calculate average rating
-                    const ratings = product.reviews.map((r) => r.rating);
-                    const avgRating =
-                        ratings.length > 0
-                            ? ratings.reduce((a, b) => a + b, 0) /
-                              ratings.length
-                            : 0;
-
-                    // Calculate total sales (only from completed orders)
-                    const totalSales = product.order_items.reduce(
-                        (sum, item) => {
-                            // Check if order exists and is completed (status_id = 7)
-                            if (item.order && item.order.status_id === 7) {
-                                return sum + (item.quantity || 0);
-                            }
-                            return sum;
-                        },
-                        0
-                    );
-
-                    return {
-                        id: product.id,
-                        name: product.name,
-                        producer: product.producer?.name || "Unknown Producer",
-                        rating: avgRating,
-                        reviews: ratings.length,
-                        sales: totalSales,
-                        image: product.image_url || "/assets/blank-profile.jpg",
-                    };
-                });
-
-                // Sort by total sales and then by number of reviews
-                const sortedProducts = processedProducts.sort(
-                    (a, b) => b.sales - a.sales || b.reviews - a.reviews
-                );
-
-                setTopProducts(sortedProducts);
-            } catch (error) {
-                console.error("Error fetching top products:", error);
-            }
-        };
-
-        fetchTopProducts();
+        // Initial fetch of top products
+        fetchFilteredProducts("all");
     }, []);
+
+    // Handle time range changes
+    useEffect(() => {
+        fetchFilteredProducts(selectedTimeRange);
+    }, [selectedTimeRange]);
 
     return (
         <div className="min-h-screen w-full flex flex-col relative items-center scrollbar-hide bg-background overflow-x-hidden text-text pb-20">
@@ -334,9 +371,41 @@ function AdminDashboard() {
 
                 {/* Top Approved Products */}
                 <div className="bg-white rounded-lg shadow-md p-6">
-                    <h2 className="text-lg font-semibold text-gray-800 mb-4">
-                        Top Approved Products
-                    </h2>
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+                        <h2 className="text-lg font-semibold text-gray-800">
+                            Top Approved Products
+                        </h2>
+                        <div className="flex items-center bg-gray-50 rounded-lg p-1 border border-gray-200">
+                            {[
+                                { value: "all", label: "All Time" },
+                                { value: "today", label: "Today" },
+                                { value: "week", label: "This Week" },
+                                { value: "month", label: "This Month" },
+                                { value: "year", label: "This Year" },
+                            ].map((range) => (
+                                <button
+                                    key={range.value}
+                                    onClick={() => {
+                                        if (!isLoading) {
+                                            setSelectedTimeRange(range.value);
+                                        }
+                                    }}
+                                    className={`px-3 py-1.5 text-sm font-medium rounded-md transition-all ${
+                                        selectedTimeRange === range.value
+                                            ? "bg-white text-primary shadow-sm"
+                                            : "text-gray-600 hover:text-primary"
+                                    } ${
+                                        isLoading
+                                            ? "opacity-50 cursor-not-allowed"
+                                            : "hover:bg-gray-100"
+                                    }`}
+                                    disabled={isLoading}
+                                >
+                                    {range.label}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
                     <div className="space-y-4">
                         {isLoading ? (
                             // Loading skeleton
@@ -359,7 +428,7 @@ function AdminDashboard() {
                             ))
                         ) : topProducts.length === 0 ? (
                             <div className="text-center py-8 text-gray-500">
-                                No approved products found
+                                No products found for the selected time period
                             </div>
                         ) : (
                             topProducts.map((product) => (
