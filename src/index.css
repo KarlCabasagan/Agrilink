@@ -18,6 +18,28 @@ button[disabled],
     cursor: not-allowed !important;
 }
 
+@keyframes slide-up {
+    from {
+        transform: translate(0, 100%);
+        opacity: 0;
+    }
+    to {
+        transform: translate(0, 0);
+        opacity: 1;
+    }
+}
+
+@keyframes fade-out {
+    from {
+        transform: translate(0, 0);
+        opacity: 1;
+    }
+    to {
+        transform: translate(0, 100%);
+        opacity: 0;
+    }
+}
+
 :root {
     font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
     line-height: 1.5;

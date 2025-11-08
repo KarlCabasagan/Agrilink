@@ -11,6 +11,36 @@ function Favorites() {
     const [search, setSearch] = useState("");
     const [favoriteProducts, setFavoriteProducts] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [isAddingToCart, setIsAddingToCart] = useState(false);
+    const [addToCartResult, setAddToCartResult] = useState(null);
+
+    // Auto-dismiss toast after 5 seconds
+    useEffect(() => {
+        if (addToCartResult) {
+            const timer = setTimeout(() => {
+                setAddToCartResult(null);
+            }, 5000);
+            return () => clearTimeout(timer);
+        }
+    }, [addToCartResult]);
+
+    // Compute cart summary before opening modal
+    const getCartSummary = () => {
+        if (!filteredFavorites.length) return null;
+
+        const availableProducts = filteredFavorites.filter(
+            (product) => product.stock > 0
+        );
+        const outOfStockCount =
+            filteredFavorites.length - availableProducts.length;
+
+        return {
+            totalToAdd: availableProducts.length,
+            outOfStockCount,
+            availableProducts,
+        };
+    };
 
     // Fetch user's favorite products from database
     useEffect(() => {
@@ -201,27 +231,37 @@ function Favorites() {
         }
     };
 
-    // Handle adding all favorites to cart
-    const handleAddAllToCart = async () => {
+    // Handle opening add to cart modal
+    const handleOpenAddToCartModal = () => {
         if (!user) {
             alert("Please log in to add items to cart");
             return;
         }
 
-        if (filteredFavorites.length === 0) {
-            alert("No favorite products to add to cart");
+        const summary = getCartSummary();
+        if (!summary || summary.totalToAdd === 0) {
+            setAddToCartResult({
+                type: "error",
+                message: "No products available to add to cart",
+            });
             return;
         }
 
-        // Filter out products that are out of stock
-        const availableProducts = filteredFavorites.filter(
-            (product) => product.stock > 0
-        );
+        setIsModalOpen(true);
+        setAddToCartResult(null);
+    };
 
-        if (availableProducts.length === 0) {
-            alert("All favorite products are currently out of stock");
-            return;
-        }
+    // Handle actual cart addition
+    const handleAddAllToCart = async () => {
+        if (!user) return;
+
+        setIsAddingToCart(true);
+        setAddToCartResult(null);
+
+        const summary = getCartSummary();
+        if (!summary || summary.totalToAdd === 0) return;
+
+        const { availableProducts } = summary;
 
         try {
             // Get or create user's cart
@@ -322,10 +362,20 @@ function Favorites() {
                 message += ` (${outOfStockCount} out-of-stock items were skipped)`;
             }
 
-            alert(message);
+            setAddToCartResult({
+                type: "success",
+                message,
+            });
+            setIsModalOpen(false);
         } catch (error) {
             console.error("Error adding items to cart:", error);
-            alert("Failed to add items to cart. Please try again.");
+            setAddToCartResult({
+                type: "error",
+                message: "Failed to add items to cart",
+                error,
+            });
+        } finally {
+            setIsAddingToCart(false);
         }
     };
 
@@ -362,7 +412,6 @@ function Favorites() {
                         onChange={(e) => setSearch(e.target.value)}
                     />
                 </div>
-
                 {/* Section Header */}
                 <div className="mb-6 px-2">
                     <div className="flex items-center w-full gap-3 mb-2 justify-between">
@@ -380,7 +429,7 @@ function Favorites() {
                         {filteredFavorites.length > 0 && (
                             <div className="hidden flex-wrap gap-3 sm:flex">
                                 <button
-                                    onClick={handleAddAllToCart}
+                                    onClick={handleOpenAddToCartModal}
                                     className="flex items-center gap-2 bg-primary text-white px-4 py-2 rounded-lg hover:bg-primary-dark transition-colors"
                                 >
                                     <Icon
@@ -408,7 +457,6 @@ function Favorites() {
                         {filteredFavorites.length} favorite products
                     </p>
                 </div>
-
                 {/* Favorites Grid */}
                 <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 px-2">
                     {loading ? (
@@ -554,7 +602,132 @@ function Favorites() {
                         ))
                     )}
                 </div>
-
+                {/* Toast Notification */}
+                {addToCartResult && (
+                    <div
+                        className={`fixed bottom-20 left-1/2 -translate-x-1/2 transform px-4 py-3 rounded-lg shadow-lg 
+                            ${
+                                addToCartResult.type === "success"
+                                    ? "bg-primary text-white"
+                                    : "bg-red-00 text-white"
+                            } 
+                            flex items-center gap-3 min-w-[320px] max-w-md mx-auto z-50
+                            animate-[slide-up_0.3s_ease-out,fade-out_0.3s_ease-in_forwards_3s]`}
+                        role="alert"
+                    >
+                        <Icon
+                            icon={
+                                addToCartResult.type === "success"
+                                    ? "mingcute:check-circle-fill"
+                                    : "mingcute:warning-fill"
+                            }
+                            width="24"
+                            height="24"
+                            className="flex-shrink-0"
+                        />
+                        <p className="text-sm font-medium flex-grow">
+                            {addToCartResult.message}
+                        </p>
+                        {addToCartResult.type === "error" && (
+                            <button
+                                onClick={handleAddAllToCart}
+                                className="text-sm font-medium text-white hover:text-red-100 underline underline-offset-2 mr-2"
+                                disabled={isAddingToCart}
+                            >
+                                Retry
+                            </button>
+                        )}
+                        <button
+                            onClick={() => setAddToCartResult(null)}
+                            className="text-white/80 hover:text-white"
+                            aria-label="Close notification"
+                        >
+                            <Icon
+                                icon="mingcute:close-line"
+                                width="20"
+                                height="20"
+                            />
+                        </button>
+                    </div>
+                )}
+                {/* Add to Cart Modal */}
+                {isModalOpen && (
+                    <>
+                        <div className="fixed inset-0 bg-black opacity-50 z-[9998] flex items-center justify-center p-4" />
+                        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
+                            <div className="bg-white rounded-lg shadow-xl z-[9999] max-w-md w-full mx-auto ">
+                                <div className="p-6">
+                                    <h3 className="text-lg font-semibold text-gray-800 mb-4">
+                                        Add All to Cart
+                                    </h3>
+                                    <div className="space-y-3 mb-6">
+                                        {getCartSummary() && (
+                                            <>
+                                                <p className="text-gray-600">
+                                                    {
+                                                        getCartSummary()
+                                                            .totalToAdd
+                                                    }{" "}
+                                                    items will be added to your
+                                                    cart.
+                                                </p>
+                                                {getCartSummary()
+                                                    .outOfStockCount > 0 && (
+                                                    <p className="text-yellow-600 text-sm">
+                                                        Note:{" "}
+                                                        {
+                                                            getCartSummary()
+                                                                .outOfStockCount
+                                                        }{" "}
+                                                        items are out of stock
+                                                        and will be skipped
+                                                    </p>
+                                                )}
+                                            </>
+                                        )}
+                                    </div>
+                                    <div className="flex items-center justify-end gap-3">
+                                        <button
+                                            onClick={() =>
+                                                setIsModalOpen(false)
+                                            }
+                                            className="px-4 py-2 text-gray-600 hover:text-gray-800 font-medium disabled:opacity-50"
+                                            disabled={isAddingToCart}
+                                        >
+                                            Cancel
+                                        </button>
+                                        <button
+                                            onClick={handleAddAllToCart}
+                                            className="flex items-center gap-2 bg-primary text-white px-6 py-2 rounded-lg hover:bg-primary-dark transition-all disabled:opacity-50"
+                                            disabled={isAddingToCart}
+                                        >
+                                            {isAddingToCart ? (
+                                                <>
+                                                    <Icon
+                                                        icon="mingcute:loading-line"
+                                                        className="animate-spin"
+                                                        width="20"
+                                                        height="20"
+                                                    />
+                                                    Adding...
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <Icon
+                                                        icon="mingcute:shopping-cart-1-line"
+                                                        width="20"
+                                                        height="20"
+                                                    />
+                                                    Confirm
+                                                </>
+                                            )}
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </>
+                )}
                 {/* Quick Actions */}
                 {filteredFavorites.length > 0 && (
                     <div className="mt-8 px-2 sm:hidden">
@@ -564,7 +737,7 @@ function Favorites() {
                             </h3>
                             <div className="flex flex-wrap gap-3">
                                 <button
-                                    onClick={handleAddAllToCart}
+                                    onClick={handleOpenAddToCartModal}
                                     className="flex items-center gap-2 bg-primary text-white px-4 py-2 rounded-lg hover:bg-primary-dark transition-colors"
                                 >
                                     <Icon
