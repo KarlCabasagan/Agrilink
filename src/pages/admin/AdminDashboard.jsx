@@ -465,7 +465,7 @@ function AdminDashboard() {
                                             </span>
                                         </div>
                                         <Link
-                                            to={`/admin/product/${product.id}/reviews`}
+                                            to={`/admin/product/${product.id}`}
                                             className="text-blue-600 hover:text-blue-800 text-sm font-medium"
                                         >
                                             {product.reviews} review
