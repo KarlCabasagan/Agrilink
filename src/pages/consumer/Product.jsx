@@ -25,6 +25,9 @@ function Product() {
     const [product, setProduct] = useState(null);
     const [loading, setLoading] = useState(true);
     const [addingToCart, setAddingToCart] = useState(false);
+    // Track the user's current cart quantity for this product (in kg, 1-decimal)
+    const [currentCartQty, setCurrentCartQty] = useState(0);
+    const [loadingCartQty, setLoadingCartQty] = useState(false);
     const [modal, setModal] = useState({
         open: false,
         type: "",
@@ -592,20 +595,200 @@ function Product() {
         }
     }, [id]);
 
+    // Helper to refresh current cart quantity for this product (can be called after add/cap)
+    const refreshCartQty = async () => {
+        if (!user || !product) {
+            setCurrentCartQty(0);
+            return;
+        }
+
+        setLoadingCartQty(true);
+        try {
+            const { data: cartData, error: cartError } = await supabase
+                .from("carts")
+                .select("id")
+                .eq("user_id", user.id)
+                .single();
+
+            if (cartError && cartError.code && cartError.code !== "PGRST116") {
+                throw cartError;
+            }
+
+            if (!cartData) {
+                setCurrentCartQty(0);
+                return;
+            }
+
+            const { data: cartItem, error: itemError } = await supabase
+                .from("cart_items")
+                .select("quantity")
+                .eq("cart_id", cartData.id)
+                .eq("product_id", product.id)
+                .single();
+
+            if (itemError && itemError.code && itemError.code !== "PGRST116") {
+                throw itemError;
+            }
+
+            const qty = cartItem
+                ? Math.round(parseFloat(cartItem.quantity) * 10) / 10
+                : 0;
+            setCurrentCartQty(isNaN(qty) ? 0 : qty);
+        } catch (error) {
+            console.error("Error refreshing cart quantity:", error);
+            setCurrentCartQty(0);
+        } finally {
+            setLoadingCartQty(false);
+        }
+    };
+
+    // Refresh cart qty when user or product changes
+    useEffect(() => {
+        refreshCartQty();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [user, product]);
+
     const handleAddToCart = async () => {
         if (!user || !product) return;
 
         setAddingToCart(true);
         try {
-            const result = await addToCart(user.id, product.id, quantity);
+            // ensure numeric requested quantity (rounded to 1 decimal)
+            const requested = Math.round(parseFloat(quantity) * 10) / 10;
+            if (isNaN(requested) || requested <= 0) {
+                showModal(
+                    "error",
+                    "Invalid Quantity",
+                    "Please enter a valid quantity to add.",
+                    () => setModal((prev) => ({ ...prev, open: false }))
+                );
+                return;
+            }
 
+            // Try to find existing cart for this user
+            const { data: cartData, error: cartError } = await supabase
+                .from("carts")
+                .select("id")
+                .eq("user_id", user.id)
+                .single();
+
+            if (cartError && cartError.code && cartError.code !== "PGRST116") {
+                // unexpected error
+                throw cartError;
+            }
+
+            // If no cart exists, fallback to existing addToCart flow (which will create a cart)
+            if (!cartData) {
+                const result = await addToCart(user.id, product.id, requested);
+                if (result.success) {
+                    showModal(
+                        "success",
+                        "Item Added to Cart!",
+                        `Successfully added ${requested} kg of ${product.name} to your cart. You can continue shopping or go to cart to checkout.`,
+                        () => setModal((prev) => ({ ...prev, open: false }))
+                    );
+                } else {
+                    showModal(
+                        "error",
+                        "Error",
+                        `Error: ${result.message}`,
+                        () => setModal((prev) => ({ ...prev, open: false }))
+                    );
+                }
+                return;
+            }
+
+            // Cart exists - check for existing cart item for this product
+            const { data: existingCartItem, error: itemError } = await supabase
+                .from("cart_items")
+                .select("id, quantity")
+                .eq("cart_id", cartData.id)
+                .eq("product_id", product.id)
+                .single();
+
+            if (itemError && itemError.code && itemError.code !== "PGRST116") {
+                throw itemError;
+            }
+
+            // product.stock already available on `product` from fetch
+            const stock = Math.round(parseFloat(product.stock) * 10) / 10;
+
+            if (existingCartItem) {
+                const currentQty =
+                    Math.round(parseFloat(existingCartItem.quantity) * 10) / 10;
+
+                // If current cart quantity already exceeds stock, cap it and notify
+                if (currentQty > stock) {
+                    const { error: capError } = await supabase
+                        .from("cart_items")
+                        .update({ quantity: stock })
+                        .eq("cart_id", cartData.id)
+                        .eq("product_id", product.id);
+
+                    if (capError) throw capError;
+
+                    // Inform user the quantity was capped
+                    toast.success(
+                        `Quantity for ${product.name} was capped to available stock (${stock} kg).`
+                    );
+                    await refreshCartQty();
+                    return;
+                }
+
+                // Compute capped total and addDelta
+                const cappedTotal =
+                    Math.round(Math.min(stock, currentQty + requested) * 10) /
+                    10;
+                const addDelta =
+                    Math.round(Math.max(0, cappedTotal - currentQty) * 10) / 10;
+
+                if (addDelta <= 0) {
+                    // Nothing to add — already at or above requested cap
+                    toast(
+                        "Cart already contains the maximum available quantity for this product."
+                    );
+                    return;
+                }
+
+                // Proceed to add only the delta amount
+                const result = await addToCart(user.id, product.id, addDelta);
+                if (result.success) {
+                    showModal(
+                        "success",
+                        "Item Added to Cart!",
+                        `Successfully added ${addDelta} kg of ${product.name} to your cart (capped to stock where necessary).`,
+                        () => setModal((prev) => ({ ...prev, open: false }))
+                    );
+                    await refreshCartQty();
+                } else {
+                    showModal(
+                        "error",
+                        "Error",
+                        `Error: ${result.message}`,
+                        () => setModal((prev) => ({ ...prev, open: false }))
+                    );
+                }
+                return;
+            }
+
+            // No existing cart item - compute capped add amount
+            const capped = Math.round(Math.min(stock, requested) * 10) / 10;
+            const addDelta = Math.round(Math.max(0, capped) * 10) / 10; // currentQty is 0
+
+            if (addDelta <= 0) {
+                toast("Requested quantity exceeds available stock or is zero.");
+                return;
+            }
+
+            const result = await addToCart(user.id, product.id, addDelta);
             if (result.success) {
                 showModal(
                     "success",
                     "Item Added to Cart!",
-                    `Successfully added ${quantity} kg of ${product.name} to your cart. You can continue shopping or go to cart to checkout.`,
+                    `Successfully added ${addDelta} kg of ${product.name} to your cart.`,
                     () => setModal((prev) => ({ ...prev, open: false }))
                 );
+                await refreshCartQty();
             } else {
                 showModal("error", "Error", `Error: ${result.message}`, () =>
                     setModal((prev) => ({ ...prev, open: false }))
@@ -1020,26 +1203,46 @@ function Product() {
                         </div>
 
                         <div className="flex flex-col sm:flex-row gap-3 mb-6">
-                            <button
-                                onClick={handleAddToCart}
-                                disabled={product.stock === 0 || addingToCart}
-                                className={`flex-1 py-3 px-4 rounded-lg font-semibold flex items-center justify-center gap-2 ${
-                                    product.stock === 0 || addingToCart
-                                        ? "bg-gray-300 text-gray-500 cursor-not-allowed"
-                                        : "bg-primary text-white hover:bg-primary-dark"
-                                }`}
-                            >
-                                <Icon
-                                    icon="mingcute:shopping-cart-1-line"
-                                    width="20"
-                                    height="20"
-                                />
-                                {product.stock === 0
-                                    ? "Out of Stock"
-                                    : addingToCart
-                                    ? "Adding..."
-                                    : "Add to Cart"}
-                            </button>
+                            {(() => {
+                                const stockRounded =
+                                    Math.round(
+                                        (parseFloat(product.stock) || 0) * 10
+                                    ) / 10;
+                                const isMaxed =
+                                    stockRounded > 0 &&
+                                    currentCartQty >= stockRounded;
+                                const disabled =
+                                    stockRounded === 0 ||
+                                    addingToCart ||
+                                    isMaxed;
+
+                                return (
+                                    <>
+                                        <button
+                                            onClick={handleAddToCart}
+                                            disabled={disabled}
+                                            className={`flex-1 py-3 px-4 rounded-lg font-semibold flex items-center justify-center gap-2 ${
+                                                disabled
+                                                    ? "bg-gray-300 text-gray-500 cursor-not-allowed"
+                                                    : "bg-primary text-white hover:bg-primary-dark"
+                                            }`}
+                                        >
+                                            <Icon
+                                                icon="mingcute:shopping-cart-1-line"
+                                                width="20"
+                                                height="20"
+                                            />
+                                            {stockRounded === 0
+                                                ? "Out of Stock"
+                                                : addingToCart
+                                                ? "Adding..."
+                                                : isMaxed
+                                                ? "Max stock reached"
+                                                : "Add to Cart"}
+                                        </button>
+                                    </>
+                                );
+                            })()}
                             <button
                                 onClick={handleMessageFarmer}
                                 className="flex-1 py-3 px-4 rounded-lg font-semibold border-2 border-primary text-primary hover:bg-primary hover:text-white transition-colors flex items-center justify-center gap-2"
