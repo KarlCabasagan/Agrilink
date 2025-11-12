@@ -359,30 +359,34 @@ function Checkout() {
 
             console.log("All orders created successfully:", createdOrders);
 
-            // Clear the cart after successful order
-            const { data: userCart, error: cartFetchError } = await supabase
-                .from("carts")
-                .select("id")
-                .eq("user_id", user.id)
-                .single();
+            // Clear only the cart_items that were actually included in the checkout payload
+            // Preserve zero-quantity rows and other rows not included in the sent list.
+            const sentCartItemIds = currentCartItems
+                .filter((it) => (it.quantity || 0) > 0)
+                .map((it) => it.cartItemId)
+                .filter(Boolean);
 
-            if (cartFetchError) {
-                console.error("Error fetching user cart:", cartFetchError);
-                // Don't throw error here, order was successful
-            } else if (userCart) {
-                const { error: cartClearError } = await supabase
+            if (sentCartItemIds.length > 0) {
+                // Delete only the rows sent in the order
+                const { error: deleteError } = await supabase
                     .from("cart_items")
                     .delete()
-                    .eq("cart_id", userCart.id);
+                    .in("id", sentCartItemIds);
 
-                if (cartClearError) {
-                    console.error("Error clearing cart:", cartClearError);
-                    // Don't throw error here, order was successful
+                if (deleteError) {
+                    console.error(
+                        "Error deleting ordered cart items:",
+                        deleteError
+                    );
+                    // Do not throw; order succeeded
+                } else {
+                    console.log(
+                        `Deleted ${sentCartItemIds.length} cart_items that were ordered.`
+                    );
                 }
-
+            } else {
                 console.log(
-                    "Cart cleared successfully for cart ID:",
-                    userCart.id
+                    "No cart items to delete after order (all were zero or none were sent)."
                 );
             }
 

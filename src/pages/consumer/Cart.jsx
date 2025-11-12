@@ -1,10 +1,9 @@
-import { useState, useEffect, useContext, useRef } from "react";
+import { useState, useEffect, useContext, useRef, useMemo } from "react";
 import { Icon } from "@iconify/react";
 import { Link, useNavigate } from "react-router-dom";
 import NavigationBar from "../../components/NavigationBar";
 import Modal from "../../components/Modal";
 import supabase from "../../SupabaseClient.jsx";
-import { toast } from "react-hot-toast";
 import { AuthContext } from "../../App.jsx";
 
 function Cart() {
@@ -123,27 +122,29 @@ function Cart() {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [user]);
 
-    // Group cart items by farmer
-    const groupedByFarmer = cartItems.reduce((groups, item) => {
-        const farmerId = item.farmerId;
-        if (!groups[farmerId]) {
-            groups[farmerId] = {
-                farmerName: item.farmerName,
-                farmerId: farmerId,
-                items: [],
-                totalQuantity: 0,
-                totalPrice: 0,
-                minimumOrderQuantity: item.minimumOrderQuantity,
-                deliveryCost: item.deliveryCost,
-            };
-        }
-        groups[farmerId].items.push(item);
-        groups[farmerId].totalQuantity += item.quantity;
-        groups[farmerId].totalPrice += item.price * item.quantity;
-        return groups;
-    }, {});
+    // Memoize grouping to avoid re-computation and re-mounts
+    const farmerGroups = useMemo(() => {
+        const groups = cartItems.reduce((acc, item) => {
+            const farmerId = item.farmerId;
+            if (!acc[farmerId]) {
+                acc[farmerId] = {
+                    farmerName: item.farmerName,
+                    farmerId: farmerId,
+                    items: [],
+                    totalQuantity: 0,
+                    totalPrice: 0,
+                    minimumOrderQuantity: item.minimumOrderQuantity,
+                    deliveryCost: item.deliveryCost,
+                };
+            }
+            acc[farmerId].items.push(item);
+            acc[farmerId].totalQuantity += item.quantity;
+            acc[farmerId].totalPrice += item.price * item.quantity;
+            return acc;
+        }, {});
 
-    const farmerGroups = Object.values(groupedByFarmer);
+        return Object.values(groups);
+    }, [cartItems]);
 
     const updateQuantity = async (id, newQuantity) => {
         // Accept zero; round to 1 decimal and prevent negatives
@@ -254,8 +255,8 @@ function Cart() {
                     )
                 );
 
-                // Refresh canonical data
-                await fetchCartItems();
+                // Do NOT re-fetch canonical data here to avoid visible remounts.
+                // Rely on optimistic update and mark autocap done for this version.
                 autoCapDoneForVersionRef.current = cartVersion;
             } catch (error) {
                 console.error("Error auto-capping cart items:", error);
@@ -711,7 +712,7 @@ function Cart() {
                                         <div className="divide-y divide-gray-100">
                                             {group.items.map((item) => (
                                                 <div
-                                                    key={item.id}
+                                                    key={item.cartItemId}
                                                     className="p-4"
                                                 >
                                                     <div className="flex gap-4">
