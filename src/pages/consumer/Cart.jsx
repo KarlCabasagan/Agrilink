@@ -1,4 +1,4 @@
-import { useState, useEffect, useContext } from "react";
+import { useState, useEffect, useContext, useRef, useMemo } from "react";
 import { Icon } from "@iconify/react";
 import { Link, useNavigate } from "react-router-dom";
 import NavigationBar from "../../components/NavigationBar";
@@ -12,6 +12,8 @@ function Cart() {
     const [cartItems, setCartItems] = useState([]);
     const [loading, setLoading] = useState(true);
     const [hasInvalidItems, setHasInvalidItems] = useState(false);
+    // version increments when cart data is fetched to coordinate one-time autocap
+    const [cartVersion, setCartVersion] = useState(0);
     const [modal, setModal] = useState({
         open: false,
         type: "",
@@ -24,134 +26,139 @@ function Cart() {
         setModal({ open: true, type, title, message, onConfirm });
     };
 
-    // Fetch cart items from database
-    useEffect(() => {
-        const fetchCartItems = async () => {
-            if (!user) return;
+    // Fetch cart items from database (extracted so we can re-use it)
+    const fetchCartItems = async () => {
+        if (!user) return;
 
-            setLoading(true);
-            try {
-                const { data, error } = await supabase
-                    .from("cart_items")
-                    .select(
-                        `
-                        *,
-                        carts!cart_id(user_id),
-                        products(
-                            *,
-                            categories(name),
-                            profiles!user_id(name, address, delivery_cost, minimum_order_quantity),
-                            approval_date,
-                            status_id
-                        )
+        setLoading(true);
+        try {
+            const { data, error } = await supabase
+                .from("cart_items")
+                .select(
                     `
+                    *,
+                    carts!cart_id(user_id),
+                    products(
+                        *,
+                        categories(name),
+                        profiles!user_id(name, address, delivery_cost, minimum_order_quantity),
+                        approval_date,
+                        status_id
                     )
-                    .eq("carts.user_id", user.id)
-                    .order("created_at", { ascending: false });
+                `
+                )
+                .eq("carts.user_id", user.id)
+                .order("created_at", { ascending: false });
 
-                // Check for invalid products
-                const hasInvalid = data?.some((item) => {
-                    const product = item.products;
-                    // Convert approval_date to a standardized format for comparison
-                    const approvalDate = product?.approval_date
-                        ? new Date(product.approval_date).toISOString()
-                        : null;
-                    const defaultDate = new Date(
-                        "1970-01-01T00:00:00.000Z"
-                    ).toISOString();
+            // Check for invalid products
+            const hasInvalid = data?.some((item) => {
+                const product = item.products;
+                // Convert approval_date to a standardized format for comparison
+                const approvalDate = product?.approval_date
+                    ? new Date(product.approval_date).toISOString()
+                    : null;
+                const defaultDate = new Date(
+                    "1970-01-01T00:00:00.000Z"
+                ).toISOString();
 
-                    return (
-                        !product?.approval_date ||
-                        approvalDate.startsWith("1970-01-01T00:00:00") ||
-                        approvalDate === defaultDate ||
-                        product.status_id === 2
-                    );
-                });
+                return (
+                    !product?.approval_date ||
+                    approvalDate.startsWith("1970-01-01T00:00:00") ||
+                    approvalDate === defaultDate ||
+                    product.status_id === 2
+                );
+            });
 
-                setHasInvalidItems(hasInvalid);
+            setHasInvalidItems(hasInvalid);
 
-                if (error) {
-                    console.error("Error fetching cart items:", error);
-                    return;
-                }
-
-                console.log("Raw cart data:", data); // Debug log
-
-                const formattedCartItems = data.map((item) => ({
-                    id: item.product_id,
-                    cartItemId: item.id,
-                    name: item.products.name,
-                    price: parseFloat(item.products.price),
-                    quantity: parseFloat(item.quantity),
-                    image:
-                        item.products.image_url ||
-                        "https://via.placeholder.com/300x200?text=No+Image",
-                    farmerName:
-                        item.products.profiles?.name || "Unknown Farmer",
-                    farmerId: item.products.user_id, // Updated to use user_id
-                    products: {
-                        status_id: item.products.status_id,
-                        approval_date: item.products.approval_date,
-                    },
-                    farmerAddress:
-                        item.products.profiles?.address ||
-                        "Location not available",
-                    stock: parseFloat(item.products.stock),
-                    unit: "kg", // Default unit since not in new schema
-                    minimumOrderQuantity:
-                        parseFloat(
-                            item.products.profiles?.minimum_order_quantity
-                        ) || 1.0,
-                    deliveryCost:
-                        parseFloat(item.products.profiles?.delivery_cost) ||
-                        50.0,
-                    category: item.products.categories?.name || "Other",
-                }));
-
-                console.log("Formatted cart items:", formattedCartItems); // Debug log
-                setCartItems(formattedCartItems);
-            } catch (error) {
+            if (error) {
                 console.error("Error fetching cart items:", error);
-            } finally {
-                setLoading(false);
+                return;
             }
-        };
 
+            console.log("Raw cart data:", data); // Debug log
+
+            const formattedCartItems = data.map((item) => ({
+                id: item.product_id,
+                cartItemId: item.id,
+                name: item.products.name,
+                price: parseFloat(item.products.price),
+                quantity: parseFloat(item.quantity),
+                image:
+                    item.products.image_url ||
+                    "https://via.placeholder.com/300x200?text=No+Image",
+                farmerName: item.products.profiles?.name || "Unknown Farmer",
+                farmerId: item.products.user_id, // Updated to use user_id
+                products: {
+                    status_id: item.products.status_id,
+                    approval_date: item.products.approval_date,
+                },
+                farmerAddress:
+                    item.products.profiles?.address || "Location not available",
+                stock: parseFloat(item.products.stock),
+                unit: "kg", // Default unit since not in new schema
+                minimumOrderQuantity:
+                    parseFloat(
+                        item.products.profiles?.minimum_order_quantity
+                    ) || 1.0,
+                deliveryCost:
+                    parseFloat(item.products.profiles?.delivery_cost) || 50.0,
+                category: item.products.categories?.name || "Other",
+            }));
+
+            console.log("Formatted cart items:", formattedCartItems); // Debug log
+            setCartItems(formattedCartItems);
+            // bump cart version so autocap runs once per fetch
+            setCartVersion((v) => v + 1);
+        } catch (error) {
+            console.error("Error fetching cart items:", error);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => {
         fetchCartItems();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [user]);
 
-    // Group cart items by farmer
-    const groupedByFarmer = cartItems.reduce((groups, item) => {
-        const farmerId = item.farmerId;
-        if (!groups[farmerId]) {
-            groups[farmerId] = {
-                farmerName: item.farmerName,
-                farmerId: farmerId,
-                items: [],
-                totalQuantity: 0,
-                totalPrice: 0,
-                minimumOrderQuantity: item.minimumOrderQuantity,
-                deliveryCost: item.deliveryCost,
-            };
-        }
-        groups[farmerId].items.push(item);
-        groups[farmerId].totalQuantity += item.quantity;
-        groups[farmerId].totalPrice += item.price * item.quantity;
-        return groups;
-    }, {});
+    // Memoize grouping to avoid re-computation and re-mounts
+    const farmerGroups = useMemo(() => {
+        const groups = cartItems.reduce((acc, item) => {
+            const farmerId = item.farmerId;
+            if (!acc[farmerId]) {
+                acc[farmerId] = {
+                    farmerName: item.farmerName,
+                    farmerId: farmerId,
+                    items: [],
+                    totalQuantity: 0,
+                    totalPrice: 0,
+                    minimumOrderQuantity: item.minimumOrderQuantity,
+                    deliveryCost: item.deliveryCost,
+                };
+            }
+            acc[farmerId].items.push(item);
+            acc[farmerId].totalQuantity += item.quantity;
+            acc[farmerId].totalPrice += item.price * item.quantity;
+            return acc;
+        }, {});
 
-    const farmerGroups = Object.values(groupedByFarmer);
+        return Object.values(groups);
+    }, [cartItems]);
 
     const updateQuantity = async (id, newQuantity) => {
+        // Accept zero; round to 1 decimal and prevent negatives
         const roundedQuantity = Math.round(newQuantity * 10) / 10;
-        if (roundedQuantity < 0.1) return;
+        if (isNaN(roundedQuantity) || roundedQuantity < 0) return;
 
         const item = cartItems.find((item) => item.id === id);
         if (!item) return;
 
+        // Cap to stock defensively
         const finalQuantity = Math.min(roundedQuantity, item.stock);
 
         try {
+            // Persist zero quantities (do not delete rows)
             const { error } = await supabase
                 .from("cart_items")
                 .update({ quantity: finalQuantity })
@@ -174,15 +181,107 @@ function Cart() {
         }
     };
 
+    // Auto-cap effect: ensure cart item quantities do not exceed product stock
+    const autoCapDoneForVersionRef = useRef(0);
+    const autoCapTimerRef = useRef(null);
+    useEffect(() => {
+        // debounce and run once per cartVersion
+        if (autoCapDoneForVersionRef.current === cartVersion) return;
+        if (!cartItems || cartItems.length === 0) return;
+
+        if (autoCapTimerRef.current) clearTimeout(autoCapTimerRef.current);
+        autoCapTimerRef.current = setTimeout(async () => {
+            try {
+                const productIds = Array.from(
+                    new Set(cartItems.map((it) => it.id))
+                ).filter(Boolean);
+                if (productIds.length === 0) {
+                    autoCapDoneForVersionRef.current = cartVersion;
+                    return;
+                }
+
+                const { data: productsData, error: productsError } =
+                    await supabase
+                        .from("products")
+                        .select("id, stock")
+                        .in("id", productIds);
+
+                if (productsError) {
+                    console.error(
+                        "Error fetching product stocks:",
+                        productsError
+                    );
+                    autoCapDoneForVersionRef.current = cartVersion;
+                    return;
+                }
+
+                const stockMap = new Map();
+                (productsData || []).forEach((p) => {
+                    const s = parseFloat(p.stock);
+                    stockMap.set(p.id, isNaN(s) ? 0 : Math.round(s * 10) / 10);
+                });
+
+                // identify items that need capping
+                const toCap = [];
+                const newCartItems = cartItems.map((it) => {
+                    const stock = stockMap.has(it.id) ? stockMap.get(it.id) : 0;
+                    const capped = Math.min(
+                        Math.round(it.quantity * 10) / 10,
+                        stock
+                    );
+                    const cappedRounded = Math.round(capped * 10) / 10;
+                    if (cappedRounded !== it.quantity) {
+                        toCap.push({ ...it, capped: cappedRounded });
+                        return { ...it, quantity: cappedRounded };
+                    }
+                    return it;
+                });
+
+                if (toCap.length === 0) {
+                    autoCapDoneForVersionRef.current = cartVersion;
+                    return;
+                }
+
+                // Optimistically update local state so UI reflows smoothly
+                setCartItems(newCartItems);
+
+                // Persist caps to DB (batch via Promise.all)
+                await Promise.all(
+                    toCap.map((it) =>
+                        supabase
+                            .from("cart_items")
+                            .update({ quantity: it.capped })
+                            .eq("id", it.cartItemId)
+                    )
+                );
+
+                // Do NOT re-fetch canonical data here to avoid visible remounts.
+                // Rely on optimistic update and mark autocap done for this version.
+                autoCapDoneForVersionRef.current = cartVersion;
+            } catch (error) {
+                console.error("Error auto-capping cart items:", error);
+                autoCapDoneForVersionRef.current = cartVersion;
+            }
+        }, 300);
+
+        return () => {
+            if (autoCapTimerRef.current) clearTimeout(autoCapTimerRef.current);
+        };
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [cartVersion, cartItems]);
+
     const handleQuantityChange = (id, value) => {
         const numValue = parseFloat(value);
-        if (!isNaN(numValue) && numValue >= 0.1) {
+        // Allow zero and positive values; prevent negatives
+        if (!isNaN(numValue) && numValue >= 0) {
             const item = cartItems.find((item) => item.id === id);
-            if (numValue <= item.stock) {
-                updateQuantity(id, numValue);
-            }
+            if (!item) return;
+            // Apply stock cap; zeros allowed
+            const capped = Math.min(numValue, item.stock);
+            updateQuantity(id, Math.round(capped * 10) / 10);
         } else if (value === "") {
-            updateQuantity(id, 0.1);
+            // treat empty input as 0 for UX but persist as 0
+            updateQuantity(id, 0);
         }
     };
 
@@ -258,7 +357,10 @@ function Cart() {
     };
 
     const handleCheckout = async () => {
-        if (cartItems.length === 0) {
+        // Filter out zero-quantity items for checkout
+        const checkoutItems = cartItems.filter((it) => (it.quantity || 0) > 0);
+
+        if (checkoutItems.length === 0) {
             showModal("warning", "Empty Cart", "Your cart is empty!", () =>
                 setModal((prev) => ({ ...prev, open: false }))
             );
@@ -272,7 +374,7 @@ function Cart() {
                 .select("id, approval_date, status_id")
                 .in(
                     "id",
-                    cartItems.map((item) => item.id)
+                    checkoutItems.map((item) => item.id)
                 );
 
             if (productsError) {
@@ -349,12 +451,38 @@ function Cart() {
                 return;
             }
 
-            // Profile is complete, proceed to checkout
+            // Profile is complete, proceed to checkout with filtered items
+            // Recompute farmer groups and totals only for checkoutItems
+            const itemsByFarmer = checkoutItems.reduce((groups, item) => {
+                const farmerId = item.farmerId;
+                if (!groups[farmerId]) {
+                    groups[farmerId] = {
+                        farmerName: item.farmerName,
+                        farmerId: farmerId,
+                        items: [],
+                        totalQuantity: 0,
+                        totalPrice: 0,
+                        minimumOrderQuantity: item.minimumOrderQuantity,
+                        deliveryCost: item.deliveryCost,
+                    };
+                }
+                groups[farmerId].items.push(item);
+                groups[farmerId].totalQuantity += item.quantity;
+                groups[farmerId].totalPrice += item.price * item.quantity;
+                return groups;
+            }, {});
+
+            const checkoutFarmerGroups = Object.values(itemsByFarmer);
+            const totalAmount = checkoutItems.reduce(
+                (sum, it) => sum + it.price * it.quantity,
+                0
+            );
+
             navigate("/checkout", {
                 state: {
-                    cartItems: cartItems,
-                    totalAmount: getTotalPrice(),
-                    farmerGroups: farmerGroups,
+                    cartItems: checkoutItems,
+                    totalAmount,
+                    farmerGroups: checkoutFarmerGroups,
                 },
             });
         } catch (error) {
@@ -584,7 +712,7 @@ function Cart() {
                                         <div className="divide-y divide-gray-100">
                                             {group.items.map((item) => (
                                                 <div
-                                                    key={item.id}
+                                                    key={item.cartItemId}
                                                     className="p-4"
                                                 >
                                                     <div className="flex gap-4">
@@ -674,8 +802,8 @@ function Cart() {
                                                                             .value
                                                                     )
                                                                 }
-                                                                step="0.1"
-                                                                min="0.1"
+                                                                step="0.5"
+                                                                // min="0.1"
                                                                 max={item.stock}
                                                                 className="px-2 py-1 border border-gray-300 rounded-lg w-20 text-center focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary"
                                                             />

@@ -11,6 +11,38 @@ function Favorites() {
     const [search, setSearch] = useState("");
     const [favoriteProducts, setFavoriteProducts] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [isClearModalOpen, setIsClearModalOpen] = useState(false);
+    const [isAddingToCart, setIsAddingToCart] = useState(false);
+    const [isClearingFavorites, setIsClearingFavorites] = useState(false);
+    const [addToCartResult, setAddToCartResult] = useState(null);
+
+    // Auto-dismiss toast after 5 seconds
+    useEffect(() => {
+        if (addToCartResult) {
+            const timer = setTimeout(() => {
+                setAddToCartResult(null);
+            }, 5000);
+            return () => clearTimeout(timer);
+        }
+    }, [addToCartResult]);
+
+    // Compute cart summary before opening modal
+    const getCartSummary = () => {
+        if (!filteredFavorites.length) return null;
+
+        const availableProducts = filteredFavorites.filter(
+            (product) => product.stock > 0
+        );
+        const outOfStockCount =
+            filteredFavorites.length - availableProducts.length;
+
+        return {
+            totalToAdd: availableProducts.length,
+            outOfStockCount,
+            availableProducts,
+        };
+    };
 
     // Fetch user's favorite products from database
     useEffect(() => {
@@ -30,7 +62,8 @@ function Favorites() {
                         products (
                             *,
                             categories(name),
-                            profiles!products_user_id_fkey(name, address)
+                            profiles!products_user_id_fkey(name, address),
+                            reviews!reviews_product_id_fkey(rating)
                         )
                     `
                     )
@@ -46,6 +79,15 @@ function Favorites() {
                     .filter((fav) => fav.products) // Filter out any null products
                     .map((fav) => {
                         const product = fav.products;
+                        // Calculate average rating
+                        const ratings =
+                            product.reviews?.map((r) => r.rating) || [];
+                        const averageRating =
+                            ratings.length > 0
+                                ? ratings.reduce((a, b) => a + b, 0) /
+                                  ratings.length
+                                : 0;
+
                         return {
                             id: product.id,
                             name: product.name,
@@ -61,7 +103,7 @@ function Favorites() {
                                 product.profiles?.name || "Unknown Farmer",
                             description: product.description,
                             stock: parseFloat(product.stock) || 0,
-                            rating: 4.5, // We'll implement real ratings later
+                            rating: averageRating, // Real calculated rating
                             unit: product.unit || "kg",
                             minimumOrderQuantity:
                                 parseFloat(product.minimum_order_quantity) || 1,
@@ -159,59 +201,88 @@ function Favorites() {
         }
     };
 
-    // Handle clearing all favorites
-    const handleClearAllFavorites = async () => {
+    // Handle opening clear favorites modal
+    const handleOpenClearModal = () => {
         if (!user) {
-            alert("Please log in to clear favorites");
+            setAddToCartResult({
+                type: "error",
+                message: "Please log in to clear favorites",
+            });
             return;
         }
+        setIsClearModalOpen(true);
+    };
 
-        const confirmClear = window.confirm(
-            "Are you sure you want to remove all favorites? This action cannot be undone."
-        );
-        if (!confirmClear) return;
+    // Handle actual clearing of favorites
+    const handleClearAllFavorites = async () => {
+        if (!user) return;
 
+        setIsClearingFavorites(true);
         try {
             const { error } = await supabase
                 .from("favorites")
                 .delete()
                 .eq("user_id", user.id);
 
-            if (error) {
-                console.error("Error clearing favorites:", error);
-                alert("Failed to clear favorites. Please try again.");
-                return;
-            }
+            if (error) throw error;
 
             setFavoriteProducts([]);
-            alert("All favorites have been removed!");
+            setAddToCartResult({
+                type: "success",
+                title: "Favorites Cleared",
+                details: {
+                    actions: [
+                        {
+                            type: "clear",
+                            text: "All favorites have been removed",
+                        },
+                    ],
+                    skipped: [],
+                },
+            });
         } catch (error) {
             console.error("Error clearing favorites:", error);
-            alert("Failed to clear favorites. Please try again.");
+            setAddToCartResult({
+                type: "error",
+                message: "Failed to clear favorites. Please try again.",
+            });
+        } finally {
+            setIsClearingFavorites(false);
+            setIsClearModalOpen(false);
         }
     };
 
-    // Handle adding all favorites to cart
-    const handleAddAllToCart = async () => {
+    // Handle opening add to cart modal
+    const handleOpenAddToCartModal = () => {
         if (!user) {
             alert("Please log in to add items to cart");
             return;
         }
 
-        if (filteredFavorites.length === 0) {
-            alert("No favorite products to add to cart");
+        const summary = getCartSummary();
+        if (!summary || summary.totalToAdd === 0) {
+            setAddToCartResult({
+                type: "error",
+                message: "No products available to add to cart",
+            });
             return;
         }
 
-        // Filter out products that are out of stock
-        const availableProducts = filteredFavorites.filter(
-            (product) => product.stock > 0
-        );
+        setIsModalOpen(true);
+        setAddToCartResult(null);
+    };
 
-        if (availableProducts.length === 0) {
-            alert("All favorite products are currently out of stock");
-            return;
-        }
+    // Handle actual cart addition
+    const handleAddAllToCart = async () => {
+        if (!user) return;
+
+        setIsAddingToCart(true);
+        setAddToCartResult(null);
+
+        const summary = getCartSummary();
+        if (!summary || summary.totalToAdd === 0) return;
+
+        const { availableProducts } = summary;
 
         try {
             // Get or create user's cart
@@ -252,25 +323,34 @@ function Favorites() {
                 });
             }
 
-            // Separate products into new and existing
+            // Separate products into new and existing, tracking stock limits
             const newProducts = [];
             const existingProductsToUpdate = [];
+            const maxedOutCount = [];
 
             availableProducts.forEach((product) => {
                 if (existingProductsMap[product.id]) {
-                    // Product already exists in cart - add 1kg more
-                    existingProductsToUpdate.push({
-                        product_id: product.id,
-                        current_quantity: existingProductsMap[product.id],
-                        new_quantity: existingProductsMap[product.id] + 1,
-                    });
+                    const currentQuantity = existingProductsMap[product.id];
+                    // Only update if current quantity is less than available stock
+                    if (currentQuantity < product.stock) {
+                        existingProductsToUpdate.push({
+                            product_id: product.id,
+                            current_quantity: currentQuantity,
+                            new_quantity: currentQuantity + 1,
+                        });
+                    } else {
+                        maxedOutCount.push(product.id);
+                    }
                 } else {
-                    // New product - add with minimum order quantity
-                    newProducts.push({
-                        cart_id: cartData.id,
-                        product_id: product.id,
-                        quantity: product.minimumOrderQuantity || 1,
-                    });
+                    // New product - add with minimum order quantity if it won't exceed stock
+                    const minQuantity = product.minimumOrderQuantity || 1;
+                    if (minQuantity <= product.stock) {
+                        newProducts.push({
+                            cart_id: cartData.id,
+                            product_id: product.id,
+                            quantity: minQuantity,
+                        });
+                    }
                 }
             });
 
@@ -283,7 +363,7 @@ function Favorites() {
                 if (insertError) throw insertError;
             }
 
-            // Update existing products in cart (add 1kg to each)
+            // Update existing products in cart (add 1kg where possible)
             for (const existingProduct of existingProductsToUpdate) {
                 const { error: updateError } = await supabase
                     .from("cart_items")
@@ -298,24 +378,51 @@ function Favorites() {
                 filteredFavorites.length - availableProducts.length;
             const newItemsCount = newProducts.length;
             const updatedItemsCount = existingProductsToUpdate.length;
+            const maxedItemsCount = maxedOutCount.length;
 
-            let message = "";
-            if (newItemsCount > 0 && updatedItemsCount > 0) {
-                message = `Added ${newItemsCount} new items and updated ${updatedItemsCount} existing items (+1kg each) in cart!`;
-            } else if (newItemsCount > 0) {
-                message = `Successfully added ${newItemsCount} new items to cart!`;
-            } else if (updatedItemsCount > 0) {
-                message = `Updated ${updatedItemsCount} existing items in cart (+1kg each)!`;
-            }
-
-            if (outOfStockCount > 0) {
-                message += ` (${outOfStockCount} out-of-stock items were skipped)`;
-            }
-
-            alert(message);
+            setAddToCartResult({
+                type: "success",
+                details: {
+                    actions: [
+                        newItemsCount > 0 && {
+                            type: "new",
+                            count: newItemsCount,
+                            text: `${newItemsCount} new ${
+                                newItemsCount === 1 ? "item" : "items"
+                            } added`,
+                        },
+                        updatedItemsCount > 0 && {
+                            type: "updated",
+                            count: updatedItemsCount,
+                            text: `${updatedItemsCount} ${
+                                updatedItemsCount === 1 ? "item" : "items"
+                            } updated (+1kg each)`,
+                        },
+                    ].filter(Boolean),
+                    skipped: [
+                        outOfStockCount > 0 && {
+                            type: "out-of-stock",
+                            count: outOfStockCount,
+                            text: `${outOfStockCount} out of stock`,
+                        },
+                        maxedItemsCount > 0 && {
+                            type: "max-stock",
+                            count: maxedItemsCount,
+                            text: `${maxedItemsCount} at max stock`,
+                        },
+                    ].filter(Boolean),
+                },
+            });
+            setIsModalOpen(false);
         } catch (error) {
             console.error("Error adding items to cart:", error);
-            alert("Failed to add items to cart. Please try again.");
+            setAddToCartResult({
+                type: "error",
+                message: "Failed to add items to cart. Please try again.",
+                error,
+            });
+        } finally {
+            setIsAddingToCart(false);
         }
     };
 
@@ -327,13 +434,21 @@ function Favorites() {
                     <Icon icon="mingcute:left-line" width="24" height="24" />
                 </Link>
                 <h1 className="text-lg font-semibold">My Favorites</h1>
-                <Link to="/cart" className="text-gray-600 hover:text-primary">
-                    <Icon
-                        icon="mingcute:shopping-cart-1-line"
-                        width="24"
-                        height="24"
-                    />
-                </Link>
+                <div className="fixed top-0 left-0 w-full bg-white shadow-md z-50 px-4 py-3 flex justify-between items-center">
+                    <h1 className="text-lg font-semibold text-primary">
+                        AgriLink
+                    </h1>
+                    <Link
+                        to="/orders"
+                        className="text-gray-600 hover:text-primary"
+                    >
+                        <Icon
+                            icon="mingcute:truck-line"
+                            width="24"
+                            height="24"
+                        />
+                    </Link>
+                </div>
             </div>
 
             <div className="w-full max-w-6xl mx-4 sm:mx-auto my-16">
@@ -344,25 +459,51 @@ function Favorites() {
                         onChange={(e) => setSearch(e.target.value)}
                     />
                 </div>
-
                 {/* Section Header */}
                 <div className="mb-6 px-2">
-                    <div className="flex items-center gap-3 mb-2">
-                        <Icon
-                            icon="mingcute:heart-fill"
-                            width="24"
-                            height="24"
-                            className="text-red-500"
-                        />
-                        <h2 className="text-xl font-bold text-gray-800">
-                            Favorite Products
-                        </h2>
+                    <div className="flex items-center w-full gap-3 mb-2 justify-between">
+                        <div className="flex items-center gap-2">
+                            <Icon
+                                icon="mingcute:heart-fill"
+                                width="24"
+                                height="24"
+                                className="text-red-500"
+                            />
+                            <h2 className="text-xl font-bold text-gray-800">
+                                Favorite Products
+                            </h2>
+                        </div>
+                        {filteredFavorites.length > 0 && (
+                            <div className="hidden flex-wrap gap-3 sm:flex">
+                                <button
+                                    onClick={handleOpenAddToCartModal}
+                                    className="flex items-center gap-2 bg-primary text-white px-4 py-2 rounded-lg hover:bg-primary-dark transition-colors"
+                                >
+                                    <Icon
+                                        icon="mingcute:shopping-cart-1-line"
+                                        width="16"
+                                        height="16"
+                                    />
+                                    Add All to Cart
+                                </button>
+                                <button
+                                    className="flex items-center gap-2 bg-red-50 text-red-600 px-4 py-2 rounded-lg hover:bg-red-100 transition-colors"
+                                    onClick={handleOpenClearModal}
+                                >
+                                    <Icon
+                                        icon="mingcute:delete-2-line"
+                                        width="16"
+                                        height="16"
+                                    />
+                                    Clear All
+                                </button>
+                            </div>
+                        )}
                     </div>
                     <p className="text-gray-600 text-sm">
                         {filteredFavorites.length} favorite products
                     </p>
                 </div>
-
                 {/* Favorites Grid */}
                 <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 px-2">
                     {loading ? (
@@ -508,17 +649,278 @@ function Favorites() {
                         ))
                     )}
                 </div>
+                {/* Toast Notification */}
+                {addToCartResult && (
+                    <div
+                        className={`fixed bottom-23 left-1/2 sm:left-auto -translate-x-1/2 sm:-translate-x-0 sm:bottom-25 sm:right-8 transform px-4 py-3 rounded-lg shadow-xl
+                            ${
+                                addToCartResult.type === "success"
+                                    ? "bg-white border-l-4 border-l-primary"
+                                    : "bg-white border-l-4 border-l-red-500"
+                            }
+                            flex flex-col min-w-[320px] max-w-md z-50 animate-[slide-up_0.3s_ease-out]`}
+                        role="alert"
+                    >
+                        {/* Header */}
+                        <div className="flex items-center justify-between pb-2">
+                            <div className="flex items-center gap-2">
+                                <Icon
+                                    icon={
+                                        addToCartResult.type === "success"
+                                            ? "mingcute:check-circle-fill"
+                                            : "mingcute:warning-fill"
+                                    }
+                                    width="20"
+                                    height="20"
+                                    className={
+                                        addToCartResult.type === "success"
+                                            ? "text-primary"
+                                            : "text-red-500"
+                                    }
+                                />
+                                <h4
+                                    className={`font-medium ${
+                                        addToCartResult.type === "success"
+                                            ? "text-primary"
+                                            : "text-red-500"
+                                    }`}
+                                >
+                                    {addToCartResult.type === "success"
+                                        ? "Cart Updated Successfully"
+                                        : "Failed to Update Cart"}
+                                </h4>
+                            </div>
+                            <button
+                                onClick={() => setAddToCartResult(null)}
+                                className="text-gray-400 hover:text-gray-600"
+                                aria-label="Close notification"
+                            >
+                                <Icon
+                                    icon="mingcute:close-line"
+                                    width="18"
+                                    height="18"
+                                />
+                            </button>
+                        </div>
 
+                        {/* Content */}
+                        <div className="space-y-1.5">
+                            {addToCartResult.type === "success" ? (
+                                <>
+                                    {/* Actions Summary */}
+                                    {addToCartResult.details?.actions.map(
+                                        (action, idx) => (
+                                            <div
+                                                key={`action-${idx}`}
+                                                className="flex items-center gap-2"
+                                            >
+                                                <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-primary/10 text-primary">
+                                                    {action.text}
+                                                </span>
+                                            </div>
+                                        )
+                                    )}
+
+                                    {/* Skipped Items */}
+                                    {addToCartResult.details?.skipped.length >
+                                        0 && (
+                                        <div className="pt-1 space-y-1">
+                                            {addToCartResult.details.skipped.map(
+                                                (skip, idx) => (
+                                                    <div
+                                                        key={`skip-${idx}`}
+                                                        className="flex items-center gap-2"
+                                                    >
+                                                        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-600">
+                                                            {skip.text}
+                                                        </span>
+                                                    </div>
+                                                )
+                                            )}
+                                        </div>
+                                    )}
+                                </>
+                            ) : (
+                                <div className="flex items-center justify-between">
+                                    <p className="text-sm text-gray-600">
+                                        {addToCartResult.message}
+                                    </p>
+                                    <button
+                                        onClick={handleAddAllToCart}
+                                        className="text-sm font-medium text-red-500 hover:text-red-600 underline underline-offset-2"
+                                        disabled={isAddingToCart}
+                                    >
+                                        Retry
+                                    </button>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                )}
+                {/* Add to Cart Modal */}
+                {isModalOpen && (
+                    <>
+                        <div className="fixed inset-0 bg-black opacity-50 z-[9998] flex items-center justify-center p-4" />
+                        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
+                            <div className="bg-white rounded-lg shadow-xl z-[9999] max-w-md w-full mx-auto">
+                                <div className="p-6">
+                                    <h3 className="text-lg font-semibold text-gray-800 mb-4">
+                                        Add All to Cart
+                                    </h3>
+                                    <div className="space-y-3 mb-6">
+                                        {getCartSummary() && (
+                                            <>
+                                                <p className="text-gray-600">
+                                                    {
+                                                        getCartSummary()
+                                                            .totalToAdd
+                                                    }{" "}
+                                                    items will be added to your
+                                                    cart.
+                                                </p>
+                                                {getCartSummary()
+                                                    .outOfStockCount > 0 && (
+                                                    <p className="text-yellow-600 text-sm">
+                                                        Note:{" "}
+                                                        {
+                                                            getCartSummary()
+                                                                .outOfStockCount
+                                                        }{" "}
+                                                        items are out of stock
+                                                        and will be skipped
+                                                    </p>
+                                                )}
+                                            </>
+                                        )}
+                                    </div>
+                                    <div className="flex items-center justify-end gap-3">
+                                        <button
+                                            onClick={() =>
+                                                setIsModalOpen(false)
+                                            }
+                                            className="px-4 py-2 text-gray-600 hover:text-gray-800 font-medium disabled:opacity-50"
+                                            disabled={isAddingToCart}
+                                        >
+                                            Cancel
+                                        </button>
+                                        <button
+                                            onClick={handleAddAllToCart}
+                                            className="flex items-center gap-2 bg-primary text-white px-6 py-2 rounded-lg hover:bg-primary-dark transition-all disabled:opacity-50"
+                                            disabled={isAddingToCart}
+                                        >
+                                            {isAddingToCart ? (
+                                                <>
+                                                    <Icon
+                                                        icon="mingcute:loading-line"
+                                                        className="animate-spin"
+                                                        width="20"
+                                                        height="20"
+                                                    />
+                                                    Adding...
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <Icon
+                                                        icon="mingcute:shopping-cart-1-line"
+                                                        width="20"
+                                                        height="20"
+                                                    />
+                                                    Confirm
+                                                </>
+                                            )}
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </>
+                )}
+
+                {/* Clear Favorites Modal */}
+                {isClearModalOpen && (
+                    <>
+                        <div className="fixed inset-0 bg-black opacity-50 z-[9998] flex items-center justify-center p-4" />
+                        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
+                            <div className="bg-white rounded-lg shadow-xl z-[9999] max-w-md w-full mx-auto">
+                                <div className="p-6">
+                                    <h3 className="text-lg font-semibold text-gray-800 mb-4">
+                                        Remove All Favorites
+                                    </h3>
+                                    <div className="space-y-3 mb-6">
+                                        <div className="flex items-center gap-2 text-gray-600">
+                                            <Icon
+                                                icon="mingcute:warning-fill"
+                                                className="text-yellow-500"
+                                                width="20"
+                                                height="20"
+                                            />
+                                            <p>
+                                                Are you sure you want to remove
+                                                all favorites? This action
+                                                cannot be undone.
+                                            </p>
+                                        </div>
+                                        <p className="text-gray-500 text-sm">
+                                            You currently have{" "}
+                                            {filteredFavorites.length} favorite{" "}
+                                            {filteredFavorites.length === 1
+                                                ? "product"
+                                                : "products"}
+                                            .
+                                        </p>
+                                    </div>
+                                    <div className="flex items-center justify-end gap-3">
+                                        <button
+                                            onClick={() =>
+                                                setIsClearModalOpen(false)
+                                            }
+                                            className="px-4 py-2 text-gray-600 hover:text-gray-800 font-medium disabled:opacity-50"
+                                            disabled={isClearingFavorites}
+                                        >
+                                            Cancel
+                                        </button>
+                                        <button
+                                            onClick={handleClearAllFavorites}
+                                            className="flex items-center gap-2 bg-red-500 text-white px-6 py-2 rounded-lg hover:bg-red-600 transition-all disabled:opacity-50"
+                                            disabled={isClearingFavorites}
+                                        >
+                                            {isClearingFavorites ? (
+                                                <>
+                                                    <Icon
+                                                        icon="mingcute:loading-line"
+                                                        className="animate-spin"
+                                                        width="20"
+                                                        height="20"
+                                                    />
+                                                    Removing...
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <Icon
+                                                        icon="mingcute:delete-2-line"
+                                                        width="20"
+                                                        height="20"
+                                                    />
+                                                    Remove All
+                                                </>
+                                            )}
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </>
+                )}
                 {/* Quick Actions */}
                 {filteredFavorites.length > 0 && (
-                    <div className="mt-8 px-2">
+                    <div className="mt-8 px-2 sm:hidden">
                         <div className="bg-white rounded-lg shadow-md p-4">
                             <h3 className="font-semibold text-gray-800 mb-3">
                                 Quick Actions
                             </h3>
                             <div className="flex flex-wrap gap-3">
                                 <button
-                                    onClick={handleAddAllToCart}
+                                    onClick={handleOpenAddToCartModal}
                                     className="flex items-center gap-2 bg-primary text-white px-4 py-2 rounded-lg hover:bg-primary-dark transition-colors"
                                 >
                                     <Icon
@@ -528,17 +930,9 @@ function Favorites() {
                                     />
                                     Add All to Cart
                                 </button>
-                                <button className="flex items-center gap-2 bg-gray-100 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-200 transition-colors">
-                                    <Icon
-                                        icon="mingcute:share-2-line"
-                                        width="16"
-                                        height="16"
-                                    />
-                                    Share Favorites
-                                </button>
                                 <button
                                     className="flex items-center gap-2 bg-red-50 text-red-600 px-4 py-2 rounded-lg hover:bg-red-100 transition-colors"
-                                    onClick={handleClearAllFavorites}
+                                    onClick={handleOpenClearModal}
                                 >
                                     <Icon
                                         icon="mingcute:delete-2-line"

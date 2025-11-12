@@ -397,8 +397,8 @@ function ProducerProfile() {
                             />
                         </Link>
 
-                        <Link
-                            to="/community"
+                        <a
+                            href="https://www.facebook.com/groups/552845989323006/"
                             className="flex items-center justify-between p-4 hover:bg-gray-50 transition-colors"
                         >
                             <div className="flex items-center gap-3">
@@ -420,7 +420,7 @@ function ProducerProfile() {
                                 height="16"
                                 className="text-gray-400"
                             />
-                        </Link>
+                        </a>
                     </div>
                 </div>
 
