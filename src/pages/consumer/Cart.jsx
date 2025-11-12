@@ -143,15 +143,18 @@ function Cart() {
     const farmerGroups = Object.values(groupedByFarmer);
 
     const updateQuantity = async (id, newQuantity) => {
+        // Accept zero; round to 1 decimal and prevent negatives
         const roundedQuantity = Math.round(newQuantity * 10) / 10;
-        if (roundedQuantity < 0.1) return;
+        if (isNaN(roundedQuantity) || roundedQuantity < 0) return;
 
         const item = cartItems.find((item) => item.id === id);
         if (!item) return;
 
+        // Cap to stock defensively
         const finalQuantity = Math.min(roundedQuantity, item.stock);
 
         try {
+            // Persist zero quantities (do not delete rows)
             const { error } = await supabase
                 .from("cart_items")
                 .update({ quantity: finalQuantity })
@@ -176,13 +179,16 @@ function Cart() {
 
     const handleQuantityChange = (id, value) => {
         const numValue = parseFloat(value);
-        if (!isNaN(numValue) && numValue >= 0.1) {
+        // Allow zero and positive values; prevent negatives
+        if (!isNaN(numValue) && numValue >= 0) {
             const item = cartItems.find((item) => item.id === id);
-            if (numValue <= item.stock) {
-                updateQuantity(id, numValue);
-            }
+            if (!item) return;
+            // Apply stock cap; zeros allowed
+            const capped = Math.min(numValue, item.stock);
+            updateQuantity(id, Math.round(capped * 10) / 10);
         } else if (value === "") {
-            updateQuantity(id, 0.1);
+            // treat empty input as 0 for UX but persist as 0
+            updateQuantity(id, 0);
         }
     };
 
@@ -258,7 +264,10 @@ function Cart() {
     };
 
     const handleCheckout = async () => {
-        if (cartItems.length === 0) {
+        // Filter out zero-quantity items for checkout
+        const checkoutItems = cartItems.filter((it) => (it.quantity || 0) > 0);
+
+        if (checkoutItems.length === 0) {
             showModal("warning", "Empty Cart", "Your cart is empty!", () =>
                 setModal((prev) => ({ ...prev, open: false }))
             );
@@ -272,7 +281,7 @@ function Cart() {
                 .select("id, approval_date, status_id")
                 .in(
                     "id",
-                    cartItems.map((item) => item.id)
+                    checkoutItems.map((item) => item.id)
                 );
 
             if (productsError) {
@@ -349,12 +358,38 @@ function Cart() {
                 return;
             }
 
-            // Profile is complete, proceed to checkout
+            // Profile is complete, proceed to checkout with filtered items
+            // Recompute farmer groups and totals only for checkoutItems
+            const itemsByFarmer = checkoutItems.reduce((groups, item) => {
+                const farmerId = item.farmerId;
+                if (!groups[farmerId]) {
+                    groups[farmerId] = {
+                        farmerName: item.farmerName,
+                        farmerId: farmerId,
+                        items: [],
+                        totalQuantity: 0,
+                        totalPrice: 0,
+                        minimumOrderQuantity: item.minimumOrderQuantity,
+                        deliveryCost: item.deliveryCost,
+                    };
+                }
+                groups[farmerId].items.push(item);
+                groups[farmerId].totalQuantity += item.quantity;
+                groups[farmerId].totalPrice += item.price * item.quantity;
+                return groups;
+            }, {});
+
+            const checkoutFarmerGroups = Object.values(itemsByFarmer);
+            const totalAmount = checkoutItems.reduce(
+                (sum, it) => sum + it.price * it.quantity,
+                0
+            );
+
             navigate("/checkout", {
                 state: {
-                    cartItems: cartItems,
-                    totalAmount: getTotalPrice(),
-                    farmerGroups: farmerGroups,
+                    cartItems: checkoutItems,
+                    totalAmount,
+                    farmerGroups: checkoutFarmerGroups,
                 },
             });
         } catch (error) {
@@ -674,8 +709,8 @@ function Cart() {
                                                                             .value
                                                                     )
                                                                 }
-                                                                step="0.1"
-                                                                min="0.1"
+                                                                step="0.5"
+                                                                // min="0.1"
                                                                 max={item.stock}
                                                                 className="px-2 py-1 border border-gray-300 rounded-lg w-20 text-center focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary"
                                                             />
