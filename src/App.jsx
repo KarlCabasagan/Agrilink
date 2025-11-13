@@ -189,12 +189,18 @@ function App() {
         } = supabase.auth.onAuthStateChange((event, session) => {
             const sessionUser = session?.user || null;
 
-            setUser((prevUser) => {
-                if (JSON.stringify(prevUser) !== JSON.stringify(sessionUser)) {
-                    return sessionUser;
-                }
-                return prevUser; // no change, no re-render
-            });
+            // Skip unnecessary re-renders on USER_UPDATED (password change, etc.)
+            // Only update user state on SIGN_IN, SIGN_UP, TOKEN_REFRESHED, etc.
+            if (event !== "USER_UPDATED") {
+                setUser((prevUser) => {
+                    if (
+                        JSON.stringify(prevUser) !== JSON.stringify(sessionUser)
+                    ) {
+                        return sessionUser;
+                    }
+                    return prevUser; // no change, no re-render
+                });
+            }
 
             if (sessionUser) {
                 fetchUserRole(sessionUser.id, sessionUser);

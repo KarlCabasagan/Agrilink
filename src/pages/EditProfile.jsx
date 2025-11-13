@@ -24,6 +24,12 @@ function EditProfile() {
     const [modalOpen, setModalOpen] = useState(false);
     const [modalMessage, setModalMessage] = useState("");
 
+    // Password change state
+    const [newPassword, setNewPassword] = useState("");
+    const [confirmPassword, setConfirmPassword] = useState("");
+    const [passwordChangeLoading, setPasswordChangeLoading] = useState(false);
+    const [passwordChangeError, setPasswordChangeError] = useState("");
+
     // Avatar preview state
     const [avatarPreview, setAvatarPreview] = useState("");
     const [selectedAvatarFile, setSelectedAvatarFile] = useState(null);
@@ -37,6 +43,14 @@ function EditProfile() {
     // Validation error states
     const [nameError, setNameError] = useState("");
     const [addressError, setAddressError] = useState("");
+
+    // Initial profile data for change detection
+    const [initialProfileData, setInitialProfileData] = useState({
+        name: "",
+        address: "",
+        contact: "",
+        avatar_url: "",
+    });
 
     const fetchProfile = useCallback(async () => {
         if (!user) return;
@@ -53,12 +67,15 @@ function EditProfile() {
                 const contactDigits = data.contact
                     ? data.contact.replace(/\D/g, "").slice(2)
                     : ""; // Remove +63
-                setFormData({
+                const profileData = {
                     name: data.name || "",
                     address: data.address || "",
                     contact: contactDigits,
                     avatar_url: data.avatar_url || "",
-                });
+                };
+                setFormData(profileData);
+                // Store initial profile data for change detection
+                setInitialProfileData(profileData);
                 // Set avatar preview to show current avatar or blank profile
                 setAvatarPreview(
                     data.avatar_url || "/assets/blank-profile.jpg"
@@ -79,12 +96,14 @@ function EditProfile() {
                     });
 
                 if (!insertError) {
-                    setFormData({
+                    const emptyProfile = {
                         name: "",
                         address: "",
                         contact: "",
                         avatar_url: "",
-                    });
+                    };
+                    setFormData(emptyProfile);
+                    setInitialProfileData(emptyProfile);
                     setAddressInput("");
                 }
             } else if (error) {
@@ -230,6 +249,13 @@ function EditProfile() {
         return errors;
     };
 
+    // Check if there are unsaved changes
+    const hasUnsavedChanges =
+        formData.name !== initialProfileData.name ||
+        formData.address !== initialProfileData.address ||
+        formData.contact !== initialProfileData.contact ||
+        avatarChanged;
+
     const handleSubmit = async (e) => {
         e.preventDefault();
         if (!user) {
@@ -339,34 +365,55 @@ function EditProfile() {
         }
     };
 
-    const handlePasswordReset = async () => {
-        if (!user?.email) {
-            setModalMessage("User email not found.");
+    const handlePasswordChange = async (e) => {
+        // Handle both form submission and button click
+        if (e?.preventDefault) {
+            e.preventDefault();
+        }
+        setPasswordChangeError("");
+
+        // Validation
+        if (!newPassword.trim() || !confirmPassword.trim()) {
+            setModalMessage("Both password fields are required.");
             setModalOpen(true);
             return;
         }
 
+        if (newPassword !== confirmPassword) {
+            setModalMessage("Passwords do not match. Please try again.");
+            setModalOpen(true);
+            return;
+        }
+
+        if (newPassword.length < 6) {
+            setModalMessage("Password must be at least 6 characters long.");
+            setModalOpen(true);
+            return;
+        }
+
+        setPasswordChangeLoading(true);
+
         try {
-            const { error } = await supabase.auth.resetPasswordForEmail(
-                user.email,
-                {
-                    redirectTo: `${window.location.origin}/reset-password`,
-                }
-            );
+            const { error } = await supabase.auth.updateUser({
+                password: newPassword,
+            });
 
             if (error) {
-                setModalMessage(
-                    `Failed to send password reset email: ${error.message}`
-                );
+                setModalMessage(`Failed to update password: ${error.message}`);
+                setModalOpen(true);
             } else {
-                setModalMessage(
-                    "Password reset email sent! Please check your inbox."
-                );
+                // Clear password fields on success
+                setNewPassword("");
+                setConfirmPassword("");
+                setModalMessage("Password updated successfully.");
+                setModalOpen(true);
             }
         } catch (error) {
             setModalMessage(`An unexpected error occurred: ${error.message}`);
+            setModalOpen(true);
+        } finally {
+            setPasswordChangeLoading(false);
         }
-        setModalOpen(true);
     };
 
     // Handle file selection for avatar - only handles preview and compression
@@ -789,7 +836,7 @@ function EditProfile() {
                             {/* Security Section */}
                             <div className="border-t border-gray-100">
                                 <div className="p-6">
-                                    <h3 className="text-lg font-semibold text-gray-800 flex items-center gap-2 mb-4">
+                                    <h3 className="text-lg font-semibold text-gray-800 flex items-center gap-2 mb-6">
                                         <Icon
                                             icon="mingcute:shield-line"
                                             width="20"
@@ -799,38 +846,168 @@ function EditProfile() {
                                         Security Settings
                                     </h3>
 
-                                    <div className="bg-gradient-to-r from-red-50 to-orange-50 border border-red-200 rounded-xl p-4">
-                                        <div className="flex items-center justify-between">
-                                            <div className="flex items-start gap-3">
-                                                <div className="w-10 h-10 bg-red-100 rounded-lg flex items-center justify-center mt-1">
-                                                    <Icon
-                                                        icon="mingcute:lock-line"
-                                                        width="18"
-                                                        height="18"
-                                                        className="text-red-600"
+                                    {/* Password Change Card */}
+                                    <div className="bg-gradient-to-r from-red-50 to-orange-50 border border-red-200 rounded-2xl overflow-hidden shadow-sm">
+                                        {/* Card Header */}
+                                        <div className="bg-white border-b border-red-100 px-6 py-4 flex flex-col items-center gap-3">
+                                            <div className="w-12 h-12 bg-red-100 rounded-xl flex items-center justify-center">
+                                                <Icon
+                                                    icon="mingcute:lock-line"
+                                                    width="20"
+                                                    height="20"
+                                                    className="text-red-600"
+                                                />
+                                            </div>
+                                            <div className="text-center">
+                                                <h4 className="font-semibold text-gray-800 text-base">
+                                                    Change Password
+                                                </h4>
+                                                <p className="text-gray-500 text-sm mt-1">
+                                                    Update your password to keep
+                                                    your account secure
+                                                </p>
+                                            </div>
+                                        </div>
+
+                                        {/* Card Content */}
+                                        <div className="px-6 py-6 space-y-4">
+                                            {/* New Password Field */}
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                                    New Password
+                                                </label>
+                                                <div className="relative">
+                                                    <input
+                                                        type={
+                                                            passwordVisible
+                                                                ? "text"
+                                                                : "password"
+                                                        }
+                                                        placeholder="Enter new password"
+                                                        value={newPassword}
+                                                        onChange={(e) =>
+                                                            setNewPassword(
+                                                                e.target.value
+                                                            )
+                                                        }
+                                                        disabled={
+                                                            passwordChangeLoading ||
+                                                            loading
+                                                        }
+                                                        className="w-full px-4 py-3 border border-red-200 bg-white rounded-lg text-sm outline-none focus:border-red-500 focus:ring-2 focus:ring-red-100 transition-all"
                                                     />
-                                                </div>
-                                                <div>
-                                                    <h4 className="font-semibold text-gray-800 mb-1">
-                                                        Password Reset
-                                                    </h4>
-                                                    <p className="text-gray-600 text-sm">
-                                                        Send a password reset
-                                                        link to your email
-                                                    </p>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() =>
+                                                            setPasswordVisible(
+                                                                !passwordVisible
+                                                            )
+                                                        }
+                                                        className="absolute right-3.5 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+                                                        tabIndex="-1"
+                                                    >
+                                                        <Icon
+                                                            icon={
+                                                                passwordVisible
+                                                                    ? "mingcute:eye-line"
+                                                                    : "mingcute:eye-closed-line"
+                                                            }
+                                                            width="18"
+                                                            height="18"
+                                                        />
+                                                    </button>
                                                 </div>
                                             </div>
+
+                                            {/* Confirm Password Field */}
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                                    Confirm Password
+                                                </label>
+                                                <div className="relative">
+                                                    <input
+                                                        type={
+                                                            passwordVisible
+                                                                ? "text"
+                                                                : "password"
+                                                        }
+                                                        placeholder="Confirm new password"
+                                                        value={confirmPassword}
+                                                        onChange={(e) =>
+                                                            setConfirmPassword(
+                                                                e.target.value
+                                                            )
+                                                        }
+                                                        disabled={
+                                                            passwordChangeLoading ||
+                                                            loading
+                                                        }
+                                                        className="w-full px-4 py-3 border border-red-200 bg-white rounded-lg text-sm outline-none focus:border-red-500 focus:ring-2 focus:ring-red-100 transition-all"
+                                                    />
+                                                    <button
+                                                        type="button"
+                                                        onClick={() =>
+                                                            setPasswordVisible(
+                                                                !passwordVisible
+                                                            )
+                                                        }
+                                                        className="absolute right-3.5 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+                                                        tabIndex="-1"
+                                                    >
+                                                        <Icon
+                                                            icon={
+                                                                passwordVisible
+                                                                    ? "mingcute:eye-line"
+                                                                    : "mingcute:eye-closed-line"
+                                                            }
+                                                            width="18"
+                                                            height="18"
+                                                        />
+                                                    </button>
+                                                </div>
+                                                <p className="text-xs text-gray-500 mt-2">
+                                                    Password must be at least 6
+                                                    characters long
+                                                </p>
+                                            </div>
+                                        </div>
+
+                                        {/* Card Footer */}
+                                        <div className="bg-white border-t border-red-100 px-6 py-4 flex justify-end">
                                             <button
                                                 type="button"
-                                                onClick={handlePasswordReset}
-                                                className="bg-red-500 hover:bg-red-600 text-white px-4 py-2.5 rounded-lg text-sm font-medium transition-colors flex items-center gap-2"
+                                                onClick={handlePasswordChange}
+                                                disabled={
+                                                    passwordChangeLoading ||
+                                                    loading
+                                                }
+                                                className={`px-6 py-2.5 rounded-lg text-sm font-medium transition-all flex items-center justify-center gap-2 ${
+                                                    passwordChangeLoading ||
+                                                    loading
+                                                        ? "bg-gray-300 text-gray-500 cursor-not-allowed"
+                                                        : "bg-red-500 hover:bg-red-600 text-white"
+                                                }`}
                                             >
-                                                <Icon
-                                                    icon="mingcute:mail-send-line"
-                                                    width="16"
-                                                    height="16"
-                                                />
-                                                Reset Password
+                                                {passwordChangeLoading ? (
+                                                    <>
+                                                        <Icon
+                                                            icon="mingcute:loading-line"
+                                                            width="16"
+                                                            height="16"
+                                                            className="animate-spin"
+                                                        />
+                                                        Updating...
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        <Icon
+                                                            icon="mingcute:key-line"
+                                                            width="16"
+                                                            height="16"
+                                                        />
+                                                        Update Password
+                                                    </>
+                                                )}
                                             </button>
                                         </div>
                                     </div>
@@ -853,9 +1030,9 @@ function EditProfile() {
                                     </Link>
                                     <button
                                         type="submit"
-                                        disabled={loading}
+                                        disabled={loading || !hasUnsavedChanges}
                                         className={`flex-1 px-6 py-3.5 rounded-xl font-medium transition-all duration-200 flex items-center justify-center gap-2 transform ${
-                                            loading
+                                            loading || !hasUnsavedChanges
                                                 ? "bg-gray-300 text-gray-500 cursor-not-allowed"
                                                 : "bg-primary text-white hover:bg-primary-dark hover:shadow-lg hover:-translate-y-0.5"
                                         }`}
