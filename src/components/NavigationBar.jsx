@@ -30,7 +30,7 @@ function NavigationBar() {
 
     return (
         <div className="fixed bottom-0 left-0 w-full bg-white shadow-lg border-t border-gray-200 z-[1000]">
-            <div className="flex justify-around items-center py-3 px-4 max-w-md mx-auto">
+            <div className="flex justify-around items-center py-3 px-4 max-w-lg mx-auto">
                 <Link
                     to="/"
                     className={`flex flex-col items-center min-w-[60px] py-2 px-3 rounded-lg transition-all duration-200 ${

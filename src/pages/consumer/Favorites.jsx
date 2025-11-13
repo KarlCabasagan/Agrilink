@@ -403,12 +403,16 @@ function Favorites() {
                         outOfStockCount > 0 && {
                             type: "out-of-stock",
                             count: outOfStockCount,
-                            text: `${outOfStockCount} out of stock`,
+                            text: `${outOfStockCount} ${
+                                outOfStockCount === 1 ? "item" : "items"
+                            } out of stock`,
                         },
                         maxedItemsCount > 0 && {
                             type: "max-stock",
                             count: maxedItemsCount,
-                            text: `${maxedItemsCount} at max stock`,
+                            text: `${maxedItemsCount} ${
+                                outOfStockCount === 1 ? "item" : "items"
+                            } at max stock`,
                         },
                     ].filter(Boolean),
                 },

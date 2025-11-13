@@ -11,9 +11,9 @@ function ProducerNavigationBar() {
     const navItems = [
         {
             path: "/",
-            icon: "mingcute:home-1-line",
-            activeIcon: "mingcute:home-1-fill",
-            label: "Products",
+            icon: "mingcute:home-2-line",
+            activeIcon: "mingcute:home-2-fill",
+            label: "Home",
         },
         {
             path: "/producer/orders",
@@ -45,7 +45,7 @@ function ProducerNavigationBar() {
 
     return (
         <div className="fixed bottom-0 left-0 w-full bg-white shadow-lg border-t border-gray-200 z-[1000]">
-            <div className="flex justify-around items-center py-3 px-4 max-w-md mx-auto">
+            <div className="flex justify-around items-center py-3 px-4 max-w-lg mx-auto">
                 {navItems.map((item) => (
                     <Link
                         key={item.path}
