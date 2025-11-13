@@ -6,6 +6,14 @@ import supabase from "../../SupabaseClient";
 import { AuthContext } from "../../App.jsx";
 
 function Messages() {
+    // Helper: sort conversations by ISO timestamp `lastMessageAt` (newest first)
+    const sortByLastMessageAt = (convs) =>
+        [...convs].sort(
+            (a, b) =>
+                new Date(b.lastMessageAt || b.timestamp || 0) -
+                new Date(a.lastMessageAt || a.timestamp || 0)
+        );
+
     const { user } = useContext(AuthContext);
     const [searchParams] = useSearchParams();
     const [searchTerm, setSearchTerm] = useState("");
@@ -176,25 +184,28 @@ function Messages() {
                                 }
                             }
 
-                            // Update conversations list without full reload
+                            // Update conversations list without full reload and re-sort
                             setConversations((prev) =>
-                                prev.map((conv) =>
-                                    conv.id === newMessage.conversation_id
-                                        ? {
-                                              ...conv,
-                                              lastMessage: newMessage.body,
-                                              timestamp: formatTimestamp(
-                                                  newMessage.created_at
-                                              ),
-                                              unread:
-                                                  newMessage.sender_id !==
-                                                      user.id &&
-                                                  selectedConversation !==
-                                                      conv.id
-                                                      ? conv.unread + 1
-                                                      : conv.unread,
-                                          }
-                                        : conv
+                                sortByLastMessageAt(
+                                    prev.map((conv) =>
+                                        conv.id === newMessage.conversation_id
+                                            ? {
+                                                  ...conv,
+                                                  lastMessage: newMessage.body,
+                                                  timestamp:
+                                                      newMessage.created_at,
+                                                  lastMessageAt:
+                                                      newMessage.created_at,
+                                                  unread:
+                                                      newMessage.sender_id !==
+                                                          user.id &&
+                                                      selectedConversation !==
+                                                          conv.id
+                                                          ? conv.unread + 1
+                                                          : conv.unread,
+                                              }
+                                            : conv
+                                    )
                                 )
                             );
                         }
@@ -333,19 +344,11 @@ function Messages() {
                             msg && msg.sender_id !== user.id && !msg.is_read
                     ).length;
 
-                    // Get valid timestamp
-                    let timestamp;
-                    try {
-                        timestamp =
-                            latestMessage?.created_at || conv.created_at;
-                        // Validate the timestamp
-                        const testDate = new Date(timestamp);
-                        if (isNaN(testDate.getTime())) {
-                            timestamp = new Date().toISOString();
-                        }
-                    } catch (e) {
-                        timestamp = new Date().toISOString();
-                    }
+                    // Use ISO timestamps for sorting; fallback to conversation created_at
+                    const isoTimestamp =
+                        (latestMessage && latestMessage.created_at) ||
+                        conv.created_at ||
+                        new Date().toISOString();
 
                     return {
                         id: conv.id,
@@ -356,19 +359,14 @@ function Messages() {
                         lastMessage: latestMessage
                             ? latestMessage.body
                             : "No messages yet",
-                        timestamp: timestamp,
+                        // Store ISO for display formatting and sorting
+                        timestamp: isoTimestamp,
+                        lastMessageAt: isoTimestamp,
                         unread: unreadCount,
-                        lastMessageTime: new Date(timestamp),
                     };
                 });
-
-            // Sort conversations by the latest message time
-            const sortedConversations = formattedConversations.sort(
-                (a, b) =>
-                    new Date(b.lastMessageTime) - new Date(a.lastMessageTime)
-            );
-
-            setConversations(sortedConversations);
+            // Sort conversations by lastMessageAt (ISO) before setting state
+            setConversations(sortByLastMessageAt(formattedConversations));
         } catch (error) {
             console.error("Error fetching conversations:", error);
             setError("Failed to load conversations");
@@ -492,17 +490,19 @@ function Messages() {
             // Optimistically add to UI
             setConversationMessages((prev) => [...prev, tempMsg]);
 
-            // Optimistically update conversations list
+            // Optimistically update conversations list and re-sort
             setConversations((prev) =>
-                prev.map((conv) =>
-                    conv.id === selectedConversation
-                        ? {
-                              ...conv,
-                              lastMessage: messageText,
-                              timestamp: timestamp.toISOString(),
-                              lastMessageTime: timestamp,
-                          }
-                        : conv
+                sortByLastMessageAt(
+                    prev.map((conv) =>
+                        conv.id === selectedConversation
+                            ? {
+                                  ...conv,
+                                  lastMessage: messageText,
+                                  timestamp: timestamp.toISOString(),
+                                  lastMessageAt: timestamp.toISOString(),
+                              }
+                            : conv
+                    )
                 )
             );
 
@@ -872,18 +872,18 @@ function Messages() {
                                             <h3 className="font-semibold text-gray-800 truncate">
                                                 {conversation.farmerName}
                                             </h3>
-                                            <span className="text-xs text-gray-500">
-                                                {conversation?.timestamp
-                                                    ? formatTimestamp(
-                                                          conversation.timestamp
-                                                      )
-                                                    : "Just now"}
-                                            </span>
                                         </div>
                                         <p className="text-sm text-gray-600 truncate">
                                             {conversation.lastMessage}
                                         </p>
                                     </div>
+                                    <span className="text-xs text-gray-500">
+                                        {conversation?.timestamp
+                                            ? formatTimestamp(
+                                                  conversation.timestamp
+                                              )
+                                            : "Just now"}
+                                    </span>
                                     {conversation.unread > 0 && (
                                         <div className="bg-primary text-white text-xs w-5 h-5 flex items-center justify-center rounded-full">
                                             {conversation.unread}
