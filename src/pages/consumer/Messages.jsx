@@ -42,25 +42,49 @@ function Messages() {
 
     // Create refs for subscription and auto-scroll
     const messagesSubscriptionRef = useRef(null);
-    const messagesEndRef = useRef(null);
+    const containerRef = useRef(null);
+    const desktopContainerRef = useRef(null);
 
-    // Auto-scroll to bottom when messages change
+    // Auto-scroll to bottom of the visible scrollable container (smooth by default)
+    // Detects which ref is actually rendered: desktop (md+) or mobile (< md)
     const scrollToBottom = (smooth = true) => {
-        if (messagesEndRef.current) {
-            setTimeout(() => {
-                messagesEndRef.current.scrollIntoView({
+        // Determine which container is visible based on display state
+        let el = null;
+
+        // Check if desktop container is visible (md+ screens, not hidden)
+        if (
+            desktopContainerRef.current &&
+            desktopContainerRef.current.offsetParent !== null
+        ) {
+            el = desktopContainerRef.current;
+        }
+        // Otherwise use mobile container (visible on < md screens)
+        else if (containerRef.current) {
+            el = containerRef.current;
+        }
+
+        if (!el) return;
+
+        try {
+            if (typeof el.scrollTo === "function") {
+                el.scrollTo({
+                    top: el.scrollHeight,
                     behavior: smooth ? "smooth" : "auto",
-                    block: "end",
-                    inline: "nearest",
                 });
-            }, 100); // Small delay to ensure DOM has updated
+            } else {
+                // Fallback for older browsers
+                el.scrollTop = el.scrollHeight;
+            }
+        } catch (e) {
+            // Last resort: set scrollTop
+            el.scrollTop = el.scrollHeight;
         }
     };
 
     // Scroll to bottom when messages change
     useEffect(() => {
         if (conversationMessages.length > 0) {
-            scrollToBottom();
+            scrollToBottom(true);
         }
     }, [conversationMessages]);
 
@@ -172,8 +196,7 @@ function Messages() {
                                     return [...prev, transformedMessage];
                                 });
 
-                                // Ensure scroll to bottom happens after state update
-                                requestAnimationFrame(() => scrollToBottom());
+                                // Scroll will be handled by conversationMessages effect
 
                                 // If it's from the other person, mark as read
                                 if (newMessage.sender_id !== user.id) {
@@ -403,19 +426,88 @@ function Messages() {
                     hour: "2-digit",
                     minute: "2-digit",
                 }),
+                created_at: message.created_at,
                 senderName: message.sender.name,
                 senderAvatar: message.sender.avatar_url,
             }));
 
             setConversationMessages(transformedMessages);
 
-            // Use requestAnimationFrame to ensure scroll happens after render
-            requestAnimationFrame(() => scrollToBottom(false));
+            // Scroll to bottom with smooth animation after render
+            requestAnimationFrame(() => {
+                scrollToBottom(true);
+            });
         } catch (error) {
             console.error("Error fetching messages:", error);
         } finally {
             setLoadingMessages(false);
         }
+    };
+
+    // Helper: Get relative date label for message grouping
+    const getDateGroupLabel = (isoDateString) => {
+        if (!isoDateString) return "";
+
+        try {
+            const msgDate = new Date(isoDateString);
+            if (isNaN(msgDate.getTime())) return "";
+
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+
+            const msgDateOnly = new Date(msgDate);
+            msgDateOnly.setHours(0, 0, 0, 0);
+
+            const diffInMs = today - msgDateOnly;
+            const diffInDays = Math.floor(diffInMs / (1000 * 60 * 60 * 24));
+
+            if (diffInDays === 0) {
+                return "Today";
+            } else if (diffInDays === 1) {
+                return "Yesterday";
+            } else if (diffInDays < 7) {
+                return `${diffInDays} days ago`;
+            } else if (diffInDays < 30) {
+                const weeks = Math.floor(diffInDays / 7);
+                return `${weeks} week${weeks > 1 ? "s" : ""} ago`;
+            } else {
+                const months = Math.floor(diffInDays / 30);
+                return `${months} month${months > 1 ? "s" : ""} ago`;
+            }
+        } catch (error) {
+            console.error("Error getting date group label:", error);
+            return "";
+        }
+    };
+
+    // Helper: Group messages by calendar date and sort ascending
+    const groupMessagesByDate = (messages) => {
+        const grouped = {};
+
+        messages.forEach((message) => {
+            if (!message.created_at) return;
+            const dateKey = new Date(message.created_at).toDateString();
+            if (!grouped[dateKey]) {
+                grouped[dateKey] = {
+                    label: getDateGroupLabel(message.created_at),
+                    messages: [],
+                };
+            }
+            grouped[dateKey].messages.push(message);
+        });
+
+        // Sort keys ascending (oldest first)
+        const sortedKeys = Object.keys(grouped).sort(
+            (a, b) => new Date(a) - new Date(b)
+        );
+
+        // Return object with sorted entries
+        const sortedGrouped = {};
+        sortedKeys.forEach((key) => {
+            sortedGrouped[key] = grouped[key];
+        });
+
+        return sortedGrouped;
     };
 
     const formatTimestamp = (timestamp) => {
@@ -545,162 +637,206 @@ function Messages() {
         }
     };
 
-    if (selectedConversation) {
-        const farmer = conversations.find((c) => c.id === selectedConversation);
-
-        // Show loading state if conversations haven't been loaded yet or farmer not found
-        if (loading || !farmer) {
-            return (
-                <div className="min-h-screen w-full flex flex-col items-center justify-center bg-background">
-                    <Icon
-                        icon="mingcute:loading-line"
-                        width="40"
-                        height="40"
-                        className="text-primary mb-4 animate-spin"
-                    />
-                    <p className="text-gray-600">Loading conversation...</p>
-                </div>
-            );
-        }
-
-        return (
-            <div className="min-h-screen w-full flex flex-col relative bg-background text-text">
-                {/* Chat Header */}
-                <div className="fixed top-0 left-0 w-full bg-white shadow-md z-50 px-4 py-3 flex items-center gap-3">
-                    <button
-                        onClick={() => setSelectedConversation(null)}
-                        className="text-gray-600 hover:text-primary"
-                    >
-                        <Icon
-                            icon="mingcute:left-line"
-                            width="24"
-                            height="24"
-                        />
-                    </button>
+    // Helper: render conversation card (used in both mobile and desktop)
+    const renderConversationCard = (conversation) => (
+        <button
+            key={conversation.id}
+            onClick={() => setSelectedConversation(conversation.id)}
+            className={`w-full bg-white rounded-lg shadow-sm p-4 hover:shadow-md transition-shadow text-left ${
+                selectedConversation === conversation.id
+                    ? "ring-2 ring-primary"
+                    : ""
+            }`}
+        >
+            <div className="flex items-center gap-3">
+                <div className="relative">
                     <img
-                        src={farmer.farmerAvatar || "/assets/adel.jpg"}
-                        alt={farmer.farmerName || "Farmer"}
-                        className="w-10 h-10 rounded-full object-cover"
+                        src={
+                            conversation.farmerAvatar ||
+                            "/assets/blank-profile.jpg"
+                        }
+                        alt={conversation.farmerName}
+                        className="w-12 h-12 rounded-full object-cover"
+                        onError={(e) => {
+                            e.target.src = "/assets/blank-profile.jpg";
+                        }}
                     />
-                    <div className="flex-1">
-                        <h2 className="font-semibold text-gray-800">
-                            {farmer.farmerName || "Loading..."}
-                        </h2>
-                    </div>
                 </div>
+                <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between mb-1">
+                        <h3 className="font-semibold text-gray-800 truncate">
+                            {conversation.farmerName}
+                        </h3>
+                    </div>
+                    <p className="text-sm text-gray-600 truncate">
+                        {conversation.lastMessage}
+                    </p>
+                </div>
+                <span className="text-xs text-gray-500">
+                    {conversation?.timestamp
+                        ? formatTimestamp(conversation.timestamp)
+                        : "Just now"}
+                </span>
+                {conversation.unread > 0 && (
+                    <div className="bg-primary text-white text-xs w-5 h-5 flex items-center justify-center rounded-full">
+                        {conversation.unread}
+                    </div>
+                )}
+            </div>
+        </button>
+    );
 
-                {/* Messages */}
-                <div className="flex-1 mt-16 mb-16 px-4 py-4 overflow-y-auto">
-                    <div className="space-y-4">
-                        {loadingMessages ? (
-                            <div className="text-center py-8">
-                                <Icon
-                                    icon="mingcute:loading-line"
-                                    width="24"
-                                    height="24"
-                                    className="text-gray-400 mx-auto mb-2 animate-spin"
-                                />
-                                <p className="text-gray-500 text-sm">
-                                    Loading messages...
-                                </p>
-                            </div>
-                        ) : conversationMessages.length === 0 ? (
-                            <div className="text-center py-8">
-                                <Icon
-                                    icon="mingcute:message-3-line"
-                                    width="48"
-                                    height="48"
-                                    className="text-gray-300 mx-auto mb-2"
-                                />
-                                <p className="text-gray-500 text-sm">
-                                    No messages yet
-                                </p>
-                                <p className="text-gray-400 text-xs">
-                                    Start the conversation!
-                                </p>
-                            </div>
-                        ) : (
-                            <>
-                                {conversationMessages.map((message) => (
+    // Helper: render chat panel (used in both mobile and desktop)
+    const renderChatPanel = (farmer) => (
+        <div className="flex flex-col h-full bg-background text-text">
+            {/* Chat Header */}
+            <div className="flex-shrink-0 bg-white shadow-md px-4 py-3 flex items-center gap-3 md:rounded-t-lg">
+                <button
+                    onClick={() => setSelectedConversation(null)}
+                    className="md:hidden text-gray-600 hover:text-primary"
+                >
+                    <Icon icon="mingcute:left-line" width="24" height="24" />
+                </button>
+                <img
+                    src={farmer.farmerAvatar || "/assets/adel.jpg"}
+                    alt={farmer.farmerName || "Farmer"}
+                    className="w-10 h-10 rounded-full object-cover"
+                />
+                <div className="flex-1">
+                    <h2 className="font-semibold text-gray-800">
+                        {farmer.farmerName || "Loading..."}
+                    </h2>
+                </div>
+            </div>
+
+            {/* Messages Container */}
+            <div
+                ref={containerRef}
+                className="flex-1 px-4 py-4 overflow-y-auto pb-16"
+            >
+                <div className="space-y-4">
+                    {loadingMessages ? (
+                        <div className="text-center py-8">
+                            <Icon
+                                icon="mingcute:loading-line"
+                                width="24"
+                                height="24"
+                                className="text-gray-400 mx-auto mb-2 animate-spin"
+                            />
+                            <p className="text-gray-500 text-sm">
+                                Loading messages...
+                            </p>
+                        </div>
+                    ) : conversationMessages.length === 0 ? (
+                        <div className="text-center py-8">
+                            <Icon
+                                icon="mingcute:message-3-line"
+                                width="48"
+                                height="48"
+                                className="text-gray-300 mx-auto mb-2"
+                            />
+                            <p className="text-gray-500 text-sm">
+                                No messages yet
+                            </p>
+                            <p className="text-gray-400 text-xs">
+                                Start the conversation!
+                            </p>
+                        </div>
+                    ) : (
+                        <>
+                            {conversationMessages.map((message) => (
+                                <div
+                                    key={message.id}
+                                    className={`flex ${
+                                        message.sender === "me"
+                                            ? "justify-end"
+                                            : "justify-start"
+                                    }`}
+                                >
                                     <div
-                                        key={message.id}
-                                        className={`flex ${
+                                        className={`max-w-xs px-4 py-2 rounded-2xl ${
                                             message.sender === "me"
-                                                ? "justify-end"
-                                                : "justify-start"
+                                                ? "bg-primary text-white"
+                                                : "bg-white shadow-sm"
                                         }`}
                                     >
-                                        <div
-                                            className={`max-w-xs px-4 py-2 rounded-2xl ${
+                                        <p className="text-sm">
+                                            {message.text}
+                                        </p>
+                                        <p
+                                            className={`text-xs mt-1 ${
                                                 message.sender === "me"
-                                                    ? "bg-primary text-white"
-                                                    : "bg-white shadow-sm"
+                                                    ? "text-primary-light"
+                                                    : "text-gray-500"
                                             }`}
                                         >
-                                            <p className="text-sm">
-                                                {message.text}
-                                            </p>
-                                            <p
-                                                className={`text-xs mt-1 ${
-                                                    message.sender === "me"
-                                                        ? "text-primary-light"
-                                                        : "text-gray-500"
-                                                }`}
-                                            >
-                                                {message.timestamp}
-                                            </p>
-                                        </div>
+                                            {message.timestamp}
+                                        </p>
                                     </div>
-                                ))}
-                                <div ref={messagesEndRef} />
-                            </>
-                        )}
-                    </div>
+                                </div>
+                            ))}
+                        </>
+                    )}
                 </div>
+            </div>
 
-                {/* Message Input */}
-                <div className="fixed bottom-0 left-0 w-full bg-white border-t border-gray-200 px-4 py-3">
-                    <div className="flex items-center gap-3">
-                        <div className="flex-1 relative">
-                            <input
-                                type="text"
-                                placeholder="Type a message..."
-                                className="w-full px-4 py-2 border border-gray-300 rounded-full outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
-                                value={newMessage}
-                                onChange={(e) => setNewMessage(e.target.value)}
-                                onKeyPress={(e) =>
-                                    e.key === "Enter" && handleSendMessage()
-                                }
-                            />
-                        </div>
-                        <button
-                            onClick={handleSendMessage}
-                            className="bg-primary text-white p-2 rounded-full hover:bg-primary-dark transition-colors"
-                            disabled={!newMessage.trim()}
-                        >
-                            <Icon
-                                icon="mingcute:send-line"
-                                width="20"
-                                height="20"
-                            />
-                        </button>
+            {/* Message Input */}
+            <div className="flex-shrink-0 bg-white border-t border-gray-200 px-4 py-3 md:rounded-b-lg">
+                <div className="flex items-center gap-3">
+                    <div className="flex-1 relative">
+                        <input
+                            type="text"
+                            placeholder="Type a message..."
+                            className="w-full px-4 py-2 border border-gray-300 rounded-full outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                            value={newMessage}
+                            onChange={(e) => setNewMessage(e.target.value)}
+                            onKeyPress={(e) =>
+                                e.key === "Enter" && handleSendMessage()
+                            }
+                        />
                     </div>
+                    <button
+                        onClick={handleSendMessage}
+                        className="bg-primary text-white p-2 rounded-full hover:bg-primary-dark transition-colors"
+                        disabled={!newMessage.trim()}
+                    >
+                        <Icon
+                            icon="mingcute:send-line"
+                            width="20"
+                            height="20"
+                        />
+                    </button>
                 </div>
+            </div>
+        </div>
+    );
+
+    const farmer = conversations.find((c) => c.id === selectedConversation);
+
+    // Show loading state if conversations haven't been loaded yet or farmer not found
+    if (selectedConversation && (loading || !farmer)) {
+        return (
+            <div className="min-h-screen w-full flex flex-col items-center justify-center bg-background">
+                <Icon
+                    icon="mingcute:loading-line"
+                    width="40"
+                    height="40"
+                    className="text-primary mb-4 animate-spin"
+                />
+                <p className="text-gray-600">Loading conversation...</p>
             </div>
         );
     }
 
     return (
-        <div className="min-h-screen w-full flex flex-col relative items-center scrollbar-hide bg-background overflow-x-hidden text-text pb-20">
-            {/* Header */}
-            <div className="fixed top-0 left-0 w-full bg-white shadow-md z-50 px-4 py-3">
-                {showSearch ? (
-                    <div className="flex items-center gap-3">
+        <div className="min-h-screen w-full flex flex-col relative bg-background text-text">
+            {/* ===== MOBILE LAYOUT (md:hidden) ===== */}
+            {selectedConversation && farmer ? (
+                <div className="md:hidden h-screen w-full flex flex-col relative overflow-hidden">
+                    {/* Fixed header for mobile chat */}
+                    <div className="fixed top-0 left-0 w-full bg-white shadow-md z-50 px-4 py-3 flex items-center gap-3">
                         <button
-                            onClick={() => {
-                                setShowSearch(false);
-                                setSearchTerm("");
-                            }}
+                            onClick={() => setSelectedConversation(null)}
                             className="text-gray-600 hover:text-primary"
                         >
                             <Icon
@@ -709,193 +845,656 @@ function Messages() {
                                 height="24"
                             />
                         </button>
-                        <div className="flex-1 relative">
-                            <input
-                                type="text"
-                                placeholder="Search conversations..."
-                                value={searchTerm}
-                                onChange={(e) => setSearchTerm(e.target.value)}
-                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-primary focus:border-primary outline-none"
-                                autoFocus
-                            />
-                            {searchTerm && (
+                        <img
+                            src={farmer.farmerAvatar || "/assets/adel.jpg"}
+                            alt={farmer.farmerName || "Farmer"}
+                            className="w-10 h-10 rounded-full object-cover"
+                        />
+                        <div className="flex-1">
+                            <h2 className="font-semibold text-gray-800">
+                                {farmer.farmerName || "Loading..."}
+                            </h2>
+                        </div>
+                    </div>
+
+                    {/* Messages */}
+                    <div className="flex-1 mt-16 flex flex-col overflow-hidden">
+                        <div
+                            ref={containerRef}
+                            className="flex-1 px-4 py-4 overflow-y-auto pb-20"
+                        >
+                            <div className="space-y-4">
+                                {loadingMessages ? (
+                                    <div className="text-center py-8">
+                                        <Icon
+                                            icon="mingcute:loading-line"
+                                            width="24"
+                                            height="24"
+                                            className="text-gray-400 mx-auto mb-2 animate-spin"
+                                        />
+                                        <p className="text-gray-500 text-sm">
+                                            Loading messages...
+                                        </p>
+                                    </div>
+                                ) : conversationMessages.length === 0 ? (
+                                    <div className="text-center py-8">
+                                        <Icon
+                                            icon="mingcute:message-3-line"
+                                            width="48"
+                                            height="48"
+                                            className="text-gray-300 mx-auto mb-2"
+                                        />
+                                        <p className="text-gray-500 text-sm">
+                                            No messages yet
+                                        </p>
+                                        <p className="text-gray-400 text-xs">
+                                            Start the conversation!
+                                        </p>
+                                    </div>
+                                ) : (
+                                    <>
+                                        {Object.entries(
+                                            groupMessagesByDate(
+                                                conversationMessages
+                                            )
+                                        ).map(([dateKey, group]) => (
+                                            <div key={dateKey}>
+                                                {/* Date Separator */}
+                                                <div className="flex items-center gap-3 my-4">
+                                                    <div className="flex-1 h-px bg-gray-200"></div>
+                                                    <span className="text-xs text-gray-400 px-2">
+                                                        {group.label}
+                                                    </span>
+                                                    <div className="flex-1 h-px bg-gray-200"></div>
+                                                </div>
+
+                                                {/* Messages for this date */}
+                                                {group.messages.map(
+                                                    (message) => (
+                                                        <div
+                                                            key={message.id}
+                                                            className={`flex mb-3 ${
+                                                                message.sender ===
+                                                                "me"
+                                                                    ? "justify-end"
+                                                                    : "justify-start"
+                                                            }`}
+                                                        >
+                                                            <div
+                                                                className={`max-w-xs px-4 py-2 rounded-2xl ${
+                                                                    message.sender ===
+                                                                    "me"
+                                                                        ? "bg-primary text-white"
+                                                                        : "bg-white shadow-sm"
+                                                                }`}
+                                                            >
+                                                                <p className="text-sm">
+                                                                    {
+                                                                        message.text
+                                                                    }
+                                                                </p>
+                                                                <p
+                                                                    className={`text-xs mt-1 ${
+                                                                        message.sender ===
+                                                                        "me"
+                                                                            ? "text-primary-light"
+                                                                            : "text-gray-500"
+                                                                    }`}
+                                                                >
+                                                                    {
+                                                                        message.timestamp
+                                                                    }
+                                                                </p>
+                                                            </div>
+                                                        </div>
+                                                    )
+                                                )}
+                                            </div>
+                                        ))}
+                                    </>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Message Input */}
+                    <div className="fixed bottom-0 left-0 w-full bg-white border-t border-gray-200 px-4 py-3">
+                        <div className="flex items-center gap-3">
+                            <div className="flex-1 relative">
+                                <input
+                                    type="text"
+                                    placeholder="Type a message..."
+                                    className="w-full px-4 py-2 border border-gray-300 rounded-full outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                                    value={newMessage}
+                                    onChange={(e) =>
+                                        setNewMessage(e.target.value)
+                                    }
+                                    onKeyPress={(e) =>
+                                        e.key === "Enter" && handleSendMessage()
+                                    }
+                                />
+                            </div>
+                            <button
+                                onClick={handleSendMessage}
+                                className="bg-primary text-white p-2 rounded-full hover:bg-primary-dark transition-colors"
+                                disabled={!newMessage.trim()}
+                            >
+                                <Icon
+                                    icon="mingcute:send-line"
+                                    width="20"
+                                    height="20"
+                                />
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            ) : (
+                <div className="md:hidden min-h-screen w-full flex flex-col relative items-center scrollbar-hide bg-background overflow-x-hidden text-text pb-20">
+                    {/* Header */}
+                    <div className="fixed top-0 left-0 w-full bg-white shadow-md z-50 px-4 py-3">
+                        {showSearch ? (
+                            <div className="flex items-center gap-3">
                                 <button
-                                    onClick={() => setSearchTerm("")}
-                                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                                    onClick={() => {
+                                        setShowSearch(false);
+                                        setSearchTerm("");
+                                    }}
+                                    className="text-gray-600 hover:text-primary"
                                 >
                                     <Icon
-                                        icon="mingcute:close-line"
-                                        width="16"
-                                        height="16"
+                                        icon="mingcute:left-line"
+                                        width="24"
+                                        height="24"
                                     />
                                 </button>
+                                <div className="flex-1 relative">
+                                    <input
+                                        type="text"
+                                        placeholder="Search conversations..."
+                                        value={searchTerm}
+                                        onChange={(e) =>
+                                            setSearchTerm(e.target.value)
+                                        }
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-primary focus:border-primary outline-none"
+                                        autoFocus
+                                    />
+                                    {searchTerm && (
+                                        <button
+                                            onClick={() => setSearchTerm("")}
+                                            className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                                        >
+                                            <Icon
+                                                icon="mingcute:close-line"
+                                                width="16"
+                                                height="16"
+                                            />
+                                        </button>
+                                    )}
+                                </div>
+                            </div>
+                        ) : (
+                            <div className="flex justify-between items-center">
+                                <Link
+                                    to="/"
+                                    className="text-gray-600 hover:text-primary"
+                                >
+                                    <Icon
+                                        icon="mingcute:left-line"
+                                        width="24"
+                                        height="24"
+                                    />
+                                </Link>
+                                <h1 className="text-lg font-semibold">
+                                    Messages
+                                </h1>
+                                <button
+                                    onClick={() => setShowSearch(true)}
+                                    className="text-gray-600 hover:text-primary"
+                                >
+                                    <Icon
+                                        icon="mingcute:search-line"
+                                        width="24"
+                                        height="24"
+                                    />
+                                </button>
+                            </div>
+                        )}
+                    </div>
+
+                    <div className="w-full max-w-2xl mx-4 sm:mx-auto my-16">
+                        {loading ? (
+                            <div className="flex flex-col items-center justify-center py-16">
+                                <Icon
+                                    icon="mingcute:loading-line"
+                                    width="40"
+                                    height="40"
+                                    className="text-primary mb-4 animate-spin"
+                                />
+                                <p className="text-gray-600">
+                                    Loading conversations...
+                                </p>
+                            </div>
+                        ) : error ? (
+                            <div className="flex flex-col items-center justify-center py-16">
+                                <Icon
+                                    icon="mingcute:alert-triangle-line"
+                                    width="60"
+                                    height="60"
+                                    className="text-red-500 mb-4"
+                                />
+                                <h2 className="text-xl font-bold text-gray-700 mb-2">
+                                    Error Loading Messages
+                                </h2>
+                                <p className="text-gray-500 text-center mb-6">
+                                    {error}
+                                </p>
+                                <button
+                                    onClick={fetchConversations}
+                                    className="bg-primary text-white px-6 py-3 rounded-lg hover:bg-primary-dark transition-colors font-medium"
+                                >
+                                    Try Again
+                                </button>
+                            </div>
+                        ) : conversations.length === 0 ? (
+                            <div className="flex flex-col items-center justify-center py-16">
+                                <Icon
+                                    icon="mingcute:message-3-line"
+                                    width="80"
+                                    height="80"
+                                    className="text-gray-300 mb-4"
+                                />
+                                <h2 className="text-xl font-bold text-gray-600 mb-2">
+                                    No messages yet
+                                </h2>
+                                <p className="text-gray-500 text-center mb-6">
+                                    Start a conversation with farmers about
+                                    their products!
+                                </p>
+                                <Link
+                                    to="/"
+                                    className="bg-primary text-white px-6 py-3 rounded-lg hover:bg-primary-dark transition-colors font-medium"
+                                >
+                                    Browse Products
+                                </Link>
+                            </div>
+                        ) : filteredConversations.length === 0 ? (
+                            <div className="flex flex-col items-center justify-center py-16">
+                                <Icon
+                                    icon="mingcute:search-line"
+                                    width="80"
+                                    height="80"
+                                    className="text-gray-300 mb-4"
+                                />
+                                <h2 className="text-xl font-bold text-gray-600 mb-2">
+                                    No conversations found
+                                </h2>
+                                <p className="text-gray-500 text-center mb-6">
+                                    Try adjusting your search terms
+                                </p>
+                                <button
+                                    onClick={() => setSearchTerm("")}
+                                    className="bg-primary text-white px-6 py-3 rounded-lg hover:bg-primary-dark transition-colors font-medium"
+                                >
+                                    Clear Search
+                                </button>
+                            </div>
+                        ) : (
+                            <div className="space-y-2">
+                                {searchTerm && (
+                                    <div className="px-4 py-2 text-sm text-gray-600 bg-gray-50 rounded-lg">
+                                        Showing {filteredConversations.length}{" "}
+                                        of {conversations.length} conversations
+                                    </div>
+                                )}
+                                {filteredConversations.map(
+                                    renderConversationCard
+                                )}
+                            </div>
+                        )}
+                    </div>
+                    <NavigationBar />
+                </div>
+            )}
+
+            {/* ===== DESKTOP LAYOUT (hidden md:flex) ===== */}
+            <div className="hidden md:flex h-[calc(100vh-80px)] w-full flex-col gap-0">
+                <div className="flex-1 flex gap-0 overflow-hidden">
+                    {/* Left Column: Conversations List */}
+                    <div className="w-1/3 border-r border-gray-200 flex flex-col bg-white overflow-hidden">
+                        {/* Header */}
+                        <div className="flex-shrink-0 bg-white px-4 py-3 border-b border-gray-200">
+                            <div className="flex items-center justify-between">
+                                <h1 className="text-lg font-semibold">
+                                    Messages
+                                </h1>
+                                <button
+                                    onClick={() => setShowSearch(!showSearch)}
+                                    className="text-gray-600 hover:text-primary"
+                                >
+                                    <Icon
+                                        icon="mingcute:search-line"
+                                        width="24"
+                                        height="24"
+                                    />
+                                </button>
+                            </div>
+                            {showSearch && (
+                                <div className="mt-3 relative">
+                                    <input
+                                        type="text"
+                                        placeholder="Search conversations..."
+                                        value={searchTerm}
+                                        onChange={(e) =>
+                                            setSearchTerm(e.target.value)
+                                        }
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-primary focus:border-primary outline-none"
+                                        autoFocus
+                                    />
+                                    {searchTerm && (
+                                        <button
+                                            onClick={() => setSearchTerm("")}
+                                            className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                                        >
+                                            <Icon
+                                                icon="mingcute:close-line"
+                                                width="16"
+                                                height="16"
+                                            />
+                                        </button>
+                                    )}
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Conversations List */}
+                        <div className="flex-1 overflow-y-auto">
+                            {loading ? (
+                                <div className="flex flex-col items-center justify-center h-full py-16">
+                                    <Icon
+                                        icon="mingcute:loading-line"
+                                        width="40"
+                                        height="40"
+                                        className="text-primary mb-4 animate-spin"
+                                    />
+                                    <p className="text-gray-600">
+                                        Loading conversations...
+                                    </p>
+                                </div>
+                            ) : error ? (
+                                <div className="flex flex-col items-center justify-center h-full py-16 px-4">
+                                    <Icon
+                                        icon="mingcute:alert-triangle-line"
+                                        width="60"
+                                        height="60"
+                                        className="text-red-500 mb-4"
+                                    />
+                                    <p className="text-gray-500 text-center text-sm">
+                                        {error}
+                                    </p>
+                                </div>
+                            ) : conversations.length === 0 ? (
+                                <div className="flex flex-col items-center justify-center h-full py-16 px-4">
+                                    <Icon
+                                        icon="mingcute:message-3-line"
+                                        width="60"
+                                        height="60"
+                                        className="text-gray-300 mb-4"
+                                    />
+                                    <p className="text-gray-500 text-center text-sm">
+                                        No conversations yet
+                                    </p>
+                                </div>
+                            ) : filteredConversations.length === 0 ? (
+                                <div className="flex flex-col items-center justify-center h-full py-16 px-4">
+                                    <Icon
+                                        icon="mingcute:search-line"
+                                        width="60"
+                                        height="60"
+                                        className="text-gray-300 mb-4"
+                                    />
+                                    <p className="text-gray-500 text-center text-sm">
+                                        No conversations found
+                                    </p>
+                                </div>
+                            ) : (
+                                <div className="space-y-1 p-2">
+                                    {filteredConversations.map(
+                                        (conversation) => (
+                                            <button
+                                                key={conversation.id}
+                                                onClick={() =>
+                                                    setSelectedConversation(
+                                                        conversation.id
+                                                    )
+                                                }
+                                                className={`w-full text-left px-3 py-3 rounded-lg transition-colors ${
+                                                    selectedConversation ===
+                                                    conversation.id
+                                                        ? "bg-primary bg-opacity-10 border-l-4 border-primary"
+                                                        : "hover:bg-gray-100"
+                                                }`}
+                                            >
+                                                <div className="flex items-center gap-3">
+                                                    <img
+                                                        src={
+                                                            conversation.farmerAvatar ||
+                                                            "/assets/blank-profile.jpg"
+                                                        }
+                                                        alt={
+                                                            conversation.farmerName
+                                                        }
+                                                        className="w-10 h-10 rounded-full object-cover"
+                                                        onError={(e) => {
+                                                            e.target.src =
+                                                                "/assets/blank-profile.jpg";
+                                                        }}
+                                                    />
+                                                    <div className="flex-1 min-w-0">
+                                                        <p className="font-semibold text-gray-800 text-sm truncate">
+                                                            {
+                                                                conversation.farmerName
+                                                            }
+                                                        </p>
+                                                        <p className="text-xs text-gray-600 truncate">
+                                                            {
+                                                                conversation.lastMessage
+                                                            }
+                                                        </p>
+                                                    </div>
+                                                    <div className="flex flex-col items-end gap-1">
+                                                        <span className="text-xs text-gray-500">
+                                                            {conversation?.timestamp
+                                                                ? formatTimestamp(
+                                                                      conversation.timestamp
+                                                                  )
+                                                                : "Just now"}
+                                                        </span>
+                                                        {conversation.unread >
+                                                            0 && (
+                                                            <div className="bg-primary text-white text-xs w-5 h-5 flex items-center justify-center rounded-full">
+                                                                {
+                                                                    conversation.unread
+                                                                }
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            </button>
+                                        )
+                                    )}
+                                </div>
                             )}
                         </div>
                     </div>
-                ) : (
-                    <div className="flex justify-between items-center">
-                        <Link
-                            to="/"
-                            className="text-gray-600 hover:text-primary"
-                        >
-                            <Icon
-                                icon="mingcute:left-line"
-                                width="24"
-                                height="24"
-                            />
-                        </Link>
-                        <h1 className="text-lg font-semibold">Messages</h1>
-                        <button
-                            onClick={() => setShowSearch(true)}
-                            className="text-gray-600 hover:text-primary"
-                        >
-                            <Icon
-                                icon="mingcute:search-line"
-                                width="24"
-                                height="24"
-                            />
-                        </button>
-                    </div>
-                )}
-            </div>
 
-            <div className="w-full max-w-2xl mx-4 sm:mx-auto my-16">
-                {loading ? (
-                    <div className="flex flex-col items-center justify-center py-16">
-                        <Icon
-                            icon="mingcute:loading-line"
-                            width="40"
-                            height="40"
-                            className="text-primary mb-4 animate-spin"
-                        />
-                        <p className="text-gray-600">
-                            Loading conversations...
-                        </p>
-                    </div>
-                ) : error ? (
-                    <div className="flex flex-col items-center justify-center py-16">
-                        <Icon
-                            icon="mingcute:alert-triangle-line"
-                            width="60"
-                            height="60"
-                            className="text-red-500 mb-4"
-                        />
-                        <h2 className="text-xl font-bold text-gray-700 mb-2">
-                            Error Loading Messages
-                        </h2>
-                        <p className="text-gray-500 text-center mb-6">
-                            {error}
-                        </p>
-                        <button
-                            onClick={fetchConversations}
-                            className="bg-primary text-white px-6 py-3 rounded-lg hover:bg-primary-dark transition-colors font-medium"
-                        >
-                            Try Again
-                        </button>
-                    </div>
-                ) : conversations.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center py-16">
-                        <Icon
-                            icon="mingcute:message-3-line"
-                            width="80"
-                            height="80"
-                            className="text-gray-300 mb-4"
-                        />
-                        <h2 className="text-xl font-bold text-gray-600 mb-2">
-                            No messages yet
-                        </h2>
-                        <p className="text-gray-500 text-center mb-6">
-                            Start a conversation with farmers about their
-                            products!
-                        </p>
-                        <Link
-                            to="/"
-                            className="bg-primary text-white px-6 py-3 rounded-lg hover:bg-primary-dark transition-colors font-medium"
-                        >
-                            Browse Products
-                        </Link>
-                    </div>
-                ) : filteredConversations.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center py-16">
-                        <Icon
-                            icon="mingcute:search-line"
-                            width="80"
-                            height="80"
-                            className="text-gray-300 mb-4"
-                        />
-                        <h2 className="text-xl font-bold text-gray-600 mb-2">
-                            No conversations found
-                        </h2>
-                        <p className="text-gray-500 text-center mb-6">
-                            Try adjusting your search terms
-                        </p>
-                        <button
-                            onClick={() => setSearchTerm("")}
-                            className="bg-primary text-white px-6 py-3 rounded-lg hover:bg-primary-dark transition-colors font-medium"
-                        >
-                            Clear Search
-                        </button>
-                    </div>
-                ) : (
-                    <div className="space-y-2">
-                        {searchTerm && (
-                            <div className="px-4 py-2 text-sm text-gray-600 bg-gray-50 rounded-lg">
-                                Showing {filteredConversations.length} of{" "}
-                                {conversations.length} conversations
+                    {/* Right Column: Chat Panel */}
+                    {selectedConversation && farmer ? (
+                        <div className="flex-1 flex flex-col overflow-hidden bg-background">
+                            {/* Chat Header */}
+                            <div className="flex-shrink-0 bg-white shadow-sm px-4 py-3 flex items-center gap-3 border-b border-gray-200">
+                                <img
+                                    src={
+                                        farmer.farmerAvatar ||
+                                        "/assets/adel.jpg"
+                                    }
+                                    alt={farmer.farmerName || "Farmer"}
+                                    className="w-10 h-10 rounded-full object-cover"
+                                />
+                                <div className="flex-1">
+                                    <h2 className="font-semibold text-gray-800">
+                                        {farmer.farmerName || "Loading..."}
+                                    </h2>
+                                </div>
                             </div>
-                        )}
-                        {filteredConversations.map((conversation) => (
-                            <button
-                                key={conversation.id}
-                                onClick={() =>
-                                    setSelectedConversation(conversation.id)
-                                }
-                                className="w-full bg-white rounded-lg shadow-sm p-4 hover:shadow-md transition-shadow text-left"
+
+                            {/* Messages Container */}
+                            <div
+                                ref={desktopContainerRef}
+                                className="flex-1 px-4 py-4 overflow-y-auto"
                             >
-                                <div className="flex items-center gap-3">
-                                    <div className="relative">
-                                        <img
-                                            src={
-                                                conversation.farmerAvatar ||
-                                                "/assets/blank-profile.jpg"
-                                            }
-                                            alt={conversation.farmerName}
-                                            className="w-12 h-12 rounded-full object-cover"
-                                            onError={(e) => {
-                                                e.target.src =
-                                                    "/assets/blank-profile.jpg";
-                                            }}
-                                        />
-                                    </div>
-                                    <div className="flex-1 min-w-0">
-                                        <div className="flex items-center justify-between mb-1">
-                                            <h3 className="font-semibold text-gray-800 truncate">
-                                                {conversation.farmerName}
-                                            </h3>
+                                <div className="space-y-4">
+                                    {loadingMessages ? (
+                                        <div className="text-center py-8">
+                                            <Icon
+                                                icon="mingcute:loading-line"
+                                                width="24"
+                                                height="24"
+                                                className="text-gray-400 mx-auto mb-2 animate-spin"
+                                            />
+                                            <p className="text-gray-500 text-sm">
+                                                Loading messages...
+                                            </p>
                                         </div>
-                                        <p className="text-sm text-gray-600 truncate">
-                                            {conversation.lastMessage}
-                                        </p>
-                                    </div>
-                                    <span className="text-xs text-gray-500">
-                                        {conversation?.timestamp
-                                            ? formatTimestamp(
-                                                  conversation.timestamp
-                                              )
-                                            : "Just now"}
-                                    </span>
-                                    {conversation.unread > 0 && (
-                                        <div className="bg-primary text-white text-xs w-5 h-5 flex items-center justify-center rounded-full">
-                                            {conversation.unread}
+                                    ) : conversationMessages.length === 0 ? (
+                                        <div className="text-center py-8">
+                                            <Icon
+                                                icon="mingcute:message-3-line"
+                                                width="48"
+                                                height="48"
+                                                className="text-gray-300 mx-auto mb-2"
+                                            />
+                                            <p className="text-gray-500 text-sm">
+                                                No messages yet
+                                            </p>
+                                            <p className="text-gray-400 text-xs">
+                                                Start the conversation!
+                                            </p>
                                         </div>
+                                    ) : (
+                                        <>
+                                            {Object.entries(
+                                                groupMessagesByDate(
+                                                    conversationMessages
+                                                )
+                                            ).map(([dateKey, group]) => (
+                                                <div key={dateKey}>
+                                                    {/* Date Separator */}
+                                                    <div className="flex items-center gap-3 my-4">
+                                                        <div className="flex-1 h-px bg-gray-200"></div>
+                                                        <span className="text-xs text-gray-400 px-2">
+                                                            {group.label}
+                                                        </span>
+                                                        <div className="flex-1 h-px bg-gray-200"></div>
+                                                    </div>
+
+                                                    {/* Messages for this date */}
+                                                    {group.messages.map(
+                                                        (message) => (
+                                                            <div
+                                                                key={message.id}
+                                                                className={`flex mb-3 ${
+                                                                    message.sender ===
+                                                                    "me"
+                                                                        ? "justify-end"
+                                                                        : "justify-start"
+                                                                }`}
+                                                            >
+                                                                <div
+                                                                    className={`max-w-xs px-4 py-2 rounded-2xl ${
+                                                                        message.sender ===
+                                                                        "me"
+                                                                            ? "bg-primary text-white"
+                                                                            : "bg-white shadow-sm"
+                                                                    }`}
+                                                                >
+                                                                    <p className="text-sm">
+                                                                        {
+                                                                            message.text
+                                                                        }
+                                                                    </p>
+                                                                    <p
+                                                                        className={`text-xs mt-1 ${
+                                                                            message.sender ===
+                                                                            "me"
+                                                                                ? "text-primary-light"
+                                                                                : "text-gray-500"
+                                                                        }`}
+                                                                    >
+                                                                        {
+                                                                            message.timestamp
+                                                                        }
+                                                                    </p>
+                                                                </div>
+                                                            </div>
+                                                        )
+                                                    )}
+                                                </div>
+                                            ))}
+                                        </>
                                     )}
                                 </div>
-                            </button>
-                        ))}
-                    </div>
-                )}
+                            </div>
+
+                            {/* Message Input */}
+                            <div className="flex-shrink-0 bg-white border-t border-gray-200 px-4 py-3">
+                                <div className="flex items-center gap-3">
+                                    <div className="flex-1 relative">
+                                        <input
+                                            type="text"
+                                            placeholder="Type a message..."
+                                            className="w-full px-4 py-2 border border-gray-300 rounded-full outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                                            value={newMessage}
+                                            onChange={(e) =>
+                                                setNewMessage(e.target.value)
+                                            }
+                                            onKeyPress={(e) =>
+                                                e.key === "Enter" &&
+                                                handleSendMessage()
+                                            }
+                                        />
+                                    </div>
+                                    <button
+                                        onClick={handleSendMessage}
+                                        className="bg-primary text-white p-2 rounded-full hover:bg-primary-dark transition-colors"
+                                        disabled={!newMessage.trim()}
+                                    >
+                                        <Icon
+                                            icon="mingcute:send-line"
+                                            width="20"
+                                            height="20"
+                                        />
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    ) : (
+                        <div className="flex-1 flex items-center justify-center bg-gray-50">
+                            <div className="text-center">
+                                <Icon
+                                    icon="mingcute:message-3-line"
+                                    width="80"
+                                    height="80"
+                                    className="text-gray-300 mb-4 mx-auto"
+                                />
+                                <p className="text-gray-500">
+                                    Select a conversation to start messaging
+                                </p>
+                            </div>
+                        </div>
+                    )}
+                </div>
+                <NavigationBar />
             </div>
-            <NavigationBar />
         </div>
     );
 }

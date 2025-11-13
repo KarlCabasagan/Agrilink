@@ -798,14 +798,14 @@ function ProducerMessages() {
                                             <h3 className="font-semibold text-gray-800 truncate">
                                                 {conversation.customerName}
                                             </h3>
-                                            <span className="text-xs text-gray-500">
-                                                {conversation.timestamp}
-                                            </span>
                                         </div>
                                         <p className="text-sm text-gray-600 truncate">
                                             {conversation.lastMessage}
                                         </p>
                                     </div>
+                                    <span className="text-xs text-gray-500">
+                                        {conversation.timestamp}
+                                    </span>
                                     {conversation.unread > 0 && (
                                         <div className="bg-primary text-white text-xs w-5 h-5 flex items-center justify-center rounded-full">
                                             {conversation.unread}
