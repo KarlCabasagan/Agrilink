@@ -43,6 +43,7 @@ function EditProfile() {
     // Validation error states
     const [nameError, setNameError] = useState("");
     const [addressError, setAddressError] = useState("");
+    const [contactError, setContactError] = useState("");
 
     // Initial profile data for change detection
     const [initialProfileData, setInitialProfileData] = useState({
@@ -224,6 +225,7 @@ function EditProfile() {
         // Reset error states
         setNameError("");
         setAddressError("");
+        setContactError("");
 
         // Check if name is empty
         if (!formData.name.trim()) {
@@ -244,6 +246,12 @@ function EditProfile() {
                     "Please select a valid barangay from the dropdown options"
                 );
             }
+        }
+
+        // Check if contact number is exactly 10 digits
+        if (formData.contact && formData.contact.length !== 10) {
+            setContactError("Contact number must be 10 digits long");
+            errors.push("Contact number must be 10 digits long");
         }
 
         return errors;
@@ -820,16 +828,27 @@ function EditProfile() {
                                             maxLength={13}
                                         />
                                     </div>
-                                    <div className="flex items-center gap-2 text-gray-500 text-sm bg-gray-50 p-3 rounded-lg">
-                                        <Icon
-                                            icon="mingcute:information-line"
-                                            width="16"
-                                            height="16"
-                                            className="text-gray-400"
-                                        />
-                                        Enter your 10-digit mobile number
-                                        (without +63)
-                                    </div>
+                                    {contactError ? (
+                                        <div className="flex items-center gap-2 text-red-600 text-sm bg-red-50 p-3 rounded-lg">
+                                            <Icon
+                                                icon="mingcute:alert-circle-fill"
+                                                width="16"
+                                                height="16"
+                                            />
+                                            {contactError}
+                                        </div>
+                                    ) : (
+                                        <div className="flex items-center gap-2 text-gray-500 text-sm bg-gray-50 p-3 rounded-lg">
+                                            <Icon
+                                                icon="mingcute:information-line"
+                                                width="16"
+                                                height="16"
+                                                className="text-gray-400"
+                                            />
+                                            Enter your 10-digit mobile number
+                                            (without +63)
+                                        </div>
+                                    )}
                                 </div>
                             </div>
 
@@ -1022,11 +1041,11 @@ function EditProfile() {
                                         className="flex-1 text-center bg-gray-100 text-gray-700 px-6 py-3.5 rounded-xl hover:bg-gray-200 transition-colors font-medium flex items-center justify-center gap-2"
                                     >
                                         <Icon
-                                            icon="mingcute:close-line"
+                                            icon="mingcute:left-line"
                                             width="18"
                                             height="18"
                                         />
-                                        Cancel
+                                        Return to Profile
                                     </Link>
                                     <button
                                         type="submit"
