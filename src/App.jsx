@@ -13,6 +13,7 @@ import {
     useLocation,
     useNavigate,
 } from "react-router-dom";
+import { CartCountProvider } from "./context/CartCountContext.jsx";
 
 import Home from "./pages/consumer/Home";
 import ProducerHome from "./pages/producer/ProducerHome";
@@ -354,246 +355,251 @@ function App() {
 
     return (
         <AuthContext.Provider value={authContextValue}>
-            <Router>
-                <EmailVerificationHandler />
-                <Routes>
-                    <Route
-                        path="/login"
-                        element={
-                            <AuthRoute>
-                                <Login />
-                            </AuthRoute>
-                        }
-                    />
-                    <Route
-                        path="/register"
-                        element={
-                            <AuthRoute>
-                                <Register />
-                            </AuthRoute>
-                        }
-                    />
-                    <Route
-                        path="/verify-account"
-                        element={
-                            <AuthRoute allowUnverified={true}>
-                                <VerifyAccount />
-                            </AuthRoute>
-                        }
-                    />
-                    <Route path="/reset-password" element={<PasswordReset />} />
-                    <Route
-                        path="/account-verified"
-                        element={
-                            <PrivateRoute>
-                                <AccountVerified />
-                            </PrivateRoute>
-                        }
-                    />
+            <CartCountProvider user={user}>
+                <Router>
+                    <EmailVerificationHandler />
+                    <Routes>
+                        <Route
+                            path="/login"
+                            element={
+                                <AuthRoute>
+                                    <Login />
+                                </AuthRoute>
+                            }
+                        />
+                        <Route
+                            path="/register"
+                            element={
+                                <AuthRoute>
+                                    <Register />
+                                </AuthRoute>
+                            }
+                        />
+                        <Route
+                            path="/verify-account"
+                            element={
+                                <AuthRoute allowUnverified={true}>
+                                    <VerifyAccount />
+                                </AuthRoute>
+                            }
+                        />
+                        <Route
+                            path="/reset-password"
+                            element={<PasswordReset />}
+                        />
+                        <Route
+                            path="/account-verified"
+                            element={
+                                <PrivateRoute>
+                                    <AccountVerified />
+                                </PrivateRoute>
+                            }
+                        />
 
-                    {/* Role-based routes */}
-                    <Route
-                        path="/"
-                        element={
-                            <PrivateRoute>
-                                <RoleBasedHome />
-                            </PrivateRoute>
-                        }
-                    />
-                    <Route
-                        path="/profile"
-                        element={
-                            <PrivateRoute>
-                                <RoleBasedProfile />
-                            </PrivateRoute>
-                        }
-                    />
-                    <Route
-                        path="/messages"
-                        element={
-                            <PrivateRoute>
-                                <RoleBasedMessages />
-                            </PrivateRoute>
-                        }
-                    />
+                        {/* Role-based routes */}
+                        <Route
+                            path="/"
+                            element={
+                                <PrivateRoute>
+                                    <RoleBasedHome />
+                                </PrivateRoute>
+                            }
+                        />
+                        <Route
+                            path="/profile"
+                            element={
+                                <PrivateRoute>
+                                    <RoleBasedProfile />
+                                </PrivateRoute>
+                            }
+                        />
+                        <Route
+                            path="/messages"
+                            element={
+                                <PrivateRoute>
+                                    <RoleBasedMessages />
+                                </PrivateRoute>
+                            }
+                        />
 
-                    {/* Consumer-only routes */}
-                    <Route
-                        path="/favorites"
-                        element={
-                            <RoleGuard allowedRoles={[1]}>
-                                <Favorites />
-                            </RoleGuard>
-                        }
-                    />
-                    <Route
-                        path="/cart"
-                        element={
-                            <RoleGuard allowedRoles={[1]}>
-                                <Cart />
-                            </RoleGuard>
-                        }
-                    />
-                    <Route
-                        path="/orders"
-                        element={
-                            <RoleGuard allowedRoles={[1]}>
-                                <Orders />
-                            </RoleGuard>
-                        }
-                    />
-                    <Route
-                        path="/checkout"
-                        element={
-                            <RoleGuard allowedRoles={[1]}>
-                                <Checkout />
-                            </RoleGuard>
-                        }
-                    />
-                    <Route
-                        path="/seller-application"
-                        element={
-                            <RoleGuard allowedRoles={[1]}>
-                                <SellerApplication />
-                            </RoleGuard>
-                        }
-                    />
-                    <Route
-                        path="/product/:id"
-                        element={
-                            <RoleGuard allowedRoles={[1]}>
-                                <Product />
-                            </RoleGuard>
-                        }
-                    />
+                        {/* Consumer-only routes */}
+                        <Route
+                            path="/favorites"
+                            element={
+                                <RoleGuard allowedRoles={[1]}>
+                                    <Favorites />
+                                </RoleGuard>
+                            }
+                        />
+                        <Route
+                            path="/cart"
+                            element={
+                                <RoleGuard allowedRoles={[1]}>
+                                    <Cart />
+                                </RoleGuard>
+                            }
+                        />
+                        <Route
+                            path="/orders"
+                            element={
+                                <RoleGuard allowedRoles={[1]}>
+                                    <Orders />
+                                </RoleGuard>
+                            }
+                        />
+                        <Route
+                            path="/checkout"
+                            element={
+                                <RoleGuard allowedRoles={[1]}>
+                                    <Checkout />
+                                </RoleGuard>
+                            }
+                        />
+                        <Route
+                            path="/seller-application"
+                            element={
+                                <RoleGuard allowedRoles={[1]}>
+                                    <SellerApplication />
+                                </RoleGuard>
+                            }
+                        />
+                        <Route
+                            path="/product/:id"
+                            element={
+                                <RoleGuard allowedRoles={[1]}>
+                                    <Product />
+                                </RoleGuard>
+                            }
+                        />
 
-                    {/* Producer-only routes */}
-                    <Route
-                        path="/producer/product/:id"
-                        element={
-                            <RoleGuard allowedRoles={[2]}>
-                                <ProducerProduct />
-                            </RoleGuard>
-                        }
-                    />
-                    <Route
-                        path="/producer/orders"
-                        element={
-                            <RoleGuard allowedRoles={[2]}>
-                                <ProducerOrders />
-                            </RoleGuard>
-                        }
-                    />
-                    <Route
-                        path="/crop-recommendation"
-                        element={
-                            <RoleGuard allowedRoles={[2]}>
-                                <CropRecommendation />
-                            </RoleGuard>
-                        }
-                    />
-                    <Route
-                        path="/farming-guides"
-                        element={
-                            <RoleGuard allowedRoles={[2]}>
-                                <FarmingGuides />
-                            </RoleGuard>
-                        }
-                    />
+                        {/* Producer-only routes */}
+                        <Route
+                            path="/producer/product/:id"
+                            element={
+                                <RoleGuard allowedRoles={[2]}>
+                                    <ProducerProduct />
+                                </RoleGuard>
+                            }
+                        />
+                        <Route
+                            path="/producer/orders"
+                            element={
+                                <RoleGuard allowedRoles={[2]}>
+                                    <ProducerOrders />
+                                </RoleGuard>
+                            }
+                        />
+                        <Route
+                            path="/crop-recommendation"
+                            element={
+                                <RoleGuard allowedRoles={[2]}>
+                                    <CropRecommendation />
+                                </RoleGuard>
+                            }
+                        />
+                        <Route
+                            path="/farming-guides"
+                            element={
+                                <RoleGuard allowedRoles={[2]}>
+                                    <FarmingGuides />
+                                </RoleGuard>
+                            }
+                        />
 
-                    {/* Admin-only routes */}
-                    <Route
-                        path="/admin"
-                        element={
-                            <RoleGuard allowedRoles={[3]}>
-                                <AdminDashboard />
-                            </RoleGuard>
-                        }
-                    />
-                    <Route
-                        path="/admin/dashboard"
-                        element={
-                            <RoleGuard allowedRoles={[3]}>
-                                <AdminDashboard />
-                            </RoleGuard>
-                        }
-                    />
-                    <Route
-                        path="/admin/users"
-                        element={
-                            <RoleGuard allowedRoles={[3]}>
-                                <AdminUserManagement />
-                            </RoleGuard>
-                        }
-                    />
-                    <Route
-                        path="/admin/products"
-                        element={
-                            <RoleGuard allowedRoles={[3]}>
-                                <AdminProductManagement />
-                            </RoleGuard>
-                        }
-                    />
-                    <Route
-                        path="/admin/product/:productId"
-                        element={
-                            <RoleGuard allowedRoles={[3]}>
-                                <AdminProductReviews />
-                            </RoleGuard>
-                        }
-                    />
-                    <Route
-                        path="/admin/messages"
-                        element={
-                            <RoleGuard allowedRoles={[3]}>
-                                <AdminMessages />
-                            </RoleGuard>
-                        }
-                    />
-                    <Route
-                        path="/admin/transactions"
-                        element={
-                            <RoleGuard allowedRoles={[3]}>
-                                <AdminTransactions />
-                            </RoleGuard>
-                        }
-                    />
-                    <Route
-                        path="/admin/crops"
-                        element={
-                            <RoleGuard allowedRoles={[3]}>
-                                <AdminCropManagement />
-                            </RoleGuard>
-                        }
-                    />
+                        {/* Admin-only routes */}
+                        <Route
+                            path="/admin"
+                            element={
+                                <RoleGuard allowedRoles={[3]}>
+                                    <AdminDashboard />
+                                </RoleGuard>
+                            }
+                        />
+                        <Route
+                            path="/admin/dashboard"
+                            element={
+                                <RoleGuard allowedRoles={[3]}>
+                                    <AdminDashboard />
+                                </RoleGuard>
+                            }
+                        />
+                        <Route
+                            path="/admin/users"
+                            element={
+                                <RoleGuard allowedRoles={[3]}>
+                                    <AdminUserManagement />
+                                </RoleGuard>
+                            }
+                        />
+                        <Route
+                            path="/admin/products"
+                            element={
+                                <RoleGuard allowedRoles={[3]}>
+                                    <AdminProductManagement />
+                                </RoleGuard>
+                            }
+                        />
+                        <Route
+                            path="/admin/product/:productId"
+                            element={
+                                <RoleGuard allowedRoles={[3]}>
+                                    <AdminProductReviews />
+                                </RoleGuard>
+                            }
+                        />
+                        <Route
+                            path="/admin/messages"
+                            element={
+                                <RoleGuard allowedRoles={[3]}>
+                                    <AdminMessages />
+                                </RoleGuard>
+                            }
+                        />
+                        <Route
+                            path="/admin/transactions"
+                            element={
+                                <RoleGuard allowedRoles={[3]}>
+                                    <AdminTransactions />
+                                </RoleGuard>
+                            }
+                        />
+                        <Route
+                            path="/admin/crops"
+                            element={
+                                <RoleGuard allowedRoles={[3]}>
+                                    <AdminCropManagement />
+                                </RoleGuard>
+                            }
+                        />
 
-                    {/* Shared routes */}
-                    <Route
-                        path="/edit-profile"
-                        element={
-                            <PrivateRoute>
-                                <EditProfile />
-                            </PrivateRoute>
-                        }
-                    />
-                    <Route
-                        path="/business-settings"
-                        element={
-                            <PrivateRoute>
-                                <ThesisOnlyPage />
-                            </PrivateRoute>
-                        }
-                    />
-                    <Route
-                        path="/sales-analytics"
-                        element={
-                            <PrivateRoute>
-                                <ThesisOnlyPage />
-                            </PrivateRoute>
-                        }
-                    />
-                </Routes>
-            </Router>
+                        {/* Shared routes */}
+                        <Route
+                            path="/edit-profile"
+                            element={
+                                <PrivateRoute>
+                                    <EditProfile />
+                                </PrivateRoute>
+                            }
+                        />
+                        <Route
+                            path="/business-settings"
+                            element={
+                                <PrivateRoute>
+                                    <ThesisOnlyPage />
+                                </PrivateRoute>
+                            }
+                        />
+                        <Route
+                            path="/sales-analytics"
+                            element={
+                                <PrivateRoute>
+                                    <ThesisOnlyPage />
+                                </PrivateRoute>
+                            }
+                        />
+                    </Routes>
+                </Router>
+            </CartCountProvider>
         </AuthContext.Provider>
     );
 }

@@ -2,31 +2,14 @@ import { Link, useLocation } from "react-router-dom";
 import { Icon } from "@iconify/react";
 import { useState, useEffect, useContext } from "react";
 import { AuthContext } from "../App.jsx";
-import { getCartCount } from "../utils/cartUtils.js";
+import { CartCountContext } from "../context/CartCountContext.jsx";
 
 function NavigationBar() {
     const location = useLocation();
     const { user } = useContext(AuthContext);
-    const [cartCount, setCartCount] = useState(0);
+    const { cartCount } = useContext(CartCountContext);
 
     const isActive = (path) => location.pathname === path;
-
-    // Fetch cart count
-    useEffect(() => {
-        const fetchCartCount = async () => {
-            if (user) {
-                const count = await getCartCount(user.id);
-                setCartCount(count);
-            }
-        };
-
-        fetchCartCount();
-
-        // Optional: Set up interval to refresh cart count every 30 seconds
-        const interval = setInterval(fetchCartCount, 30000);
-
-        return () => clearInterval(interval);
-    }, [user]);
 
     return (
         <div className="fixed bottom-0 left-0 w-full bg-white shadow-lg border-t border-gray-200 z-[1000]">

@@ -13,13 +13,15 @@ import NavigationBar from "../../components/NavigationBar";
 import Modal from "../../components/Modal";
 import supabase from "../../SupabaseClient";
 import { AuthContext } from "../../App.jsx";
-import { addToCart } from "../../utils/cartUtils.js";
+import { CartCountContext } from "../../context/CartCountContext.jsx";
+import { addToCart, getCartCount } from "../../utils/cartUtils.js";
 import { toast } from "react-hot-toast";
 
 function Product() {
     const { id } = useParams();
     const navigate = useNavigate();
     const { user } = useContext(AuthContext);
+    const { updateCartCount } = useContext(CartCountContext);
     const [quantity, setQuantity] = useState(0.1);
     const [quantityError, setQuantityError] = useState("");
     const [product, setProduct] = useState(null);
@@ -687,6 +689,8 @@ function Product() {
                         `Successfully added ${requested} kg of ${product.name} to your cart. You can continue shopping or go to cart to checkout.`,
                         () => setModal((prev) => ({ ...prev, open: false }))
                     );
+                    // Update shared cart count immediately
+                    await updateCartCount(user.id);
                 } else {
                     showModal(
                         "error",
@@ -759,7 +763,8 @@ function Product() {
                         `Successfully added ${addDelta} kg of ${product.name} to your cart (capped to stock where necessary).`,
                         () => setModal((prev) => ({ ...prev, open: false }))
                     );
-                    await refreshCartQty();
+                    // Update shared cart count immediately
+                    await updateCartCount(user.id);
                 } else {
                     showModal(
                         "error",
@@ -788,7 +793,8 @@ function Product() {
                     `Successfully added ${addDelta} kg of ${product.name} to your cart.`,
                     () => setModal((prev) => ({ ...prev, open: false }))
                 );
-                await refreshCartQty();
+                // Update shared cart count immediately
+                await updateCartCount(user.id);
             } else {
                 showModal("error", "Error", `Error: ${result.message}`, () =>
                     setModal((prev) => ({ ...prev, open: false }))
