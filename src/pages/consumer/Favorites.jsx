@@ -31,15 +31,21 @@ function Favorites() {
     const getCartSummary = () => {
         if (!filteredFavorites.length) return null;
 
+        // Only include products with positive stock and not suspended
         const availableProducts = filteredFavorites.filter(
-            (product) => product.stock > 0
+            (product) => product.stock > 0 && !product.suspended
         );
-        const outOfStockCount =
-            filteredFavorites.length - availableProducts.length;
+        const outOfStockCount = filteredFavorites.filter(
+            (product) => product.stock <= 0 && !product.suspended
+        ).length;
+        const suspendedCount = filteredFavorites.filter(
+            (product) => product.suspended
+        ).length;
 
         return {
             totalToAdd: availableProducts.length,
             outOfStockCount,
+            suspendedCount,
             availableProducts,
         };
     };
@@ -88,6 +94,13 @@ function Favorites() {
                                   ratings.length
                                 : 0;
 
+                        // Derive suspended flag: status_id = 2 OR (approval_date = 1970-01-01 AND rejection_reason is not null)
+                        const isSuspended =
+                            product.status_id === 2 ||
+                            (product.approval_date ===
+                                "1970-01-01T00:00:00+00" &&
+                                product.rejection_reason !== null);
+
                         return {
                             id: product.id,
                             name: product.name,
@@ -110,6 +123,7 @@ function Favorites() {
                             deliveryCost:
                                 parseFloat(product.delivery_cost) || 50,
                             pickupLocation: product.pickup_location,
+                            suspended: isSuspended,
                         };
                     });
 
@@ -374,8 +388,12 @@ function Favorites() {
                 if (updateError) throw updateError;
             }
 
-            const outOfStockCount =
-                filteredFavorites.length - availableProducts.length;
+            const outOfStockCount = filteredFavorites.filter(
+                (product) => product.stock <= 0 && !product.suspended
+            ).length;
+            const suspendedCount = filteredFavorites.filter(
+                (product) => product.suspended
+            ).length;
             const newItemsCount = newProducts.length;
             const updatedItemsCount = existingProductsToUpdate.length;
             const maxedItemsCount = maxedOutCount.length;
@@ -413,6 +431,13 @@ function Favorites() {
                             text: `${maxedItemsCount} ${
                                 outOfStockCount === 1 ? "item" : "items"
                             } at max stock`,
+                        },
+                        suspendedCount > 0 && {
+                            type: "suspended",
+                            count: suspendedCount,
+                            text: `${suspendedCount} ${
+                                suspendedCount === 1 ? "item" : "items"
+                            } suspended and not added`,
                         },
                     ].filter(Boolean),
                 },
@@ -591,6 +616,11 @@ function Favorites() {
                                     <div className="absolute top-2 left-2 bg-primary text-white px-2 py-1 rounded-full text-xs font-medium">
                                         {product.category}
                                     </div>
+                                    {product.suspended && (
+                                        <div className="absolute top-9 left-2 bg-red-500 text-white px-2 py-1 rounded-full text-xs font-medium">
+                                            Suspended
+                                        </div>
+                                    )}
                                 </div>
 
                                 <div className="p-3">
@@ -792,6 +822,23 @@ function Favorites() {
                                                         }{" "}
                                                         items are out of stock
                                                         and will be skipped
+                                                    </p>
+                                                )}
+                                                {getCartSummary()
+                                                    .suspendedCount > 0 && (
+                                                    <p className="text-red-600 text-sm">
+                                                        Note:{" "}
+                                                        {
+                                                            getCartSummary()
+                                                                .suspendedCount
+                                                        }{" "}
+                                                        {getCartSummary()
+                                                            .suspendedCount ===
+                                                        1
+                                                            ? "item is"
+                                                            : "items are"}{" "}
+                                                        suspended and will be
+                                                        skipped
                                                     </p>
                                                 )}
                                             </>
