@@ -4,6 +4,7 @@ import { Link, useSearchParams } from "react-router-dom";
 import NavigationBar from "../../components/NavigationBar";
 import supabase from "../../SupabaseClient";
 import { AuthContext } from "../../App.jsx";
+import { UnreadConversationsContext } from "../../context/UnreadConversationsContext.jsx";
 
 function Messages() {
     // Helper: sort conversations by ISO timestamp `lastMessageAt` (newest first)
@@ -15,6 +16,9 @@ function Messages() {
         );
 
     const { user } = useContext(AuthContext);
+    const { setUnreadConversationCount } = useContext(
+        UnreadConversationsContext
+    );
     const [searchParams] = useSearchParams();
     const [searchTerm, setSearchTerm] = useState("");
     const [showSearch, setShowSearch] = useState(false);
@@ -25,6 +29,21 @@ function Messages() {
     const [newMessage, setNewMessage] = useState("");
     const [conversationMessages, setConversationMessages] = useState([]);
     const [loadingMessages, setLoadingMessages] = useState(false);
+
+    // Pure helper: compute unread conversation count (conversations with unread > 0)
+    // Returns the count without mutating state
+    const computeUnreadConversationCount = (convs) => {
+        return convs.filter(
+            (conv) => conv.unread !== undefined && conv.unread > 0
+        ).length;
+    };
+
+    // Effect: update global context when local conversations change
+    // This runs after render to avoid render-phase state mutations
+    useEffect(() => {
+        const unreadCount = computeUnreadConversationCount(conversations);
+        setUnreadConversationCount(unreadCount);
+    }, [conversations, setUnreadConversationCount]);
 
     // Handle conversation parameter from URL
     useEffect(() => {
@@ -208,8 +227,8 @@ function Messages() {
                             }
 
                             // Update conversations list without full reload and re-sort
-                            setConversations((prev) =>
-                                sortByLastMessageAt(
+                            setConversations((prev) => {
+                                return sortByLastMessageAt(
                                     prev.map((conv) =>
                                         conv.id === newMessage.conversation_id
                                             ? {
@@ -229,8 +248,8 @@ function Messages() {
                                               }
                                             : conv
                                     )
-                                )
-                            );
+                                );
+                            });
                         }
 
                         // Handle message updates (e.g., is_read status)

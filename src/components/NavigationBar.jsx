@@ -3,11 +3,13 @@ import { Icon } from "@iconify/react";
 import { useState, useEffect, useContext } from "react";
 import { AuthContext } from "../App.jsx";
 import { CartCountContext } from "../context/CartCountContext.jsx";
+import { UnreadConversationsContext } from "../context/UnreadConversationsContext.jsx";
 
 function NavigationBar() {
     const location = useLocation();
     const { user } = useContext(AuthContext);
     const { cartCount } = useContext(CartCountContext);
+    const { unreadConversationCount } = useContext(UnreadConversationsContext);
 
     const isActive = (path) => location.pathname === path;
 
@@ -98,10 +100,12 @@ function NavigationBar() {
                         height="24"
                     />
                     <span className="text-xs mt-1 font-medium">Messages</span>
-                    {/* Message badge */}
-                    <div className="absolute -top-1 -right-1 bg-red-500 text-white text-xs w-5 h-5 flex items-center justify-center rounded-full">
-                        0
-                    </div>
+                    {/* Message badge - only shown when unreadConversationCount > 0 */}
+                    {unreadConversationCount > 0 && (
+                        <div className="absolute -top-1 -right-1 bg-red-500 text-white text-xs w-5 h-5 flex items-center justify-center rounded-full animate-pulse">
+                            {unreadConversationCount}
+                        </div>
+                    )}
                 </Link>
 
                 <Link
