@@ -4,6 +4,7 @@ import { getCartCount } from "../utils/cartUtils.js";
 export const CartCountContext = createContext({
     cartCount: 0,
     updateCartCount: async () => {},
+    setCartCount: () => {},
 });
 
 export function CartCountProvider({ children, user }) {
@@ -50,7 +51,7 @@ export function CartCountProvider({ children, user }) {
     }, [user, updateCartCount]);
 
     return (
-        <CartCountContext.Provider value={{ cartCount, updateCartCount }}>
+        <CartCountContext.Provider value={{ cartCount, setCartCount, updateCartCount }}>
             {children}
         </CartCountContext.Provider>
     );

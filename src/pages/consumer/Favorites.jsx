@@ -5,9 +5,12 @@ import ConsumerSearch from "../../components/ConsumerSearch.jsx";
 import { useState, useEffect, useContext } from "react";
 import supabase from "../../SupabaseClient.jsx";
 import { AuthContext } from "../../App.jsx";
+import { CartCountContext } from "../../context/CartCountContext.jsx";
 
 function Favorites() {
     const { user } = useContext(AuthContext);
+    const { cartCount, setCartCount, updateCartCount } =
+        useContext(CartCountContext);
     const [search, setSearch] = useState("");
     const [favoriteProducts, setFavoriteProducts] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -387,6 +390,26 @@ function Favorites() {
 
                 if (updateError) throw updateError;
             }
+
+            // Calculate net increase in cart units (new items added + existing items incremented)
+            // Each new product counts as 1 item, each updated product counts as 1 item
+            const netIncrease =
+                newProducts.length + existingProductsToUpdate.length;
+
+            // Optimistically update shared cart count state for immediate UI feedback
+            if (netIncrease > 0) {
+                setCartCount(cartCount + netIncrease);
+            }
+
+            // Background reconciliation: fetch authoritative cart count to keep state accurate
+            // This runs without blocking the modal close or toast display
+            updateCartCount(user.id).catch((error) => {
+                console.error(
+                    "Background cart count reconciliation failed:",
+                    error
+                );
+                // Silently fail - optimistic update already showed to user
+            });
 
             const outOfStockCount = filteredFavorites.filter(
                 (product) => product.stock <= 0 && !product.suspended
