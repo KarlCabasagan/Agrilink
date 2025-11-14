@@ -5,9 +5,11 @@ import NavigationBar from "../../components/NavigationBar";
 import Modal from "../../components/Modal";
 import supabase from "../../SupabaseClient.jsx";
 import { AuthContext } from "../../App.jsx";
+import { CartCountContext } from "../../context/CartCountContext.jsx";
 
 function Cart() {
     const { user } = useContext(AuthContext);
+    const { cartCount, setCartCount } = useContext(CartCountContext);
     const navigate = useNavigate();
     const [cartItems, setCartItems] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -289,6 +291,9 @@ function Cart() {
         const item = cartItems.find((item) => item.id === id);
         if (!item) return;
 
+        // Store item quantity for optimistic decrement
+        const quantityToRemove = Math.round(item.quantity * 10) / 10;
+
         try {
             const { error } = await supabase
                 .from("cart_items")
@@ -329,6 +334,59 @@ function Cart() {
 
                 return updatedItems;
             });
+
+            // Optimistically decrement shared cart count by the item quantity
+            // Clamp at zero to prevent negative counts
+            const newCount = Math.max(0, cartCount - 1); // One distinct item removed
+            setCartCount(newCount);
+
+            // Background reconciliation: fetch authoritative cart count to ensure accuracy
+            // This runs without blocking UI or navigation
+            (async () => {
+                try {
+                    const { data: userCart, error: cartError } = await supabase
+                        .from("carts")
+                        .select("id")
+                        .eq("user_id", user.id)
+                        .single();
+
+                    if (cartError && cartError.code !== "PGRST116") {
+                        console.error(
+                            "Error fetching cart for reconciliation:",
+                            cartError
+                        );
+                        return;
+                    }
+
+                    if (!userCart) {
+                        setCartCount(0);
+                        return;
+                    }
+
+                    const { data: cartItems, error: itemsError } =
+                        await supabase
+                            .from("cart_items")
+                            .select("id")
+                            .eq("cart_id", userCart.id);
+
+                    if (itemsError) {
+                        console.error("Error counting cart items:", itemsError);
+                        return;
+                    }
+
+                    const authoritativeCount = cartItems?.length || 0;
+                    // Only update shared state if it differs from optimistic count
+                    if (authoritativeCount !== newCount) {
+                        setCartCount(authoritativeCount);
+                    }
+                } catch (error) {
+                    console.error(
+                        "Background cart reconciliation failed:",
+                        error
+                    );
+                    // Silently fail - optimistic update already showed to user
+                }
+            })();
         } catch (error) {
             console.error("Error removing cart item:", error);
         }
