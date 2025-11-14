@@ -356,7 +356,7 @@ function App() {
 
     return (
         <AuthContext.Provider value={authContextValue}>
-            <CartCountProvider user={user}>
+            <CartCountProvider user={userRole === 1 ? user : null}>
                 <UnreadConversationsProvider user={user}>
                     <Router>
                         <EmailVerificationHandler />

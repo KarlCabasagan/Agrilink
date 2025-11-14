@@ -155,13 +155,14 @@ function Favorites() {
 
                         // Derive suspended and notApproved flags independently
                         // suspended: status_id === 2
-                        // notApproved: approval_date represents 1970-01-01 00:00:00+00 sentinel
+                        // notApproved: approval_date is null OR represents 1970-01-01 00:00:00+00 sentinel
                         const isSuspended = product.status_id === 2;
                         const isNotApproved =
-                            product.approval_date &&
-                            String(product.approval_date).startsWith(
-                                "1970-01-01"
-                            );
+                            product.approval_date === null ||
+                            (product.approval_date &&
+                                String(product.approval_date).startsWith(
+                                    "1970-01-01"
+                                ));
 
                         return {
                             id: product.id,
@@ -232,10 +233,11 @@ function Favorites() {
                             // Recompute both suspended and notApproved flags independently using same logic
                             const isSuspended = newRow.status_id === 2;
                             const isNotApproved =
-                                newRow.approval_date &&
-                                String(newRow.approval_date).startsWith(
-                                    "1970-01-01"
-                                );
+                                newRow.approval_date === null ||
+                                (newRow.approval_date &&
+                                    String(newRow.approval_date).startsWith(
+                                        "1970-01-01"
+                                    ));
 
                             return {
                                 ...fav,

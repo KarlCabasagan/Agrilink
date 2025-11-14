@@ -868,15 +868,15 @@ function ProducerHome() {
                     created_at: product.created_at,
                     updated_at: product.updated_at,
                 }));
-                console.log(
-                    "Formatted products with images:",
-                    formattedProducts.map((p) => ({
-                        name: p.name,
-                        image: p.image,
-                        image_url_raw: data.find((d) => d.id === p.id)
-                            ?.image_url,
-                    }))
-                );
+                // console.log(
+                //     "Formatted products with images:",
+                //     formattedProducts.map((p) => ({
+                //         name: p.name,
+                //         image: p.image,
+                //         image_url_raw: data.find((d) => d.id === p.id)
+                //             ?.image_url,
+                //     }))
+                // );
                 setProducts(formattedProducts);
             }
         } catch (error) {
