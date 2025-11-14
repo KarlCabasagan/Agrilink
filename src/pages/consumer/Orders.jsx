@@ -27,46 +27,60 @@ function Orders() {
     });
     const [productReviews, setProductReviews] = useState({});
 
-    const checkExistingReview = async (productId) => {
-        try {
-            const { data, error } = await supabase
-                .from("reviews")
-                .select("id")
-                .eq("product_id", productId)
-                .eq("user_id", user.id)
-                .single();
-
-            if (error && error.code !== "PGRST116") {
-                console.error("Error checking review:", error);
-                return false;
-            }
-
-            return !!data;
-        } catch (error) {
-            console.error("Error checking review:", error);
-            return false;
-        }
-    };
-
-    // Check for existing reviews when orders are loaded or updated
+    // Batch check for existing reviews when orders are loaded or updated
     useEffect(() => {
         const checkReviews = async () => {
-            const reviews = {};
-            for (const order of orders) {
-                for (const item of order.items) {
-                    if (!reviews[item.product_id]) {
-                        reviews[item.product_id] = await checkExistingReview(
-                            item.product_id
-                        );
+            if (!user || orders.length === 0) return;
+
+            try {
+                // Collect all unique, non-null product_id values from order items
+                const productIds = new Set();
+                for (const order of orders) {
+                    for (const item of order.items) {
+                        if (item.product_id) {
+                            productIds.add(item.product_id);
+                        }
                     }
                 }
+
+                if (productIds.size === 0) {
+                    setProductReviews({});
+                    return;
+                }
+
+                // Single batch query: fetch all reviews for these products by this user
+                const { data: reviewsData, error: reviewsError } =
+                    await supabase
+                        .from("reviews")
+                        .select("product_id")
+                        .eq("user_id", user.id)
+                        .in("product_id", Array.from(productIds));
+
+                if (reviewsError) {
+                    // Only log real network/permission errors; 406 "multiple rows" is expected and means reviewed
+                    if (reviewsError.code !== "PGRST106") {
+                        console.error("Error fetching reviews:", reviewsError);
+                    }
+                    setProductReviews({});
+                    return;
+                }
+
+                // Build productReviews map: any product with row count ≥ 1 is marked as reviewed
+                const reviews = {};
+                for (const productId of productIds) {
+                    reviews[productId] = false;
+                }
+                for (const review of reviewsData || []) {
+                    reviews[review.product_id] = true;
+                }
+                setProductReviews(reviews);
+            } catch (error) {
+                console.error("Unexpected error checking reviews:", error);
+                setProductReviews({});
             }
-            setProductReviews(reviews);
         };
 
-        if (user && orders.length > 0) {
-            checkReviews();
-        }
+        checkReviews();
     }, [orders, user]);
 
     useEffect(() => {
@@ -76,6 +90,236 @@ function Orders() {
         }
         fetchOrders();
     }, [user, navigate]);
+
+    // Real-time subscription to order changes
+    useEffect(() => {
+        if (!user?.id) return;
+
+        const channel = supabase
+            .channel("orders-realtime")
+            .on(
+                "postgres_changes",
+                {
+                    event: "*",
+                    schema: "public",
+                    table: "orders",
+                    filter: `user_id=eq.${user.id}`,
+                },
+                async (payload) => {
+                    const { eventType, new: newRow, old: oldRow } = payload;
+
+                    if (eventType === "INSERT") {
+                        // Fetch the full new order with all relations
+                        const { data: orderData, error: fetchError } =
+                            await supabase
+                                .from("orders")
+                                .select(
+                                    `
+                                    *,
+                                    statuses!orders_status_id_fkey (
+                                        name
+                                    ),
+                                    delivery_methods!orders_delivery_method_id_fkey (
+                                        name
+                                    ),
+                                    payment_methods!orders_payment_method_id_fkey (
+                                        name
+                                    ),
+                                    profiles!orders_seller_id_fkey (
+                                        name,
+                                        address,
+                                        contact
+                                    ),
+                                    order_items (
+                                        *,
+                                        products (
+                                            *,
+                                            categories (
+                                                name
+                                            )
+                                        )
+                                    )
+                                `
+                                )
+                                .eq("id", newRow.id)
+                                .single();
+
+                        if (!fetchError && orderData) {
+                            // Transform the new order using the same logic as fetchOrders
+                            const itemsTotal = orderData.order_items.reduce(
+                                (sum, item) =>
+                                    sum +
+                                    item.price_at_purchase * item.quantity,
+                                0
+                            );
+                            const total =
+                                itemsTotal +
+                                (orderData.delivery_fee_at_order || 0);
+
+                            const transformedOrder = {
+                                id: orderData.id,
+                                date: orderData.created_at,
+                                status: orderData.statuses?.name || "unknown",
+                                total: total,
+                                deliveryMethod:
+                                    orderData.delivery_methods?.name ||
+                                    "unknown",
+                                paymentMethod:
+                                    orderData.payment_methods?.name ||
+                                    "unknown",
+                                deliveryFee:
+                                    orderData.delivery_fee_at_order || 0,
+                                sellerName:
+                                    orderData.profiles?.name ||
+                                    "Unknown Seller",
+                                sellerAddress:
+                                    orderData.profiles?.address ||
+                                    "Location not available",
+                                sellerContact:
+                                    orderData.profiles?.contact || "",
+                                items: orderData.order_items.map((item) => ({
+                                    id: item.id,
+                                    product_id: item.product_id,
+                                    name: item.name_at_purchase,
+                                    price: item.price_at_purchase,
+                                    quantity: item.quantity,
+                                    image:
+                                        item.products?.image_url ||
+                                        "https://via.placeholder.com/300x200?text=No+Image",
+                                    farmerName:
+                                        orderData.profiles?.name ||
+                                        "Unknown Seller",
+                                    farmerId: orderData.seller_id,
+                                    farmerPhone:
+                                        orderData.profiles?.contact || "",
+                                    farmerAddress:
+                                        orderData.profiles?.address ||
+                                        "Location not available",
+                                    category:
+                                        item.products?.categories?.name ||
+                                        "Other",
+                                })),
+                            };
+
+                            // Prepend the new order to the list
+                            setOrders((prev) => [transformedOrder, ...prev]);
+                        }
+                    } else if (eventType === "UPDATE") {
+                        // Fetch just the updated order with all relations
+                        const { data: orderData, error: fetchError } =
+                            await supabase
+                                .from("orders")
+                                .select(
+                                    `
+                                    *,
+                                    statuses!orders_status_id_fkey (
+                                        name
+                                    ),
+                                    delivery_methods!orders_delivery_method_id_fkey (
+                                        name
+                                    ),
+                                    payment_methods!orders_payment_method_id_fkey (
+                                        name
+                                    ),
+                                    profiles!orders_seller_id_fkey (
+                                        name,
+                                        address,
+                                        contact
+                                    ),
+                                    order_items (
+                                        *,
+                                        products (
+                                            *,
+                                            categories (
+                                                name
+                                            )
+                                        )
+                                    )
+                                `
+                                )
+                                .eq("id", newRow.id)
+                                .single();
+
+                        if (!fetchError && orderData) {
+                            // Transform the updated order
+                            const itemsTotal = orderData.order_items.reduce(
+                                (sum, item) =>
+                                    sum +
+                                    item.price_at_purchase * item.quantity,
+                                0
+                            );
+                            const total =
+                                itemsTotal +
+                                (orderData.delivery_fee_at_order || 0);
+
+                            const transformedOrder = {
+                                id: orderData.id,
+                                date: orderData.created_at,
+                                status: orderData.statuses?.name || "unknown",
+                                total: total,
+                                deliveryMethod:
+                                    orderData.delivery_methods?.name ||
+                                    "unknown",
+                                paymentMethod:
+                                    orderData.payment_methods?.name ||
+                                    "unknown",
+                                deliveryFee:
+                                    orderData.delivery_fee_at_order || 0,
+                                sellerName:
+                                    orderData.profiles?.name ||
+                                    "Unknown Seller",
+                                sellerAddress:
+                                    orderData.profiles?.address ||
+                                    "Location not available",
+                                sellerContact:
+                                    orderData.profiles?.contact || "",
+                                items: orderData.order_items.map((item) => ({
+                                    id: item.id,
+                                    product_id: item.product_id,
+                                    name: item.name_at_purchase,
+                                    price: item.price_at_purchase,
+                                    quantity: item.quantity,
+                                    image:
+                                        item.products?.image_url ||
+                                        "https://via.placeholder.com/300x200?text=No+Image",
+                                    farmerName:
+                                        orderData.profiles?.name ||
+                                        "Unknown Seller",
+                                    farmerId: orderData.seller_id,
+                                    farmerPhone:
+                                        orderData.profiles?.contact || "",
+                                    farmerAddress:
+                                        orderData.profiles?.address ||
+                                        "Location not available",
+                                    category:
+                                        item.products?.categories?.name ||
+                                        "Other",
+                                })),
+                            };
+
+                            // Update only the affected order, preserve other objects for React rendering optimization
+                            setOrders((prev) =>
+                                prev.map((o) =>
+                                    o.id === transformedOrder.id
+                                        ? transformedOrder
+                                        : o
+                                )
+                            );
+                        }
+                    } else if (eventType === "DELETE") {
+                        // Remove the deleted order from the list
+                        setOrders((prev) =>
+                            prev.filter((o) => o.id !== oldRow.id)
+                        );
+                    }
+                }
+            )
+            .subscribe();
+
+        return () => {
+            channel.unsubscribe();
+        };
+    }, [user?.id]);
 
     const fetchOrders = async () => {
         try {
