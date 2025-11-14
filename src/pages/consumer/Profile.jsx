@@ -16,6 +16,8 @@ function Profile() {
         avatar_url: "",
     });
     const [loading, setLoading] = useState(true);
+    const [hasOrdersWithStatus6, setHasOrdersWithStatus6] = useState(false);
+    const [hasSellerRejection, setHasSellerRejection] = useState(false);
 
     // Format phone number for display
     const displayPhoneNumber = (phoneNumber) => {
@@ -108,6 +110,102 @@ function Profile() {
         };
         fetchProfile();
     }, [user]);
+
+    // Check for orders with status_id 6 and subscribe to real-time changes
+    useEffect(() => {
+        if (!user?.id) return;
+
+        const checkOrderStatus = async () => {
+            try {
+                const { data, error } = await supabase
+                    .from("orders")
+                    .select("id")
+                    .eq("user_id", user.id)
+                    .eq("status_id", 6)
+                    .limit(1);
+
+                if (!error && data && data.length > 0) {
+                    setHasOrdersWithStatus6(true);
+                } else {
+                    setHasOrdersWithStatus6(false);
+                }
+            } catch (error) {
+                console.error("Error checking order status:", error);
+            }
+        };
+
+        // Initial check
+        checkOrderStatus();
+
+        // Subscribe to real-time changes
+        const channel = supabase
+            .channel(`orders-status-profile-${user.id}`)
+            .on(
+                "postgres_changes",
+                {
+                    event: "*",
+                    schema: "public",
+                    table: "orders",
+                    filter: `user_id=eq.${user.id}`,
+                },
+                () => {
+                    checkOrderStatus();
+                }
+            )
+            .subscribe();
+
+        return () => {
+            channel.unsubscribe();
+        };
+    }, [user?.id]);
+
+    // Check for seller application rejection and subscribe to real-time changes
+    useEffect(() => {
+        if (!user?.id) return;
+
+        const checkSellerRejection = async () => {
+            try {
+                const { data, error } = await supabase
+                    .from("seller_applications")
+                    .select("rejection_reason")
+                    .eq("user_id", user.id)
+                    .not("rejection_reason", "is", null)
+                    .limit(1);
+
+                if (!error && data && data.length > 0) {
+                    setHasSellerRejection(true);
+                } else {
+                    setHasSellerRejection(false);
+                }
+            } catch (error) {
+                console.error("Error checking seller rejection:", error);
+            }
+        };
+
+        // Initial check
+        checkSellerRejection();
+
+        // Subscribe to real-time changes
+        const channel = supabase
+            .channel(`seller-apps-profile-${user.id}`)
+            .on(
+                "postgres_changes",
+                {
+                    event: "*",
+                    schema: "public",
+                    table: "seller_applications",
+                    filter: `user_id=eq.${user.id}`,
+                },
+                () => {
+                    checkSellerRejection();
+                }
+            )
+            .subscribe();
+
+        return () => {
+            channel.unsubscribe();
+        };
+    }, [user?.id]);
 
     const handleLogout = async () => {
         await supabase.auth.signOut();
@@ -250,16 +348,19 @@ function Profile() {
 
                             <Link
                                 to="/seller-application"
-                                className="w-full flex items-center justify-between p-4 hover:bg-gray-50 transition-colors"
+                                className="w-full flex items-center justify-between p-4 hover:bg-gray-50 transition-colors relative"
                             >
                                 <div className="flex items-center gap-3">
-                                    <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center">
+                                    <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center relative">
                                         <Icon
                                             icon="mingcute:paper-line"
                                             width="20"
                                             height="20"
                                             className="text-purple-600"
                                         />
+                                        {hasSellerRejection && (
+                                            <span className="absolute top-0 right-0 w-2.5 h-2.5 bg-red-500 rounded-full"></span>
+                                        )}
                                     </div>
                                     <span className="text-gray-800">
                                         Apply to be a Seller
@@ -333,16 +434,19 @@ function Profile() {
 
                             <Link
                                 to="/orders"
-                                className="flex items-center justify-between p-4 hover:bg-gray-50 transition-colors"
+                                className="flex items-center justify-between p-4 hover:bg-gray-50 transition-colors relative"
                             >
                                 <div className="flex items-center gap-3">
-                                    <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
+                                    <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center relative">
                                         <Icon
                                             icon="mingcute:truck-line"
                                             width="20"
                                             height="20"
                                             className="text-green-600"
                                         />
+                                        {hasOrdersWithStatus6 && (
+                                            <span className="absolute top-0 right-0 w-2.5 h-2.5 bg-red-500 rounded-full"></span>
+                                        )}
                                     </div>
                                     <span className="text-gray-800">
                                         My Orders

@@ -23,6 +23,7 @@ function Home() {
     const [loading, setLoading] = useState(true);
     const [favorites, setFavorites] = useState(new Set()); // Track favorite product IDs
     const [cartCount, setCartCount] = useState(0);
+    const [hasOrdersWithStatus6, setHasOrdersWithStatus6] = useState(false);
     const [modal, setModal] = useState({
         open: false,
         type: "",
@@ -119,6 +120,55 @@ function Home() {
 
         return () => clearInterval(interval);
     }, [user]);
+
+    // Check for orders with status_id 6 and subscribe to real-time changes
+    useEffect(() => {
+        if (!user?.id) return;
+
+        const checkOrderStatus = async () => {
+            try {
+                const { data, error } = await supabase
+                    .from("orders")
+                    .select("id")
+                    .eq("user_id", user.id)
+                    .eq("status_id", 6)
+                    .limit(1);
+
+                if (!error && data && data.length > 0) {
+                    setHasOrdersWithStatus6(true);
+                } else {
+                    setHasOrdersWithStatus6(false);
+                }
+            } catch (error) {
+                console.error("Error checking order status:", error);
+            }
+        };
+
+        // Initial check
+        checkOrderStatus();
+
+        // Subscribe to real-time changes
+        const channel = supabase
+            .channel(`orders-status-${user.id}`)
+            .on(
+                "postgres_changes",
+                {
+                    event: "*",
+                    schema: "public",
+                    table: "orders",
+                    filter: `user_id=eq.${user.id}`,
+                },
+                () => {
+                    // On any order change, recheck status
+                    checkOrderStatus();
+                }
+            )
+            .subscribe();
+
+        return () => {
+            channel.unsubscribe();
+        };
+    }, [user?.id]);
 
     // Handle adding/removing favorites
     const toggleFavorite = async (productId, event) => {
@@ -494,8 +544,14 @@ function Home() {
             {/* Header with Search and Cart */}
             <div className="fixed top-0 left-0 w-full bg-white shadow-md z-50 px-4 py-3 flex justify-between items-center">
                 <h1 className="text-lg font-semibold text-primary">AgriLink</h1>
-                <Link to="/orders" className="text-gray-600 hover:text-primary">
+                <Link
+                    to="/orders"
+                    className="relative text-gray-600 hover:text-primary"
+                >
                     <Icon icon="mingcute:truck-line" width="24" height="24" />
+                    {hasOrdersWithStatus6 && (
+                        <span className="absolute -top-1 -right-2 w-2.5 h-2.5 bg-red-500 rounded-full"></span>
+                    )}
                 </Link>
             </div>
 

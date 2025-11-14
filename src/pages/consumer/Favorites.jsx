@@ -19,6 +19,7 @@ function Favorites() {
     const [isAddingToCart, setIsAddingToCart] = useState(false);
     const [isClearingFavorites, setIsClearingFavorites] = useState(false);
     const [addToCartResult, setAddToCartResult] = useState(null);
+    const [hasOrdersWithStatus6, setHasOrdersWithStatus6] = useState(false);
 
     // Auto-dismiss toast after 5 seconds
     useEffect(() => {
@@ -29,6 +30,55 @@ function Favorites() {
             return () => clearTimeout(timer);
         }
     }, [addToCartResult]);
+
+    // Check for orders with status_id 6 and subscribe to real-time changes
+    useEffect(() => {
+        if (!user?.id) return;
+
+        const checkOrderStatus = async () => {
+            try {
+                const { data, error } = await supabase
+                    .from("orders")
+                    .select("id")
+                    .eq("user_id", user.id)
+                    .eq("status_id", 6)
+                    .limit(1);
+
+                if (!error && data && data.length > 0) {
+                    setHasOrdersWithStatus6(true);
+                } else {
+                    setHasOrdersWithStatus6(false);
+                }
+            } catch (error) {
+                console.error("Error checking order status:", error);
+            }
+        };
+
+        // Initial check
+        checkOrderStatus();
+
+        // Subscribe to real-time changes
+        const channel = supabase
+            .channel(`orders-status-${user.id}`)
+            .on(
+                "postgres_changes",
+                {
+                    event: "*",
+                    schema: "public",
+                    table: "orders",
+                    filter: `user_id=eq.${user.id}`,
+                },
+                () => {
+                    // On any order change, recheck status
+                    checkOrderStatus();
+                }
+            )
+            .subscribe();
+
+        return () => {
+            channel.unsubscribe();
+        };
+    }, [user?.id]);
 
     // Compute cart summary before opening modal
     const getCartSummary = () => {
@@ -568,13 +618,16 @@ function Favorites() {
                     </h1>
                     <Link
                         to="/orders"
-                        className="text-gray-600 hover:text-primary"
+                        className="relative text-gray-600 hover:text-primary"
                     >
                         <Icon
                             icon="mingcute:truck-line"
                             width="24"
                             height="24"
                         />
+                        {hasOrdersWithStatus6 && (
+                            <span className="absolute -top-1 -right-2 w-2.5 h-2.5 bg-red-500 rounded-full"></span>
+                        )}
                     </Link>
                 </div>
             </div>

@@ -7,6 +7,24 @@ import supabase from "../../SupabaseClient";
 import { AuthContext } from "../../App.jsx";
 import { toast } from "react-hot-toast";
 
+// Add subtle pulse animation for ready orders tab
+const styles = `
+  @keyframes subtle-pulse {
+    0%, 100% {
+      opacity: 1;
+      box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.7);
+    }
+    50% {
+      opacity: 0.95;
+      box-shadow: 0 0 0 4px rgba(34, 197, 94, 0);
+    }
+  }
+  
+  .animate-ready-pulse {
+    animation: subtle-pulse 2s infinite;
+  }
+`;
+
 function Orders() {
     const navigate = useNavigate();
     const { user } = useContext(AuthContext);
@@ -906,6 +924,9 @@ function Orders() {
 
     return (
         <div className="min-h-screen w-full flex flex-col relative items-center scrollbar-hide bg-background overflow-x-hidden text-text pb-20">
+            {/* Inject animation styles */}
+            <style>{styles}</style>
+
             {/* Header */}
             <div className="fixed top-0 left-0 w-full bg-white shadow-md z-50 px-4 py-3">
                 <div className="flex items-center">
@@ -929,32 +950,40 @@ function Orders() {
                 {/* Tabs */}
                 <div className="bg-white rounded-lg shadow-md overflow-hidden mb-6">
                     <div className="flex overflow-x-auto">
-                        {tabs.map((tab) => (
-                            <button
-                                key={tab.id}
-                                onClick={() => setActiveTab(tab.id)}
-                                className={`flex-1 min-w-fit px-4 py-3 text-sm font-medium transition-colors border-b-2 ${
-                                    activeTab === tab.id
-                                        ? "text-primary border-primary bg-primary/5"
-                                        : "text-gray-500 border-transparent hover:text-gray-700"
-                                }`}
-                            >
-                                <div className="flex items-center justify-center gap-2">
-                                    <span>{tab.label}</span>
-                                    {tab.count > 0 && (
-                                        <span
-                                            className={`px-2 py-1 text-xs rounded-full ${
-                                                activeTab === tab.id
-                                                    ? "bg-primary text-white"
-                                                    : "bg-gray-200 text-gray-600"
-                                            }`}
-                                        >
-                                            {tab.count}
-                                        </span>
-                                    )}
-                                </div>
-                            </button>
-                        ))}
+                        {tabs.map((tab) => {
+                            const hasReadyOrders =
+                                tab.id === "ready for pickup" && tab.count > 0;
+                            return (
+                                <button
+                                    key={tab.id}
+                                    onClick={() => setActiveTab(tab.id)}
+                                    className={`flex-1 min-w-fit px-4 py-3 text-sm font-medium transition-colors border-b-2 ${
+                                        activeTab === tab.id
+                                            ? "text-primary border-primary bg-primary/5"
+                                            : "text-gray-500 border-transparent hover:text-gray-700"
+                                    } ${
+                                        hasReadyOrders
+                                            ? "animate-ready-pulse"
+                                            : ""
+                                    }`}
+                                >
+                                    <div className="flex items-center justify-center gap-2">
+                                        <span>{tab.label}</span>
+                                        {tab.count > 0 && (
+                                            <span
+                                                className={`px-2 py-1 text-xs rounded-full ${
+                                                    activeTab === tab.id
+                                                        ? "bg-primary text-white"
+                                                        : "bg-gray-200 text-gray-600"
+                                                }`}
+                                            >
+                                                {tab.count}
+                                            </span>
+                                        )}
+                                    </div>
+                                </button>
+                            );
+                        })}
                     </div>
                 </div>
 

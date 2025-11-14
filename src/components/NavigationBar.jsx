@@ -4,12 +4,113 @@ import { useState, useEffect, useContext } from "react";
 import { AuthContext } from "../App.jsx";
 import { CartCountContext } from "../context/CartCountContext.jsx";
 import { UnreadConversationsContext } from "../context/UnreadConversationsContext.jsx";
+import supabase from "../SupabaseClient.jsx";
 
 function NavigationBar() {
     const location = useLocation();
     const { user } = useContext(AuthContext);
     const { cartCount } = useContext(CartCountContext);
     const { unreadConversationCount } = useContext(UnreadConversationsContext);
+    const [hasOrdersWithStatus6, setHasOrdersWithStatus6] = useState(false);
+    const [hasSellerRejection, setHasSellerRejection] = useState(false);
+
+    // Check for orders with status_id 6 and subscribe to real-time changes
+    useEffect(() => {
+        if (!user?.id) return;
+
+        const checkOrderStatus = async () => {
+            try {
+                const { data, error } = await supabase
+                    .from("orders")
+                    .select("id")
+                    .eq("user_id", user.id)
+                    .eq("status_id", 6)
+                    .limit(1);
+
+                if (!error && data && data.length > 0) {
+                    setHasOrdersWithStatus6(true);
+                } else {
+                    setHasOrdersWithStatus6(false);
+                }
+            } catch (error) {
+                console.error("Error checking order status:", error);
+            }
+        };
+
+        // Initial check
+        checkOrderStatus();
+
+        // Subscribe to real-time changes
+        const channel = supabase
+            .channel(`orders-status-navbar-${user.id}`)
+            .on(
+                "postgres_changes",
+                {
+                    event: "*",
+                    schema: "public",
+                    table: "orders",
+                    filter: `user_id=eq.${user.id}`,
+                },
+                () => {
+                    checkOrderStatus();
+                }
+            )
+            .subscribe();
+
+        return () => {
+            channel.unsubscribe();
+        };
+    }, [user?.id]);
+
+    // Check for seller application rejection and subscribe to real-time changes
+    useEffect(() => {
+        if (!user?.id) return;
+
+        const checkSellerRejection = async () => {
+            try {
+                const { data, error } = await supabase
+                    .from("seller_applications")
+                    .select("rejection_reason")
+                    .eq("user_id", user.id)
+                    .not("rejection_reason", "is", null)
+                    .limit(1);
+
+                if (!error && data && data.length > 0) {
+                    setHasSellerRejection(true);
+                } else {
+                    setHasSellerRejection(false);
+                }
+            } catch (error) {
+                console.error("Error checking seller rejection:", error);
+            }
+        };
+
+        // Initial check
+        checkSellerRejection();
+
+        // Subscribe to real-time changes
+        const channel = supabase
+            .channel(`seller-apps-navbar-${user.id}`)
+            .on(
+                "postgres_changes",
+                {
+                    event: "*",
+                    schema: "public",
+                    table: "seller_applications",
+                    filter: `user_id=eq.${user.id}`,
+                },
+                () => {
+                    checkSellerRejection();
+                }
+            )
+            .subscribe();
+
+        return () => {
+            channel.unsubscribe();
+        };
+    }, [user?.id]);
+
+    const showProfileBadge = hasOrdersWithStatus6 || hasSellerRejection;
 
     const isActive = (path) => location.pathname === path;
 
@@ -110,7 +211,7 @@ function NavigationBar() {
 
                 <Link
                     to="/profile"
-                    className={`flex flex-col items-center min-w-[60px] py-2 px-3 rounded-lg transition-all duration-200 ${
+                    className={`flex flex-col items-center min-w-[60px] py-2 px-3 rounded-lg transition-all duration-200 relative ${
                         isActive("/profile")
                             ? "bg-primary text-white shadow-md"
                             : "text-gray-600 hover:text-primary hover:bg-gray-50"
@@ -126,6 +227,10 @@ function NavigationBar() {
                         height="24"
                     />
                     <span className="text-xs mt-1 font-medium">Profile</span>
+                    {/* Profile badge - shows when order or seller rejection badge conditions are met */}
+                    {showProfileBadge && (
+                        <span className="absolute top-0 right-0 w-2.5 h-2.5 bg-red-500 rounded-full"></span>
+                    )}
                 </Link>
             </div>
         </div>
