@@ -301,6 +301,63 @@ function ProducerProduct() {
         fetchProduct();
     }, [id, user, navigate]);
 
+    // Real-time subscription to product updates
+    useEffect(() => {
+        if (!id || !user?.id || !product) return;
+
+        const channel = supabase
+            .channel(`product-${id}-${user.id}`)
+            .on(
+                "postgres_changes",
+                {
+                    event: "UPDATE",
+                    schema: "public",
+                    table: "products",
+                    filter: `id=eq.${id}`,
+                },
+                async (payload) => {
+                    const newRow = payload.new;
+
+                    // Patch only the changed fields without resetting UI state
+                    setProduct((prev) => {
+                        if (!prev || prev.id !== newRow.id) return prev;
+
+                        return {
+                            ...prev,
+                            name: newRow.name,
+                            price: parseFloat(newRow.price),
+                            stock: parseFloat(newRow.stock),
+                            description: newRow.description,
+                            image_url: newRow.image_url || prev.image_url,
+                            category: newRow.categories?.name ?? prev.category,
+                            cropType: newRow.crops?.name ?? prev.cropType,
+                            status_id: newRow.status_id ?? prev.status_id,
+                            rejection_reason: newRow.rejection_reason,
+                            approval_date: newRow.approval_date,
+                            updated_at: newRow.updated_at,
+                        };
+                    });
+                }
+            )
+            .on(
+                "postgres_changes",
+                {
+                    event: "DELETE",
+                    schema: "public",
+                    table: "products",
+                    filter: `id=eq.${id}`,
+                },
+                () => {
+                    navigate("/");
+                }
+            )
+            .subscribe();
+
+        return () => {
+            channel.unsubscribe();
+        };
+    }, [id, user?.id, product]);
+
     // Get selected crop's price range (case-insensitive)
     const getSelectedCrop = () => {
         if (!editForm.cropType) return null;
