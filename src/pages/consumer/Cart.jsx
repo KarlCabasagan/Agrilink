@@ -414,6 +414,21 @@ function Cart() {
         return getDeliveryIneligibleFarmers().length === 0;
     };
 
+    // Helper function to check if a product is invalid (no approval, epoch 1970, or suspended)
+    const isProductInvalid = (product) => {
+        const approvalDate = product?.approval_date
+            ? new Date(product.approval_date).toISOString()
+            : null;
+        const defaultDate = new Date("1970-01-01T00:00:00.000Z").toISOString();
+
+        return (
+            !product?.approval_date ||
+            approvalDate.startsWith("1970-01-01T00:00:00") ||
+            approvalDate === defaultDate ||
+            product.status_id === 2
+        );
+    };
+
     const handleCheckout = async () => {
         // Filter out zero-quantity items for checkout
         const checkoutItems = cartItems.filter((it) => (it.quantity || 0) > 0);
@@ -553,6 +568,112 @@ function Cart() {
             );
         }
     };
+
+    useEffect(() => {
+        if (cartItems.length === 0) return;
+
+        // Use the same identifier the UI uses (item.id) which corresponds to product_id
+        const productIds = Array.from(
+            new Set(cartItems.map((item) => item.id))
+        );
+        const subscriptionRef = supabase
+            .channel("cart-products-channel")
+            .on(
+                "postgres_changes",
+                {
+                    event: "UPDATE",
+                    schema: "public",
+                    table: "products",
+                    filter: `id=in.(${productIds.join(",")})`,
+                },
+                (payload) => {
+                    const newRow = payload.new;
+                    const quantitiesToPersist = []; // Track updates to persist to DB
+
+                    // First pass: update local state and collect capping operations
+                    const updatedItems = cartItems.map((item) => {
+                        if (item.id !== newRow.id) return item;
+
+                        const newStock = parseFloat(newRow.stock) || 0;
+                        const currentQuantity =
+                            Math.round(item.quantity * 10) / 10;
+                        const cappedQuantity =
+                            currentQuantity > newStock
+                                ? Math.round(newStock * 10) / 10
+                                : currentQuantity;
+
+                        // If quantity was capped, track it for persistence
+                        if (cappedQuantity !== currentQuantity) {
+                            quantitiesToPersist.push({
+                                cartItemId: item.cartItemId,
+                                newQuantity: cappedQuantity,
+                            });
+                        }
+
+                        // Merge primitive fields and update nested products object
+                        return {
+                            ...item,
+                            price: parseFloat(newRow.price),
+                            stock: newStock,
+                            quantity: cappedQuantity, // Apply cap immediately
+                            products: {
+                                ...(item.products || {}),
+                                status_id: newRow.status_id,
+                                approval_date: newRow.approval_date,
+                            },
+                        };
+                    });
+
+                    // Update local state with capped quantities
+                    setCartItems(updatedItems);
+
+                    // Recompute hasInvalidItems based on updated state
+                    const newHasInvalidItems = updatedItems.some((item) =>
+                        isProductInvalid(item.products)
+                    );
+                    setHasInvalidItems(newHasInvalidItems);
+
+                    // Persist capped quantities to DB in background (don't await to avoid blocking UI)
+                    quantitiesToPersist.forEach((update) => {
+                        supabase
+                            .from("cart_items")
+                            .update({ quantity: update.newQuantity })
+                            .eq("id", update.cartItemId)
+                            .catch((error) => {
+                                console.error(
+                                    "Error persisting capped quantity:",
+                                    error
+                                );
+                                // Silently fail; UI already reflects the cap
+                            });
+                    });
+                }
+            )
+            .on(
+                "postgres_changes",
+                {
+                    event: "DELETE",
+                    schema: "public",
+                    table: "products",
+                },
+                (payload) => {
+                    // Remove cart item if product is deleted (match by the id used in UI)
+                    const filteredItems = cartItems.filter(
+                        (item) => item.id !== payload.old.id
+                    );
+                    setCartItems(filteredItems);
+
+                    // Recompute hasInvalidItems based on remaining items
+                    const newHasInvalidItems = filteredItems.some((item) =>
+                        isProductInvalid(item.products)
+                    );
+                    setHasInvalidItems(newHasInvalidItems);
+                }
+            )
+            .subscribe();
+
+        return () => subscriptionRef.unsubscribe();
+    }, [cartItems.length]);
 
     return (
         <div className="min-h-screen w-full flex flex-col relative items-center scrollbar-hide bg-background overflow-x-hidden text-text pb-20">

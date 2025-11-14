@@ -597,6 +597,60 @@ function Product() {
         }
     }, [id]);
 
+    // Real-time subscription to current product changes
+    useEffect(() => {
+        if (!id || !product) return;
+
+        const subscriptionRef = supabase
+            .channel(`product-${id}-channel`)
+            .on(
+                "postgres_changes",
+                {
+                    event: "UPDATE",
+                    schema: "public",
+                    table: "products",
+                    filter: `id=eq.${id}`,
+                },
+                async (payload) => {
+                    // Check if product still passes visibility rules
+                    const { data: updatedProduct } = await supabase
+                        .from("products")
+                        .select(`*, statuses(name)`)
+                        .eq("id", id)
+                        .single();
+
+                    if (
+                        !updatedProduct ||
+                        updatedProduct.status_id === 2 ||
+                        !updatedProduct.approval_date ||
+                        updatedProduct.approval_date ===
+                            "1970-01-01 00:00:00+00" ||
+                        updatedProduct.statuses.name !== "active"
+                    ) {
+                        // Product no longer visible
+                        setProduct(null);
+                        subscriptionRef.unsubscribe();
+                        return;
+                    }
+
+                    // Merge updates: price, stock, description, image, status_id, approval_date, rejection_reason
+                    setProduct((prev) => ({
+                        ...prev,
+                        price: parseFloat(updatedProduct.price),
+                        stock: parseFloat(updatedProduct.stock),
+                        description: updatedProduct.description,
+                        image_url: updatedProduct.image_url,
+                        status_id: updatedProduct.status_id,
+                        approval_date: updatedProduct.approval_date,
+                        rejection_reason: updatedProduct.rejection_reason,
+                    }));
+                }
+            )
+            .subscribe();
+
+        return () => subscriptionRef.unsubscribe();
+    }, [id, product]);
+
     // Helper to refresh current cart quantity for this product (can be called after add/cap)
     const refreshCartQty = async () => {
         if (!user || !product) {
