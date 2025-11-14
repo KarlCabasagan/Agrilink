@@ -722,14 +722,14 @@ function Cart() {
                                                             className="w-16 h-16 object-cover rounded-lg"
                                                         />
                                                         <div className="flex-1">
-                                                            <div className="flex items-start justify-between mb-1">
+                                                            <div className="flex items-center gap-3 mb-1">
                                                                 <h4 className="font-semibold text-gray-800">
                                                                     {item.name}
                                                                 </h4>
                                                                 {item.products
                                                                     ?.status_id ===
                                                                     2 && (
-                                                                    <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-800">
+                                                                    <span className="inline-flex items-center px-2 rounded text-xs font-medium bg-red-100 text-red-800">
                                                                         <Icon
                                                                             icon="mingcute:alert-fill"
                                                                             className="mr-1"
