@@ -396,7 +396,7 @@ function CropRecommendation() {
 
     // Real-time subscription for crop competition updates
     useEffect(() => {
-        if (!user?.id || totalProducers === 0) return;
+        if (!user?.id) return;
 
         const channel = supabase
             .channel(`crop-competition-${user.id}`)
@@ -408,7 +408,7 @@ function CropRecommendation() {
                     table: "planted_crops",
                 },
                 (payload) => {
-                    // Only react to other users' plantings (is_harvested = false)
+                    // Only react to other users' plantings
                     if (payload.new?.user_id === user.id) return;
 
                     const eventType = payload.eventType;
@@ -416,62 +416,142 @@ function CropRecommendation() {
                         eventType === "DELETE"
                             ? payload.old?.crop_id
                             : payload.new?.crop_id;
-                    const isHarvested =
-                        eventType === "DELETE"
-                            ? true
-                            : payload.new?.is_harvested;
 
                     if (!cropId) return;
 
-                    setCrops((prevCrops) =>
-                        prevCrops.map((crop) => {
-                            if (crop.id !== cropId) return crop;
+                    // For DELETE events, always decrement the planting count
+                    if (eventType === "DELETE") {
+                        setCrops((prevCrops) =>
+                            prevCrops.map((crop) => {
+                                if (crop.id !== cropId) return crop;
 
-                            // Update planting count
-                            let newCount = plantingCounts[cropId] || 0;
-                            if (eventType === "INSERT" && !isHarvested) {
-                                newCount += 1;
-                            } else if (eventType === "DELETE" && !isHarvested) {
-                                newCount = Math.max(0, newCount - 1);
-                            } else if (eventType === "UPDATE" && !isHarvested) {
-                                // If transitioning to harvested, decrement
-                                if (
-                                    payload.old?.is_harvested === false &&
-                                    payload.new?.is_harvested === true
-                                ) {
-                                    newCount = Math.max(0, newCount - 1);
-                                }
-                            }
-
-                            // Compute new percentage using current totalProducers
-                            const newPercentage =
-                                totalProducers > 0
-                                    ? Math.round(
-                                          (newCount / totalProducers) * 100
-                                      )
-                                    : 0;
-
-                            // Use weighted recommendation helper with demand and competition
-                            const { recommendation, color } =
-                                getRecommendationFromPercentage(
-                                    newPercentage,
-                                    crop.demandLevel
+                                // Decrement planting count
+                                const newCount = Math.max(
+                                    0,
+                                    (plantingCounts[cropId] || 0) - 1
                                 );
 
-                            // Update plantingCounts in state
-                            setPlantingCounts((prev) => ({
-                                ...prev,
-                                [cropId]: newCount,
-                            }));
+                                // Compute new percentage
+                                const newPercentage =
+                                    totalProducers > 0
+                                        ? Math.round(
+                                              (newCount / totalProducers) * 100
+                                          )
+                                        : 0;
 
-                            return {
-                                ...crop,
-                                plantingPercentage: newPercentage,
-                                recommendation,
-                                color,
-                            };
-                        })
-                    );
+                                // Recalculate recommendation and color
+                                const { recommendation, color } =
+                                    getRecommendationFromPercentage(
+                                        newPercentage,
+                                        crop.demandLevel
+                                    );
+
+                                // Update plantingCounts
+                                setPlantingCounts((prev) => ({
+                                    ...prev,
+                                    [cropId]: newCount,
+                                }));
+
+                                return {
+                                    ...crop,
+                                    plantingPercentage: newPercentage,
+                                    recommendation,
+                                    color,
+                                };
+                            })
+                        );
+                    }
+                    // For UPDATE events, only decrement if is_harvested changed from false to true
+                    else if (eventType === "UPDATE") {
+                        if (
+                            payload.old?.is_harvested === false &&
+                            payload.new?.is_harvested === true
+                        ) {
+                            setCrops((prevCrops) =>
+                                prevCrops.map((crop) => {
+                                    if (crop.id !== cropId) return crop;
+
+                                    // Decrement planting count
+                                    const newCount = Math.max(
+                                        0,
+                                        (plantingCounts[cropId] || 0) - 1
+                                    );
+
+                                    // Compute new percentage
+                                    const newPercentage =
+                                        totalProducers > 0
+                                            ? Math.round(
+                                                  (newCount / totalProducers) *
+                                                      100
+                                              )
+                                            : 0;
+
+                                    // Recalculate recommendation and color
+                                    const { recommendation, color } =
+                                        getRecommendationFromPercentage(
+                                            newPercentage,
+                                            crop.demandLevel
+                                        );
+
+                                    // Update plantingCounts
+                                    setPlantingCounts((prev) => ({
+                                        ...prev,
+                                        [cropId]: newCount,
+                                    }));
+
+                                    return {
+                                        ...crop,
+                                        plantingPercentage: newPercentage,
+                                        recommendation,
+                                        color,
+                                    };
+                                })
+                            );
+                        }
+                    }
+                    // For INSERT events, increment the planting count
+                    else if (eventType === "INSERT") {
+                        if (!payload.new?.is_harvested) {
+                            setCrops((prevCrops) =>
+                                prevCrops.map((crop) => {
+                                    if (crop.id !== cropId) return crop;
+
+                                    // Increment planting count
+                                    const newCount =
+                                        (plantingCounts[cropId] || 0) + 1;
+
+                                    // Compute new percentage
+                                    const newPercentage =
+                                        totalProducers > 0
+                                            ? Math.round(
+                                                  (newCount / totalProducers) *
+                                                      100
+                                              )
+                                            : 0;
+
+                                    // Recalculate recommendation and color
+                                    const { recommendation, color } =
+                                        getRecommendationFromPercentage(
+                                            newPercentage,
+                                            crop.demandLevel
+                                        );
+
+                                    // Update plantingCounts
+                                    setPlantingCounts((prev) => ({
+                                        ...prev,
+                                        [cropId]: newCount,
+                                    }));
+
+                                    return {
+                                        ...crop,
+                                        plantingPercentage: newPercentage,
+                                        recommendation,
+                                        color,
+                                    };
+                                })
+                            );
+                        }
+                    }
                 }
             )
             .on(
@@ -551,74 +631,8 @@ function CropRecommendation() {
                     )
                         return;
 
-                    const eventType = payload.eventType;
-                    let newTotalProducers = totalProducers;
-
-                    // Derive wasProducer and isProducer from payload
-                    const wasProducer = payload.old?.role_id === 2;
-                    const isProducer = payload.new?.role_id === 2;
-
-                    // Adjust producer count based on role changes
-                    if (eventType === "INSERT") {
-                        // New producer added - check if role_id is 2
-                        if (isProducer) {
-                            newTotalProducers += 1;
-                        }
-                    } else if (eventType === "DELETE") {
-                        // Producer removed - check if they were a producer
-                        if (wasProducer) {
-                            newTotalProducers = Math.max(
-                                0,
-                                newTotalProducers - 1
-                            );
-                        }
-                    } else if (eventType === "UPDATE") {
-                        // Check if role changed
-                        if (wasProducer && !isProducer) {
-                            // Lost producer role
-                            newTotalProducers = Math.max(
-                                0,
-                                newTotalProducers - 1
-                            );
-                        } else if (!wasProducer && isProducer) {
-                            // Gained producer role
-                            newTotalProducers += 1;
-                        }
-                    }
-
-                    // Update totalProducers if it changed
-                    if (newTotalProducers !== totalProducers) {
-                        setTotalProducers(newTotalProducers);
-
-                        // Recompute all crop percentages and recommendations with new totalProducers
-                        setCrops((prevCrops) =>
-                            prevCrops.map((crop) => {
-                                const plantingCount =
-                                    plantingCounts[crop.id] || 0;
-                                const newPercentage =
-                                    newTotalProducers > 0
-                                        ? Math.round(
-                                              (plantingCount /
-                                                  newTotalProducers) *
-                                                  100
-                                          )
-                                        : 0;
-
-                                const { recommendation, color } =
-                                    getRecommendationFromPercentage(
-                                        newPercentage,
-                                        crop.demandLevel
-                                    );
-
-                                return {
-                                    ...crop,
-                                    plantingPercentage: newPercentage,
-                                    recommendation,
-                                    color,
-                                };
-                            })
-                        );
-                    }
+                    // For any other profile event, recompute all competition data
+                    fetchCropsAndCompetition();
                 }
             )
             .subscribe();
@@ -626,7 +640,7 @@ function CropRecommendation() {
         return () => {
             channel.unsubscribe();
         };
-    }, [user?.id, totalProducers]);
+    }, [user?.id]);
 
     const activePlantedCropsCount = plantedCrops.filter(
         (crop) => !crop.harvestDate
