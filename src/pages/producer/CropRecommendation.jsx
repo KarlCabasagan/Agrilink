@@ -1020,7 +1020,7 @@ function CropRecommendation() {
                                                 </div>
                                                 <div>
                                                     <label className="text-xs text-gray-500 font-medium">
-                                                        Harvest Time
+                                                        Estimated Harvest Time
                                                     </label>
                                                     <p className="font-medium text-gray-800">
                                                         {crop.harvestTime}

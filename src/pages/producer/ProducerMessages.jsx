@@ -240,19 +240,38 @@ function ProducerMessages() {
                                     sender_id: newMessage.sender_id,
                                 };
 
-                                // Add to conversation (avoid duplicate if from optimistic send)
+                                // Add to conversation, avoiding duplicates by checking if message already exists
                                 setConversationMessages((prev) => {
-                                    // Check if temp message exists, replace it
-                                    const hasTempMsg = prev.some(
-                                        (m) => m.temp && m.sender_id === user.id
+                                    // Check if a message with this ID already exists
+                                    const messageExists = prev.some(
+                                        (m) => m.id === newMessage.id
                                     );
-                                    if (hasTempMsg) {
+
+                                    // If it exists, replace any temp message with the real one
+                                    if (messageExists) {
                                         return prev.map((m) =>
-                                            m.temp && m.sender_id === user.id
+                                            m.id === newMessage.id
                                                 ? transformedMessage
                                                 : m
                                         );
                                     }
+
+                                    // If no real message exists but there's a temp message from this sender, replace it
+                                    const hasTempMsg = prev.some(
+                                        (m) =>
+                                            m.temp &&
+                                            m.sender_id === newMessage.sender_id
+                                    );
+                                    if (hasTempMsg) {
+                                        return prev.map((m) =>
+                                            m.temp &&
+                                            m.sender_id === newMessage.sender_id
+                                                ? transformedMessage
+                                                : m
+                                        );
+                                    }
+
+                                    // Otherwise, append the new message
                                     return [...prev, transformedMessage];
                                 });
 
