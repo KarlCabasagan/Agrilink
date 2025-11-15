@@ -3,6 +3,25 @@ import { Icon } from "@iconify/react";
 import { AuthContext } from "../../App.jsx";
 import ProducerNavigationBar from "../../components/ProducerNavigationBar";
 import supabase from "../../SupabaseClient.jsx";
+import { toast } from "react-hot-toast";
+
+// Add subtle pulse animation for ready orders tab
+const styles = `
+  @keyframes subtle-pulse {
+    0%, 100% {
+      opacity: 1;
+      box-shadow: 0 0 0 0 rgba(168, 85, 247, 0.7);
+    }
+    50% {
+      opacity: 0.95;
+      box-shadow: 0 0 0 4px rgba(168, 85, 247, 0);
+    }
+  }
+  
+  .animate-ready-pulse {
+    animation: subtle-pulse 2s infinite;
+  }
+`;
 
 const orderStatuses = [
     {
@@ -25,7 +44,7 @@ const orderStatuses = [
     },
     {
         value: "ready for pickup",
-        label: "Ready for Pickup",
+        label: "Ready",
         color: "bg-purple-100 text-purple-800",
         icon: "mingcute:truck-line",
     },
@@ -47,7 +66,7 @@ function Orders() {
     const { user } = useContext(AuthContext);
     const [orders, setOrders] = useState([]);
     const [loading, setLoading] = useState(true);
-    const [selectedStatus, setSelectedStatus] = useState("all");
+    const [activeTab, setActiveTab] = useState("all");
     const [expandedOrder, setExpandedOrder] = useState(null);
     const [searchTerm, setSearchTerm] = useState("");
     const [sortBy, setSortBy] = useState("newest");
@@ -61,7 +80,7 @@ function Orders() {
 
         setLoading(true);
         try {
-            // Fetch orders where this user is the seller
+            // Fetch orders where this user is the seller, including producer profile for pickup orders
             const { data: ordersData, error: ordersError } = await supabase
                 .from("orders")
                 .select(
@@ -80,7 +99,13 @@ function Orders() {
                         name,
                         address,
                         contact,
-                        email
+                        email,
+                        avatar_url
+                    ),
+                    producer:profiles!orders_seller_id_fkey (
+                        name,
+                        address,
+                        contact
                     ),
                     order_items (
                         *,
@@ -98,7 +123,7 @@ function Orders() {
 
             if (ordersError) throw ordersError;
 
-            // Transform orders - no need to filter since all orders are for this seller
+            // Transform orders with normalized fields
             const transformedOrders = ordersData.map((order) => {
                 // Calculate total from order items with safety checks
                 const orderTotal = order.order_items.reduce((sum, item) => {
@@ -112,9 +137,12 @@ function Orders() {
                     customer_name: order.profiles?.name || "Unknown Customer",
                     customer_contact: order.profiles?.contact || "",
                     customer_address: order.profiles?.address || "",
+                    customer_avatar: order.profiles?.avatar_url || "",
+                    producer_address: order.producer?.address || "",
                     total_amount:
                         orderTotal +
                         (parseFloat(order.delivery_fee_at_order) || 0),
+                    itemCount: order.order_items.length,
                     status: order.statuses?.name || "unknown",
                     created_at: order.created_at,
                     deliveryMethod: order.delivery_methods?.name || "Unknown",
@@ -140,7 +168,7 @@ function Orders() {
                     })),
                 };
             });
-
+            console.log("Fetched orders:", transformedOrders);
             setOrders(transformedOrders);
         } catch (error) {
             console.error("Error fetching orders:", error);
@@ -148,6 +176,149 @@ function Orders() {
             setLoading(false);
         }
     };
+
+    // Real-time subscription to orders
+    useEffect(() => {
+        if (!user?.id) return;
+
+        // Helper function to format a single order using the same logic as fetchOrders
+        const formatOrder = (rawOrder) => {
+            const orderTotal = (rawOrder.order_items || []).reduce(
+                (sum, item) => {
+                    const price = parseFloat(item.price_at_purchase) || 0;
+                    const quantity = parseFloat(item.quantity) || 0;
+                    return sum + price * quantity;
+                },
+                0
+            );
+
+            return {
+                id: rawOrder.id,
+                customer_name: rawOrder.profiles?.name || "Unknown Customer",
+                customer_contact: rawOrder.profiles?.contact || "",
+                customer_address: rawOrder.profiles?.address || "",
+                customer_avatar: rawOrder.profiles?.avatar_url || "",
+                producer_address: rawOrder.producer?.address || "",
+                total_amount:
+                    orderTotal +
+                    (parseFloat(rawOrder.delivery_fee_at_order) || 0),
+                itemCount: (rawOrder.order_items || []).length,
+                status: rawOrder.statuses?.name || "unknown",
+                created_at: rawOrder.created_at,
+                deliveryMethod: rawOrder.delivery_methods?.name || "Unknown",
+                paymentMethod: rawOrder.payment_methods?.name || "Unknown",
+                deliveryFee: parseFloat(rawOrder.delivery_fee_at_order) || 0,
+                customerDetails: {
+                    name: rawOrder.profiles?.name || "Unknown Customer",
+                    phone: rawOrder.profiles?.contact || "",
+                    address: rawOrder.profiles?.address || "",
+                    email: rawOrder.profiles?.email || "Not provided",
+                },
+                items: (rawOrder.order_items || []).map((item) => ({
+                    id: item.id,
+                    product_id: item.product_id,
+                    name: item.name_at_purchase || "Unknown Product",
+                    quantity: parseFloat(item.quantity) || 0,
+                    unit_price: parseFloat(item.price_at_purchase) || 0,
+                    subtotal:
+                        (parseFloat(item.price_at_purchase) || 0) *
+                        (parseFloat(item.quantity) || 0),
+                    category: item.products?.categories?.name || "Other",
+                    image_url: item.products?.image_url || "",
+                })),
+            };
+        };
+
+        const channel = supabase
+            .channel(`orders-producer-${user.id}`)
+            .on(
+                "postgres_changes",
+                {
+                    event: "INSERT",
+                    schema: "public",
+                    table: "orders",
+                    filter: `seller_id=eq.${user.id}`,
+                },
+                async (payload) => {
+                    // Re-select the new order with full relations
+                    const { data: newOrderData, error } = await supabase
+                        .from("orders")
+                        .select(
+                            `
+                            *,
+                            statuses!orders_status_id_fkey (name),
+                            delivery_methods!orders_delivery_method_id_fkey (name),
+                            payment_methods!orders_payment_method_id_fkey (name),
+                            profiles!orders_user_id_fkey (name, address, contact, email),
+                            producer:profiles!orders_seller_id_fkey (name, address, contact),
+                            order_items (*, products (*, categories (name)))
+                        `
+                        )
+                        .eq("id", payload.new.id)
+                        .single();
+
+                    if (!error && newOrderData) {
+                        const formatted = formatOrder(newOrderData);
+                        setOrders((prev) => [formatted, ...prev]);
+                    }
+                }
+            )
+            .on(
+                "postgres_changes",
+                {
+                    event: "UPDATE",
+                    schema: "public",
+                    table: "orders",
+                    filter: `seller_id=eq.${user.id}`,
+                },
+                async (payload) => {
+                    // Re-select the updated order with full relations
+                    const { data: updatedOrderData, error } = await supabase
+                        .from("orders")
+                        .select(
+                            `
+                            *,
+                            statuses!orders_status_id_fkey (name),
+                            delivery_methods!orders_delivery_method_id_fkey (name),
+                            payment_methods!orders_payment_method_id_fkey (name),
+                            profiles!orders_user_id_fkey (name, address, contact, email),
+                            producer:profiles!orders_seller_id_fkey (name, address, contact),
+                            order_items (*, products (*, categories (name)))
+                        `
+                        )
+                        .eq("id", payload.new.id)
+                        .single();
+
+                    if (!error && updatedOrderData) {
+                        const formatted = formatOrder(updatedOrderData);
+                        setOrders((prev) =>
+                            prev.map((o) =>
+                                o.id === updatedOrderData.id ? formatted : o
+                            )
+                        );
+                    }
+                }
+            )
+            .on(
+                "postgres_changes",
+                {
+                    event: "DELETE",
+                    schema: "public",
+                    table: "orders",
+                    filter: `seller_id=eq.${user.id}`,
+                },
+                (payload) => {
+                    setOrders((prev) =>
+                        prev.filter((o) => o.id !== payload.old.id)
+                    );
+                }
+            )
+            .subscribe();
+
+        return () => {
+            channel.unsubscribe();
+        };
+    }, [user?.id]);
 
     const updateOrderStatus = async (orderId, newStatus) => {
         try {
@@ -289,11 +460,56 @@ function Orders() {
     const filteredOrders = sortOrders(
         searchOrders(
             orders.filter(
-                (order) =>
-                    selectedStatus === "all" || order.status === selectedStatus
+                (order) => activeTab === "all" || order.status === activeTab
             )
         )
     );
+
+    // Create tabs array for tab-style UI
+    const tabs = [
+        { id: "all", label: "All Orders", count: orders.length },
+        {
+            id: "pending",
+            label: "Pending",
+            count: orders.filter((o) => o.status === "pending").length,
+        },
+        {
+            id: "confirmed",
+            label: "Confirmed",
+            count: orders.filter((o) => o.status === "confirmed").length,
+        },
+        {
+            id: "preparing",
+            label: "Preparing",
+            count: orders.filter((o) => o.status === "preparing").length,
+        },
+        {
+            id: "ready for pickup",
+            label: "Ready",
+            count: orders.filter((o) => o.status === "ready for pickup").length,
+        },
+        {
+            id: "completed",
+            label: "Completed",
+            count: orders.filter((o) => o.status === "completed").length,
+        },
+        {
+            id: "cancelled",
+            label: "Cancelled",
+            count: orders.filter((o) => o.status === "cancelled").length,
+        },
+    ];
+
+    // Compute status counts
+    const statusCounts = {
+        all: orders.length,
+        ...orderStatuses.reduce((acc, status) => {
+            acc[status.value] = orders.filter(
+                (order) => order.status === status.value
+            ).length;
+            return acc;
+        }, {}),
+    };
 
     const getStatusConfig = (status) => {
         return (
@@ -313,6 +529,9 @@ function Orders() {
 
     return (
         <div className="min-h-screen w-full flex flex-col relative items-center scrollbar-hide bg-background overflow-x-hidden text-text pb-20">
+            {/* Inject animation styles */}
+            <style>{styles}</style>
+
             {/* Header */}
             <div className="fixed top-0 left-0 w-full bg-white shadow-md z-50 px-4 py-3">
                 <h1 className="text-lg font-semibold text-primary text-center">
@@ -321,32 +540,43 @@ function Orders() {
             </div>
 
             <div className="w-full max-w-4xl mx-4 sm:mx-auto my-16">
-                {/* Status Filter */}
-                <div className="mb-6 mt-4">
-                    <div className="flex overflow-x-auto gap-2 px-2 py-2 scrollbar-hide">
-                        <button
-                            onClick={() => setSelectedStatus("all")}
-                            className={`px-4 py-2 rounded-lg whitespace-nowrap transition-colors ${
-                                selectedStatus === "all"
-                                    ? "bg-primary text-white"
-                                    : "bg-white text-gray-700 border border-gray-300"
-                            }`}
-                        >
-                            All Orders
-                        </button>
-                        {orderStatuses.map((status) => (
-                            <button
-                                key={status.value}
-                                onClick={() => setSelectedStatus(status.value)}
-                                className={`px-4 py-2 rounded-lg whitespace-nowrap transition-colors ${
-                                    selectedStatus === status.value
-                                        ? "bg-primary text-white"
-                                        : "bg-white text-gray-700 border border-gray-300"
-                                }`}
-                            >
-                                {status.label}
-                            </button>
-                        ))}
+                {/* Tabs */}
+                <div className="bg-white rounded-lg shadow-md overflow-hidden mb-6">
+                    <div className="flex overflow-x-auto">
+                        {tabs.map((tab) => {
+                            const hasReadyOrders =
+                                tab.id === "ready for pickup" && tab.count > 0;
+                            return (
+                                <button
+                                    key={tab.id}
+                                    onClick={() => setActiveTab(tab.id)}
+                                    className={`flex-1 min-w-fit px-4 py-3 text-sm font-medium transition-colors border-b-2 ${
+                                        activeTab === tab.id
+                                            ? "text-primary border-primary bg-primary/5"
+                                            : "text-gray-500 border-transparent hover:text-gray-700"
+                                    } ${
+                                        hasReadyOrders
+                                            ? "animate-ready-pulse"
+                                            : ""
+                                    }`}
+                                >
+                                    <div className="flex items-center justify-center gap-2">
+                                        <span>{tab.label}</span>
+                                        {tab.count > 0 && (
+                                            <span
+                                                className={`px-2 py-1 text-xs rounded-full ${
+                                                    activeTab === tab.id
+                                                        ? "bg-primary text-white"
+                                                        : "bg-gray-200 text-gray-600"
+                                                }`}
+                                            >
+                                                {tab.count}
+                                            </span>
+                                        )}
+                                    </div>
+                                </button>
+                            );
+                        })}
                     </div>
                 </div>
 
@@ -405,9 +635,9 @@ function Orders() {
                         />
                         <p className="text-gray-400 text-lg">No orders found</p>
                         <p className="text-gray-400 text-sm">
-                            {selectedStatus === "all"
+                            {activeTab === "all"
                                 ? "You haven't received any orders yet"
-                                : `No ${selectedStatus} orders at the moment`}
+                                : `No ${activeTab} orders at the moment`}
                         </p>
                     </div>
                 ) : (
@@ -431,13 +661,39 @@ function Orders() {
                                         }
                                     >
                                         <div className="flex justify-between items-start mb-2">
-                                            <div>
-                                                <h3 className="font-semibold text-gray-800">
-                                                    Order #{order.id}
-                                                </h3>
-                                                <p className="text-sm text-gray-600">
-                                                    {order.customer_name}
-                                                </p>
+                                            <div className="flex items-center gap-3 flex-1">
+                                                {order.customer_avatar ? (
+                                                    <img
+                                                        src={
+                                                            order.customer_avatar
+                                                        }
+                                                        alt={
+                                                            order.customer_name
+                                                        }
+                                                        className="w-12 h-12 rounded-full object-cover flex-shrink-0"
+                                                    />
+                                                ) : (
+                                                    <img
+                                                        src={`https://ui-avatars.com/api/?name=${encodeURIComponent(
+                                                            order.customer_name
+                                                        )}&background=random`}
+                                                        alt={
+                                                            order.customer_name
+                                                        }
+                                                        className="w-12 h-12 rounded-full object-cover flex-shrink-0"
+                                                    />
+                                                )}
+                                                <div>
+                                                    <h3 className="font-semibold text-gray-800">
+                                                        Order #{order.id}
+                                                    </h3>
+                                                    <p className="text-sm text-gray-600">
+                                                        {order.customer_name}
+                                                    </p>
+                                                    <p className="text-xs text-gray-500">
+                                                        {order.customer_contact}
+                                                    </p>
+                                                </div>
                                             </div>
                                             <div className="text-right">
                                                 <span
@@ -447,11 +703,17 @@ function Orders() {
                                                         icon={statusConfig.icon}
                                                         width="12"
                                                         height="12"
-                                                        className="inline mr-1"
+                                                        className="inline mb-0.5 mr-1"
                                                     />
-                                                    {statusConfig.label}
+                                                    {(order.status ===
+                                                        "ready for pickup" &&
+                                                        (order.deliveryMethod ===
+                                                        "Farm Pickup"
+                                                            ? "Ready for Pickup"
+                                                            : "Ready for Delivery")) ||
+                                                        statusConfig.label}
                                                 </span>
-                                                <p className="text-sm text-gray-500 mt-1">
+                                                <p className="text-sm text-gray-500 mt-2">
                                                     {formatDate(
                                                         order.created_at
                                                     )}
@@ -460,37 +722,71 @@ function Orders() {
                                         </div>
 
                                         <div className="flex justify-between items-center">
-                                            <p className="text-lg font-bold text-primary">
-                                                ₱
-                                                {(
-                                                    order.total_amount || 0
-                                                ).toFixed(2)}
-                                            </p>
-                                            <div className="flex items-center gap-3">
-                                                <p className="text-xs text-primary bg-primary/10 px-2 py-1 rounded-full flex items-center gap-1">
+                                            <div>
+                                                <p className="text-lg font-bold text-primary">
+                                                    ₱
+                                                    {(
+                                                        order.total_amount || 0
+                                                    ).toFixed(2)}
+                                                </p>
+                                                <p className="text-xs text-gray-500 mt-1">
+                                                    · {order.itemCount || 0}{" "}
+                                                    {order.itemCount === 1
+                                                        ? "item"
+                                                        : "items"}
+                                                </p>
+                                            </div>
+                                            <div className="flex flex-col items-end gap-2">
+                                                <div className="flex items-center gap-3">
+                                                    <div className="text-right">
+                                                        <p className="text-xs text-primary bg-primary/10 px-2 py-1 rounded-full flex items-center gap-1 whitespace-nowrap">
+                                                            <Icon
+                                                                icon={
+                                                                    order.deliveryMethod ===
+                                                                    "Farm Pickup"
+                                                                        ? "mingcute:location-line"
+                                                                        : "mingcute:truck-line"
+                                                                }
+                                                                width="12"
+                                                                height="12"
+                                                            />
+                                                            {order.deliveryMethod ===
+                                                            "Farm Pickup"
+                                                                ? " Farm Pickup"
+                                                                : "Home Delivery"}
+                                                        </p>
+                                                        {/* {order.status ===
+                                                            "ready for pickup" && (
+                                                            <p className="text-xs text-green-600 mt-1 font-medium">
+                                                                {order.deliveryMethod ===
+                                                                "Farm Pickup"
+                                                                    ? "Ready for Pickup"
+                                                                    : "Ready for Delivery"}
+                                                            </p>
+                                                        )} */}
+                                                    </div>
                                                     <Icon
                                                         icon={
-                                                            order.deliveryMethod ===
-                                                            "delivery"
-                                                                ? "mingcute:truck-line"
-                                                                : "mingcute:location-line"
+                                                            isExpanded
+                                                                ? "mingcute:up-line"
+                                                                : "mingcute:down-line"
                                                         }
-                                                        width="12"
-                                                        height="12"
+                                                        width="20"
+                                                        height="20"
+                                                        className="text-gray-400"
                                                     />
-                                                    {order.deliveryMethod ||
-                                                        "Unknown"}
-                                                </p>
-                                                <Icon
-                                                    icon={
-                                                        isExpanded
-                                                            ? "mingcute:up-line"
-                                                            : "mingcute:down-line"
-                                                    }
-                                                    width="20"
-                                                    height="20"
-                                                    className="text-gray-400"
-                                                />
+                                                </div>
+                                                {/* {order.status === "ready for pickup" && (
+                                                    <button
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            updateOrderStatus(order.id, "cancelled");
+                                                        }}
+                                                        className="text-xs px-3 py-1 bg-red-50 text-red-600 rounded-full hover:bg-red-100 transition-colors font-medium"
+                                                    >
+                                                        Cancel Order
+                                                    </button>
+                                                )} */}
                                             </div>
                                         </div>
                                     </div>
@@ -570,9 +866,9 @@ function Orders() {
                                                         <Icon
                                                             icon={
                                                                 order.deliveryMethod ===
-                                                                "delivery"
-                                                                    ? "mingcute:truck-line"
-                                                                    : "mingcute:location-line"
+                                                                "Farm Pickup"
+                                                                    ? "mingcute:location-line"
+                                                                    : "mingcute:truck-line"
                                                             }
                                                             width="16"
                                                             height="16"
@@ -580,54 +876,18 @@ function Orders() {
                                                         />
                                                         <span className="text-sm font-medium text-gray-700">
                                                             {order.deliveryMethod ===
-                                                            "delivery"
-                                                                ? "Home Delivery"
-                                                                : "Farm Pickup"}
+                                                            "Farm Pickup"
+                                                                ? "Farm Pickup"
+                                                                : "Home Delivery"}
                                                         </span>
                                                     </div>
                                                     <div className="ml-5">
                                                         <p className="text-sm text-gray-600 mb-1">
                                                             {order.deliveryMethod ===
-                                                            "delivery"
-                                                                ? order.deliveryAddress
-                                                                : order.pickupLocation}
+                                                            "Farm Pickup"
+                                                                ? order.producer_address
+                                                                : order.customer_address}
                                                         </p>
-                                                        {order.deliveryMethod ===
-                                                            "delivery" &&
-                                                            order.estimatedDelivery && (
-                                                                <p className="text-xs text-green-600">
-                                                                    Est.
-                                                                    delivery:{" "}
-                                                                    {new Date(
-                                                                        order.estimatedDelivery
-                                                                    ).toLocaleDateString(
-                                                                        "en-US",
-                                                                        {
-                                                                            month: "short",
-                                                                            day: "numeric",
-                                                                            year: "numeric",
-                                                                        }
-                                                                    )}
-                                                                </p>
-                                                            )}
-                                                        {order.deliveryMethod ===
-                                                            "pickup" &&
-                                                            order.estimatedPickup && (
-                                                                <p className="text-xs text-green-600">
-                                                                    Available
-                                                                    from:{" "}
-                                                                    {new Date(
-                                                                        order.estimatedPickup
-                                                                    ).toLocaleDateString(
-                                                                        "en-US",
-                                                                        {
-                                                                            month: "short",
-                                                                            day: "numeric",
-                                                                            year: "numeric",
-                                                                        }
-                                                                    )}
-                                                                </p>
-                                                            )}
                                                     </div>
                                                 </div>
 
@@ -637,7 +897,7 @@ function Orders() {
                                                         <Icon
                                                             icon={
                                                                 order.paymentMethod ===
-                                                                "cod"
+                                                                "COD/COP"
                                                                     ? "mingcute:cash-line"
                                                                     : "mingcute:credit-card-line"
                                                             }
@@ -652,12 +912,12 @@ function Orders() {
                                                     <div className="ml-5">
                                                         <p className="text-sm text-gray-600">
                                                             {order.paymentMethod ===
-                                                            "cod"
+                                                            "COD/COP"
                                                                 ? `Cash on ${
                                                                       order.deliveryMethod ===
-                                                                      "delivery"
-                                                                          ? "Delivery"
-                                                                          : "Pickup"
+                                                                      "Farm Pickup"
+                                                                          ? "Pickup"
+                                                                          : "Delivery"
                                                                   }`
                                                                 : "Online Payment"}
                                                         </p>
@@ -666,7 +926,7 @@ function Orders() {
                                                             order.status !==
                                                                 "completed" &&
                                                             order.paymentMethod ===
-                                                                "cod" && (
+                                                                "Cash on Delivery" && (
                                                                 <p className="text-xs text-orange-600">
                                                                     Payment due:
                                                                     ₱
@@ -713,7 +973,7 @@ function Orders() {
                                                     <div className="flex justify-between text-sm">
                                                         <span className="text-gray-600">
                                                             {order.deliveryMethod ===
-                                                            "delivery"
+                                                            "Home Delivery"
                                                                 ? "Delivery Fee"
                                                                 : "Pickup Fee"}
                                                         </span>
@@ -743,7 +1003,7 @@ function Orders() {
                                             </div>
 
                                             {/* Customer Information */}
-                                            <div className="bg-gray-50 rounded-lg p-3 mb-4">
+                                            <div className="bg-gray-50 rounded-lg p-3 mb-4 border-gray-200 border">
                                                 <div className="flex items-center gap-2 mb-1">
                                                     <Icon
                                                         icon="mingcute:user-line"
@@ -804,7 +1064,7 @@ function Orders() {
                                             )}
 
                                             {/* Status Update Actions */}
-                                            <div className="flex flex-wrap gap-2">
+                                            <div className="flex justify-end flex-wrap gap-2">
                                                 {order.status === "pending" && (
                                                     <>
                                                         <button
@@ -814,13 +1074,13 @@ function Orders() {
                                                                     "confirmed"
                                                                 )
                                                             }
-                                                            className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700 transition-colors"
+                                                            className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700 transition-colors"
                                                         >
                                                             <Icon
-                                                                icon="mingcute:check-line"
+                                                                icon="mingcute:check-circle-fill"
                                                                 width="16"
                                                                 height="16"
-                                                                className="inline mr-1"
+                                                                className="mr-1"
                                                             />
                                                             Confirm Order
                                                         </button>
@@ -831,14 +1091,8 @@ function Orders() {
                                                                     "cancelled"
                                                                 )
                                                             }
-                                                            className="px-4 py-2 bg-red-600 text-white rounded-lg text-sm hover:bg-red-700 transition-colors"
+                                                            className="px-4 py-2 border border-red-300 text-red-600 rounded-lg text-sm hover:bg-red-50 transition-colors"
                                                         >
-                                                            <Icon
-                                                                icon="mingcute:close-line"
-                                                                width="16"
-                                                                height="16"
-                                                                className="inline mr-1"
-                                                            />
                                                             Cancel Order
                                                         </button>
                                                     </>
@@ -853,7 +1107,7 @@ function Orders() {
                                                                     "preparing"
                                                                 )
                                                             }
-                                                            className="px-4 py-2 bg-orange-600 text-white rounded-lg text-sm hover:bg-orange-700 transition-colors"
+                                                            className="flex items-center px-4 py-2 bg-orange-600 text-white rounded-lg text-sm hover:bg-orange-700 transition-colors"
                                                         >
                                                             <Icon
                                                                 icon="mingcute:box-line"
@@ -885,7 +1139,7 @@ function Orders() {
                                                                 "ready for pickup"
                                                             )
                                                         }
-                                                        className="px-4 py-2 bg-purple-600 text-white rounded-lg text-sm hover:bg-purple-700 transition-colors"
+                                                        className="flex items-center px-4 py-2 bg-purple-600 text-white rounded-lg text-sm hover:bg-purple-700 transition-colors"
                                                     >
                                                         <Icon
                                                             icon="mingcute:truck-line"
@@ -898,23 +1152,36 @@ function Orders() {
                                                 )}
                                                 {order.status ===
                                                     "ready for pickup" && (
-                                                    <button
-                                                        onClick={() =>
-                                                            updateOrderStatus(
-                                                                order.id,
-                                                                "completed"
-                                                            )
-                                                        }
-                                                        className="px-4 py-2 bg-green-600 text-white rounded-lg text-sm hover:bg-green-700 transition-colors"
-                                                    >
-                                                        <Icon
-                                                            icon="mingcute:check-circle-fill"
-                                                            width="16"
-                                                            height="16"
-                                                            className="inline mr-1"
-                                                        />
-                                                        Complete Order
-                                                    </button>
+                                                    <>
+                                                        <button
+                                                            onClick={() =>
+                                                                updateOrderStatus(
+                                                                    order.id,
+                                                                    "completed"
+                                                                )
+                                                            }
+                                                            className="flex items-center px-4 py-2 bg-green-600 text-white rounded-lg text-sm hover:bg-green-700 transition-colors"
+                                                        >
+                                                            <Icon
+                                                                icon="mingcute:check-circle-fill"
+                                                                width="16"
+                                                                height="16"
+                                                                className="mr-1"
+                                                            />
+                                                            Complete Order
+                                                        </button>
+                                                        <button
+                                                            onClick={() =>
+                                                                updateOrderStatus(
+                                                                    order.id,
+                                                                    "cancelled"
+                                                                )
+                                                            }
+                                                            className="px-4 py-2 border border-red-300 text-red-600 rounded-lg text-sm hover:bg-red-50 transition-colors"
+                                                        >
+                                                            Cancel Order
+                                                        </button>
+                                                    </>
                                                 )}
                                             </div>
                                         </div>
