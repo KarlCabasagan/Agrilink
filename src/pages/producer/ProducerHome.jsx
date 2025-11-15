@@ -7,7 +7,7 @@ import {
     memo,
 } from "react";
 import { Icon } from "@iconify/react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import { AuthContext } from "../../App.jsx";
 import ProducerNavigationBar from "../../components/ProducerNavigationBar";
 import ConfirmModal from "../../components/ConfirmModal";
@@ -669,6 +669,8 @@ ProductModal.displayName = "ProductModal";
 
 function ProducerHome() {
     const { user } = useContext(AuthContext);
+    const navigate = useNavigate();
+    const location = useLocation();
     // Update last login timestamp
     useUpdateLastLogin(user?.id);
     const [selectedCategory, setSelectedCategory] = useState("All");
@@ -747,6 +749,34 @@ function ProducerHome() {
         };
         fetchAllCrops();
     }, []);
+
+    // Handle modal opening and pre-filling from navigation state
+    useEffect(() => {
+        if (location.state?.openAddModal && allCrops.length > 0) {
+            const { prefilledCropType } = location.state;
+            if (prefilledCropType) {
+                // Pre-fill crop type by updating cropTypeSearch and selecting it
+                setCropTypeSearch(prefilledCropType);
+                // Call the crop type selection handler to set productForm fields
+                const selectedCrop = allCrops.find(
+                    (crop) =>
+                        crop.name.toLowerCase() ===
+                        prefilledCropType.toLowerCase()
+                );
+                if (selectedCrop) {
+                    setProductForm((prev) => ({
+                        ...prev,
+                        cropType: selectedCrop.name,
+                        crop_id: selectedCrop.id,
+                    }));
+                    setShowCropDropdown(false);
+                }
+            }
+            setShowAddModal(true);
+            // Clear navigation state
+            navigate("/", { replace: true });
+        }
+    }, [location.state, allCrops, navigate]);
 
     const availableCrops = useMemo(
         () => allCrops.map((c) => c.name),
