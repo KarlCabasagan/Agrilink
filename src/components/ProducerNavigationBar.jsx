@@ -1,8 +1,13 @@
 import { Icon } from "@iconify/react";
 import { Link, useLocation } from "react-router-dom";
+import { useContext } from "react";
+import { UnreadConversationsContext } from "../context/UnreadConversationsContext.jsx";
+import { ProducerOrderCountContext } from "../context/ProducerOrderCountContext.jsx";
 
 function ProducerNavigationBar() {
     const location = useLocation();
+    const { unreadConversationCount } = useContext(UnreadConversationsContext);
+    const { pendingOrdersCount } = useContext(ProducerOrderCountContext);
 
     const isActive = (path) => {
         return location.pathname === path;
@@ -20,7 +25,7 @@ function ProducerNavigationBar() {
             icon: "mingcute:box-2-line",
             activeIcon: "mingcute:box-2-fill",
             label: "Orders",
-            badge: 3, // Mock notification count
+            badge: pendingOrdersCount,
         },
         {
             path: "/crop-recommendation",
@@ -33,7 +38,7 @@ function ProducerNavigationBar() {
             icon: "mingcute:message-3-line",
             activeIcon: "mingcute:message-3-fill",
             label: "Messages",
-            badge: 2, // Mock notification count
+            badge: unreadConversationCount,
         },
         {
             path: "/profile",
@@ -69,7 +74,7 @@ function ProducerNavigationBar() {
                             {item.label}
                         </span>
                         {/* Notification badge */}
-                        {item.badge && item.badge > 0 && (
+                        {item.badge > 0 && (
                             <div className="absolute -top-1 -right-1 bg-red-500 text-white text-xs w-5 h-5 flex items-center justify-center rounded-full">
                                 {item.badge > 9 ? "9+" : item.badge}
                             </div>

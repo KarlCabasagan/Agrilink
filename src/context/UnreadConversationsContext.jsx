@@ -7,7 +7,7 @@ export const UnreadConversationsContext = createContext({
     updateUnreadConversationCount: async () => {},
 });
 
-export function UnreadConversationsProvider({ children, user }) {
+export function UnreadConversationsProvider({ children, user, role = 1 }) {
     const [unreadConversationCount, setUnreadConversationCount] = useState(0);
 
     // Initialize unread conversation count when user changes
@@ -15,6 +15,10 @@ export function UnreadConversationsProvider({ children, user }) {
         const initializeUnreadCount = async () => {
             if (user) {
                 try {
+                    // Determine if this is consumer (role 1) or producer (role 2) mode
+                    const filterField =
+                        role === 2 ? "producer_id" : "consumer_id";
+
                     const { data: conversationsData, error } = await supabase
                         .from("conversations")
                         .select(
@@ -27,11 +31,11 @@ export function UnreadConversationsProvider({ children, user }) {
                         )
                     `
                         )
-                        .eq("consumer_id", user.id);
+                        .eq(filterField, user.id);
 
                     if (error) throw error;
 
-                    // Count conversations with unread messages
+                    // Count conversations with unread messages from the other party
                     const unreadCount = conversationsData.filter(
                         (conv) =>
                             Array.isArray(conv.messages) &&
@@ -55,20 +59,24 @@ export function UnreadConversationsProvider({ children, user }) {
         };
 
         initializeUnreadCount();
-    }, [user]);
+    }, [user, role]);
 
     // Update unread conversation count by fetching fresh data from server
-    const updateUnreadConversationCount = useCallback(async (userId) => {
-        if (!userId) {
-            setUnreadConversationCount(0);
-            return;
-        }
+    const updateUnreadConversationCount = useCallback(
+        async (userId) => {
+            if (!userId) {
+                setUnreadConversationCount(0);
+                return;
+            }
 
-        try {
-            const { data: conversationsData, error } = await supabase
-                .from("conversations")
-                .select(
-                    `
+            try {
+                // Determine if this is consumer (role 1) or producer (role 2) mode
+                const filterField = role === 2 ? "producer_id" : "consumer_id";
+
+                const { data: conversationsData, error } = await supabase
+                    .from("conversations")
+                    .select(
+                        `
                 id,
                 messages (
                     id,
@@ -76,25 +84,30 @@ export function UnreadConversationsProvider({ children, user }) {
                     is_read
                 )
             `
-                )
-                .eq("consumer_id", userId);
-
-            if (error) throw error;
-
-            // Count conversations with unread messages
-            const unreadCount = conversationsData.filter(
-                (conv) =>
-                    Array.isArray(conv.messages) &&
-                    conv.messages.some(
-                        (msg) => msg.sender_id !== userId && !msg.is_read
                     )
-            ).length;
+                    .eq(filterField, userId);
 
-            setUnreadConversationCount(unreadCount);
-        } catch (error) {
-            console.error("Error updating unread conversation count:", error);
-        }
-    }, []);
+                if (error) throw error;
+
+                // Count conversations with unread messages from the other party
+                const unreadCount = conversationsData.filter(
+                    (conv) =>
+                        Array.isArray(conv.messages) &&
+                        conv.messages.some(
+                            (msg) => msg.sender_id !== userId && !msg.is_read
+                        )
+                ).length;
+
+                setUnreadConversationCount(unreadCount);
+            } catch (error) {
+                console.error(
+                    "Error updating unread conversation count:",
+                    error
+                );
+            }
+        },
+        [role]
+    );
 
     // Set up real-time subscription to message changes
     useEffect(() => {
