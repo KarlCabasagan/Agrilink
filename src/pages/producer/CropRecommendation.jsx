@@ -301,9 +301,25 @@ function CropRecommendation() {
             const recDiff = order[a.recommendation] - order[b.recommendation];
             if (recDiff !== 0) return recDiff;
 
-            // Secondary sort: by plantingPercentage (ascending, lower competition first)
-            const compDiff = a.plantingPercentage - b.plantingPercentage;
-            if (compDiff !== 0) return compDiff;
+            // Secondary sort: by opportunity score (descending, higher score first)
+            // Calculate opportunity score using same weights as getRecommendationFromPercentage
+            const demandMap = {
+                "Very High": 1.0,
+                High: 0.8,
+                Medium: 0.5,
+                Low: 0.2,
+            };
+
+            const getOpportunityScore = (crop) => {
+                const demandScore = demandMap[crop.demandLevel] || 0.5;
+                const competitionScore = 1 - crop.plantingPercentage / 100;
+                return demandScore * 0.6 + competitionScore * 0.4;
+            };
+
+            const scoreA = getOpportunityScore(a);
+            const scoreB = getOpportunityScore(b);
+            const scoreDiff = scoreB - scoreA; // Descending order (higher score first)
+            if (scoreDiff !== 0) return scoreDiff;
 
             // Tie-break: by crop name (stable sort)
             return a.name.localeCompare(b.name);
