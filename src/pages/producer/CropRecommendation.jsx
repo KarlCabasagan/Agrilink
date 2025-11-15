@@ -22,6 +22,10 @@ function CropRecommendation() {
     const [loading, setLoading] = useState(true);
     const [totalProducers, setTotalProducers] = useState(0);
     const [plantingCounts, setPlantingCounts] = useState({});
+    const [
+        displayedCompetitionPercentages,
+        setDisplayedCompetitionPercentages,
+    ] = useState({});
 
     const fetchInitialData = async () => {
         if (!user) return;
@@ -293,7 +297,16 @@ function CropRecommendation() {
                 "Consider Carefully": 3,
                 "Caution Advised": 4,
             };
-            return order[a.recommendation] - order[b.recommendation];
+            // Primary sort: by recommendation level
+            const recDiff = order[a.recommendation] - order[b.recommendation];
+            if (recDiff !== 0) return recDiff;
+
+            // Secondary sort: by plantingPercentage (ascending, lower competition first)
+            const compDiff = a.plantingPercentage - b.plantingPercentage;
+            if (compDiff !== 0) return compDiff;
+
+            // Tie-break: by crop name (stable sort)
+            return a.name.localeCompare(b.name);
         }
         if (sortBy === "demand") {
             const order = { "Very High": 1, High: 2, Medium: 3, Low: 4 };
@@ -393,6 +406,22 @@ function CropRecommendation() {
 
         return { recommendation, color };
     };
+
+    // Effect to update displayed competition percentages for animation
+    useEffect(() => {
+        setDisplayedCompetitionPercentages((prevDisplayed) => {
+            const newDisplayed = { ...prevDisplayed };
+            crops.forEach((crop) => {
+                // Initialize or update to the current plantingPercentage
+                if (newDisplayed[crop.id] === undefined) {
+                    newDisplayed[crop.id] = crop.plantingPercentage;
+                } else {
+                    newDisplayed[crop.id] = crop.plantingPercentage;
+                }
+            });
+            return newDisplayed;
+        });
+    }, [crops]);
 
     // Real-time subscription for crop competition updates
     useEffect(() => {
@@ -1006,9 +1035,10 @@ function CropRecommendation() {
                                                         Competition Level
                                                     </span>
                                                     <span>
-                                                        {
-                                                            crop.plantingPercentage
-                                                        }
+                                                        {displayedCompetitionPercentages[
+                                                            crop.id
+                                                        ] ??
+                                                            crop.plantingPercentage}
                                                         %
                                                     </span>
                                                 </div>
@@ -1027,7 +1057,12 @@ function CropRecommendation() {
                                                                 : "bg-red-500"
                                                         }`}
                                                         style={{
-                                                            width: `${crop.plantingPercentage}%`,
+                                                            width: `${
+                                                                displayedCompetitionPercentages[
+                                                                    crop.id
+                                                                ] ??
+                                                                crop.plantingPercentage
+                                                            }%`,
                                                         }}
                                                     ></div>
                                                 </div>
