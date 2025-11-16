@@ -875,9 +875,7 @@ function ProducerHome() {
             category: product.categories?.name || "Other",
             description: product.description,
             stock: parseFloat(product.stock),
-            image:
-                product.image_url ||
-                "https://via.placeholder.com/300x200?text=No+Image",
+            image: product.image_url || "/assets/gray-apple.png",
             image_url: product.image_url,
             cropId: product.crops?.id,
             cropType: product.crops?.name,
