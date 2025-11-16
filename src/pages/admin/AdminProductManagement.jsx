@@ -151,6 +151,7 @@ function AdminProductManagement() {
         description: "",
         icon: "",
     });
+    const [blockedCategoryInfo, setBlockedCategoryInfo] = useState(null);
 
     // Top-level helper to fetch categories
     const fetchCategories = async () => {
@@ -855,18 +856,39 @@ function AdminProductManagement() {
         }
     };
 
-    const handleDeleteCategory = async (categoryId) => {
+    const handleDeleteCategory = async (category) => {
+        // Check if any crops are using this category
+        const { count, error: countError } = await supabase
+            .from("crops")
+            .select("id", { count: "exact", head: true })
+            .eq("category_id", category.id);
+
+        if (countError) {
+            console.error("Error checking crops for category:", countError);
+            return;
+        }
+
+        // If crops are using this category, show blocked modal
+        if (count > 0) {
+            setBlockedCategoryInfo({
+                name: category.name,
+                count: count,
+            });
+            return;
+        }
+
+        // Otherwise, proceed with deletion
         const { error } = await supabase
             .from("categories")
             .delete()
-            .eq("id", categoryId);
+            .eq("id", category.id);
 
         if (error) {
             console.error("Error deleting category:", error);
             return;
         }
 
-        setCategories(categories.filter((cat) => cat.id !== categoryId));
+        setCategories((prev) => prev.filter((cat) => cat.id !== category.id));
     };
 
     const handleProductRejection = async (rejectionReason) => {
@@ -1893,7 +1915,7 @@ function AdminProductManagement() {
                                                         <button
                                                             onClick={() =>
                                                                 handleDeleteCategory(
-                                                                    category.id
+                                                                    category
                                                                 )
                                                             }
                                                             className="inline-flex items-center px-3 py-1 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
@@ -2000,6 +2022,57 @@ function AdminProductManagement() {
                 isSubmitting={isSubmitting}
                 type="suspension"
             />
+
+            {/* Blocked Category Modal */}
+            {blockedCategoryInfo && (
+                <>
+                    <div className="fixed inset-0 bg-black opacity-50 flex items-center justify-center z-[9990] px-4"></div>
+                    <div className="bg-white rounded-lg shadow-xl max-w-md w-full z-[9999] fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2">
+                        <div className="p-6">
+                            <div className="flex items-center gap-3 mb-4">
+                                <div className="p-2 bg-yellow-100 rounded-full">
+                                    <Icon
+                                        icon="mingcute:alert-line"
+                                        className="w-6 h-6 text-yellow-600"
+                                    />
+                                </div>
+                                <h3 className="text-lg font-semibold text-gray-900">
+                                    Cannot Delete Category
+                                </h3>
+                            </div>
+
+                            <p className="text-sm text-gray-600 mb-2">
+                                The category{" "}
+                                <strong>"{blockedCategoryInfo.name}"</strong>{" "}
+                                cannot be deleted because{" "}
+                                <strong>{blockedCategoryInfo.count}</strong>{" "}
+                                {blockedCategoryInfo.count === 1
+                                    ? "crop is"
+                                    : "crops are"}{" "}
+                                still using it.
+                            </p>
+
+                            <p className="text-sm text-gray-600 mb-6">
+                                Please switch these{" "}
+                                {blockedCategoryInfo.count === 1
+                                    ? "crop"
+                                    : "crops"}{" "}
+                                to other categories before deleting this
+                                category.
+                            </p>
+
+                            <div className="flex justify-end">
+                                <button
+                                    onClick={() => setBlockedCategoryInfo(null)}
+                                    className="px-4 py-2 text-sm font-medium text-white bg-primary hover:bg-primary-dark rounded-lg transition-colors"
+                                >
+                                    OK
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </>
+            )}
 
             <AdminNavigationBar />
         </div>

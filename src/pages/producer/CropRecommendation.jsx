@@ -171,15 +171,17 @@ function CropRecommendation() {
     const confirmPlantCrop = async () => {
         if (!confirmingCrop || !user) return;
 
-        // Optimistic Update: Create a temporary representation of the new crop.
+        // Optimistic Update: Create a temporary representation with the same shape
+        // as objects returned by fetchPlantedCrops
+        const now = new Date().toISOString();
+        const tempId = Date.now(); // Temporary unique ID for this optimistic update
         const newPlantedCrop = {
-            id: Date.now(), // Use a temporary unique ID
-            user_id: user.id,
-            crop_id: confirmingCrop.id,
-            is_harvested: false,
-            created_at: new Date().toISOString(), // Use current time
-            updated_at: new Date().toISOString(),
-            crop: confirmingCrop, // Embed the full crop object for immediate rendering
+            ...confirmingCrop, // Spread all crop fields (name, icon, harvest_time, etc.)
+            id: tempId, // Use temporary unique ID as the key
+            planted_id: tempId, // Track the temporary planted_crop id
+            plantedDate: now, // Set to current time
+            harvestDate: null, // Not yet harvested
+            // category is already included from confirmingCrop spread
         };
 
         // Immediately update the state and UI
@@ -200,7 +202,7 @@ function CropRecommendation() {
             console.error("Error planting crop:", error);
             // If there's an error, revert the optimistic update
             setPlantedCrops((prevPlantedCrops) =>
-                prevPlantedCrops.filter((p) => p.id !== newPlantedCrop.id)
+                prevPlantedCrops.filter((p) => p.id !== tempId)
             );
         }
 
@@ -210,6 +212,55 @@ function CropRecommendation() {
 
     const cancelPlantCrop = () => {
         setConfirmingCrop(null);
+    };
+
+    // Helper function to calculate days planted with robust date handling
+    const calculateDaysSincePlanted = (plantedDateStr) => {
+        // Return 0 if plantedDate is missing or invalid
+        if (!plantedDateStr) {
+            return 0;
+        }
+
+        try {
+            // Parse the planted date
+            const plantedDate = new Date(plantedDateStr);
+
+            // Check if date is valid
+            if (isNaN(plantedDate.getTime())) {
+                return 0;
+            }
+
+            // Normalize both dates to start of calendar day (00:00:00)
+            const today = new Date();
+            const normalizedPlanted = new Date(
+                plantedDate.getFullYear(),
+                plantedDate.getMonth(),
+                plantedDate.getDate(),
+                0,
+                0,
+                0,
+                0
+            );
+            const normalizedToday = new Date(
+                today.getFullYear(),
+                today.getMonth(),
+                today.getDate(),
+                0,
+                0,
+                0,
+                0
+            );
+
+            // Calculate difference in milliseconds and convert to days
+            const diffInMs = normalizedToday - normalizedPlanted;
+            const diffInDays = Math.floor(diffInMs / (1000 * 60 * 60 * 24));
+
+            // Clamp to 0 to handle timezone quirks or just-planted records
+            return Math.max(0, diffInDays);
+        } catch (error) {
+            console.error("Error calculating days since planted:", error);
+            return 0;
+        }
     };
 
     const handleHarvestCrop = (plantedCropId) => {
@@ -1284,17 +1335,10 @@ function CropRecommendation() {
                                         {plantedCrops
                                             .filter((crop) => !crop.harvestDate)
                                             .map((crop) => {
-                                                const plantedDate = new Date(
-                                                    crop.plantedDate
-                                                );
+                                                // Use robust day calculation helper
                                                 const daysSincePlanted =
-                                                    Math.floor(
-                                                        (new Date() -
-                                                            plantedDate) /
-                                                            (1000 *
-                                                                60 *
-                                                                60 *
-                                                                24)
+                                                    calculateDaysSincePlanted(
+                                                        crop.plantedDate
                                                     );
 
                                                 const harvestTimeInDays =
@@ -1334,7 +1378,9 @@ function CropRecommendation() {
                                                                 </h4>
                                                                 <p className="text-xs text-gray-500">
                                                                     Planted:{" "}
-                                                                    {plantedDate.toLocaleDateString()}
+                                                                    {new Date(
+                                                                        crop.plantedDate
+                                                                    ).toLocaleDateString()}
                                                                 </p>
                                                             </div>
                                                         </div>
