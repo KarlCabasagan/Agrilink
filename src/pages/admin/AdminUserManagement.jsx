@@ -7,6 +7,7 @@ import SuspendUserModal from "../../components/SuspendUserModal";
 import supabase from "../../SupabaseClient";
 import { deleteImageFromUrl } from "../../utils/imageUpload";
 import { toast } from "react-hot-toast";
+import { getProfileAvatarUrl } from "../../utils/avatarUtils.js";
 
 function AdminUserManagement() {
     // Get                         {filterData(producerApplications).length === 0 ? (al tab from localStorage or default to "applications"
@@ -122,7 +123,7 @@ function AdminUserManagement() {
                 email: app.profiles.email,
                 contact: app.profiles.contact,
                 address: app.profiles.address,
-                profileImage: app.profiles.avatar_url,
+                profileImage: getProfileAvatarUrl(app.profiles),
                 validIdUrl: app.valid_id_url,
                 experience: app.farming_experience,
                 crops: app.application_crops.map((ac) => ac.crops.name),
@@ -178,6 +179,7 @@ function AdminUserManagement() {
                 id: user.id,
                 name: user.name,
                 email: user.email,
+                profileImage: getProfileAvatarUrl(user),
                 role: user.roles.name,
                 status: statusMap[user.status_id] || "Unknown",
                 statusLabel: (statusMap[user.status_id] || "unknown").replace(
@@ -1140,12 +1142,19 @@ function AdminUserManagement() {
                                                     className="hover:bg-gray-50"
                                                 >
                                                     <td className="px-6 py-4 whitespace-nowrap">
-                                                        <div>
-                                                            <div className="text-sm font-medium text-gray-900">
-                                                                {user.name}
-                                                            </div>
-                                                            <div className="text-sm text-gray-500">
-                                                                {user.email}
+                                                        <div className="flex items-center gap-3">
+                                                            <img
+                                                                src={user.profileImage}
+                                                                alt={user.name}
+                                                                className="w-10 h-10 object-cover rounded-full"
+                                                            />
+                                                            <div>
+                                                                <div className="text-sm font-medium text-gray-900">
+                                                                    {user.name}
+                                                                </div>
+                                                                <div className="text-sm text-gray-500">
+                                                                    {user.email}
+                                                                </div>
                                                             </div>
                                                         </div>
                                                     </td>

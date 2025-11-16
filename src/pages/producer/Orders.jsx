@@ -4,6 +4,7 @@ import { AuthContext } from "../../App.jsx";
 import ProducerNavigationBar from "../../components/ProducerNavigationBar";
 import supabase from "../../SupabaseClient.jsx";
 import { toast } from "react-hot-toast";
+import { getProfileAvatarUrl } from "../../utils/avatarUtils.js";
 
 // Add subtle pulse animation for ready orders tab
 const styles = `
@@ -137,7 +138,7 @@ function Orders() {
                     customer_name: order.profiles?.name || "Unknown Customer",
                     customer_contact: order.profiles?.contact || "",
                     customer_address: order.profiles?.address || "",
-                    customer_avatar: order.profiles?.avatar_url || "",
+                    customer_avatar: getProfileAvatarUrl(order.profiles || {}),
                     producer_address: order.producer?.address || "",
                     total_amount:
                         orderTotal +
@@ -197,7 +198,7 @@ function Orders() {
                 customer_name: rawOrder.profiles?.name || "Unknown Customer",
                 customer_contact: rawOrder.profiles?.contact || "",
                 customer_address: rawOrder.profiles?.address || "",
-                customer_avatar: rawOrder.profiles?.avatar_url || "",
+                customer_avatar: getProfileAvatarUrl(rawOrder.profiles || {}),
                 producer_address: rawOrder.producer?.address || "",
                 total_amount:
                     orderTotal +

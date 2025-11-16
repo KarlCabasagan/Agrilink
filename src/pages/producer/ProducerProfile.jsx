@@ -5,6 +5,7 @@ import { AuthContext } from "../../App.jsx";
 import ImageUpload from "../../components/ImageUpload";
 import supabase from "../../SupabaseClient.jsx";
 import ProducerNavigationBar from "../../components/ProducerNavigationBar";
+import { getProfileAvatarUrl } from "../../utils/avatarUtils.js";
 
 function ProducerProfile() {
     const { user, setUser } = useContext(AuthContext);
@@ -154,11 +155,13 @@ function ProducerProfile() {
                         <div className="absolute bottom-0 left-1/2 transform -translate-x-1/2 translate-y-1/2">
                             <div className="w-24 h-24 bg-white rounded-full p-1 shadow-lg relative">
                                 <img
-                                    src={
-                                        profile.avatar_url || "/assets/adel.jpg"
-                                    }
+                                    src={getProfileAvatarUrl(profile, user)}
                                     alt="profile"
                                     className="w-full h-full object-cover rounded-full"
+                                    onError={(e) => {
+                                        e.target.src =
+                                            "https://ui-avatars.com/api/?name=Producer&background=random";
+                                    }}
                                 />
                             </div>
                         </div>

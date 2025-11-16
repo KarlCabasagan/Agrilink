@@ -4,6 +4,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { useContext, useEffect, useState } from "react";
 import { AuthContext } from "../../App.jsx";
 import supabase from "../../SupabaseClient.jsx";
+import { getProfileAvatarUrl } from "../../utils/avatarUtils.js";
 
 function Profile() {
     const { user, setUser } = useContext(AuthContext);
@@ -243,15 +244,7 @@ function Profile() {
                             <div className="absolute bottom-0 left-1/2 transform -translate-x-1/2 translate-y-1/2">
                                 <div className="w-32 h-32 bg-white rounded-full p-1 shadow-lg">
                                     <img
-                                        src={
-                                            profile.avatar_url &&
-                                            profile.avatar_url !== "" &&
-                                            !profile.avatar_url.includes(
-                                                '"success":false'
-                                            )
-                                                ? profile.avatar_url
-                                                : "/assets/blank-profile.jpg"
-                                        }
+                                        src={getProfileAvatarUrl(profile, user)}
                                         alt="Profile"
                                         className="w-full h-full rounded-full object-cover"
                                         onError={(e) => {
@@ -259,7 +252,7 @@ function Profile() {
                                                 "Avatar load error, using fallback"
                                             );
                                             e.target.src =
-                                                "/assets/blank-profile.jpg";
+                                                "https://ui-avatars.com/api/?name=User&background=random";
                                         }}
                                     />
                                 </div>

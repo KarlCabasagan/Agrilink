@@ -4,6 +4,7 @@ import { Link, useSearchParams } from "react-router-dom";
 import ProducerNavigationBar from "../../components/ProducerNavigationBar";
 import supabase from "../../SupabaseClient";
 import { AuthContext } from "../../App.jsx";
+import { getProfileAvatarUrl } from "../../utils/avatarUtils.js";
 
 function ProducerMessages() {
     // Helper: sort conversations by ISO timestamp `lastMessageAt` (newest first)
@@ -154,8 +155,7 @@ function ProducerMessages() {
                         id: conv.id,
                         consumer: consumer,
                         customerName: consumer.name || "Unknown Customer",
-                        customerAvatar:
-                            consumer.avatar_url || "/assets/blank-profile.jpg",
+                        customerAvatar: getProfileAvatarUrl(consumer),
                         lastMessage: latestMessage
                             ? latestMessage.body
                             : "No messages yet",
@@ -481,7 +481,7 @@ function ProducerMessages() {
                 }),
                 created_at: message.created_at,
                 senderName: message.sender.name,
-                senderAvatar: message.sender.avatar_url,
+                senderAvatar: getProfileAvatarUrl(message.sender),
                 is_read: message.is_read,
                 sender_id: message.sender_id,
             }));

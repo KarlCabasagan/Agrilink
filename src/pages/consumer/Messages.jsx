@@ -5,6 +5,7 @@ import NavigationBar from "../../components/NavigationBar";
 import supabase from "../../SupabaseClient";
 import { AuthContext } from "../../App.jsx";
 import { UnreadConversationsContext } from "../../context/UnreadConversationsContext.jsx";
+import { getProfileAvatarUrl } from "../../utils/avatarUtils.js";
 
 function Messages() {
     // Helper: sort conversations by ISO timestamp `lastMessageAt` (newest first)
@@ -395,9 +396,7 @@ function Messages() {
                     return {
                         id: conv.id,
                         farmerName: conv.producer?.name || "Unknown Farmer",
-                        farmerAvatar:
-                            conv.producer?.avatar_url ||
-                            "/assets/blank-profile.jpg",
+                        farmerAvatar: getProfileAvatarUrl(conv.producer || {}),
                         lastMessage: latestMessage
                             ? latestMessage.body
                             : "No messages yet",
@@ -447,7 +446,7 @@ function Messages() {
                 }),
                 created_at: message.created_at,
                 senderName: message.sender.name,
-                senderAvatar: message.sender.avatar_url,
+                senderAvatar: getProfileAvatarUrl(message.sender),
             }));
 
             setConversationMessages(transformedMessages);

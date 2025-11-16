@@ -6,6 +6,7 @@ import ProducerNavigationBar from "../../components/ProducerNavigationBar";
 import ConfirmModal from "../../components/ConfirmModal";
 import { deleteImageFromUrl, uploadImage } from "../../utils/imageUpload";
 import supabase from "../../SupabaseClient.jsx";
+import { getReviewerAvatarUrl } from "../../utils/avatarUtils.js";
 
 // Helper to fetch crops with specific columns ordered by name
 const fetchCropsHelper = async () => {
@@ -327,9 +328,7 @@ function ProducerProduct() {
                         comment: review.review,
                         date: review.created_at,
                         userName: review.profiles.name,
-                        userImage:
-                            review.profiles.avatar_url ||
-                            "/assets/blank-profile.jpg",
+                        userImage: getReviewerAvatarUrl(review.profiles),
                         helpfulCount: helpfulCounts[review.id] || 0, // Now using the correctly counted helpful reviews
                     }));
 
@@ -524,9 +523,9 @@ function ProducerProduct() {
                             comment: reviewData.review,
                             date: reviewData.created_at,
                             userName: reviewData.profiles.name,
-                            userImage:
-                                reviewData.profiles.avatar_url ||
-                                "/assets/blank-profile.jpg",
+                            userImage: getReviewerAvatarUrl(
+                                reviewData.profiles
+                            ),
                             helpfulCount: helpfulCount,
                         };
 
@@ -613,9 +612,9 @@ function ProducerProduct() {
                             comment: reviewData.review,
                             date: reviewData.created_at,
                             userName: reviewData.profiles.name,
-                            userImage:
-                                reviewData.profiles.avatar_url ||
-                                "/assets/blank-profile.jpg",
+                            userImage: getReviewerAvatarUrl(
+                                reviewData.profiles
+                            ),
                             helpfulCount: helpfulCount,
                         };
 
