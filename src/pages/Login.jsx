@@ -46,6 +46,28 @@ function Login() {
         }
     };
 
+    const handleGoogleLogin = async () => {
+        setError("");
+        setLoading(true);
+        try {
+            const { error: loginError } = await supabase.auth.signInWithOAuth({
+                provider: "google",
+                options: {
+                    redirectTo: `${window.location.origin}/account-verified`,
+                },
+            });
+            if (loginError) {
+                setError(loginError.message);
+                setLoading(false);
+                return;
+            }
+            // Supabase will redirect the browser - no manual navigate needed
+        } catch (err) {
+            setError("Google login failed. Try again.");
+            setLoading(false);
+        }
+    };
+
     return (
         <>
             <div className="min-h-screen min-w-screen flex items-center justify-center flex-col bg-background text-text">
@@ -126,14 +148,18 @@ function Login() {
                         <div className="flex flex-col w-full max-w-sm gap-3">
                             <button
                                 type="button"
-                                className="flex items-center justify-center gap-2 bg-white border border-gray-300 text-gray-700 p-3 rounded-md hover:bg-gray-100 transition-colors font-medium text-base cursor-pointer"
+                                onClick={handleGoogleLogin}
+                                disabled={loading}
+                                className="flex items-center justify-center gap-2 bg-white border border-gray-300 text-gray-700 p-3 rounded-md hover:bg-gray-100 transition-colors font-medium text-base cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                             >
                                 <Icon
                                     icon="flat-color-icons:google"
                                     width="24"
                                     height="24"
                                 />
-                                Login with Google
+                                {loading
+                                    ? "Logging in..."
+                                    : "Login with Google"}
                             </button>
                             <div className="flex justify-center">
                                 <button
