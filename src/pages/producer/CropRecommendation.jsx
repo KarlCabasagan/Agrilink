@@ -1,4 +1,5 @@
 import { useState, useContext, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { Icon } from "@iconify/react";
 import ProducerNavigationBar from "../../components/ProducerNavigationBar";
 import { AuthContext } from "../../App";
@@ -6,6 +7,7 @@ import supabase from "../../SupabaseClient";
 
 function CropRecommendation() {
     const { user } = useContext(AuthContext);
+    const navigate = useNavigate();
     const [activeTab, setActiveTab] = useState("recommendations");
     const [selectedCategory, setSelectedCategory] = useState("All");
     const [sortBy, setSortBy] = useState("recommendation");
@@ -18,6 +20,12 @@ function CropRecommendation() {
     const [crops, setCrops] = useState([]);
     const [categories, setCategories] = useState(["All"]);
     const [loading, setLoading] = useState(true);
+    const [totalProducers, setTotalProducers] = useState(0);
+    const [plantingCounts, setPlantingCounts] = useState({});
+    const [
+        displayedCompetitionPercentages,
+        setDisplayedCompetitionPercentages,
+    ] = useState({});
 
     const fetchInitialData = async () => {
         if (!user) return;
@@ -67,6 +75,10 @@ function CropRecommendation() {
             return acc;
         }, {});
 
+        // Store totalProducers and plantingCounts in state for reuse
+        setTotalProducers(totalProducers);
+        setPlantingCounts(plantingCounts);
+
         const { data, error } = await supabase
             .from("crops")
             .select("*, category:categories(name)");
@@ -80,25 +92,15 @@ function CropRecommendation() {
                     totalProducers > 0
                         ? Math.round((count / totalProducers) * 100)
                         : 0;
-
-                let recommendation = "Consider Carefully";
-                let color = "bg-yellow-100 text-yellow-800 border-yellow-200";
-                if (percentage <= 20) {
-                    recommendation = "Highly Recommended";
-                    color = "bg-green-100 text-green-800 border-green-200";
-                } else if (percentage <= 40) {
-                    recommendation = "Recommended";
-                    color = "bg-blue-100 text-blue-800 border-blue-200";
-                } else if (percentage > 60) {
-                    recommendation = "Caution Advised";
-                    color = "bg-red-100 text-red-800 border-red-200";
-                }
+                const demandLevel = crop.market_demand || "Medium";
+                const { recommendation, color } =
+                    getRecommendationFromPercentage(percentage, demandLevel);
 
                 return {
                     ...crop,
                     category: crop.category.name,
                     plantingPercentage: percentage,
-                    demandLevel: crop.market_demand,
+                    demandLevel: demandLevel,
                     season: crop.growing_season,
                     harvestTime: crop.harvest_time,
                     description: crop.description,
@@ -169,15 +171,17 @@ function CropRecommendation() {
     const confirmPlantCrop = async () => {
         if (!confirmingCrop || !user) return;
 
-        // Optimistic Update: Create a temporary representation of the new crop.
+        // Optimistic Update: Create a temporary representation with the same shape
+        // as objects returned by fetchPlantedCrops
+        const now = new Date().toISOString();
+        const tempId = Date.now(); // Temporary unique ID for this optimistic update
         const newPlantedCrop = {
-            id: Date.now(), // Use a temporary unique ID
-            user_id: user.id,
-            crop_id: confirmingCrop.id,
-            is_harvested: false,
-            created_at: new Date().toISOString(), // Use current time
-            updated_at: new Date().toISOString(),
-            crop: confirmingCrop, // Embed the full crop object for immediate rendering
+            ...confirmingCrop, // Spread all crop fields (name, icon, harvest_time, etc.)
+            id: tempId, // Use temporary unique ID as the key
+            planted_id: tempId, // Track the temporary planted_crop id
+            plantedDate: now, // Set to current time
+            harvestDate: null, // Not yet harvested
+            // category is already included from confirmingCrop spread
         };
 
         // Immediately update the state and UI
@@ -198,7 +202,7 @@ function CropRecommendation() {
             console.error("Error planting crop:", error);
             // If there's an error, revert the optimistic update
             setPlantedCrops((prevPlantedCrops) =>
-                prevPlantedCrops.filter((p) => p.id !== newPlantedCrop.id)
+                prevPlantedCrops.filter((p) => p.id !== tempId)
             );
         }
 
@@ -210,12 +214,68 @@ function CropRecommendation() {
         setConfirmingCrop(null);
     };
 
+    // Helper function to calculate days planted with robust date handling
+    const calculateDaysSincePlanted = (plantedDateStr) => {
+        // Return 0 if plantedDate is missing or invalid
+        if (!plantedDateStr) {
+            return 0;
+        }
+
+        try {
+            // Parse the planted date
+            const plantedDate = new Date(plantedDateStr);
+
+            // Check if date is valid
+            if (isNaN(plantedDate.getTime())) {
+                return 0;
+            }
+
+            // Normalize both dates to start of calendar day (00:00:00)
+            const today = new Date();
+            const normalizedPlanted = new Date(
+                plantedDate.getFullYear(),
+                plantedDate.getMonth(),
+                plantedDate.getDate(),
+                0,
+                0,
+                0,
+                0
+            );
+            const normalizedToday = new Date(
+                today.getFullYear(),
+                today.getMonth(),
+                today.getDate(),
+                0,
+                0,
+                0,
+                0
+            );
+
+            // Calculate difference in milliseconds and convert to days
+            const diffInMs = normalizedToday - normalizedPlanted;
+            const diffInDays = Math.floor(diffInMs / (1000 * 60 * 60 * 24));
+
+            // Clamp to 0 to handle timezone quirks or just-planted records
+            return Math.max(0, diffInDays);
+        } catch (error) {
+            console.error("Error calculating days since planted:", error);
+            return 0;
+        }
+    };
+
     const handleHarvestCrop = (plantedCropId) => {
         setConfirmingHarvest(plantedCropId);
     };
 
     const confirmHarvestCrop = async () => {
         if (!confirmingHarvest) return;
+
+        // Resolve the harvested planted crop from plantedCrops by matching planted_id/id
+        const harvestedCrop = plantedCrops.find(
+            (pc) =>
+                pc.planted_id === confirmingHarvest ||
+                pc.id === confirmingHarvest
+        );
 
         const { error } = await supabase
             .from("planted_crops")
@@ -230,6 +290,16 @@ function CropRecommendation() {
         } else {
             await fetchPlantedCrops();
             await fetchCropsAndCompetition(); // Refresh competition stats
+
+            // Navigate to ProducerHome with modal flag and pre-fill data
+            if (harvestedCrop) {
+                navigate("/", {
+                    state: {
+                        openAddModal: true,
+                        prefilledCropType: harvestedCrop.name,
+                    },
+                });
+            }
         }
         setConfirmingHarvest(null);
     };
@@ -278,7 +348,32 @@ function CropRecommendation() {
                 "Consider Carefully": 3,
                 "Caution Advised": 4,
             };
-            return order[a.recommendation] - order[b.recommendation];
+            // Primary sort: by recommendation level
+            const recDiff = order[a.recommendation] - order[b.recommendation];
+            if (recDiff !== 0) return recDiff;
+
+            // Secondary sort: by opportunity score (descending, higher score first)
+            // Calculate opportunity score using same weights as getRecommendationFromPercentage
+            const demandMap = {
+                "Very High": 1.0,
+                High: 0.8,
+                Medium: 0.5,
+                Low: 0.2,
+            };
+
+            const getOpportunityScore = (crop) => {
+                const demandScore = demandMap[crop.demandLevel] || 0.5;
+                const competitionScore = 1 - crop.plantingPercentage / 100;
+                return demandScore * 0.6 + competitionScore * 0.4;
+            };
+
+            const scoreA = getOpportunityScore(a);
+            const scoreB = getOpportunityScore(b);
+            const scoreDiff = scoreB - scoreA; // Descending order (higher score first)
+            if (scoreDiff !== 0) return scoreDiff;
+
+            // Tie-break: by crop name (stable sort)
+            return a.name.localeCompare(b.name);
         }
         if (sortBy === "demand") {
             const order = { "Very High": 1, High: 2, Medium: 3, Low: 4 };
@@ -333,6 +428,315 @@ function CropRecommendation() {
         if (percentage <= 60) return "text-yellow-600";
         return "text-red-600";
     };
+
+    // Enhanced helper function to compute recommendation from weighted demand and competition
+    const getRecommendationFromPercentage = (
+        plantingPercentage,
+        demandLevel
+    ) => {
+        // Map demand level to score (0-1, where 1 is best)
+        const demandMap = {
+            "Very High": 1.0,
+            High: 0.8,
+            Medium: 0.5,
+            Low: 0.2,
+        };
+        const demandScore = demandMap[demandLevel] || 0.5;
+
+        // Map competition percentage to score (0-1, where 1 is best/low competition)
+        const competitionScore = 1 - plantingPercentage / 100;
+
+        // Weighted opportunity score: demand 60%, competition 40%
+        const opportunityScore = demandScore * 0.6 + competitionScore * 0.4;
+
+        let recommendation = "Consider Carefully";
+        let color = "bg-yellow-100 text-yellow-800 border-yellow-200";
+
+        // Determine recommendation based on combined opportunity score
+        if (opportunityScore >= 0.75) {
+            // High demand, low/medium competition
+            recommendation = "Highly Recommended";
+            color = "bg-green-100 text-green-800 border-green-200";
+        } else if (opportunityScore >= 0.55) {
+            // Good mix of demand and reasonable competition
+            recommendation = "Recommended";
+            color = "bg-blue-100 text-blue-800 border-blue-200";
+        } else if (opportunityScore >= 0.35) {
+            // Low demand with medium competition or low demand with low competition
+            recommendation = "Consider Carefully";
+            color = "bg-yellow-100 text-yellow-800 border-yellow-200";
+        } else {
+            // Low demand with high competition
+            recommendation = "Caution Advised";
+            color = "bg-red-100 text-red-800 border-red-200";
+        }
+
+        return { recommendation, color };
+    };
+
+    // Effect to update displayed competition percentages for animation
+    useEffect(() => {
+        setDisplayedCompetitionPercentages((prevDisplayed) => {
+            const newDisplayed = { ...prevDisplayed };
+            crops.forEach((crop) => {
+                // Initialize or update to the current plantingPercentage
+                if (newDisplayed[crop.id] === undefined) {
+                    newDisplayed[crop.id] = crop.plantingPercentage;
+                } else {
+                    newDisplayed[crop.id] = crop.plantingPercentage;
+                }
+            });
+            return newDisplayed;
+        });
+    }, [crops]);
+
+    // Real-time subscription for crop competition updates
+    useEffect(() => {
+        if (!user?.id) return;
+
+        const channel = supabase
+            .channel(`crop-competition-${user.id}`)
+            .on(
+                "postgres_changes",
+                {
+                    event: "*",
+                    schema: "public",
+                    table: "planted_crops",
+                },
+                (payload) => {
+                    // Only react to other users' plantings
+                    if (payload.new?.user_id === user.id) return;
+
+                    const eventType = payload.eventType;
+                    const cropId =
+                        eventType === "DELETE"
+                            ? payload.old?.crop_id
+                            : payload.new?.crop_id;
+
+                    if (!cropId) return;
+
+                    // For DELETE events, always decrement the planting count
+                    if (eventType === "DELETE") {
+                        setCrops((prevCrops) =>
+                            prevCrops.map((crop) => {
+                                if (crop.id !== cropId) return crop;
+
+                                // Decrement planting count
+                                const newCount = Math.max(
+                                    0,
+                                    (plantingCounts[cropId] || 0) - 1
+                                );
+
+                                // Compute new percentage
+                                const newPercentage =
+                                    totalProducers > 0
+                                        ? Math.round(
+                                              (newCount / totalProducers) * 100
+                                          )
+                                        : 0;
+
+                                // Recalculate recommendation and color
+                                const { recommendation, color } =
+                                    getRecommendationFromPercentage(
+                                        newPercentage,
+                                        crop.demandLevel
+                                    );
+
+                                // Update plantingCounts
+                                setPlantingCounts((prev) => ({
+                                    ...prev,
+                                    [cropId]: newCount,
+                                }));
+
+                                return {
+                                    ...crop,
+                                    plantingPercentage: newPercentage,
+                                    recommendation,
+                                    color,
+                                };
+                            })
+                        );
+                    }
+                    // For UPDATE events, only decrement if is_harvested changed from false to true
+                    else if (eventType === "UPDATE") {
+                        if (
+                            payload.old?.is_harvested === false &&
+                            payload.new?.is_harvested === true
+                        ) {
+                            setCrops((prevCrops) =>
+                                prevCrops.map((crop) => {
+                                    if (crop.id !== cropId) return crop;
+
+                                    // Decrement planting count
+                                    const newCount = Math.max(
+                                        0,
+                                        (plantingCounts[cropId] || 0) - 1
+                                    );
+
+                                    // Compute new percentage
+                                    const newPercentage =
+                                        totalProducers > 0
+                                            ? Math.round(
+                                                  (newCount / totalProducers) *
+                                                      100
+                                              )
+                                            : 0;
+
+                                    // Recalculate recommendation and color
+                                    const { recommendation, color } =
+                                        getRecommendationFromPercentage(
+                                            newPercentage,
+                                            crop.demandLevel
+                                        );
+
+                                    // Update plantingCounts
+                                    setPlantingCounts((prev) => ({
+                                        ...prev,
+                                        [cropId]: newCount,
+                                    }));
+
+                                    return {
+                                        ...crop,
+                                        plantingPercentage: newPercentage,
+                                        recommendation,
+                                        color,
+                                    };
+                                })
+                            );
+                        }
+                    }
+                    // For INSERT events, increment the planting count
+                    else if (eventType === "INSERT") {
+                        if (!payload.new?.is_harvested) {
+                            setCrops((prevCrops) =>
+                                prevCrops.map((crop) => {
+                                    if (crop.id !== cropId) return crop;
+
+                                    // Increment planting count
+                                    const newCount =
+                                        (plantingCounts[cropId] || 0) + 1;
+
+                                    // Compute new percentage
+                                    const newPercentage =
+                                        totalProducers > 0
+                                            ? Math.round(
+                                                  (newCount / totalProducers) *
+                                                      100
+                                              )
+                                            : 0;
+
+                                    // Recalculate recommendation and color
+                                    const { recommendation, color } =
+                                        getRecommendationFromPercentage(
+                                            newPercentage,
+                                            crop.demandLevel
+                                        );
+
+                                    // Update plantingCounts
+                                    setPlantingCounts((prev) => ({
+                                        ...prev,
+                                        [cropId]: newCount,
+                                    }));
+
+                                    return {
+                                        ...crop,
+                                        plantingPercentage: newPercentage,
+                                        recommendation,
+                                        color,
+                                    };
+                                })
+                            );
+                        }
+                    }
+                }
+            )
+            .on(
+                "postgres_changes",
+                {
+                    event: "*",
+                    schema: "public",
+                    table: "crops",
+                },
+                (payload) => {
+                    const eventType = payload.eventType;
+
+                    setCrops((prevCrops) =>
+                        prevCrops
+                            .map((crop) => {
+                                if (
+                                    eventType === "DELETE" &&
+                                    crop.id === payload.old?.id
+                                ) {
+                                    return null; // Mark for removal
+                                }
+
+                                if (eventType === "INSERT" && payload.new?.id) {
+                                    // Handle new crop insertion if needed
+                                    return crop;
+                                }
+
+                                if (
+                                    eventType === "UPDATE" &&
+                                    crop.id === payload.new?.id
+                                ) {
+                                    // Merge updated crop fields while preserving competition metrics
+                                    return {
+                                        ...crop,
+                                        ...(payload.new?.name && {
+                                            name: payload.new.name,
+                                        }),
+                                        ...(payload.new?.market_demand && {
+                                            demandLevel:
+                                                payload.new.market_demand,
+                                        }),
+                                        ...(payload.new?.growing_season && {
+                                            season: payload.new.growing_season,
+                                        }),
+                                        ...(payload.new?.harvest_time && {
+                                            harvestTime:
+                                                payload.new.harvest_time,
+                                        }),
+                                        ...(payload.new?.description && {
+                                            description:
+                                                payload.new.description,
+                                        }),
+                                        ...(payload.new?.icon && {
+                                            icon: payload.new.icon,
+                                        }),
+                                    };
+                                }
+
+                                return crop;
+                            })
+                            .filter((crop) => crop !== null)
+                    );
+                }
+            )
+            .on(
+                "postgres_changes",
+                {
+                    event: "*",
+                    schema: "public",
+                    table: "profiles",
+                },
+                (payload) => {
+                    // Ignore current user's profile changes
+                    if (
+                        payload.new?.id === user.id ||
+                        payload.old?.id === user.id
+                    )
+                        return;
+
+                    // For any other profile event, recompute all competition data
+                    fetchCropsAndCompetition();
+                }
+            )
+            .subscribe();
+
+        return () => {
+            channel.unsubscribe();
+        };
+    }, [user?.id]);
 
     const activePlantedCropsCount = plantedCrops.filter(
         (crop) => !crop.harvestDate
@@ -683,7 +1087,7 @@ function CropRecommendation() {
                                                 </div>
                                                 <div>
                                                     <label className="text-xs text-gray-500 font-medium">
-                                                        Harvest Time
+                                                        Estimated Harvest Time
                                                     </label>
                                                     <p className="font-medium text-gray-800">
                                                         {crop.harvestTime}
@@ -698,15 +1102,16 @@ function CropRecommendation() {
                                                         Competition Level
                                                     </span>
                                                     <span>
-                                                        {
-                                                            crop.plantingPercentage
-                                                        }
+                                                        {displayedCompetitionPercentages[
+                                                            crop.id
+                                                        ] ??
+                                                            crop.plantingPercentage}
                                                         %
                                                     </span>
                                                 </div>
                                                 <div className="w-full bg-gray-200 rounded-full h-2">
                                                     <div
-                                                        className={`h-2 rounded-full ${
+                                                        className={`h-2 rounded-full transition-all duration-500 ease-out ${
                                                             crop.plantingPercentage <=
                                                             20
                                                                 ? "bg-primary"
@@ -719,7 +1124,12 @@ function CropRecommendation() {
                                                                 : "bg-red-500"
                                                         }`}
                                                         style={{
-                                                            width: `${crop.plantingPercentage}%`,
+                                                            width: `${
+                                                                displayedCompetitionPercentages[
+                                                                    crop.id
+                                                                ] ??
+                                                                crop.plantingPercentage
+                                                            }%`,
                                                         }}
                                                     ></div>
                                                 </div>
@@ -925,17 +1335,10 @@ function CropRecommendation() {
                                         {plantedCrops
                                             .filter((crop) => !crop.harvestDate)
                                             .map((crop) => {
-                                                const plantedDate = new Date(
-                                                    crop.plantedDate
-                                                );
+                                                // Use robust day calculation helper
                                                 const daysSincePlanted =
-                                                    Math.floor(
-                                                        (new Date() -
-                                                            plantedDate) /
-                                                            (1000 *
-                                                                60 *
-                                                                60 *
-                                                                24)
+                                                    calculateDaysSincePlanted(
+                                                        crop.plantedDate
                                                     );
 
                                                 const harvestTimeInDays =
@@ -975,7 +1378,9 @@ function CropRecommendation() {
                                                                 </h4>
                                                                 <p className="text-xs text-gray-500">
                                                                     Planted:{" "}
-                                                                    {plantedDate.toLocaleDateString()}
+                                                                    {new Date(
+                                                                        crop.plantedDate
+                                                                    ).toLocaleDateString()}
                                                                 </p>
                                                             </div>
                                                         </div>

@@ -7,6 +7,24 @@ import supabase from "../../SupabaseClient";
 import { AuthContext } from "../../App.jsx";
 import { toast } from "react-hot-toast";
 
+// Add subtle pulse animation for ready orders tab
+const styles = `
+  @keyframes subtle-pulse {
+    0%, 100% {
+      opacity: 1;
+      box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.7);
+    }
+    50% {
+      opacity: 0.95;
+      box-shadow: 0 0 0 4px rgba(34, 197, 94, 0);
+    }
+  }
+  
+  .animate-ready-pulse {
+    animation: subtle-pulse 2s infinite;
+  }
+`;
+
 function Orders() {
     const navigate = useNavigate();
     const { user } = useContext(AuthContext);
@@ -21,48 +39,66 @@ function Orders() {
         productId: null,
         productName: "",
     });
+    const [reorderModal, setReorderModal] = useState({
+        isOpen: false,
+        message: "",
+    });
     const [productReviews, setProductReviews] = useState({});
 
-    const checkExistingReview = async (productId) => {
-        try {
-            const { data, error } = await supabase
-                .from("reviews")
-                .select("id")
-                .eq("product_id", productId)
-                .eq("user_id", user.id)
-                .single();
-
-            if (error && error.code !== "PGRST116") {
-                console.error("Error checking review:", error);
-                return false;
-            }
-
-            return !!data;
-        } catch (error) {
-            console.error("Error checking review:", error);
-            return false;
-        }
-    };
-
-    // Check for existing reviews when orders are loaded or updated
+    // Batch check for existing reviews when orders are loaded or updated
     useEffect(() => {
         const checkReviews = async () => {
-            const reviews = {};
-            for (const order of orders) {
-                for (const item of order.items) {
-                    if (!reviews[item.product_id]) {
-                        reviews[item.product_id] = await checkExistingReview(
-                            item.product_id
-                        );
+            if (!user || orders.length === 0) return;
+
+            try {
+                // Collect all unique, non-null product_id values from order items
+                const productIds = new Set();
+                for (const order of orders) {
+                    for (const item of order.items) {
+                        if (item.product_id) {
+                            productIds.add(item.product_id);
+                        }
                     }
                 }
+
+                if (productIds.size === 0) {
+                    setProductReviews({});
+                    return;
+                }
+
+                // Single batch query: fetch all reviews for these products by this user
+                const { data: reviewsData, error: reviewsError } =
+                    await supabase
+                        .from("reviews")
+                        .select("product_id")
+                        .eq("user_id", user.id)
+                        .in("product_id", Array.from(productIds));
+
+                if (reviewsError) {
+                    // Only log real network/permission errors; 406 "multiple rows" is expected and means reviewed
+                    if (reviewsError.code !== "PGRST106") {
+                        console.error("Error fetching reviews:", reviewsError);
+                    }
+                    setProductReviews({});
+                    return;
+                }
+
+                // Build productReviews map: any product with row count ≥ 1 is marked as reviewed
+                const reviews = {};
+                for (const productId of productIds) {
+                    reviews[productId] = false;
+                }
+                for (const review of reviewsData || []) {
+                    reviews[review.product_id] = true;
+                }
+                setProductReviews(reviews);
+            } catch (error) {
+                console.error("Unexpected error checking reviews:", error);
+                setProductReviews({});
             }
-            setProductReviews(reviews);
         };
 
-        if (user && orders.length > 0) {
-            checkReviews();
-        }
+        checkReviews();
     }, [orders, user]);
 
     useEffect(() => {
@@ -72,6 +108,236 @@ function Orders() {
         }
         fetchOrders();
     }, [user, navigate]);
+
+    // Real-time subscription to order changes
+    useEffect(() => {
+        if (!user?.id) return;
+
+        const channel = supabase
+            .channel("orders-realtime")
+            .on(
+                "postgres_changes",
+                {
+                    event: "*",
+                    schema: "public",
+                    table: "orders",
+                    filter: `user_id=eq.${user.id}`,
+                },
+                async (payload) => {
+                    const { eventType, new: newRow, old: oldRow } = payload;
+
+                    if (eventType === "INSERT") {
+                        // Fetch the full new order with all relations
+                        const { data: orderData, error: fetchError } =
+                            await supabase
+                                .from("orders")
+                                .select(
+                                    `
+                                    *,
+                                    statuses!orders_status_id_fkey (
+                                        name
+                                    ),
+                                    delivery_methods!orders_delivery_method_id_fkey (
+                                        name
+                                    ),
+                                    payment_methods!orders_payment_method_id_fkey (
+                                        name
+                                    ),
+                                    profiles!orders_seller_id_fkey (
+                                        name,
+                                        address,
+                                        contact
+                                    ),
+                                    order_items (
+                                        *,
+                                        products (
+                                            *,
+                                            categories (
+                                                name
+                                            )
+                                        )
+                                    )
+                                `
+                                )
+                                .eq("id", newRow.id)
+                                .single();
+
+                        if (!fetchError && orderData) {
+                            // Transform the new order using the same logic as fetchOrders
+                            const itemsTotal = orderData.order_items.reduce(
+                                (sum, item) =>
+                                    sum +
+                                    item.price_at_purchase * item.quantity,
+                                0
+                            );
+                            const total =
+                                itemsTotal +
+                                (orderData.delivery_fee_at_order || 0);
+
+                            const transformedOrder = {
+                                id: orderData.id,
+                                date: orderData.created_at,
+                                status: orderData.statuses?.name || "unknown",
+                                total: total,
+                                deliveryMethod:
+                                    orderData.delivery_methods?.name ||
+                                    "unknown",
+                                paymentMethod:
+                                    orderData.payment_methods?.name ||
+                                    "unknown",
+                                deliveryFee:
+                                    orderData.delivery_fee_at_order || 0,
+                                sellerName:
+                                    orderData.profiles?.name ||
+                                    "Unknown Seller",
+                                sellerAddress:
+                                    orderData.profiles?.address ||
+                                    "Location not available",
+                                sellerContact:
+                                    orderData.profiles?.contact || "",
+                                items: orderData.order_items.map((item) => ({
+                                    id: item.id,
+                                    product_id: item.product_id,
+                                    name: item.name_at_purchase,
+                                    price: item.price_at_purchase,
+                                    quantity: item.quantity,
+                                    image:
+                                        item.products?.image_url ||
+                                        "https://via.placeholder.com/300x200?text=No+Image",
+                                    farmerName:
+                                        orderData.profiles?.name ||
+                                        "Unknown Seller",
+                                    farmerId: orderData.seller_id,
+                                    farmerPhone:
+                                        orderData.profiles?.contact || "",
+                                    farmerAddress:
+                                        orderData.profiles?.address ||
+                                        "Location not available",
+                                    category:
+                                        item.products?.categories?.name ||
+                                        "Other",
+                                })),
+                            };
+
+                            // Prepend the new order to the list
+                            setOrders((prev) => [transformedOrder, ...prev]);
+                        }
+                    } else if (eventType === "UPDATE") {
+                        // Fetch just the updated order with all relations
+                        const { data: orderData, error: fetchError } =
+                            await supabase
+                                .from("orders")
+                                .select(
+                                    `
+                                    *,
+                                    statuses!orders_status_id_fkey (
+                                        name
+                                    ),
+                                    delivery_methods!orders_delivery_method_id_fkey (
+                                        name
+                                    ),
+                                    payment_methods!orders_payment_method_id_fkey (
+                                        name
+                                    ),
+                                    profiles!orders_seller_id_fkey (
+                                        name,
+                                        address,
+                                        contact
+                                    ),
+                                    order_items (
+                                        *,
+                                        products (
+                                            *,
+                                            categories (
+                                                name
+                                            )
+                                        )
+                                    )
+                                `
+                                )
+                                .eq("id", newRow.id)
+                                .single();
+
+                        if (!fetchError && orderData) {
+                            // Transform the updated order
+                            const itemsTotal = orderData.order_items.reduce(
+                                (sum, item) =>
+                                    sum +
+                                    item.price_at_purchase * item.quantity,
+                                0
+                            );
+                            const total =
+                                itemsTotal +
+                                (orderData.delivery_fee_at_order || 0);
+
+                            const transformedOrder = {
+                                id: orderData.id,
+                                date: orderData.created_at,
+                                status: orderData.statuses?.name || "unknown",
+                                total: total,
+                                deliveryMethod:
+                                    orderData.delivery_methods?.name ||
+                                    "unknown",
+                                paymentMethod:
+                                    orderData.payment_methods?.name ||
+                                    "unknown",
+                                deliveryFee:
+                                    orderData.delivery_fee_at_order || 0,
+                                sellerName:
+                                    orderData.profiles?.name ||
+                                    "Unknown Seller",
+                                sellerAddress:
+                                    orderData.profiles?.address ||
+                                    "Location not available",
+                                sellerContact:
+                                    orderData.profiles?.contact || "",
+                                items: orderData.order_items.map((item) => ({
+                                    id: item.id,
+                                    product_id: item.product_id,
+                                    name: item.name_at_purchase,
+                                    price: item.price_at_purchase,
+                                    quantity: item.quantity,
+                                    image:
+                                        item.products?.image_url ||
+                                        "https://via.placeholder.com/300x200?text=No+Image",
+                                    farmerName:
+                                        orderData.profiles?.name ||
+                                        "Unknown Seller",
+                                    farmerId: orderData.seller_id,
+                                    farmerPhone:
+                                        orderData.profiles?.contact || "",
+                                    farmerAddress:
+                                        orderData.profiles?.address ||
+                                        "Location not available",
+                                    category:
+                                        item.products?.categories?.name ||
+                                        "Other",
+                                })),
+                            };
+
+                            // Update only the affected order, preserve other objects for React rendering optimization
+                            setOrders((prev) =>
+                                prev.map((o) =>
+                                    o.id === transformedOrder.id
+                                        ? transformedOrder
+                                        : o
+                                )
+                            );
+                        }
+                    } else if (eventType === "DELETE") {
+                        // Remove the deleted order from the list
+                        setOrders((prev) =>
+                            prev.filter((o) => o.id !== oldRow.id)
+                        );
+                    }
+                }
+            )
+            .subscribe();
+
+        return () => {
+            channel.unsubscribe();
+        };
+    }, [user?.id]);
 
     const fetchOrders = async () => {
         try {
@@ -311,24 +577,203 @@ function Orders() {
                 throw cartError;
             }
 
-            // Add each item from the order to the cart
-            const cartItems = order.items.map((item) => ({
-                cart_id: cartData.id,
-                product_id: item.product_id, // Use product_id instead of item.id
-                quantity: item.quantity,
-            }));
+            // Track results for summary
+            const addedItems = [];
+            const cappedItems = [];
+            const skippedItems = [];
 
-            const { error: insertError } = await supabase
-                .from("cart_items")
-                .insert(cartItems);
+            // Process each order item
+            for (const orderItem of order.items) {
+                try {
+                    // Fetch current product stock
+                    const { data: productData, error: stockError } =
+                        await supabase
+                            .from("products")
+                            .select("stock")
+                            .eq("id", orderItem.product_id)
+                            .single();
 
-            if (insertError) throw insertError;
+                    if (stockError) {
+                        console.error(
+                            `Stock check failed for product ${orderItem.product_id}:`,
+                            stockError
+                        );
+                        skippedItems.push(orderItem.name);
+                        continue;
+                    }
 
-            console.log("Successfully added items to cart");
-            navigate("/cart");
+                    const availableStock = productData?.stock || 0;
+
+                    // Check if cart item already exists
+                    const {
+                        data: existingCartItem,
+                        error: cartItemCheckError,
+                    } = await supabase
+                        .from("cart_items")
+                        .select("id, quantity")
+                        .eq("cart_id", cartData.id)
+                        .eq("product_id", orderItem.product_id)
+                        .single();
+
+                    // Ignore "no rows" error, which is expected when cart item doesn't exist
+                    if (
+                        cartItemCheckError &&
+                        cartItemCheckError.code !== "PGRST116"
+                    ) {
+                        console.error(
+                            `Cart item check failed for product ${orderItem.product_id}:`,
+                            cartItemCheckError
+                        );
+                        skippedItems.push(orderItem.name);
+                        continue;
+                    }
+
+                    if (existingCartItem) {
+                        // Update existing cart item
+                        const newQuantity = Math.min(
+                            existingCartItem.quantity + orderItem.quantity,
+                            availableStock
+                        );
+
+                        // Only update if quantity actually increases
+                        if (
+                            newQuantity > existingCartItem.quantity &&
+                            newQuantity > 0
+                        ) {
+                            const quantityAdded =
+                                newQuantity - existingCartItem.quantity;
+
+                            const { error: updateError } = await supabase
+                                .from("cart_items")
+                                .update({ quantity: newQuantity })
+                                .eq("id", existingCartItem.id);
+
+                            if (updateError) {
+                                console.error(
+                                    `Failed to update cart item for product ${orderItem.product_id}:`,
+                                    updateError
+                                );
+                                skippedItems.push(orderItem.name);
+                            } else {
+                                if (quantityAdded < orderItem.quantity) {
+                                    cappedItems.push(
+                                        `${orderItem.name} (capped at available stock)`
+                                    );
+                                } else {
+                                    addedItems.push(orderItem.name);
+                                }
+                            }
+                        } else if (newQuantity === existingCartItem.quantity) {
+                            // Already at maximum stock
+                            cappedItems.push(
+                                `${orderItem.name} (already at max stock)`
+                            );
+                        } else {
+                            // Would exceed stock, skip
+                            skippedItems.push(
+                                `${orderItem.name} (insufficient stock)`
+                            );
+                        }
+                    } else {
+                        // Insert new cart item
+                        const quantityToAdd = Math.min(
+                            orderItem.quantity,
+                            availableStock
+                        );
+
+                        if (quantityToAdd > 0) {
+                            const { error: insertError } = await supabase
+                                .from("cart_items")
+                                .insert({
+                                    cart_id: cartData.id,
+                                    product_id: orderItem.product_id,
+                                    quantity: quantityToAdd,
+                                });
+
+                            if (insertError) {
+                                console.error(
+                                    `Failed to insert cart item for product ${orderItem.product_id}:`,
+                                    insertError
+                                );
+                                skippedItems.push(orderItem.name);
+                            } else {
+                                if (quantityToAdd < orderItem.quantity) {
+                                    cappedItems.push(
+                                        `${orderItem.name} (quantity limited by stock)`
+                                    );
+                                } else {
+                                    addedItems.push(orderItem.name);
+                                }
+                            }
+                        } else {
+                            // Out of stock
+                            skippedItems.push(
+                                `${orderItem.name} (out of stock)`
+                            );
+                        }
+                    }
+                } catch (itemError) {
+                    console.error(
+                        `Unexpected error processing item ${orderItem.product_id}:`,
+                        itemError
+                    );
+                    skippedItems.push(orderItem.name);
+                }
+            }
+
+            // Determine outcome and show appropriate feedback
+            if (addedItems.length === 0 && cappedItems.length === 0) {
+                // Nothing could be added
+                const message =
+                    skippedItems.length > 0
+                        ? `Could not add items to cart: ${skippedItems.join(
+                              ", "
+                          )} are out of stock or unavailable.`
+                        : "No items could be added to cart.";
+
+                setReorderModal({
+                    isOpen: true,
+                    message: message,
+                });
+            } else {
+                // At least one item was added or capped
+                console.log("Successfully added items to cart");
+
+                // Build summary message
+                let summaryMessage = "Items added to cart!";
+                if (cappedItems.length > 0 && skippedItems.length > 0) {
+                    summaryMessage += ` Some items were quantity-limited or unavailable: ${[
+                        ...cappedItems,
+                        ...skippedItems,
+                    ].join(", ")}`;
+                } else if (cappedItems.length > 0) {
+                    summaryMessage += ` Note: ${cappedItems.join(
+                        ", "
+                    )} had quantities adjusted due to stock limits.`;
+                } else if (skippedItems.length > 0) {
+                    summaryMessage += ` Note: ${skippedItems.join(
+                        ", "
+                    )} could not be added.`;
+                }
+
+                // Show summary via toast if available, otherwise use reorderModal
+                if (typeof toast !== "undefined" && toast.info) {
+                    toast.info(summaryMessage);
+                } else {
+                    console.log(
+                        "Toast not available, message:",
+                        summaryMessage
+                    );
+                }
+
+                navigate("/cart");
+            }
         } catch (error) {
             console.error("Error adding items to cart:", error);
-            alert("Failed to add items to cart. Please try again.");
+            setReorderModal({
+                isOpen: true,
+                message: "Failed to add items to cart. Please try again.",
+            });
         }
     };
 
@@ -479,6 +924,9 @@ function Orders() {
 
     return (
         <div className="min-h-screen w-full flex flex-col relative items-center scrollbar-hide bg-background overflow-x-hidden text-text pb-20">
+            {/* Inject animation styles */}
+            <style>{styles}</style>
+
             {/* Header */}
             <div className="fixed top-0 left-0 w-full bg-white shadow-md z-50 px-4 py-3">
                 <div className="flex items-center">
@@ -502,32 +950,40 @@ function Orders() {
                 {/* Tabs */}
                 <div className="bg-white rounded-lg shadow-md overflow-hidden mb-6">
                     <div className="flex overflow-x-auto">
-                        {tabs.map((tab) => (
-                            <button
-                                key={tab.id}
-                                onClick={() => setActiveTab(tab.id)}
-                                className={`flex-1 min-w-fit px-4 py-3 text-sm font-medium transition-colors border-b-2 ${
-                                    activeTab === tab.id
-                                        ? "text-primary border-primary bg-primary/5"
-                                        : "text-gray-500 border-transparent hover:text-gray-700"
-                                }`}
-                            >
-                                <div className="flex items-center justify-center gap-2">
-                                    <span>{tab.label}</span>
-                                    {tab.count > 0 && (
-                                        <span
-                                            className={`px-2 py-1 text-xs rounded-full ${
-                                                activeTab === tab.id
-                                                    ? "bg-primary text-white"
-                                                    : "bg-gray-200 text-gray-600"
-                                            }`}
-                                        >
-                                            {tab.count}
-                                        </span>
-                                    )}
-                                </div>
-                            </button>
-                        ))}
+                        {tabs.map((tab) => {
+                            const hasReadyOrders =
+                                tab.id === "ready for pickup" && tab.count > 0;
+                            return (
+                                <button
+                                    key={tab.id}
+                                    onClick={() => setActiveTab(tab.id)}
+                                    className={`flex-1 min-w-fit px-4 py-3 text-sm font-medium transition-colors border-b-2 ${
+                                        activeTab === tab.id
+                                            ? "text-primary border-primary bg-primary/5"
+                                            : "text-gray-500 border-transparent hover:text-gray-700"
+                                    } ${
+                                        hasReadyOrders
+                                            ? "animate-ready-pulse"
+                                            : ""
+                                    }`}
+                                >
+                                    <div className="flex items-center justify-center gap-2">
+                                        <span>{tab.label}</span>
+                                        {tab.count > 0 && (
+                                            <span
+                                                className={`px-2 py-1 text-xs rounded-full ${
+                                                    activeTab === tab.id
+                                                        ? "bg-primary text-white"
+                                                        : "bg-gray-200 text-gray-600"
+                                                }`}
+                                            >
+                                                {tab.count}
+                                            </span>
+                                        )}
+                                    </div>
+                                </button>
+                            );
+                        })}
                     </div>
                 </div>
 
@@ -1141,6 +1597,37 @@ function Orders() {
                     userId={user?.id}
                     onReviewSubmitted={handleReviewSubmitted}
                 />
+            )}
+
+            {/* Reorder Modal */}
+            {reorderModal.isOpen && (
+                <>
+                    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black opacity-50"></div>
+                    <div className="bg-white rounded-lg shadow-xl p-6 max-w-sm w-full text-center fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-[10000]">
+                        <div className="mb-4">
+                            <Icon
+                                icon="mingcute:alert-circle-fill"
+                                width="48"
+                                height="48"
+                                className="mx-auto mb-3 text-red-500"
+                            />
+                            <p className="text-gray-700">
+                                {reorderModal.message}
+                            </p>
+                        </div>
+                        <button
+                            className="w-full mt-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors"
+                            onClick={() =>
+                                setReorderModal({
+                                    isOpen: false,
+                                    message: "",
+                                })
+                            }
+                        >
+                            OK
+                        </button>
+                    </div>
+                </>
             )}
         </div>
     );

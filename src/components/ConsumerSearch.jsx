@@ -2,7 +2,8 @@ import { Icon } from "@iconify/react";
 import { Link } from "react-router-dom";
 import { useState, useEffect, useContext } from "react";
 import { AuthContext } from "../App.jsx";
-import { getCartCount } from "../utils/cartUtils.js";
+import { CartCountContext } from "../context/CartCountContext.jsx";
+import { UnreadConversationsContext } from "../context/UnreadConversationsContext.jsx";
 
 function ConsumerSearch({
     value,
@@ -10,24 +11,8 @@ function ConsumerSearch({
     placeholder = "Search products...",
 }) {
     const { user } = useContext(AuthContext);
-    const [cartCount, setCartCount] = useState(0);
-
-    // Fetch cart count
-    useEffect(() => {
-        const fetchCartCount = async () => {
-            if (user) {
-                const count = await getCartCount(user.id);
-                setCartCount(count);
-            }
-        };
-
-        fetchCartCount();
-
-        // Optional: Set up interval to refresh cart count every 30 seconds
-        const interval = setInterval(fetchCartCount, 30000);
-
-        return () => clearInterval(interval);
-    }, [user]);
+    const { cartCount } = useContext(CartCountContext);
+    const { unreadConversationCount } = useContext(UnreadConversationsContext);
     return (
         <div className="w-full bg-white shadow-md border-b border-gray-200">
             <div className="flex items-center gap-3 px-4 py-3 max-w-6xl mx-auto">
@@ -77,9 +62,11 @@ function ConsumerSearch({
                         width="24"
                         height="24"
                     />
-                    <div className="absolute -top-1 -right-1 bg-red-500 text-white text-xs w-5 h-5 flex items-center justify-center rounded-full">
-                        0
-                    </div>
+                    {unreadConversationCount > 0 && (
+                        <div className="absolute -top-1 -right-1 bg-red-500 text-white text-xs w-5 h-5 flex items-center justify-center rounded-full animate-pulse">
+                            {unreadConversationCount}
+                        </div>
+                    )}
                 </Link>
             </div>
         </div>

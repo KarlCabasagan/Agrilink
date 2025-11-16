@@ -5,9 +5,12 @@ import ConsumerSearch from "../../components/ConsumerSearch.jsx";
 import { useState, useEffect, useContext } from "react";
 import supabase from "../../SupabaseClient.jsx";
 import { AuthContext } from "../../App.jsx";
+import { CartCountContext } from "../../context/CartCountContext.jsx";
 
 function Favorites() {
     const { user } = useContext(AuthContext);
+    const { cartCount, setCartCount, updateCartCount } =
+        useContext(CartCountContext);
     const [search, setSearch] = useState("");
     const [favoriteProducts, setFavoriteProducts] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -16,6 +19,7 @@ function Favorites() {
     const [isAddingToCart, setIsAddingToCart] = useState(false);
     const [isClearingFavorites, setIsClearingFavorites] = useState(false);
     const [addToCartResult, setAddToCartResult] = useState(null);
+    const [hasOrdersWithStatus6, setHasOrdersWithStatus6] = useState(false);
 
     // Auto-dismiss toast after 5 seconds
     useEffect(() => {
@@ -27,19 +31,80 @@ function Favorites() {
         }
     }, [addToCartResult]);
 
+    // Check for orders with status_id 6 and subscribe to real-time changes
+    useEffect(() => {
+        if (!user?.id) return;
+
+        const checkOrderStatus = async () => {
+            try {
+                const { data, error } = await supabase
+                    .from("orders")
+                    .select("id")
+                    .eq("user_id", user.id)
+                    .eq("status_id", 6)
+                    .limit(1);
+
+                if (!error && data && data.length > 0) {
+                    setHasOrdersWithStatus6(true);
+                } else {
+                    setHasOrdersWithStatus6(false);
+                }
+            } catch (error) {
+                console.error("Error checking order status:", error);
+            }
+        };
+
+        // Initial check
+        checkOrderStatus();
+
+        // Subscribe to real-time changes
+        const channel = supabase
+            .channel(`orders-status-${user.id}`)
+            .on(
+                "postgres_changes",
+                {
+                    event: "*",
+                    schema: "public",
+                    table: "orders",
+                    filter: `user_id=eq.${user.id}`,
+                },
+                () => {
+                    // On any order change, recheck status
+                    checkOrderStatus();
+                }
+            )
+            .subscribe();
+
+        return () => {
+            channel.unsubscribe();
+        };
+    }, [user?.id]);
+
     // Compute cart summary before opening modal
     const getCartSummary = () => {
         if (!filteredFavorites.length) return null;
 
+        // Only include products with positive stock that are neither suspended nor not approved
         const availableProducts = filteredFavorites.filter(
-            (product) => product.stock > 0
+            (product) =>
+                product.stock > 0 && !product.suspended && !product.notApproved
         );
-        const outOfStockCount =
-            filteredFavorites.length - availableProducts.length;
+        const outOfStockCount = filteredFavorites.filter(
+            (product) =>
+                product.stock <= 0 && !product.suspended && !product.notApproved
+        ).length;
+        const suspendedCount = filteredFavorites.filter(
+            (product) => product.suspended
+        ).length;
+        const notApprovedCount = filteredFavorites.filter(
+            (product) => product.notApproved
+        ).length;
 
         return {
             totalToAdd: availableProducts.length,
             outOfStockCount,
+            suspendedCount,
+            notApprovedCount,
             availableProducts,
         };
     };
@@ -88,6 +153,17 @@ function Favorites() {
                                   ratings.length
                                 : 0;
 
+                        // Derive suspended and notApproved flags independently
+                        // suspended: status_id === 2
+                        // notApproved: approval_date is null OR represents 1970-01-01 00:00:00+00 sentinel
+                        const isSuspended = product.status_id === 2;
+                        const isNotApproved =
+                            product.approval_date === null ||
+                            (product.approval_date &&
+                                String(product.approval_date).startsWith(
+                                    "1970-01-01"
+                                ));
+
                         return {
                             id: product.id,
                             name: product.name,
@@ -110,6 +186,8 @@ function Favorites() {
                             deliveryCost:
                                 parseFloat(product.delivery_cost) || 50,
                             pickupLocation: product.pickup_location,
+                            suspended: isSuspended,
+                            notApproved: isNotApproved,
                         };
                     });
 
@@ -124,6 +202,60 @@ function Favorites() {
 
         fetchFavorites();
     }, [user]);
+
+    // Memoize product IDs as a joined string to track actual product set for realtime subscription
+    const productIdsString = favoriteProducts
+        .map((p) => p.id)
+        .sort()
+        .join(",");
+
+    // Real-time subscription to favorite products
+    useEffect(() => {
+        if (!user || favoriteProducts.length === 0) return;
+
+        const productIds = favoriteProducts.map((p) => p.id);
+        const subscriptionRef = supabase
+            .channel("favorites-products-channel")
+            .on(
+                "postgres_changes",
+                {
+                    event: "UPDATE",
+                    schema: "public",
+                    table: "products",
+                    filter: `id=in.(${productIds.join(",")})`,
+                },
+                (payload) => {
+                    const newRow = payload.new;
+                    setFavoriteProducts((prev) =>
+                        prev.map((fav) => {
+                            if (fav.id !== newRow.id) return fav;
+
+                            // Recompute both suspended and notApproved flags independently using same logic
+                            const isSuspended = newRow.status_id === 2;
+                            const isNotApproved =
+                                newRow.approval_date === null ||
+                                (newRow.approval_date &&
+                                    String(newRow.approval_date).startsWith(
+                                        "1970-01-01"
+                                    ));
+
+                            return {
+                                ...fav,
+                                price: parseFloat(newRow.price),
+                                stock: parseFloat(newRow.stock) || 0,
+                                name: newRow.name,
+                                image: newRow.image_url || fav.image,
+                                suspended: isSuspended,
+                                notApproved: isNotApproved,
+                            };
+                        })
+                    );
+                }
+            )
+            .subscribe();
+
+        return () => subscriptionRef.unsubscribe();
+    }, [user, productIdsString]);
 
     const filteredFavorites = favoriteProducts.filter(
         (product) =>
@@ -374,8 +506,38 @@ function Favorites() {
                 if (updateError) throw updateError;
             }
 
-            const outOfStockCount =
-                filteredFavorites.length - availableProducts.length;
+            // Calculate net increase in cart units (new items added + existing items incremented)
+            // Each new product counts as 1 item, each updated product counts as 1 item
+            const netIncrease =
+                newProducts.length + existingProductsToUpdate.length;
+
+            // Optimistically update shared cart count state for immediate UI feedback
+            if (netIncrease > 0) {
+                setCartCount(cartCount + netIncrease);
+            }
+
+            // Background reconciliation: fetch authoritative cart count to keep state accurate
+            // This runs without blocking the modal close or toast display
+            updateCartCount(user.id).catch((error) => {
+                console.error(
+                    "Background cart count reconciliation failed:",
+                    error
+                );
+                // Silently fail - optimistic update already showed to user
+            });
+
+            const outOfStockCount = filteredFavorites.filter(
+                (product) =>
+                    product.stock <= 0 &&
+                    !product.suspended &&
+                    !product.notApproved
+            ).length;
+            const suspendedCount = filteredFavorites.filter(
+                (product) => product.suspended
+            ).length;
+            const notApprovedCount = filteredFavorites.filter(
+                (product) => product.notApproved
+            ).length;
             const newItemsCount = newProducts.length;
             const updatedItemsCount = existingProductsToUpdate.length;
             const maxedItemsCount = maxedOutCount.length;
@@ -403,12 +565,30 @@ function Favorites() {
                         outOfStockCount > 0 && {
                             type: "out-of-stock",
                             count: outOfStockCount,
-                            text: `${outOfStockCount} out of stock`,
+                            text: `${outOfStockCount} ${
+                                outOfStockCount === 1 ? "item" : "items"
+                            } out of stock`,
                         },
                         maxedItemsCount > 0 && {
                             type: "max-stock",
                             count: maxedItemsCount,
-                            text: `${maxedItemsCount} at max stock`,
+                            text: `${maxedItemsCount} ${
+                                outOfStockCount === 1 ? "item" : "items"
+                            } at max stock`,
+                        },
+                        suspendedCount > 0 && {
+                            type: "suspended",
+                            count: suspendedCount,
+                            text: `${suspendedCount} ${
+                                suspendedCount === 1 ? "item" : "items"
+                            } suspended and not added`,
+                        },
+                        notApprovedCount > 0 && {
+                            type: "not-approved",
+                            count: notApprovedCount,
+                            text: `${notApprovedCount} ${
+                                notApprovedCount === 1 ? "item" : "items"
+                            } not approved and not added`,
                         },
                     ].filter(Boolean),
                 },
@@ -440,13 +620,16 @@ function Favorites() {
                     </h1>
                     <Link
                         to="/orders"
-                        className="text-gray-600 hover:text-primary"
+                        className="relative text-gray-600 hover:text-primary"
                     >
                         <Icon
                             icon="mingcute:truck-line"
                             width="24"
                             height="24"
                         />
+                        {hasOrdersWithStatus6 && (
+                            <span className="absolute -top-1 -right-2 w-2.5 h-2.5 bg-red-500 rounded-full"></span>
+                        )}
                     </Link>
                 </div>
             </div>
@@ -587,6 +770,17 @@ function Favorites() {
                                     <div className="absolute top-2 left-2 bg-primary text-white px-2 py-1 rounded-full text-xs font-medium">
                                         {product.category}
                                     </div>
+                                    {product.suspended && (
+                                        <div className="absolute top-9 left-2 bg-red-500 text-white px-2 py-1 rounded-full text-xs font-medium">
+                                            Suspended
+                                        </div>
+                                    )}
+                                    {product.notApproved &&
+                                        !product.suspended && (
+                                            <div className="absolute top-9 left-2 bg-yellow-500 text-white px-2 py-1 rounded-full text-xs font-medium">
+                                                Not Approved
+                                            </div>
+                                        )}
                                 </div>
 
                                 <div className="p-3">
@@ -788,6 +982,40 @@ function Favorites() {
                                                         }{" "}
                                                         items are out of stock
                                                         and will be skipped
+                                                    </p>
+                                                )}
+                                                {getCartSummary()
+                                                    .suspendedCount > 0 && (
+                                                    <p className="text-red-600 text-sm">
+                                                        Note:{" "}
+                                                        {
+                                                            getCartSummary()
+                                                                .suspendedCount
+                                                        }{" "}
+                                                        {getCartSummary()
+                                                            .suspendedCount ===
+                                                        1
+                                                            ? "item is"
+                                                            : "items are"}{" "}
+                                                        suspended and will be
+                                                        skipped
+                                                    </p>
+                                                )}
+                                                {getCartSummary()
+                                                    .notApprovedCount > 0 && (
+                                                    <p className="text-yellow-600 text-sm">
+                                                        Note:{" "}
+                                                        {
+                                                            getCartSummary()
+                                                                .notApprovedCount
+                                                        }{" "}
+                                                        {getCartSummary()
+                                                            .notApprovedCount ===
+                                                        1
+                                                            ? "item is"
+                                                            : "items are"}{" "}
+                                                        not yet approved and
+                                                        will be skipped
                                                     </p>
                                                 )}
                                             </>

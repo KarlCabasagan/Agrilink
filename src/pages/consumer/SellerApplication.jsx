@@ -69,7 +69,10 @@ function SellerApplication() {
         if (formData.crops.length === 0) {
             newErrors.crops = "Please select at least one crop";
         }
-        if (!validId?.file) {
+
+        // Valid ID required only for first-time submissions (no existing application)
+        // For rejected applications, allow using previously stored ID unless user uploads new file
+        if (!existingApplication && !validId?.file) {
             newErrors.validId = "Please upload a valid ID";
         }
 
@@ -116,9 +119,38 @@ function SellerApplication() {
                 if (profileError) throw profileError;
                 setUserData(profile);
 
-                // Only fetch crops if there's no existing application
-                if (!application) {
-                    setLoadingCrops(true);
+                // Branch on rejection_reason
+                if (application && application.rejection_reason !== null) {
+                    // Rejected application: fetch crops and prefill form
+                    const { data: crops, error: cropsError } = await supabase
+                        .from("crops")
+                        .select("*");
+
+                    if (cropsError) throw cropsError;
+                    setCropsData(crops || []);
+
+                    // Fetch application_crops to prefill selected crops
+                    const { data: appCrops, error: appCropsError } =
+                        await supabase
+                            .from("application_crops")
+                            .select("crop_id")
+                            .eq("application_id", application.id);
+
+                    if (appCropsError) throw appCropsError;
+
+                    // Prefill form data
+                    setFormData({
+                        experience: application.farming_experience || "",
+                        crops: appCrops.map((ac) => ac.crop_id) || [],
+                    });
+
+                    // Set valid ID preview from URL
+                    setValidId({
+                        file: null,
+                        preview: application.valid_id_url || "",
+                    });
+                } else if (!application) {
+                    // New applicant: fetch crops only
                     const { data: crops, error: cropsError } = await supabase
                         .from("crops")
                         .select("*");
@@ -126,6 +158,8 @@ function SellerApplication() {
                     if (cropsError) throw cropsError;
                     setCropsData(crops || []);
                 }
+                // If application exists but rejection_reason is null (under review),
+                // do not fetch crops to keep form disabled
             } catch (err) {
                 console.error("Error fetching initial data:", err);
                 setErrors((prev) => ({
@@ -148,55 +182,110 @@ function SellerApplication() {
         setErrors({}); // Clear any previous errors
 
         try {
-            // Upload the valid ID only during form submission
-            if (!validId.file) {
-                setErrors({ submit: "Valid ID image is required" });
-                return;
-            }
+            // Branch on whether this is a resubmission of a rejected application
+            const isResubmission =
+                existingApplication &&
+                existingApplication.rejection_reason !== null;
 
-            // Upload the image to Supabase storage
-            const uploadResult = await uploadImage(
-                validId.file,
-                "valid_ids",
-                user.id
-            );
-            if (!uploadResult.success) {
-                setErrors({
-                    submit: uploadResult.error || "Failed to upload valid ID",
-                });
-                return;
-            }
+            let validIdUrl = validId.preview; // Default to existing URL for resubmission
 
-            // 2. Insert seller application record
-            const { data: appData, error: appError } = await supabase
-                .from("seller_applications")
-                .insert([
-                    {
-                        user_id: user.id,
-                        valid_id_url: uploadResult.url, // Use the URL from the upload result
-                        farming_experience: formData.experience,
-                        rejection_reason: null,
-                    },
-                ])
-                .select()
-                .single();
-
-            if (appError) {
-                throw new Error(appError.message);
-            }
-
-            // 3. Insert selected crops into application_crops
-            const { error: cropError } = await supabase
-                .from("application_crops")
-                .insert(
-                    formData.crops.map((cropId) => ({
-                        application_id: appData.id,
-                        crop_id: cropId,
-                    }))
+            // Upload new valid ID if provided (for both new and rejected applications)
+            if (validId.file) {
+                const uploadResult = await uploadImage(
+                    validId.file,
+                    "valid_ids",
+                    user.id
                 );
+                if (!uploadResult.success) {
+                    setErrors({
+                        submit:
+                            uploadResult.error || "Failed to upload valid ID",
+                    });
+                    setLoading(false);
+                    return;
+                }
+                validIdUrl = uploadResult.url;
+            } else if (!isResubmission && !validId.file) {
+                // First-time submission must have a file
+                setErrors({ submit: "Valid ID image is required" });
+                setLoading(false);
+                return;
+            }
 
-            if (cropError) {
-                throw new Error(cropError.message);
+            if (isResubmission) {
+                // RESUBMISSION: Update existing application
+                const { data: updatedApp, error: updateError } = await supabase
+                    .from("seller_applications")
+                    .update({
+                        valid_id_url: validIdUrl,
+                        farming_experience: formData.experience,
+                        rejection_reason: null, // Clear rejection reason
+                    })
+                    .eq("id", existingApplication.id)
+                    .select()
+                    .single();
+
+                if (updateError) {
+                    throw new Error(updateError.message);
+                }
+
+                // Replace application_crops with newly selected crops
+                const { error: deleteError } = await supabase
+                    .from("application_crops")
+                    .delete()
+                    .eq("application_id", existingApplication.id);
+
+                if (deleteError) {
+                    throw new Error(deleteError.message);
+                }
+
+                const { error: insertCropError } = await supabase
+                    .from("application_crops")
+                    .insert(
+                        formData.crops.map((cropId) => ({
+                            application_id: existingApplication.id,
+                            crop_id: cropId,
+                        }))
+                    );
+
+                if (insertCropError) {
+                    throw new Error(insertCropError.message);
+                }
+
+                // Update state so form becomes read-only again
+                setExistingApplication(updatedApp);
+            } else {
+                // NEW SUBMISSION: Insert new application
+                const { data: appData, error: appError } = await supabase
+                    .from("seller_applications")
+                    .insert([
+                        {
+                            user_id: user.id,
+                            valid_id_url: validIdUrl,
+                            farming_experience: formData.experience,
+                            rejection_reason: null,
+                        },
+                    ])
+                    .select()
+                    .single();
+
+                if (appError) {
+                    throw new Error(appError.message);
+                }
+
+                // Insert selected crops into application_crops
+                const { error: cropError } = await supabase
+                    .from("application_crops")
+                    .insert(
+                        formData.crops.map((cropId) => ({
+                            application_id: appData.id,
+                            crop_id: cropId,
+                        }))
+                    );
+
+                if (cropError) {
+                    throw new Error(cropError.message);
+                }
             }
 
             // Success! Show success message and redirect
@@ -247,8 +336,8 @@ function SellerApplication() {
                                 <li>Farming Experience</li>
                             </ul>
                             <p>
-                                You will receive an email notification once your
-                                application has been verified.
+                                You’ll see certain UI changes once your
+                                application is approved or verified.
                             </p>
                         </div>
                         <p className="text-sm text-gray-500 mt-6">
@@ -284,39 +373,69 @@ function SellerApplication() {
             </div>
 
             <div className="w-full max-w-2xl mx-4 sm:mx-auto my-16">
-                {existingApplication && (
-                    <div className="mb-6 bg-yellow-50 border-l-4 border-yellow-500 text-yellow-700 p-4 rounded-lg">
-                        <div className="flex items-start gap-3">
-                            <Icon
-                                icon="mingcute:time-line"
-                                width="24"
-                                height="24"
-                                className="mt-0.5"
-                            />
-                            <div>
-                                <h3 className="font-semibold mb-1">
-                                    Application Under Review
-                                </h3>
-                                <p className="text-sm">
-                                    Your seller application is currently being
-                                    reviewed by our admin team. We will notify
-                                    you via email once the review is complete.
-                                </p>
-                                <button
-                                    onClick={() => navigate("/profile")}
-                                    className="mt-3 text-sm font-medium text-yellow-800 hover:text-yellow-900 flex items-center gap-1"
-                                >
-                                    <Icon
-                                        icon="mingcute:user-4-line"
-                                        width="16"
-                                        height="16"
-                                    />
-                                    Go to Profile
-                                </button>
+                {/* Rejected Application Banner */}
+                {existingApplication &&
+                    existingApplication.rejection_reason !== null && (
+                        <div className="mb-6 bg-red-50 border-l-4 border-red-500 text-red-700 p-4 rounded-lg">
+                            <div className="flex items-start gap-3">
+                                <Icon
+                                    icon="mingcute:close-circle-line"
+                                    width="24"
+                                    height="24"
+                                    className="mt-0.5"
+                                />
+                                <div>
+                                    <h3 className="font-semibold mb-2">
+                                        Application Rejected
+                                    </h3>
+                                    <p className="text-sm mb-3">
+                                        {existingApplication.rejection_reason}
+                                    </p>
+                                    <p className="text-sm">
+                                        Please review the comments above and
+                                        update your application accordingly.
+                                    </p>
+                                </div>
                             </div>
                         </div>
-                    </div>
-                )}
+                    )}
+
+                {/* Under Review Banner */}
+                {existingApplication &&
+                    existingApplication.rejection_reason === null && (
+                        <div className="mb-6 bg-yellow-50 border-l-4 border-yellow-500 text-yellow-700 p-4 rounded-lg">
+                            <div className="flex items-start gap-3">
+                                <Icon
+                                    icon="mingcute:time-line"
+                                    width="24"
+                                    height="24"
+                                    className="mt-0.5"
+                                />
+                                <div>
+                                    <h3 className="font-semibold mb-1">
+                                        Application Under Review
+                                    </h3>
+                                    <p className="text-sm">
+                                        Your seller application is currently
+                                        being reviewed by our admin team. You
+                                        will see automatic UI changes once the
+                                        review is complete.
+                                    </p>
+                                    <button
+                                        onClick={() => navigate("/profile")}
+                                        className="mt-3 text-sm font-medium text-yellow-800 hover:text-yellow-900 flex items-center gap-1"
+                                    >
+                                        <Icon
+                                            icon="mingcute:user-4-line"
+                                            width="16"
+                                            height="16"
+                                        />
+                                        Go to Profile
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
                 {/* Info Banner */}
                 <div className="mb-6 bg-blue-50 border border-blue-200 rounded-lg p-4 mt-4">
                     <div className="flex items-start gap-3">
@@ -344,8 +463,16 @@ function SellerApplication() {
                     onSubmit={handleSubmit}
                     className="space-y-6"
                     style={{
-                        pointerEvents: existingApplication ? "none" : "auto",
-                        opacity: existingApplication ? 0.6 : 1,
+                        pointerEvents:
+                            existingApplication &&
+                            existingApplication.rejection_reason === null
+                                ? "none"
+                                : "auto",
+                        opacity:
+                            existingApplication &&
+                            existingApplication.rejection_reason === null
+                                ? 0.6
+                                : 1,
                     }}
                 >
                     {/* Personal Information */}

@@ -26,9 +26,14 @@ function AdminDashboard() {
     const [isLoading, setIsLoading] = useState(true); // Now only for products
 
     // Backend time range filter with Supabase
-    const fetchFilteredProducts = async (timeRange) => {
+    const fetchFilteredProducts = async (
+        timeRange,
+        options = { showLoading: false }
+    ) => {
         try {
-            setIsLoading(true);
+            if (options.showLoading) {
+                setIsLoading(true);
+            }
             // Add a small delay for smooth transition
             await new Promise((resolve) => setTimeout(resolve, 300));
 
@@ -126,14 +131,18 @@ function AdminDashboard() {
             console.error("Error fetching filtered products:", error);
             setTopProducts([]); // Ensure empty state is shown on error
         } finally {
-            setIsLoading(false);
+            if (options.showLoading) {
+                setIsLoading(false);
+            }
         }
     };
 
     useEffect(() => {
-        const fetchDashboardStats = async () => {
+        const fetchDashboardStats = async (showLoading = false) => {
             try {
-                setIsStatsLoading(true);
+                if (showLoading) {
+                    setIsStatsLoading(true);
+                }
 
                 // Get total users count
                 const { count: usersCount } = await supabase
@@ -162,9 +171,10 @@ function AdminDashboard() {
                     .from("crops")
                     .select("*", { count: "exact", head: true });
 
-                // Get total reviews count (from future reviews table)
-                // This will need to be updated once the reviews table is implemented
-                const totalReviews = 0;
+                // Get total reviews count
+                const { count: totalReviewsCount } = await supabase
+                    .from("reviews")
+                    .select("*", { count: "exact", head: true });
 
                 setStats({
                     totalUsers: usersCount || 0,
@@ -172,7 +182,7 @@ function AdminDashboard() {
                     totalProducts: productsCount || 0,
                     pendingProducts: pendingProductsCount || 0,
                     activeCrops: activeCropsCount || 0,
-                    totalReviews: totalReviews,
+                    totalReviews: totalReviewsCount || 0,
                 });
             } catch (error) {
                 console.error("Error fetching dashboard stats:", error);
@@ -186,19 +196,137 @@ function AdminDashboard() {
                     totalReviews: 0,
                 });
             } finally {
-                setIsStatsLoading(false);
+                if (showLoading) {
+                    setIsStatsLoading(false);
+                }
             }
         };
 
-        fetchDashboardStats();
+        // Initial fetch with loading indicators
+        fetchDashboardStats(true);
+        fetchFilteredProducts(selectedTimeRange, { showLoading: true });
 
-        // Initial fetch of top products
-        fetchFilteredProducts("all");
-    }, []);
+        // Set up Realtime subscriptions for live updates
+        const realtimeChannel = supabase.channel("admin-dashboard-realtime");
 
-    // Handle time range changes
-    useEffect(() => {
-        fetchFilteredProducts(selectedTimeRange);
+        // Stats listeners - re-run fetchDashboardStats without loading indicators
+        realtimeChannel
+            .on(
+                "postgres_changes",
+                {
+                    event: "*",
+                    schema: "public",
+                    table: "profiles",
+                },
+                () => {
+                    fetchDashboardStats(false);
+                }
+            )
+            .on(
+                "postgres_changes",
+                {
+                    event: "*",
+                    schema: "public",
+                    table: "seller_applications",
+                },
+                () => {
+                    fetchDashboardStats(false);
+                }
+            )
+            .on(
+                "postgres_changes",
+                {
+                    event: "*",
+                    schema: "public",
+                    table: "products",
+                },
+                () => {
+                    fetchDashboardStats(false);
+                }
+            )
+            .on(
+                "postgres_changes",
+                {
+                    event: "*",
+                    schema: "public",
+                    table: "crops",
+                },
+                () => {
+                    fetchDashboardStats(false);
+                }
+            )
+            .on(
+                "postgres_changes",
+                {
+                    event: "*",
+                    schema: "public",
+                    table: "reviews",
+                },
+                () => {
+                    fetchDashboardStats(false);
+                }
+            );
+
+        // Top products listeners - re-run fetchFilteredProducts without loading indicators
+        realtimeChannel
+            .on(
+                "postgres_changes",
+                {
+                    event: "*",
+                    schema: "public",
+                    table: "products",
+                },
+                () => {
+                    fetchFilteredProducts(selectedTimeRange, {
+                        showLoading: false,
+                    });
+                }
+            )
+            .on(
+                "postgres_changes",
+                {
+                    event: "*",
+                    schema: "public",
+                    table: "orders",
+                },
+                () => {
+                    fetchFilteredProducts(selectedTimeRange, {
+                        showLoading: false,
+                    });
+                }
+            )
+            .on(
+                "postgres_changes",
+                {
+                    event: "*",
+                    schema: "public",
+                    table: "order_items",
+                },
+                () => {
+                    fetchFilteredProducts(selectedTimeRange, {
+                        showLoading: false,
+                    });
+                }
+            )
+            .on(
+                "postgres_changes",
+                {
+                    event: "*",
+                    schema: "public",
+                    table: "reviews",
+                },
+                () => {
+                    fetchFilteredProducts(selectedTimeRange, {
+                        showLoading: false,
+                    });
+                }
+            )
+            .subscribe();
+
+        // Cleanup: unsubscribe from channel when component unmounts or dependencies change
+        return () => {
+            realtimeChannel.unsubscribe();
+        };
     }, [selectedTimeRange]);
 
     return (
@@ -212,7 +340,7 @@ function AdminDashboard() {
 
             <div className="w-full max-w-4xl mx-4 sm:mx-auto my-16">
                 {/* Quick Stats */}
-                <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 mb-6 mt-4 px-4 sm:px-0">
+                <div className="grid grid-cols-3 lg:grid-cols-3 gap-4 mb-6 mt-4 px-4 sm:px-0">
                     <div className="bg-white rounded-lg shadow-md p-4 text-center">
                         <Icon
                             icon="mingcute:group-line"

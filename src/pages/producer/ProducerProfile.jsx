@@ -138,14 +138,6 @@ function ProducerProfile() {
         return phoneNumber;
     };
 
-    if (loading) {
-        return (
-            <div className="min-h-screen w-full flex items-center justify-center bg-background">
-                <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-primary"></div>
-            </div>
-        );
-    }
-
     return (
         <div className="min-h-screen w-full flex flex-col relative items-center scrollbar-hide bg-background overflow-x-hidden text-text pb-20">
             {/* Header */}
@@ -228,7 +220,13 @@ function ProducerProfile() {
                             className="mx-auto mb-2 text-blue-600"
                         />
                         <p className="text-2xl font-bold text-gray-800">
-                            {stats.totalProducts}
+                            {loading ? (
+                                <span className="text-sm text-gray-500">
+                                    Updating…
+                                </span>
+                            ) : (
+                                stats.totalProducts
+                            )}
                         </p>
                         <p className="text-xs text-gray-600">Products</p>
                     </div>
@@ -240,7 +238,13 @@ function ProducerProfile() {
                             className="mx-auto mb-2 text-green-600"
                         />
                         <p className="text-2xl font-bold text-gray-800">
-                            {stats.totalOrders}
+                            {loading ? (
+                                <span className="text-sm text-gray-500">
+                                    Updating…
+                                </span>
+                            ) : (
+                                stats.totalOrders
+                            )}
                         </p>
                         <p className="text-xs text-gray-600">Orders</p>
                     </div>
@@ -252,7 +256,13 @@ function ProducerProfile() {
                             className="mx-auto mb-2 text-yellow-600"
                         />
                         <p className="text-lg font-bold text-gray-800">
-                            ₱{stats.totalRevenue.toLocaleString()}
+                            {loading ? (
+                                <span className="text-sm text-gray-500">
+                                    Updating…
+                                </span>
+                            ) : (
+                                `₱${stats.totalRevenue.toLocaleString()}`
+                            )}
                         </p>
                         <p className="text-xs text-gray-600">Revenue</p>
                     </div>
@@ -361,7 +371,7 @@ function ProducerProfile() {
                                     />
                                 </div>
                                 <span className="text-gray-800">
-                                    Help & Support
+                                    Help & About
                                 </span>
                             </div>
                             <Icon

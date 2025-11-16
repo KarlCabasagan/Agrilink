@@ -5,13 +5,16 @@ import NavigationBar from "../../components/NavigationBar";
 import Modal from "../../components/Modal";
 import supabase from "../../SupabaseClient.jsx";
 import { AuthContext } from "../../App.jsx";
+import { CartCountContext } from "../../context/CartCountContext.jsx";
 
 function Cart() {
     const { user } = useContext(AuthContext);
+    const { cartCount, setCartCount } = useContext(CartCountContext);
     const navigate = useNavigate();
     const [cartItems, setCartItems] = useState([]);
     const [loading, setLoading] = useState(true);
     const [hasInvalidItems, setHasInvalidItems] = useState(false);
+    const [profileIncomplete, setProfileIncomplete] = useState(false);
     // version increments when cart data is fetched to coordinate one-time autocap
     const [cartVersion, setCartVersion] = useState(0);
     const [modal, setModal] = useState({
@@ -120,6 +123,39 @@ function Cart() {
     useEffect(() => {
         fetchCartItems();
         // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [user]);
+
+    // Check profile completeness
+    useEffect(() => {
+        if (!user) {
+            setProfileIncomplete(false);
+            return;
+        }
+
+        const checkProfileCompletion = async () => {
+            try {
+                const { data, error } = await supabase
+                    .from("profiles")
+                    .select("address, contact")
+                    .eq("id", user.id)
+                    .single();
+
+                if (error) {
+                    console.error("Error checking profile:", error);
+                    setProfileIncomplete(true);
+                    return;
+                }
+
+                // Profile is incomplete if address or contact is missing/blank
+                const isIncomplete = !data?.address || !data?.contact;
+                setProfileIncomplete(isIncomplete);
+            } catch (error) {
+                console.error("Error checking profile completion:", error);
+                setProfileIncomplete(true);
+            }
+        };
+
+        checkProfileCompletion();
     }, [user]);
 
     // Memoize grouping to avoid re-computation and re-mounts
@@ -289,6 +325,9 @@ function Cart() {
         const item = cartItems.find((item) => item.id === id);
         if (!item) return;
 
+        // Store item quantity for optimistic decrement
+        const quantityToRemove = Math.round(item.quantity * 10) / 10;
+
         try {
             const { error } = await supabase
                 .from("cart_items")
@@ -329,6 +368,59 @@ function Cart() {
 
                 return updatedItems;
             });
+
+            // Optimistically decrement shared cart count by the item quantity
+            // Clamp at zero to prevent negative counts
+            const newCount = Math.max(0, cartCount - 1); // One distinct item removed
+            setCartCount(newCount);
+
+            // Background reconciliation: fetch authoritative cart count to ensure accuracy
+            // This runs without blocking UI or navigation
+            (async () => {
+                try {
+                    const { data: userCart, error: cartError } = await supabase
+                        .from("carts")
+                        .select("id")
+                        .eq("user_id", user.id)
+                        .single();
+
+                    if (cartError && cartError.code !== "PGRST116") {
+                        console.error(
+                            "Error fetching cart for reconciliation:",
+                            cartError
+                        );
+                        return;
+                    }
+
+                    if (!userCart) {
+                        setCartCount(0);
+                        return;
+                    }
+
+                    const { data: cartItems, error: itemsError } =
+                        await supabase
+                            .from("cart_items")
+                            .select("id")
+                            .eq("cart_id", userCart.id);
+
+                    if (itemsError) {
+                        console.error("Error counting cart items:", itemsError);
+                        return;
+                    }
+
+                    const authoritativeCount = cartItems?.length || 0;
+                    // Only update shared state if it differs from optimistic count
+                    if (authoritativeCount !== newCount) {
+                        setCartCount(authoritativeCount);
+                    }
+                } catch (error) {
+                    console.error(
+                        "Background cart reconciliation failed:",
+                        error
+                    );
+                    // Silently fail - optimistic update already showed to user
+                }
+            })();
         } catch (error) {
             console.error("Error removing cart item:", error);
         }
@@ -356,7 +448,36 @@ function Cart() {
         return getDeliveryIneligibleFarmers().length === 0;
     };
 
+    // Helper function to check if a product is invalid (no approval, epoch 1970, or suspended)
+    const isProductInvalid = (product) => {
+        const approvalDate = product?.approval_date
+            ? new Date(product.approval_date).toISOString()
+            : null;
+        const defaultDate = new Date("1970-01-01T00:00:00.000Z").toISOString();
+
+        return (
+            !product?.approval_date ||
+            approvalDate.startsWith("1970-01-01T00:00:00") ||
+            approvalDate === defaultDate ||
+            product.status_id === 2
+        );
+    };
+
     const handleCheckout = async () => {
+        // Check profile completeness first - highest priority gate
+        if (profileIncomplete) {
+            showModal(
+                "warning",
+                "Profile Incomplete",
+                "Please complete your address and contact in your profile to proceed to checkout.",
+                () => {
+                    setModal((prev) => ({ ...prev, open: false }));
+                    navigate("/profile");
+                }
+            );
+            return;
+        }
+
         // Filter out zero-quantity items for checkout
         const checkoutItems = cartItems.filter((it) => (it.quantity || 0) > 0);
 
@@ -495,6 +616,112 @@ function Cart() {
             );
         }
     };
+
+    useEffect(() => {
+        if (cartItems.length === 0) return;
+
+        // Use the same identifier the UI uses (item.id) which corresponds to product_id
+        const productIds = Array.from(
+            new Set(cartItems.map((item) => item.id))
+        );
+        const subscriptionRef = supabase
+            .channel("cart-products-channel")
+            .on(
+                "postgres_changes",
+                {
+                    event: "UPDATE",
+                    schema: "public",
+                    table: "products",
+                    filter: `id=in.(${productIds.join(",")})`,
+                },
+                (payload) => {
+                    const newRow = payload.new;
+                    const quantitiesToPersist = []; // Track updates to persist to DB
+
+                    // First pass: update local state and collect capping operations
+                    const updatedItems = cartItems.map((item) => {
+                        if (item.id !== newRow.id) return item;
+
+                        const newStock = parseFloat(newRow.stock) || 0;
+                        const currentQuantity =
+                            Math.round(item.quantity * 10) / 10;
+                        const cappedQuantity =
+                            currentQuantity > newStock
+                                ? Math.round(newStock * 10) / 10
+                                : currentQuantity;
+
+                        // If quantity was capped, track it for persistence
+                        if (cappedQuantity !== currentQuantity) {
+                            quantitiesToPersist.push({
+                                cartItemId: item.cartItemId,
+                                newQuantity: cappedQuantity,
+                            });
+                        }
+
+                        // Merge primitive fields and update nested products object
+                        return {
+                            ...item,
+                            price: parseFloat(newRow.price),
+                            stock: newStock,
+                            quantity: cappedQuantity, // Apply cap immediately
+                            products: {
+                                ...(item.products || {}),
+                                status_id: newRow.status_id,
+                                approval_date: newRow.approval_date,
+                            },
+                        };
+                    });
+
+                    // Update local state with capped quantities
+                    setCartItems(updatedItems);
+
+                    // Recompute hasInvalidItems based on updated state
+                    const newHasInvalidItems = updatedItems.some((item) =>
+                        isProductInvalid(item.products)
+                    );
+                    setHasInvalidItems(newHasInvalidItems);
+
+                    // Persist capped quantities to DB in background (don't await to avoid blocking UI)
+                    quantitiesToPersist.forEach((update) => {
+                        supabase
+                            .from("cart_items")
+                            .update({ quantity: update.newQuantity })
+                            .eq("id", update.cartItemId)
+                            .catch((error) => {
+                                console.error(
+                                    "Error persisting capped quantity:",
+                                    error
+                                );
+                                // Silently fail; UI already reflects the cap
+                            });
+                    });
+                }
+            )
+            .on(
+                "postgres_changes",
+                {
+                    event: "DELETE",
+                    schema: "public",
+                    table: "products",
+                },
+                (payload) => {
+                    // Remove cart item if product is deleted (match by the id used in UI)
+                    const filteredItems = cartItems.filter(
+                        (item) => item.id !== payload.old.id
+                    );
+                    setCartItems(filteredItems);
+
+                    // Recompute hasInvalidItems based on remaining items
+                    const newHasInvalidItems = filteredItems.some((item) =>
+                        isProductInvalid(item.products)
+                    );
+                    setHasInvalidItems(newHasInvalidItems);
+                }
+            )
+            .subscribe();
+
+        return () => subscriptionRef.unsubscribe();
+    }, [cartItems.length]);
 
     return (
         <div className="min-h-screen w-full flex flex-col relative items-center scrollbar-hide bg-background overflow-x-hidden text-text pb-20">
@@ -722,14 +949,14 @@ function Cart() {
                                                             className="w-16 h-16 object-cover rounded-lg"
                                                         />
                                                         <div className="flex-1">
-                                                            <div className="flex items-start justify-between mb-1">
+                                                            <div className="flex items-center gap-3 mb-1">
                                                                 <h4 className="font-semibold text-gray-800">
                                                                     {item.name}
                                                                 </h4>
                                                                 {item.products
                                                                     ?.status_id ===
                                                                     2 && (
-                                                                    <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-800">
+                                                                    <span className="inline-flex items-center px-2 rounded text-xs font-medium bg-red-100 text-red-800">
                                                                         <Icon
                                                                             icon="mingcute:alert-fill"
                                                                             className="mr-1"
@@ -948,9 +1175,9 @@ function Cart() {
                         <div className="sticky bottom-20 bg-white rounded-lg shadow-lg p-4 border-t border-gray-200">
                             <button
                                 onClick={handleCheckout}
-                                disabled={hasInvalidItems}
+                                disabled={profileIncomplete || hasInvalidItems}
                                 className={`w-full py-3 rounded-lg font-semibold flex items-center justify-center gap-2 ${
-                                    hasInvalidItems
+                                    profileIncomplete || hasInvalidItems
                                         ? "bg-gray-300 text-gray-500 cursor-not-allowed"
                                         : "bg-primary text-white hover:bg-primary-dark transition-colors"
                                 }`}
@@ -963,7 +1190,12 @@ function Cart() {
                                 Proceed to Checkout
                             </button>
                             <p className="text-center text-xs mt-2">
-                                {hasInvalidItems ? (
+                                {profileIncomplete ? (
+                                    <span className="text-red-500">
+                                        Please complete your address and contact
+                                        in your profile to proceed to checkout.
+                                    </span>
+                                ) : hasInvalidItems ? (
                                     <span className="text-red-500">
                                         Some items are no longer available.
                                         Please remove them to continue.

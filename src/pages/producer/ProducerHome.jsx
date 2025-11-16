@@ -7,7 +7,7 @@ import {
     memo,
 } from "react";
 import { Icon } from "@iconify/react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import { AuthContext } from "../../App.jsx";
 import ProducerNavigationBar from "../../components/ProducerNavigationBar";
 import ConfirmModal from "../../components/ConfirmModal";
@@ -669,6 +669,8 @@ ProductModal.displayName = "ProductModal";
 
 function ProducerHome() {
     const { user } = useContext(AuthContext);
+    const navigate = useNavigate();
+    const location = useLocation();
     // Update last login timestamp
     useUpdateLastLogin(user?.id);
     const [selectedCategory, setSelectedCategory] = useState("All");
@@ -734,19 +736,116 @@ function ProducerHome() {
         fetchCategories();
     }, []);
 
+    // Helper function to fetch all crops
+    const fetchAllCrops = async () => {
+        const { data, error } = await supabase
+            .from("crops")
+            .select("id, name, min_price, max_price");
+        if (error) {
+            console.error("Error fetching crops:", error);
+        } else {
+            setAllCrops(data);
+        }
+    };
+
+    // Initial fetch of crops
     useEffect(() => {
-        const fetchAllCrops = async () => {
-            const { data, error } = await supabase
-                .from("crops")
-                .select("id, name, min_price, max_price");
-            if (error) {
-                console.error("Error fetching crops:", error);
-            } else {
-                setAllCrops(data);
-            }
-        };
         fetchAllCrops();
     }, []);
+
+    // Real-time subscription to crops changes
+    useEffect(() => {
+        const channel = supabase
+            .channel("crops-realtime-producer")
+            .on(
+                "postgres_changes",
+                {
+                    event: "INSERT",
+                    schema: "public",
+                    table: "crops",
+                },
+                (payload) => {
+                    // Append new crop to allCrops
+                    const newCrop = {
+                        id: payload.new.id,
+                        name: payload.new.name,
+                        min_price: payload.new.min_price,
+                        max_price: payload.new.max_price,
+                    };
+                    setAllCrops((prev) => [...prev, newCrop]);
+                }
+            )
+            .on(
+                "postgres_changes",
+                {
+                    event: "UPDATE",
+                    schema: "public",
+                    table: "crops",
+                },
+                (payload) => {
+                    // Replace the updated crop in allCrops
+                    setAllCrops((prev) =>
+                        prev.map((crop) =>
+                            crop.id === payload.new.id
+                                ? {
+                                      id: payload.new.id,
+                                      name: payload.new.name,
+                                      min_price: payload.new.min_price,
+                                      max_price: payload.new.max_price,
+                                  }
+                                : crop
+                        )
+                    );
+                }
+            )
+            .on(
+                "postgres_changes",
+                {
+                    event: "DELETE",
+                    schema: "public",
+                    table: "crops",
+                },
+                (payload) => {
+                    // Remove deleted crop from allCrops
+                    setAllCrops((prev) =>
+                        prev.filter((crop) => crop.id !== payload.old.id)
+                    );
+                }
+            )
+            .subscribe();
+
+        return () => {
+            channel.unsubscribe();
+        };
+    }, []);
+
+    // Handle modal opening and pre-filling from navigation state
+    useEffect(() => {
+        if (location.state?.openAddModal && allCrops.length > 0) {
+            const { prefilledCropType } = location.state;
+            if (prefilledCropType) {
+                // Pre-fill crop type by updating cropTypeSearch and selecting it
+                setCropTypeSearch(prefilledCropType);
+                // Call the crop type selection handler to set productForm fields
+                const selectedCrop = allCrops.find(
+                    (crop) =>
+                        crop.name.toLowerCase() ===
+                        prefilledCropType.toLowerCase()
+                );
+                if (selectedCrop) {
+                    setProductForm((prev) => ({
+                        ...prev,
+                        cropType: selectedCrop.name,
+                        crop_id: selectedCrop.id,
+                    }));
+                    setShowCropDropdown(false);
+                }
+            }
+            setShowAddModal(true);
+            // Clear navigation state
+            navigate("/", { replace: true });
+        }
+    }, [location.state, allCrops, navigate]);
 
     const availableCrops = useMemo(
         () => allCrops.map((c) => c.name),
@@ -763,6 +862,150 @@ function ProducerHome() {
     useEffect(() => {
         fetchProducts();
     }, [user]);
+
+    // Real-time subscription to user's products
+    useEffect(() => {
+        if (!user?.id || products.length === 0) return;
+
+        // Helper function to format a product row using the same logic as fetchProducts
+        const formatProduct = (product) => ({
+            id: product.id,
+            name: product.name,
+            price: parseFloat(product.price),
+            category: product.categories?.name || "Other",
+            description: product.description,
+            stock: parseFloat(product.stock),
+            image: product.image_url || "/assets/gray-apple.png",
+            image_url: product.image_url,
+            cropId: product.crops?.id,
+            cropType: product.crops?.name,
+            status_id: product.status_id,
+            approval_date: product.approval_date,
+            rejection_reason: product.rejection_reason,
+            created_at: product.created_at,
+            updated_at: product.updated_at,
+        });
+
+        const channel = supabase
+            .channel(`products-producer-${user.id}`)
+            .on(
+                "postgres_changes",
+                {
+                    event: "INSERT",
+                    schema: "public",
+                    table: "products",
+                    filter: `user_id=eq.${user.id}`,
+                },
+                async (payload) => {
+                    // Fetch full product with relations for INSERT
+                    const { data: newProduct, error } = await supabase
+                        .from("products")
+                        .select(
+                            `
+                            id,
+                            name,
+                            price,
+                            description,
+                            stock,
+                            image_url,
+                            status_id,
+                            approval_date,
+                            rejection_reason,
+                            created_at,
+                            updated_at,
+                            categories!inner (
+                                id,
+                                name
+                            ),
+                            crops (
+                                id,
+                                name
+                            ),
+                            statuses!inner (
+                                name
+                            )
+                        `
+                        )
+                        .eq("id", payload.new.id)
+                        .single();
+
+                    if (!error && newProduct) {
+                        const formatted = formatProduct(newProduct);
+                        setProducts((prev) => [formatted, ...prev]);
+                    }
+                }
+            )
+            .on(
+                "postgres_changes",
+                {
+                    event: "UPDATE",
+                    schema: "public",
+                    table: "products",
+                    filter: `user_id=eq.${user.id}`,
+                },
+                async (payload) => {
+                    // Fetch updated product with relations for UPDATE
+                    const { data: updatedProduct, error } = await supabase
+                        .from("products")
+                        .select(
+                            `
+                            id,
+                            name,
+                            price,
+                            description,
+                            stock,
+                            image_url,
+                            status_id,
+                            approval_date,
+                            rejection_reason,
+                            created_at,
+                            updated_at,
+                            categories!inner (
+                                id,
+                                name
+                            ),
+                            crops (
+                                id,
+                                name
+                            ),
+                            statuses!inner (
+                                name
+                            )
+                        `
+                        )
+                        .eq("id", payload.new.id)
+                        .single();
+
+                    if (!error && updatedProduct) {
+                        const formatted = formatProduct(updatedProduct);
+                        setProducts((prev) =>
+                            prev.map((p) =>
+                                p.id === updatedProduct.id ? formatted : p
+                            )
+                        );
+                    }
+                }
+            )
+            .on(
+                "postgres_changes",
+                {
+                    event: "DELETE",
+                    schema: "public",
+                    table: "products",
+                    filter: `user_id=eq.${user.id}`,
+                },
+                (payload) => {
+                    setProducts((prev) =>
+                        prev.filter((p) => p.id !== payload.old.id)
+                    );
+                }
+            )
+            .subscribe();
+
+        return () => {
+            channel.unsubscribe();
+        };
+    }, [user?.id, products.length]);
 
     // Load farmer's delivery settings
     useEffect(() => {
@@ -834,7 +1077,7 @@ function ProducerHome() {
                         id,
                         name
                     ),
-                    crops!inner (
+                    crops (
                         id,
                         name
                     ),
@@ -868,15 +1111,15 @@ function ProducerHome() {
                     created_at: product.created_at,
                     updated_at: product.updated_at,
                 }));
-                console.log(
-                    "Formatted products with images:",
-                    formattedProducts.map((p) => ({
-                        name: p.name,
-                        image: p.image,
-                        image_url_raw: data.find((d) => d.id === p.id)
-                            ?.image_url,
-                    }))
-                );
+                // console.log(
+                //     "Formatted products with images:",
+                //     formattedProducts.map((p) => ({
+                //         name: p.name,
+                //         image: p.image,
+                //         image_url_raw: data.find((d) => d.id === p.id)
+                //             ?.image_url,
+                //     }))
+                // );
                 setProducts(formattedProducts);
             }
         } catch (error) {
@@ -1037,9 +1280,9 @@ function ProducerHome() {
         )
             return;
 
+        // hasNonPriceStockChanges: only check name, description, cropType, and image (exclude category and stock)
         const hasNonPriceStockChanges =
             productForm.name !== selectedProduct.name ||
-            productForm.category !== selectedProduct.category ||
             productForm.description !== selectedProduct.description ||
             productForm.cropType !== selectedProduct.cropType ||
             productForm.imageFile !== null ||

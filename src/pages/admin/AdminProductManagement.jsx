@@ -146,153 +146,154 @@ function AdminProductManagement() {
 
     // Categories management
     const [categories, setCategories] = useState([]);
-
-    // Fetch categories from Supabase
-    useEffect(() => {
-        const fetchCategories = async () => {
-            const { data, error } = await supabase
-                .from("categories")
-                .select("*")
-                .order("name");
-
-            if (error) {
-                console.error("Error fetching categories:", error);
-                return;
-            }
-
-            setCategories(data);
-        };
-
-        fetchCategories();
-    }, []);
-
     const [newCategory, setNewCategory] = useState({
         name: "",
         description: "",
         icon: "",
     });
+    const [blockedCategoryInfo, setBlockedCategoryInfo] = useState(null);
+
+    // Top-level helper to fetch categories
+    const fetchCategories = async () => {
+        const { data, error } = await supabase
+            .from("categories")
+            .select("*")
+            .order("name");
+
+        if (error) {
+            console.error("Error fetching categories:", error);
+            return;
+        }
+
+        setCategories(data);
+    };
+
+    // Fetch categories on mount
+    useEffect(() => {
+        fetchCategories();
+    }, []);
 
     const [pendingProducts, setPendingProducts] = useState([]);
 
-    // Fetch pending products from Supabase
-    useEffect(() => {
-        const fetchPendingProducts = async () => {
-            console.log("Fetching pending products...");
-            const { data: products, error } = await supabase
-                .from("products")
-                .select(
-                    `
-                    *,
-                    user_id:profiles!products_user_id_fkey(name),
-                    category_id:categories!products_category_id_fkey(name),
-                    crops!products_crop_id_fkey(id, name)
+    // Top-level helper to fetch pending products
+    const fetchPendingProducts = async () => {
+        console.log("Fetching pending products...");
+        const { data: products, error } = await supabase
+            .from("products")
+            .select(
                 `
-                )
-                .is("approval_date", null); // Only get products with null approval_date
+                *,
+                user_id:profiles!products_user_id_fkey(name),
+                category_id:categories!products_category_id_fkey(name),
+                crops!products_crop_id_fkey(id, name)
+            `
+            )
+            .is("approval_date", null)
+            .is("rejection_reason", null); // Only get products pending for approval
 
-            console.log("Pending products query result:", { products, error });
+        console.log("Pending products query result:", { products, error });
 
-            if (error) {
-                console.error("Error fetching pending products:", error);
-                return;
-            }
+        if (error) {
+            console.error("Error fetching pending products:", error);
+            return;
+        }
 
-            const formattedProducts = products.map((product) => ({
-                id: product.id,
-                name: product.name,
-                producer: product.user_id.name,
-                category: product.category_id.name,
-                cropId: product.crops.id,
-                cropType: product.crops.name,
-                price: product.price,
-                description: product.description,
-                image: product.image_url,
-                submittedDate: new Date(product.created_at)
-                    .toISOString()
-                    .split("T")[0],
-                status: "pending",
-                stock: product.stock,
-            }));
+        const formattedProducts = products.map((product) => ({
+            id: product.id,
+            name: product.name,
+            producer: product.user_id.name,
+            category: product.category_id.name,
+            cropId: product.crops.id,
+            cropType: product.crops.name,
+            price: product.price,
+            description: product.description,
+            image: product.image_url,
+            submittedDate: new Date(product.created_at)
+                .toISOString()
+                .split("T")[0],
+            status: "pending",
+            stock: product.stock,
+        }));
 
-            setPendingProducts(formattedProducts);
-        };
+        setPendingProducts(formattedProducts);
+    };
 
+    // Fetch pending products on mount
+    useEffect(() => {
         fetchPendingProducts();
     }, []);
 
     const [approvedProducts, setApprovedProducts] = useState([]);
 
-    // Fetch approved products from Supabase
-    useEffect(() => {
-        const fetchApprovedProducts = async () => {
-            console.log("Fetching approved products...");
-            const { data: products, error } = await supabase
-                .from("products")
-                .select(
-                    `
-                    *,
-                    user_id:profiles!products_user_id_fkey(
-                        name,
-                        status_id(name),
-                        suspension_reason
-                    ),
-                    crop:crops!products_crop_id_fkey(name),
-                    status_id:statuses!products_status_id_fkey(name),
-                    order_items(
-                        quantity,
-                        order:orders!order_items_order_id_fkey(
-                            status_id:statuses!orders_status_id_fkey(name)
-                        )
-                    )
+    // Top-level helper to fetch approved products
+    const fetchApprovedProducts = async () => {
+        console.log("Fetching approved products...");
+        const { data: products, error } = await supabase
+            .from("products")
+            .select(
                 `
+                *,
+                user_id:profiles!products_user_id_fkey(
+                    name,
+                    status_id(name),
+                    suspension_reason
+                ),
+                crop:crops!products_crop_id_fkey(name),
+                status_id:statuses!products_status_id_fkey(name),
+                order_items(
+                    quantity,
+                    order:orders!order_items_order_id_fkey(
+                        status_id:statuses!orders_status_id_fkey(name)
+                    )
                 )
-                .not("approval_date", "is", null)
-                .not("approval_date", "eq", "1970-01-01T00:00:00Z"); // Not rejected
+            `
+            )
+            .not("approval_date", "is", null)
+            .not("approval_date", "eq", "1970-01-01T00:00:00Z"); // Not rejected
 
-            console.log("Approved products query result:", { products, error });
+        console.log("Approved products query result:", { products, error });
 
-            if (error) {
-                console.error("Error fetching approved products:", error);
-                return;
-            }
+        if (error) {
+            console.error("Error fetching approved products:", error);
+            return;
+        }
 
-            const formattedProducts = products.map((product) => {
-                // Calculate total sales from completed orders
-                const completedSales = product.order_items.reduce(
-                    (total, item) => {
-                        if (item.order.status_id.name === "completed") {
-                            return total + Number(item.quantity);
-                        }
-                        return total;
-                    },
-                    0
-                );
+        const formattedProducts = products.map((product) => {
+            // Calculate total sales from completed orders
+            const completedSales = product.order_items.reduce((total, item) => {
+                if (item.order.status_id.name === "completed") {
+                    return total + Number(item.quantity);
+                }
+                return total;
+            }, 0);
 
-                return {
-                    id: product.id,
-                    name: product.name,
-                    producer: product.user_id.name,
-                    cropType: product.crop.name,
-                    price: product.price,
-                    description: product.description,
-                    image: product.image_url,
-                    approvedDate: new Date(product.approval_date)
-                        .toISOString()
-                        .split("T")[0],
-                    status:
-                        product.status_id.name === "active"
-                            ? "Active"
-                            : "Suspended",
-                    stock: product.stock,
-                    sales: completedSales,
-                    ownerStatus: product.user_id.status_id.name,
-                    ownerSuspensionReason: product.user_id.suspension_reason,
-                };
-            });
+            return {
+                id: product.id,
+                name: product.name,
+                producer: product.user_id.name,
+                cropType: product.crop.name,
+                price: product.price,
+                description: product.description,
+                image: product.image_url,
+                approvedDate: new Date(product.approval_date)
+                    .toISOString()
+                    .split("T")[0],
+                status:
+                    product.status_id.name === "active"
+                        ? "Active"
+                        : "Suspended",
+                stock: product.stock,
+                sales: completedSales,
+                ownerStatus: product.user_id.status_id.name,
+                ownerSuspensionReason: product.user_id.suspension_reason,
+            };
+        });
 
-            setApprovedProducts(formattedProducts);
-        };
+        setApprovedProducts(formattedProducts);
+    };
 
+    // Fetch approved products on mount
+    useEffect(() => {
         fetchApprovedProducts();
     }, []);
 
@@ -336,7 +337,466 @@ function AdminProductManagement() {
         setShowImageModal(true);
     };
 
-    // Category management functions
+    // Set up Realtime subscriptions for selective section updates
+    useEffect(() => {
+        const realtimeChannel = supabase.channel("admin_product_management");
+
+        // Helper to format a single product for approved list
+        const formatApprovedProduct = (product) => {
+            const completedSales =
+                product.order_items?.reduce((total, item) => {
+                    if (item.order?.status_id?.name === "completed") {
+                        return total + Number(item.quantity);
+                    }
+                    return total;
+                }, 0) || 0;
+
+            return {
+                id: product.id,
+                name: product.name,
+                producer: product.user_id?.name || "Unknown",
+                cropType: product.crop?.name || "Unknown",
+                price: product.price,
+                description: product.description,
+                image: product.image_url,
+                approvedDate: product.approval_date
+                    ? new Date(product.approval_date)
+                          .toISOString()
+                          .split("T")[0]
+                    : "",
+                status:
+                    product.status_id?.name === "active"
+                        ? "Active"
+                        : "Suspended",
+                stock: product.stock,
+                sales: completedSales,
+                ownerStatus: product.user_id?.status_id?.name || "Unknown",
+                ownerSuspensionReason: product.user_id?.suspension_reason,
+            };
+        };
+
+        // Helper to format a single product for pending list
+        const formatPendingProduct = (product) => ({
+            id: product.id,
+            name: product.name,
+            producer: product.user_id?.name || "Unknown",
+            category: product.category_id?.name || "Unknown",
+            cropId: product.crops?.id || "",
+            cropType: product.crops?.name || "Unknown",
+            price: product.price,
+            description: product.description,
+            image: product.image_url,
+            submittedDate: product.created_at
+                ? new Date(product.created_at).toISOString().split("T")[0]
+                : "",
+            status: "pending",
+            stock: product.stock,
+        });
+
+        // Categories listener - only update categories
+        realtimeChannel
+            .on(
+                "postgres_changes",
+                {
+                    event: "INSERT",
+                    schema: "public",
+                    table: "categories",
+                },
+                (payload) => {
+                    // Idempotently add category if not already present
+                    setCategories((prev) => {
+                        if (prev.some((cat) => cat.id === payload.new.id)) {
+                            return prev;
+                        }
+                        return [...prev, payload.new];
+                    });
+                }
+            )
+            .on(
+                "postgres_changes",
+                {
+                    event: "UPDATE",
+                    schema: "public",
+                    table: "categories",
+                },
+                (payload) => {
+                    setCategories((prev) =>
+                        prev.map((cat) =>
+                            cat.id === payload.new.id ? payload.new : cat
+                        )
+                    );
+                }
+            )
+            .on(
+                "postgres_changes",
+                {
+                    event: "DELETE",
+                    schema: "public",
+                    table: "categories",
+                },
+                (payload) => {
+                    setCategories((prev) =>
+                        prev.filter((cat) => cat.id !== payload.old.id)
+                    );
+                }
+            );
+
+        // Products listener - handle pending/approved transitions
+        realtimeChannel
+            .on(
+                "postgres_changes",
+                {
+                    event: "INSERT",
+                    schema: "public",
+                    table: "products",
+                },
+                async (payload) => {
+                    // Fetch full product data to properly categorize
+                    const { data, error } = await supabase
+                        .from("products")
+                        .select(
+                            `
+                            *,
+                            user_id:profiles!products_user_id_fkey(name),
+                            category_id:categories!products_category_id_fkey(name),
+                            crops!products_crop_id_fkey(id, name)
+                        `
+                        )
+                        .eq("id", payload.new.id)
+                        .single();
+
+                    if (error || !data) return;
+
+                    // Check if pending or approved
+                    if (!data.approval_date) {
+                        // Pending product
+                        const formatted = formatPendingProduct(data);
+                        setPendingProducts((prev) => {
+                            if (prev.some((p) => p.id === formatted.id)) {
+                                return prev;
+                            }
+                            return [...prev, formatted];
+                        });
+                    } else if (data.approval_date !== "1970-01-01T00:00:00Z") {
+                        // Approved product - need full data with order_items
+                        const { data: fullData } = await supabase
+                            .from("products")
+                            .select(
+                                `
+                                *,
+                                user_id:profiles!products_user_id_fkey(name, status_id(name), suspension_reason),
+                                crop:crops!products_crop_id_fkey(name),
+                                status_id:statuses!products_status_id_fkey(name),
+                                order_items(quantity, order:orders!order_items_order_id_fkey(status_id:statuses!orders_status_id_fkey(name)))
+                            `
+                            )
+                            .eq("id", data.id)
+                            .single();
+
+                        if (fullData) {
+                            const formatted = formatApprovedProduct(fullData);
+                            setApprovedProducts((prev) => {
+                                if (prev.some((p) => p.id === formatted.id)) {
+                                    return prev;
+                                }
+                                return [...prev, formatted];
+                            });
+                        }
+                    }
+                }
+            )
+            .on(
+                "postgres_changes",
+                {
+                    event: "UPDATE",
+                    schema: "public",
+                    table: "products",
+                },
+                async (payload) => {
+                    // Helper to determine state from approval_date and rejection_reason
+                    const getProductState = (approvalDate, rejectionReason) => {
+                        if (approvalDate === null && rejectionReason === null) {
+                            return "pending";
+                        }
+                        if (
+                            approvalDate === "1970-01-01T00:00:00Z" &&
+                            rejectionReason
+                        ) {
+                            return "rejected";
+                        }
+                        if (
+                            approvalDate &&
+                            approvalDate !== "1970-01-01T00:00:00Z" &&
+                            !rejectionReason
+                        ) {
+                            return "approved";
+                        }
+                        return "unknown";
+                    };
+
+                    const oldState = getProductState(
+                        payload.old.approval_date,
+                        payload.old.rejection_reason
+                    );
+                    const newState = getProductState(
+                        payload.new.approval_date,
+                        payload.new.rejection_reason
+                    );
+
+                    // Derive boolean flags for easier branching
+                    const wasPending = oldState === "pending";
+                    const isPending = newState === "pending";
+                    const wasApproved = oldState === "approved";
+                    const isApproved = newState === "approved";
+                    const wasRejected = oldState === "rejected";
+                    const isRejected = newState === "rejected";
+
+                    // (1) Transition into pending: isPending && !wasPending
+                    if (isPending && !wasPending) {
+                        // Fetch full product data with same select as fetchPendingProducts
+                        const { data: fullData } = await supabase
+                            .from("products")
+                            .select(
+                                `
+                                *,
+                                user_id:profiles!products_user_id_fkey(name),
+                                category_id:categories!products_category_id_fkey(name),
+                                crops!products_crop_id_fkey(id, name)
+                            `
+                            )
+                            .eq("id", payload.new.id)
+                            .single();
+
+                        if (fullData) {
+                            const formatted = formatPendingProduct(fullData);
+                            setPendingProducts((prev) => {
+                                // Check if already in list; if so, update; if not, append
+                                const existingIndex = prev.findIndex(
+                                    (p) => p.id === formatted.id
+                                );
+                                if (existingIndex >= 0) {
+                                    const updated = [...prev];
+                                    updated[existingIndex] = formatted;
+                                    return updated;
+                                }
+                                return [...prev, formatted];
+                            });
+                            // Remove from approved if present
+                            setApprovedProducts((prev) =>
+                                prev.filter((p) => p.id !== payload.new.id)
+                            );
+                        }
+                    }
+                    // (2) Transition pending→approved: wasPending && isApproved
+                    else if (wasPending && isApproved) {
+                        // Moving from pending to approved
+                        setPendingProducts((prev) =>
+                            prev.filter((p) => p.id !== payload.new.id)
+                        );
+
+                        // Fetch full product data for approved list
+                        const { data: fullData } = await supabase
+                            .from("products")
+                            .select(
+                                `
+                                *,
+                                user_id:profiles!products_user_id_fkey(name, status_id(name), suspension_reason),
+                                crop:crops!products_crop_id_fkey(name),
+                                status_id:statuses!products_status_id_fkey(name),
+                                order_items(quantity, order:orders!order_items_order_id_fkey(status_id:statuses!orders_status_id_fkey(name)))
+                            `
+                            )
+                            .eq("id", payload.new.id)
+                            .single();
+
+                        if (fullData) {
+                            const formatted = formatApprovedProduct(fullData);
+                            setApprovedProducts((prev) => {
+                                if (prev.some((p) => p.id === formatted.id)) {
+                                    return prev.map((p) =>
+                                        p.id === formatted.id ? formatted : p
+                                    );
+                                }
+                                return [...prev, formatted];
+                            });
+                        }
+                    }
+                    // (3) Transition pending→rejected: wasPending && isRejected
+                    else if (wasPending && isRejected) {
+                        setPendingProducts((prev) =>
+                            prev.filter((p) => p.id !== payload.new.id)
+                        );
+                    }
+                    // (4) Staying pending: wasPending && isPending (in-place update)
+                    else if (wasPending && isPending) {
+                        setPendingProducts((prev) =>
+                            prev.map((p) =>
+                                p.id === payload.new.id
+                                    ? {
+                                          ...p,
+                                          price: payload.new.price,
+                                          stock: payload.new.stock,
+                                          name: payload.new.name,
+                                          description: payload.new.description,
+                                      }
+                                    : p
+                            )
+                        );
+                    }
+                    // (5) Approved in-place updates: (wasApproved || isApproved)
+                    else if (wasApproved || isApproved) {
+                        setApprovedProducts((prev) =>
+                            prev.map((p) =>
+                                p.id === payload.new.id
+                                    ? {
+                                          ...p,
+                                          price: payload.new.price,
+                                          stock: payload.new.stock,
+                                          name: payload.new.name,
+                                          status:
+                                              payload.new.status_id === 1
+                                                  ? "Active"
+                                                  : "Suspended",
+                                      }
+                                    : p
+                            )
+                        );
+                    }
+                    // (6) Reject: isRejected
+                    else if (isRejected) {
+                        setPendingProducts((prev) =>
+                            prev.filter((p) => p.id !== payload.new.id)
+                        );
+                        setApprovedProducts((prev) =>
+                            prev.filter((p) => p.id !== payload.new.id)
+                        );
+                    }
+                }
+            )
+            .on(
+                "postgres_changes",
+                {
+                    event: "DELETE",
+                    schema: "public",
+                    table: "products",
+                },
+                (payload) => {
+                    setPendingProducts((prev) =>
+                        prev.filter((p) => p.id !== payload.old.id)
+                    );
+                    setApprovedProducts((prev) =>
+                        prev.filter((p) => p.id !== payload.old.id)
+                    );
+                }
+            );
+
+        // Order items listener - update approved products sales only
+        realtimeChannel.on(
+            "postgres_changes",
+            {
+                event: "*",
+                schema: "public",
+                table: "order_items",
+            },
+            async (payload) => {
+                // Recompute sales for affected product
+                const productId =
+                    payload.new?.product_id || payload.old?.product_id;
+                if (!productId) return;
+
+                const product = approvedProducts.find(
+                    (p) => p.id === productId
+                );
+                if (!product) return;
+
+                // Query new sales total for this product
+                const { data: orderItems } = await supabase
+                    .from("order_items")
+                    .select(
+                        `
+                            quantity,
+                            order:orders!order_items_order_id_fkey(
+                                status_id:statuses!orders_status_id_fkey(name)
+                            )
+                        `
+                    )
+                    .eq("product_id", productId);
+
+                if (orderItems) {
+                    const newSales = orderItems.reduce((total, item) => {
+                        if (item.order?.status_id?.name === "completed") {
+                            return total + Number(item.quantity);
+                        }
+                        return total;
+                    }, 0);
+
+                    setApprovedProducts((prev) =>
+                        prev.map((p) =>
+                            p.id === productId ? { ...p, sales: newSales } : p
+                        )
+                    );
+                }
+            }
+        );
+
+        // Orders listener - update sales when order status changes
+        realtimeChannel.on(
+            "postgres_changes",
+            {
+                event: "UPDATE",
+                schema: "public",
+                table: "orders",
+            },
+            async (payload) => {
+                // Recompute sales for all affected products
+                const { data: orderItems } = await supabase
+                    .from("order_items")
+                    .select(
+                        `
+                            product_id,
+                            quantity,
+                            order:orders!order_items_order_id_fkey(
+                                status_id:statuses!orders_status_id_fkey(name)
+                            )
+                        `
+                    )
+                    .eq("order_id", payload.new.id);
+
+                if (orderItems) {
+                    const salesByProduct = {};
+                    orderItems.forEach((item) => {
+                        if (!salesByProduct[item.product_id]) {
+                            salesByProduct[item.product_id] = 0;
+                        }
+                        if (item.order?.status_id?.name === "completed") {
+                            salesByProduct[item.product_id] += Number(
+                                item.quantity
+                            );
+                        }
+                    });
+
+                    setApprovedProducts((prev) =>
+                        prev.map((p) => {
+                            if (salesByProduct[p.id] !== undefined) {
+                                return {
+                                    ...p,
+                                    sales: salesByProduct[p.id],
+                                };
+                            }
+                            return p;
+                        })
+                    );
+                }
+            }
+        );
+
+        realtimeChannel.subscribe();
+
+        // Cleanup: unsubscribe on unmount
+        return () => {
+            realtimeChannel.unsubscribe();
+        };
+    }, []);
     const handleAddCategory = async () => {
         if (newCategory.name.trim()) {
             const { data, error } = await supabase
@@ -396,18 +856,39 @@ function AdminProductManagement() {
         }
     };
 
-    const handleDeleteCategory = async (categoryId) => {
+    const handleDeleteCategory = async (category) => {
+        // Check if any crops are using this category
+        const { count, error: countError } = await supabase
+            .from("crops")
+            .select("id", { count: "exact", head: true })
+            .eq("category_id", category.id);
+
+        if (countError) {
+            console.error("Error checking crops for category:", countError);
+            return;
+        }
+
+        // If crops are using this category, show blocked modal
+        if (count > 0) {
+            setBlockedCategoryInfo({
+                name: category.name,
+                count: count,
+            });
+            return;
+        }
+
+        // Otherwise, proceed with deletion
         const { error } = await supabase
             .from("categories")
             .delete()
-            .eq("id", categoryId);
+            .eq("id", category.id);
 
         if (error) {
             console.error("Error deleting category:", error);
             return;
         }
 
-        setCategories(categories.filter((cat) => cat.id !== categoryId));
+        setCategories((prev) => prev.filter((cat) => cat.id !== category.id));
     };
 
     const handleProductRejection = async (rejectionReason) => {
@@ -1434,7 +1915,7 @@ function AdminProductManagement() {
                                                         <button
                                                             onClick={() =>
                                                                 handleDeleteCategory(
-                                                                    category.id
+                                                                    category
                                                                 )
                                                             }
                                                             className="inline-flex items-center px-3 py-1 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
@@ -1541,6 +2022,57 @@ function AdminProductManagement() {
                 isSubmitting={isSubmitting}
                 type="suspension"
             />
+
+            {/* Blocked Category Modal */}
+            {blockedCategoryInfo && (
+                <>
+                    <div className="fixed inset-0 bg-black opacity-50 flex items-center justify-center z-[9990] px-4"></div>
+                    <div className="bg-white rounded-lg shadow-xl max-w-md w-full z-[9999] fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2">
+                        <div className="p-6">
+                            <div className="flex items-center gap-3 mb-4">
+                                <div className="p-2 bg-yellow-100 rounded-full">
+                                    <Icon
+                                        icon="mingcute:alert-line"
+                                        className="w-6 h-6 text-yellow-600"
+                                    />
+                                </div>
+                                <h3 className="text-lg font-semibold text-gray-900">
+                                    Cannot Delete Category
+                                </h3>
+                            </div>
+
+                            <p className="text-sm text-gray-600 mb-2">
+                                The category{" "}
+                                <strong>"{blockedCategoryInfo.name}"</strong>{" "}
+                                cannot be deleted because{" "}
+                                <strong>{blockedCategoryInfo.count}</strong>{" "}
+                                {blockedCategoryInfo.count === 1
+                                    ? "crop is"
+                                    : "crops are"}{" "}
+                                still using it.
+                            </p>
+
+                            <p className="text-sm text-gray-600 mb-6">
+                                Please switch these{" "}
+                                {blockedCategoryInfo.count === 1
+                                    ? "crop"
+                                    : "crops"}{" "}
+                                to other categories before deleting this
+                                category.
+                            </p>
+
+                            <div className="flex justify-end">
+                                <button
+                                    onClick={() => setBlockedCategoryInfo(null)}
+                                    className="px-4 py-2 text-sm font-medium text-white bg-primary hover:bg-primary-dark rounded-lg transition-colors"
+                                >
+                                    OK
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </>
+            )}
 
             <AdminNavigationBar />
         </div>

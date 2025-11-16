@@ -80,9 +80,11 @@ function AdminUserManagement() {
     };
 
     // Fetch producer applications
-    const fetchProducerApplications = async () => {
+    const fetchProducerApplications = async (showLoading = true) => {
         try {
-            setLoadingApplications(true);
+            if (showLoading) {
+                setLoadingApplications(true);
+            }
             setError(null);
 
             const { data: applications, error: applicationsError } =
@@ -132,14 +134,18 @@ function AdminUserManagement() {
             setError(err.message);
             toast.error("Failed to load applications");
         } finally {
-            setLoadingApplications(false);
+            if (showLoading) {
+                setLoadingApplications(false);
+            }
         }
     };
 
     // Fetch all users
-    const fetchUsers = async () => {
+    const fetchUsers = async (showLoading = true) => {
         try {
-            setLoadingUsers(true);
+            if (showLoading) {
+                setLoadingUsers(true);
+            }
             setError(null);
 
             // First, get the status mappings
@@ -190,14 +196,54 @@ function AdminUserManagement() {
             setError(err.message);
             toast.error("Failed to load users");
         } finally {
-            setLoadingUsers(false);
+            if (showLoading) {
+                setLoadingUsers(false);
+            }
         }
     };
 
     // Load data on mount
     useEffect(() => {
-        fetchProducerApplications();
-        fetchUsers();
+        fetchProducerApplications(true);
+        fetchUsers(true);
+    }, []);
+
+    // Set up Realtime subscriptions for selective tab updates
+    useEffect(() => {
+        const realtimeChannel = supabase.channel("admin_user_management");
+
+        // Listener for seller_applications changes - only update applications tab
+        realtimeChannel.on(
+            "postgres_changes",
+            {
+                event: "*",
+                schema: "public",
+                table: "seller_applications",
+            },
+            () => {
+                fetchProducerApplications(false);
+            }
+        );
+
+        // Listener for profiles changes - only update users tab
+        realtimeChannel.on(
+            "postgres_changes",
+            {
+                event: "*",
+                schema: "public",
+                table: "profiles",
+            },
+            () => {
+                fetchUsers(false);
+            }
+        );
+
+        realtimeChannel.subscribe();
+
+        // Cleanup: unsubscribe from channel on unmount
+        return () => {
+            realtimeChannel.unsubscribe();
+        };
     }, []);
 
     // Monitor and cleanup modal state

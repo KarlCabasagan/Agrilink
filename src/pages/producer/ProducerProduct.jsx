@@ -7,7 +7,19 @@ import ConfirmModal from "../../components/ConfirmModal";
 import { deleteImageFromUrl, uploadImage } from "../../utils/imageUpload";
 import supabase from "../../SupabaseClient.jsx";
 
-// No longer needed as categories are determined by the selected crop
+// Helper to fetch crops with specific columns ordered by name
+const fetchCropsHelper = async () => {
+    const { data, error } = await supabase
+        .from("crops")
+        .select("id, name, category_id, min_price, max_price")
+        .order("name", { ascending: true });
+
+    if (error) {
+        console.error("Error fetching crops:", error);
+        return [];
+    }
+    return data || [];
+};
 
 function ProducerProduct() {
     const { id } = useParams();
@@ -38,24 +50,85 @@ function ProducerProduct() {
 
     // Fetch available crops when component mounts
     useEffect(() => {
-        const fetchCrops = async () => {
+        const initCrops = async () => {
             try {
-                const { data, error } = await supabase
-                    .from("crops")
-                    .select("id, name, category_id, min_price, max_price")
-                    .order("name", { ascending: true });
-
-                if (error) {
-                    console.error("Error fetching crops:", error);
-                } else {
-                    setCrops(data);
-                }
+                const data = await fetchCropsHelper();
+                setCrops(data);
             } catch (error) {
                 console.error("Unexpected error fetching crops:", error);
             }
         };
 
-        fetchCrops();
+        initCrops();
+    }, []);
+
+    // Realtime crops subscription: listen for INSERT/UPDATE/DELETE and update crop options live
+    useEffect(() => {
+        const channel = supabase
+            .channel("realtime-crops")
+            .on(
+                "postgres_changes",
+                {
+                    event: "INSERT",
+                    schema: "public",
+                    table: "crops",
+                },
+                (payload) => {
+                    const newCrop = payload.new;
+                    setCrops((prevCrops) => {
+                        // Append and resort by name
+                        const updated = [...prevCrops, newCrop];
+                        return updated.sort((a, b) =>
+                            a.name.localeCompare(b.name)
+                        );
+                    });
+                }
+            )
+            .on(
+                "postgres_changes",
+                {
+                    event: "UPDATE",
+                    schema: "public",
+                    table: "crops",
+                },
+                (payload) => {
+                    const updatedCrop = payload.new;
+                    setCrops((prevCrops) => {
+                        // Map/replace and resort by name
+                        const updated = prevCrops.map((crop) =>
+                            crop.id === updatedCrop.id ? updatedCrop : crop
+                        );
+                        return updated.sort((a, b) =>
+                            a.name.localeCompare(b.name)
+                        );
+                    });
+                }
+            )
+            .on(
+                "postgres_changes",
+                {
+                    event: "DELETE",
+                    schema: "public",
+                    table: "crops",
+                },
+                (payload) => {
+                    const deletedCropId = payload.old.id;
+                    setCrops((prevCrops) => {
+                        // Filter out and resort by name
+                        const updated = prevCrops.filter(
+                            (crop) => crop.id !== deletedCropId
+                        );
+                        return updated.sort((a, b) =>
+                            a.name.localeCompare(b.name)
+                        );
+                    });
+                }
+            )
+            .subscribe();
+
+        return () => {
+            channel.unsubscribe();
+        };
     }, []);
 
     // Filter and sort crops based on search term (case-insensitive)
@@ -300,6 +373,425 @@ function ProducerProduct() {
 
         fetchProduct();
     }, [id, user, navigate]);
+
+    // Real-time subscription to product updates
+    // Depends only on [id, user?.id] to avoid unnecessary reruns
+    useEffect(() => {
+        if (!id || !user?.id) return;
+
+        const channel = supabase
+            .channel(`product-${id}-${user.id}`)
+            .on(
+                "postgres_changes",
+                {
+                    event: "UPDATE",
+                    schema: "public",
+                    table: "products",
+                    filter: `id=eq.${id}`,
+                },
+                async (payload) => {
+                    const newRow = payload.new;
+                    const oldRow = payload.old;
+
+                    // Patch only scalar fields that come from the products row
+                    setProduct((prev) => {
+                        if (!prev || prev.id !== newRow.id) return prev;
+
+                        // Detect if category_id or crop_id changed
+                        const categoryIdChanged =
+                            oldRow.category_id !== newRow.category_id;
+                        const cropIdChanged = oldRow.crop_id !== newRow.crop_id;
+
+                        // If either category or crop changed, fetch the names
+                        if (categoryIdChanged || cropIdChanged) {
+                            (async () => {
+                                const updates = {};
+
+                                if (categoryIdChanged) {
+                                    const { data: catData } = await supabase
+                                        .from("categories")
+                                        .select("name")
+                                        .eq("id", newRow.category_id)
+                                        .single();
+                                    if (catData)
+                                        updates.category = catData.name;
+                                }
+
+                                if (cropIdChanged) {
+                                    const { data: cropData } = await supabase
+                                        .from("crops")
+                                        .select("name")
+                                        .eq("id", newRow.crop_id)
+                                        .single();
+                                    if (cropData)
+                                        updates.cropType = cropData.name;
+                                }
+
+                                if (Object.keys(updates).length > 0) {
+                                    setProduct((innerPrev) => ({
+                                        ...innerPrev,
+                                        ...updates,
+                                    }));
+                                }
+                            })();
+                        }
+
+                        return {
+                            ...prev,
+                            name: newRow.name,
+                            price: parseFloat(newRow.price),
+                            stock: parseFloat(newRow.stock),
+                            description: newRow.description,
+                            image_url: newRow.image_url ?? prev.image_url,
+                            status_id: newRow.status_id ?? prev.status_id,
+                            rejection_reason: newRow.rejection_reason,
+                            approval_date: newRow.approval_date,
+                            updated_at: newRow.updated_at,
+                        };
+                    });
+                }
+            )
+            .on(
+                "postgres_changes",
+                {
+                    event: "DELETE",
+                    schema: "public",
+                    table: "products",
+                    filter: `id=eq.${id}`,
+                },
+                () => {
+                    navigate("/");
+                }
+            )
+            .subscribe();
+
+        return () => {
+            channel.unsubscribe();
+        };
+    }, [id, user?.id, navigate]);
+
+    // Realtime reviews subscription: listen for INSERT/UPDATE/DELETE and update review list live
+    // Runs once when id and user are available
+    useEffect(() => {
+        if (!id || !user?.id) return;
+
+        const channel = supabase
+            .channel(`reviews-${id}-${user.id}`)
+            .on(
+                "postgres_changes",
+                {
+                    event: "INSERT",
+                    schema: "public",
+                    table: "reviews",
+                    filter: `product_id=eq.${id}`,
+                },
+                async (payload) => {
+                    const newReview = payload.new;
+
+                    // Fetch the review with profile and helpful count
+                    const { data: reviewData } = await supabase
+                        .from("reviews")
+                        .select(
+                            `
+                            id,
+                            rating,
+                            review,
+                            created_at,
+                            profiles:user_id (
+                                name,
+                                avatar_url
+                            )
+                        `
+                        )
+                        .eq("id", newReview.id)
+                        .single();
+
+                    if (reviewData) {
+                        // Fetch helpful count for this review
+                        const { data: helpfulData } = await supabase
+                            .from("helpful_reviews")
+                            .select("count")
+                            .eq("review_id", newReview.id);
+
+                        const helpfulCount =
+                            helpfulData && helpfulData.length > 0
+                                ? helpfulData[0].count || 0
+                                : 0;
+
+                        const transformedReview = {
+                            id: reviewData.id,
+                            rating: reviewData.rating,
+                            comment: reviewData.review,
+                            date: reviewData.created_at,
+                            userName: reviewData.profiles.name,
+                            userImage:
+                                reviewData.profiles.avatar_url ||
+                                "/assets/blank-profile.jpg",
+                            helpfulCount: helpfulCount,
+                        };
+
+                        setProduct((prev) => {
+                            if (!prev) return prev;
+
+                            const updatedReviews = [
+                                ...prev.reviews,
+                                transformedReview,
+                            ];
+
+                            // Recalculate rating and reviewCount
+                            const totalRating = updatedReviews.reduce(
+                                (acc, curr) => acc + curr.rating,
+                                0
+                            );
+                            const averageRating =
+                                updatedReviews.length > 0
+                                    ? (
+                                          totalRating / updatedReviews.length
+                                      ).toFixed(1)
+                                    : "No ratings";
+
+                            return {
+                                ...prev,
+                                reviews: updatedReviews,
+                                rating: averageRating,
+                                reviewCount: updatedReviews.length,
+                            };
+                        });
+
+                        // Initialize review state
+                        updateReviewState(newReview.id, {
+                            reported: false,
+                            isUpdating: false,
+                        });
+                    }
+                }
+            )
+            .on(
+                "postgres_changes",
+                {
+                    event: "UPDATE",
+                    schema: "public",
+                    table: "reviews",
+                    filter: `product_id=eq.${id}`,
+                },
+                async (payload) => {
+                    const updatedReview = payload.new;
+
+                    // Fetch the updated review with profile and helpful count
+                    const { data: reviewData } = await supabase
+                        .from("reviews")
+                        .select(
+                            `
+                            id,
+                            rating,
+                            review,
+                            created_at,
+                            profiles:user_id (
+                                name,
+                                avatar_url
+                            )
+                        `
+                        )
+                        .eq("id", updatedReview.id)
+                        .single();
+
+                    if (reviewData) {
+                        // Fetch helpful count for this review
+                        const { data: helpfulData } = await supabase
+                            .from("helpful_reviews")
+                            .select("count")
+                            .eq("review_id", updatedReview.id);
+
+                        const helpfulCount =
+                            helpfulData && helpfulData.length > 0
+                                ? helpfulData[0].count || 0
+                                : 0;
+
+                        const transformedReview = {
+                            id: reviewData.id,
+                            rating: reviewData.rating,
+                            comment: reviewData.review,
+                            date: reviewData.created_at,
+                            userName: reviewData.profiles.name,
+                            userImage:
+                                reviewData.profiles.avatar_url ||
+                                "/assets/blank-profile.jpg",
+                            helpfulCount: helpfulCount,
+                        };
+
+                        setProduct((prev) => {
+                            if (!prev) return prev;
+
+                            // Replace the review in the array
+                            const updatedReviews = prev.reviews.map((review) =>
+                                review.id === transformedReview.id
+                                    ? transformedReview
+                                    : review
+                            );
+
+                            // Recalculate rating and reviewCount
+                            const totalRating = updatedReviews.reduce(
+                                (acc, curr) => acc + curr.rating,
+                                0
+                            );
+                            const averageRating =
+                                updatedReviews.length > 0
+                                    ? (
+                                          totalRating / updatedReviews.length
+                                      ).toFixed(1)
+                                    : "No ratings";
+
+                            return {
+                                ...prev,
+                                reviews: updatedReviews,
+                                rating: averageRating,
+                                reviewCount: updatedReviews.length,
+                            };
+                        });
+                    }
+                }
+            )
+            .on(
+                "postgres_changes",
+                {
+                    event: "DELETE",
+                    schema: "public",
+                    table: "reviews",
+                    filter: `product_id=eq.${id}`,
+                },
+                (payload) => {
+                    const deletedReviewId = payload.old.id;
+
+                    setProduct((prev) => {
+                        if (!prev) return prev;
+
+                        // Remove the review from the array
+                        const updatedReviews = prev.reviews.filter(
+                            (review) => review.id !== deletedReviewId
+                        );
+
+                        // Recalculate rating and reviewCount
+                        const totalRating = updatedReviews.reduce(
+                            (acc, curr) => acc + curr.rating,
+                            0
+                        );
+                        const averageRating =
+                            updatedReviews.length > 0
+                                ? (totalRating / updatedReviews.length).toFixed(
+                                      1
+                                  )
+                                : "No ratings";
+
+                        return {
+                            ...prev,
+                            reviews: updatedReviews,
+                            rating: averageRating,
+                            reviewCount: updatedReviews.length,
+                        };
+                    });
+
+                    // Remove from reviewStates map
+                    setReviewStates((prev) => {
+                        const newStates = new Map(prev);
+                        newStates.delete(deletedReviewId);
+                        return newStates;
+                    });
+                }
+            )
+            .subscribe();
+
+        return () => {
+            channel.unsubscribe();
+        };
+    }, [id, user?.id, updateReviewState]);
+
+    // Realtime helpful_reviews subscription: update helpful counts live
+    // Listen without filters and check if the review belongs to this product
+    useEffect(() => {
+        if (!id || !user?.id) return;
+
+        const channel = supabase
+            .channel(`helpful-reviews-${id}-${user.id}`)
+            .on(
+                "postgres_changes",
+                {
+                    event: "INSERT",
+                    schema: "public",
+                    table: "helpful_reviews",
+                },
+                (payload) => {
+                    const newHelpfulReview = payload.new;
+
+                    // Check if this review exists in product.reviews
+                    setProduct((prev) => {
+                        if (!prev) return prev;
+
+                        const reviewExists = prev.reviews.some(
+                            (r) => r.id === newHelpfulReview.review_id
+                        );
+
+                        if (!reviewExists) return prev;
+
+                        // Bump helpful count for this review
+                        return {
+                            ...prev,
+                            reviews: prev.reviews.map((review) =>
+                                review.id === newHelpfulReview.review_id
+                                    ? {
+                                          ...review,
+                                          helpfulCount:
+                                              (review.helpfulCount || 0) + 1,
+                                      }
+                                    : review
+                            ),
+                        };
+                    });
+                }
+            )
+            .on(
+                "postgres_changes",
+                {
+                    event: "DELETE",
+                    schema: "public",
+                    table: "helpful_reviews",
+                },
+                (payload) => {
+                    const deletedHelpfulReview = payload.old;
+
+                    // Check if this review exists in product.reviews
+                    setProduct((prev) => {
+                        if (!prev) return prev;
+
+                        const reviewExists = prev.reviews.some(
+                            (r) => r.id === deletedHelpfulReview.review_id
+                        );
+
+                        if (!reviewExists) return prev;
+
+                        // Decrement helpful count for this review
+                        return {
+                            ...prev,
+                            reviews: prev.reviews.map((review) =>
+                                review.id === deletedHelpfulReview.review_id
+                                    ? {
+                                          ...review,
+                                          helpfulCount: Math.max(
+                                              0,
+                                              (review.helpfulCount || 0) - 1
+                                          ),
+                                      }
+                                    : review
+                            ),
+                        };
+                    });
+                }
+            )
+            .subscribe();
+
+        return () => {
+            channel.unsubscribe();
+        };
+    }, [id, user?.id]);
 
     // Get selected crop's price range (case-insensitive)
     const getSelectedCrop = () => {

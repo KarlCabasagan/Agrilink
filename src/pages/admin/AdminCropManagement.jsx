@@ -157,6 +157,78 @@ function AdminCropManagement() {
         localStorage.setItem("adminCropManagementTab", activeTab);
     }, [activeTab]);
 
+    // Set up Realtime subscriptions for selective updates
+    useEffect(() => {
+        const realtimeChannel = supabase.channel("admin_crop_management");
+
+        // Crops, planted_crops, and profiles changes trigger fetchCrops
+        realtimeChannel
+            .on(
+                "postgres_changes",
+                {
+                    event: "*",
+                    schema: "public",
+                    table: "crops",
+                },
+                () => {
+                    fetchCrops();
+                }
+            )
+            .on(
+                "postgres_changes",
+                {
+                    event: "*",
+                    schema: "public",
+                    table: "planted_crops",
+                },
+                () => {
+                    fetchCrops();
+                }
+            )
+            .on(
+                "postgres_changes",
+                {
+                    event: "*",
+                    schema: "public",
+                    table: "profiles",
+                },
+                () => {
+                    fetchCrops();
+                }
+            )
+            // Categories changes trigger fetchCategories
+            .on(
+                "postgres_changes",
+                {
+                    event: "*",
+                    schema: "public",
+                    table: "categories",
+                },
+                () => {
+                    fetchCategories();
+                }
+            )
+            // Farming guides changes trigger fetchFarmingGuides
+            .on(
+                "postgres_changes",
+                {
+                    event: "*",
+                    schema: "public",
+                    table: "farming_guides",
+                },
+                () => {
+                    fetchFarmingGuides();
+                }
+            );
+
+        realtimeChannel.subscribe();
+
+        // Cleanup: unsubscribe on unmount
+        return () => {
+            realtimeChannel.unsubscribe();
+        };
+    }, []);
+
     const resetForm = () => {
         setFormData({
             name: "",
@@ -214,21 +286,42 @@ function AdminCropManagement() {
 
     const saveCrop = async () => {
         if (isSaving || !isFormValid) return;
+
+        // Validate and normalize harvest time
+        const normalizedHarvestTime = normalizeHarvestTime(
+            formData.harvest_time
+        );
+        if (normalizedHarvestTime === null) {
+            setFormErrors({
+                harvest_time:
+                    "Use a range like 80-100 days, 5-10 weeks, 1-1.5 years, or 1-2 months; it will be converted to months automatically",
+            });
+            showError(
+                "Invalid harvest time format. Use patterns like 80-100 days, 5-10 weeks, 1-1.5 years, or 1-2 months."
+            );
+            return;
+        }
+
         setIsSaving(true);
 
         try {
             const cropData = {
                 name: formData.name,
                 category_id: formData.category_id,
-                icon: formData.icon,
+                icon: formData.icon ? formData.icon : "twemoji:package",
                 growing_season: formData.growing_season,
-                harvest_time: formData.harvest_time,
+                harvest_time: normalizedHarvestTime,
                 market_demand: formData.market_demand,
                 description: formData.description,
                 min_price: parseFloat(formData.min_price),
                 max_price: parseFloat(formData.max_price),
                 updated_at: new Date().toISOString(),
             };
+
+            // Detect if category changed during edit
+            const categoryChanged =
+                selectedCrop &&
+                selectedCrop.category_id !== formData.category_id;
 
             let error;
             if (selectedCrop) {
@@ -237,6 +330,20 @@ function AdminCropManagement() {
                     .update(cropData)
                     .eq("id", selectedCrop.id);
                 error = updateError;
+
+                // If category changed, bulk update all associated products
+                if (!error && categoryChanged) {
+                    const { error: productsError } = await supabase
+                        .from("products")
+                        .update({ category_id: formData.category_id })
+                        .eq("crop_id", selectedCrop.id);
+
+                    if (productsError) {
+                        showError(
+                            `Crop updated but failed to update associated products: ${productsError.message}`
+                        );
+                    }
+                }
             } else {
                 const { error: insertError } = await supabase
                     .from("crops")
@@ -261,17 +368,43 @@ function AdminCropManagement() {
 
     const deleteCrop = async () => {
         if (!selectedCrop) return;
-        const { error } = await supabase
-            .from("crops")
-            .delete()
-            .eq("id", selectedCrop.id);
 
-        if (error) {
-            console.error("Error deleting crop:", error);
-        } else {
+        try {
+            // Step 1: Update all products associated with this crop
+            const { error: productsError } = await supabase
+                .from("products")
+                .update({
+                    approval_date: "1970-01-01T00:00:00.000Z",
+                    rejection_reason:
+                        "The crop that this product was associated to has been deleted, please choose a different type of crop",
+                })
+                .eq("crop_id", selectedCrop.id);
+
+            if (productsError) {
+                showError(
+                    `Failed to update associated products: ${productsError.message}`
+                );
+                return;
+            }
+
+            // Step 2: Delete the crop
+            const { error: cropError } = await supabase
+                .from("crops")
+                .delete()
+                .eq("id", selectedCrop.id);
+
+            if (cropError) {
+                showError(`Failed to delete crop: ${cropError.message}`);
+                return;
+            }
+
+            // Step 3: Update UI
             await fetchCrops();
             setShowDeleteModal(false);
             setSelectedCrop(null);
+        } catch (error) {
+            console.error("Error deleting crop:", error);
+            showError(`An error occurred: ${error.message}`);
         }
     };
 
@@ -454,6 +587,59 @@ function AdminCropManagement() {
         });
     };
 
+    const normalizeHarvestTime = (input) => {
+        // Trim whitespace
+        const trimmed = input.trim();
+        if (!trimmed) return null;
+
+        // Allowed patterns: "80 - 100 days", "5 - 10 weeks", "1-1.5 years", "1-2 months"
+        // Regex: matches "number-number unit" with optional spaces
+        const harvestRegex =
+            /^\s*(\d+(?:\.\d+)?)\s*[-–—]\s*(\d+(?:\.\d+)?)\s*(days?|weeks?|months?|years?)\s*$/i;
+
+        const match = trimmed.match(harvestRegex);
+        if (!match) return null;
+
+        let minValue = parseFloat(match[1]);
+        let maxValue = parseFloat(match[2]);
+        const unit = match[3].toLowerCase();
+
+        // Validate that min <= max
+        if (minValue > maxValue) {
+            return null;
+        }
+
+        // Convert to months
+        let minMonths, maxMonths;
+
+        if (unit === "day" || unit === "days") {
+            // Days to months: divide by 30
+            minMonths = minValue / 30;
+            maxMonths = maxValue / 30;
+        } else if (unit === "week" || unit === "weeks") {
+            // Weeks to months: divide by 4.33 (weeks per month)
+            minMonths = minValue / 4.33;
+            maxMonths = maxValue / 4.33;
+        } else if (unit === "month" || unit === "months") {
+            // Already in months
+            minMonths = minValue;
+            maxMonths = maxValue;
+        } else if (unit === "year" || unit === "years") {
+            // Years to months: multiply by 12
+            minMonths = minValue * 12;
+            maxMonths = maxValue * 12;
+        } else {
+            return null;
+        }
+
+        // Round consistently: round min down, max up
+        const roundedMin = Math.floor(minMonths);
+        const roundedMax = Math.ceil(maxMonths);
+
+        // Format as "min-max months"
+        return `${roundedMin}-${roundedMax} months`;
+    };
+
     const validatePrices = () => {
         const errors = {};
         const minPrice = parseFloat(formData.min_price);
@@ -499,6 +685,12 @@ function AdminCropManagement() {
         // Check if any required field is empty
         const hasEmptyFields = requiredFields.some((field) => !formData[field]);
         if (hasEmptyFields) return false;
+
+        // Validate harvest time format
+        const normalizedHarvestTime = normalizeHarvestTime(
+            formData.harvest_time
+        );
+        if (normalizedHarvestTime === null) return false;
 
         // Validate price ranges
         const minPrice = parseFloat(formData.min_price);
@@ -1156,16 +1348,32 @@ function AdminCropManagement() {
                                 <input
                                     type="text"
                                     value={formData.harvest_time}
-                                    onChange={(e) =>
+                                    onChange={(e) => {
                                         setFormData({
                                             ...formData,
                                             harvest_time: e.target.value,
-                                        })
-                                    }
+                                        });
+                                        // Clear harvest_time error as user types
+                                        if (formErrors.harvest_time) {
+                                            setFormErrors({
+                                                ...formErrors,
+                                                harvest_time: undefined,
+                                            });
+                                        }
+                                    }}
                                     placeholder="e.g., 1-2 months"
-                                    className="w-full px-3 py-3 border border-gray-300 rounded-lg text-base outline-none focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
+                                    className={`w-full px-3 py-3 border rounded-lg text-base outline-none focus:outline-none focus:ring-2 transition-all ${
+                                        formErrors.harvest_time
+                                            ? "border-red-500 focus:ring-red-200 focus:border-red-500"
+                                            : "border-gray-300 focus:ring-primary focus:border-transparent"
+                                    }`}
                                     required
                                 />
+                                {formErrors.harvest_time && (
+                                    <p className="mt-1 text-sm text-red-600">
+                                        {formErrors.harvest_time}
+                                    </p>
+                                )}
                             </div>
 
                             <div>

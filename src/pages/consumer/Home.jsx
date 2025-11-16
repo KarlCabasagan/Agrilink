@@ -23,6 +23,7 @@ function Home() {
     const [loading, setLoading] = useState(true);
     const [favorites, setFavorites] = useState(new Set()); // Track favorite product IDs
     const [cartCount, setCartCount] = useState(0);
+    const [hasOrdersWithStatus6, setHasOrdersWithStatus6] = useState(false);
     const [modal, setModal] = useState({
         open: false,
         type: "",
@@ -33,6 +34,16 @@ function Home() {
 
     const showModal = (type, title, message, onConfirm = null) => {
         setModal({ open: true, type, title, message, onConfirm });
+    };
+
+    // Helper: Fisher-Yates shuffle algorithm to randomize array in place
+    const shuffleArray = (array) => {
+        const shuffled = [...array];
+        for (let i = shuffled.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+        }
+        return shuffled;
     };
 
     // Fetch categories from database
@@ -109,6 +120,55 @@ function Home() {
 
         return () => clearInterval(interval);
     }, [user]);
+
+    // Check for orders with status_id 6 and subscribe to real-time changes
+    useEffect(() => {
+        if (!user?.id) return;
+
+        const checkOrderStatus = async () => {
+            try {
+                const { data, error } = await supabase
+                    .from("orders")
+                    .select("id")
+                    .eq("user_id", user.id)
+                    .eq("status_id", 6)
+                    .limit(1);
+
+                if (!error && data && data.length > 0) {
+                    setHasOrdersWithStatus6(true);
+                } else {
+                    setHasOrdersWithStatus6(false);
+                }
+            } catch (error) {
+                console.error("Error checking order status:", error);
+            }
+        };
+
+        // Initial check
+        checkOrderStatus();
+
+        // Subscribe to real-time changes
+        const channel = supabase
+            .channel(`orders-status-${user.id}`)
+            .on(
+                "postgres_changes",
+                {
+                    event: "*",
+                    schema: "public",
+                    table: "orders",
+                    filter: `user_id=eq.${user.id}`,
+                },
+                () => {
+                    // On any order change, recheck status
+                    checkOrderStatus();
+                }
+            )
+            .subscribe();
+
+        return () => {
+            channel.unsubscribe();
+        };
+    }, [user?.id]);
 
     // Handle adding/removing favorites
     const toggleFavorite = async (productId, event) => {
@@ -232,7 +292,9 @@ function Home() {
                     farmerId: product.user_id,
                 }));
 
-                setProducts(formattedProducts);
+                // Randomize product order before setting state
+                const randomizedProducts = shuffleArray(formattedProducts);
+                setProducts(randomizedProducts);
             } catch (error) {
                 console.error("Error fetching products:", error);
                 setProducts([]);
@@ -242,6 +304,183 @@ function Home() {
         };
 
         fetchProducts();
+    }, []);
+
+    // Set up real-time subscription to product changes
+    useEffect(() => {
+        const subscriptionRef = supabase
+            .channel("products-channel")
+            .on(
+                "postgres_changes",
+                {
+                    event: "INSERT",
+                    schema: "public",
+                    table: "products",
+                },
+                async (payload) => {
+                    // Fetch the new product with all filters to verify it should be visible
+                    const { data, error } = await supabase
+                        .from("products")
+                        .select(
+                            `
+                        *,
+                        categories(name),
+                        profiles!user_id(name, address, delivery_cost, minimum_order_quantity),
+                        statuses(name),
+                        reviews!reviews_product_id_fkey(
+                            rating
+                        )
+                    `
+                        )
+                        .eq("id", payload.new.id)
+                        .neq("status_id", 2)
+                        .not("approval_date", "is", null)
+                        .neq("approval_date", "1970-01-01 00:00:00+00")
+                        .eq("statuses.name", "active");
+
+                    if (!error && data && data.length === 1) {
+                        // Product passes filters, add to list
+                        const product = data[0];
+                        const formattedProduct = {
+                            id: product.id,
+                            name: product.name,
+                            price: parseFloat(product.price),
+                            image:
+                                product.image_url ||
+                                "https://via.placeholder.com/300x200?text=No+Image",
+                            address:
+                                product.profiles?.address ||
+                                "Location not available",
+                            category: product.categories?.name || "Other",
+                            farmerName:
+                                product.profiles?.name || "Unknown Farmer",
+                            description: product.description,
+                            stock: parseFloat(product.stock) || 0,
+                            rating: product.reviews?.length
+                                ? product.reviews.reduce(
+                                      (sum, review) =>
+                                          sum + parseFloat(review.rating),
+                                      0
+                                  ) / product.reviews.length
+                                : 0,
+                            reviewCount: product.reviews?.length || 0,
+                            minimumOrderQuantity:
+                                parseFloat(
+                                    product.profiles?.minimum_order_quantity
+                                ) || 1,
+                            deliveryCost:
+                                parseFloat(product.profiles?.delivery_cost) ||
+                                50,
+                            pickupLocation:
+                                product.profiles?.address || "Farm location",
+                            farmerId: product.user_id,
+                        };
+
+                        // Append new product to the end of the list
+                        setProducts((prev) => [...prev, formattedProduct]);
+                    }
+                }
+            )
+            .on(
+                "postgres_changes",
+                {
+                    event: "UPDATE",
+                    schema: "public",
+                    table: "products",
+                },
+                async (payload) => {
+                    // Fetch the updated product with all filters
+                    const { data, error } = await supabase
+                        .from("products")
+                        .select(
+                            `
+                        *,
+                        categories(name),
+                        profiles!user_id(name, address, delivery_cost, minimum_order_quantity),
+                        statuses(name),
+                        reviews!reviews_product_id_fkey(
+                            rating
+                        )
+                    `
+                        )
+                        .eq("id", payload.new.id)
+                        .neq("status_id", 2)
+                        .not("approval_date", "is", null)
+                        .neq("approval_date", "1970-01-01 00:00:00+00")
+                        .eq("statuses.name", "active");
+
+                    setProducts((prev) => {
+                        const productIndex = prev.findIndex(
+                            (p) => p.id === payload.new.id
+                        );
+
+                        if (data && data.length === 1) {
+                            // Product still passes filters
+                            const product = data[0];
+                            const formattedProduct = {
+                                id: product.id,
+                                name: product.name,
+                                price: parseFloat(product.price),
+                                image:
+                                    product.image_url ||
+                                    "https://via.placeholder.com/300x200?text=No+Image",
+                                address:
+                                    product.profiles?.address ||
+                                    "Location not available",
+                                category: product.categories?.name || "Other",
+                                farmerName:
+                                    product.profiles?.name || "Unknown Farmer",
+                                description: product.description,
+                                stock: parseFloat(product.stock) || 0,
+                                rating: product.reviews?.length
+                                    ? product.reviews.reduce(
+                                          (sum, review) =>
+                                              sum + parseFloat(review.rating),
+                                          0
+                                      ) / product.reviews.length
+                                    : 0,
+                                reviewCount: product.reviews?.length || 0,
+                                minimumOrderQuantity:
+                                    parseFloat(
+                                        product.profiles?.minimum_order_quantity
+                                    ) || 1,
+                                deliveryCost:
+                                    parseFloat(
+                                        product.profiles?.delivery_cost
+                                    ) || 50,
+                                pickupLocation:
+                                    product.profiles?.address ||
+                                    "Farm location",
+                                farmerId: product.user_id,
+                            };
+
+                            if (productIndex !== -1) {
+                                // Replace existing product at same index
+                                const updated = [...prev];
+                                updated[productIndex] = formattedProduct;
+                                return updated;
+                            } else {
+                                // Product not in list but now passes filters, append it
+                                return [...prev, formattedProduct];
+                            }
+                        } else {
+                            // Product no longer passes filters (suspended/unapproved)
+                            if (productIndex !== -1) {
+                                // Remove it from the list
+                                return prev.filter(
+                                    (p) => p.id !== payload.new.id
+                                );
+                            }
+                            return prev;
+                        }
+                    });
+                }
+            )
+            .subscribe();
+
+        return () => {
+            subscriptionRef.unsubscribe();
+        };
     }, []);
 
     const filteredProducts = useMemo(() => {
@@ -305,8 +544,14 @@ function Home() {
             {/* Header with Search and Cart */}
             <div className="fixed top-0 left-0 w-full bg-white shadow-md z-50 px-4 py-3 flex justify-between items-center">
                 <h1 className="text-lg font-semibold text-primary">AgriLink</h1>
-                <Link to="/orders" className="text-gray-600 hover:text-primary">
+                <Link
+                    to="/orders"
+                    className="relative text-gray-600 hover:text-primary"
+                >
                     <Icon icon="mingcute:truck-line" width="24" height="24" />
+                    {hasOrdersWithStatus6 && (
+                        <span className="absolute -top-1 -right-2 w-2.5 h-2.5 bg-red-500 rounded-full"></span>
+                    )}
                 </Link>
             </div>
 

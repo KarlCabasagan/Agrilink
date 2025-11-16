@@ -1,8 +1,13 @@
 import { Icon } from "@iconify/react";
 import { Link, useLocation } from "react-router-dom";
+import { useContext } from "react";
+import { UnreadConversationsContext } from "../context/UnreadConversationsContext.jsx";
+import { ProducerOrderCountContext } from "../context/ProducerOrderCountContext.jsx";
 
 function ProducerNavigationBar() {
     const location = useLocation();
+    const { unreadConversationCount } = useContext(UnreadConversationsContext);
+    const { pendingOrdersCount } = useContext(ProducerOrderCountContext);
 
     const isActive = (path) => {
         return location.pathname === path;
@@ -11,16 +16,16 @@ function ProducerNavigationBar() {
     const navItems = [
         {
             path: "/",
-            icon: "mingcute:home-1-line",
-            activeIcon: "mingcute:home-1-fill",
-            label: "Products",
+            icon: "mingcute:home-2-line",
+            activeIcon: "mingcute:home-2-fill",
+            label: "Home",
         },
         {
             path: "/producer/orders",
             icon: "mingcute:box-2-line",
             activeIcon: "mingcute:box-2-fill",
             label: "Orders",
-            badge: 3, // Mock notification count
+            badge: pendingOrdersCount,
         },
         {
             path: "/crop-recommendation",
@@ -33,7 +38,7 @@ function ProducerNavigationBar() {
             icon: "mingcute:message-3-line",
             activeIcon: "mingcute:message-3-fill",
             label: "Messages",
-            badge: 2, // Mock notification count
+            badge: unreadConversationCount,
         },
         {
             path: "/profile",
@@ -45,7 +50,7 @@ function ProducerNavigationBar() {
 
     return (
         <div className="fixed bottom-0 left-0 w-full bg-white shadow-lg border-t border-gray-200 z-[1000]">
-            <div className="flex justify-around items-center py-3 px-4 max-w-md mx-auto">
+            <div className="flex justify-around items-center py-3 px-4 max-w-lg mx-auto">
                 {navItems.map((item) => (
                     <Link
                         key={item.path}
@@ -69,7 +74,7 @@ function ProducerNavigationBar() {
                             {item.label}
                         </span>
                         {/* Notification badge */}
-                        {item.badge && item.badge > 0 && (
+                        {item.badge > 0 && (
                             <div className="absolute -top-1 -right-1 bg-red-500 text-white text-xs w-5 h-5 flex items-center justify-center rounded-full">
                                 {item.badge > 9 ? "9+" : item.badge}
                             </div>

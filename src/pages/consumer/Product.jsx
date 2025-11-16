@@ -13,13 +13,15 @@ import NavigationBar from "../../components/NavigationBar";
 import Modal from "../../components/Modal";
 import supabase from "../../SupabaseClient";
 import { AuthContext } from "../../App.jsx";
-import { addToCart } from "../../utils/cartUtils.js";
+import { CartCountContext } from "../../context/CartCountContext.jsx";
+import { addToCart, getCartCount } from "../../utils/cartUtils.js";
 import { toast } from "react-hot-toast";
 
 function Product() {
     const { id } = useParams();
     const navigate = useNavigate();
     const { user } = useContext(AuthContext);
+    const { updateCartCount } = useContext(CartCountContext);
     const [quantity, setQuantity] = useState(0.1);
     const [quantityError, setQuantityError] = useState("");
     const [product, setProduct] = useState(null);
@@ -595,6 +597,60 @@ function Product() {
         }
     }, [id]);
 
+    // Real-time subscription to current product changes
+    useEffect(() => {
+        if (!id || !product) return;
+
+        const subscriptionRef = supabase
+            .channel(`product-${id}-channel`)
+            .on(
+                "postgres_changes",
+                {
+                    event: "UPDATE",
+                    schema: "public",
+                    table: "products",
+                    filter: `id=eq.${id}`,
+                },
+                async (payload) => {
+                    // Check if product still passes visibility rules
+                    const { data: updatedProduct } = await supabase
+                        .from("products")
+                        .select(`*, statuses(name)`)
+                        .eq("id", id)
+                        .single();
+
+                    if (
+                        !updatedProduct ||
+                        updatedProduct.status_id === 2 ||
+                        !updatedProduct.approval_date ||
+                        updatedProduct.approval_date ===
+                            "1970-01-01 00:00:00+00" ||
+                        updatedProduct.statuses.name !== "active"
+                    ) {
+                        // Product no longer visible
+                        setProduct(null);
+                        subscriptionRef.unsubscribe();
+                        return;
+                    }
+
+                    // Merge updates: price, stock, description, image, status_id, approval_date, rejection_reason
+                    setProduct((prev) => ({
+                        ...prev,
+                        price: parseFloat(updatedProduct.price),
+                        stock: parseFloat(updatedProduct.stock),
+                        description: updatedProduct.description,
+                        image_url: updatedProduct.image_url,
+                        status_id: updatedProduct.status_id,
+                        approval_date: updatedProduct.approval_date,
+                        rejection_reason: updatedProduct.rejection_reason,
+                    }));
+                }
+            )
+            .subscribe();
+
+        return () => subscriptionRef.unsubscribe();
+    }, [id, product]);
+
     // Helper to refresh current cart quantity for this product (can be called after add/cap)
     const refreshCartQty = async () => {
         if (!user || !product) {
@@ -687,6 +743,8 @@ function Product() {
                         `Successfully added ${requested} kg of ${product.name} to your cart. You can continue shopping or go to cart to checkout.`,
                         () => setModal((prev) => ({ ...prev, open: false }))
                     );
+                    // Update shared cart count immediately
+                    await updateCartCount(user.id);
                 } else {
                     showModal(
                         "error",
@@ -759,7 +817,8 @@ function Product() {
                         `Successfully added ${addDelta} kg of ${product.name} to your cart (capped to stock where necessary).`,
                         () => setModal((prev) => ({ ...prev, open: false }))
                     );
-                    await refreshCartQty();
+                    // Update shared cart count immediately
+                    await updateCartCount(user.id);
                 } else {
                     showModal(
                         "error",
@@ -788,7 +847,8 @@ function Product() {
                     `Successfully added ${addDelta} kg of ${product.name} to your cart.`,
                     () => setModal((prev) => ({ ...prev, open: false }))
                 );
-                await refreshCartQty();
+                // Update shared cart count immediately
+                await updateCartCount(user.id);
             } else {
                 showModal("error", "Error", `Error: ${result.message}`, () =>
                     setModal((prev) => ({ ...prev, open: false }))

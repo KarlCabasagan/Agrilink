@@ -17,6 +17,12 @@ function Checkout() {
     const [orderPlaced, setOrderPlaced] = useState(false);
     const [orderId, setOrderId] = useState("");
 
+    // Real-time product monitoring state
+    const [hasLiveProductIssue, setHasLiveProductIssue] = useState(false);
+    const [liveProductMessage, setLiveProductMessage] = useState("");
+    const [hasShownLiveProductModal, setHasShownLiveProductModal] =
+        useState(false); // One-time guard to avoid spamming modals
+
     // Modal state
     const [modal, setModal] = useState({
         open: false,
@@ -229,6 +235,227 @@ function Checkout() {
             }));
         }
     };
+
+    // Helper to check if a product is invalid (stock exceeded, suspended, or not approved)
+    const isProductInvalidForCheckout = (item) => {
+        // Check if quantity exceeds stock
+        if (item.quantity > item.stock) return true;
+
+        // Check if suspended or not approved
+        const approvalDate = item.products?.approval_date
+            ? new Date(item.products.approval_date).toISOString()
+            : null;
+        const isSuspended = item.products?.status_id === 2;
+        const isNotApproved =
+            !approvalDate || approvalDate.startsWith("1970-01-01");
+
+        return isSuspended || isNotApproved;
+    };
+
+    // Initial validation pass on mount/remount: query fresh product data and restore validation state
+    useEffect(() => {
+        if (
+            !currentCartItems ||
+            currentCartItems.length === 0 ||
+            orderPlaced ||
+            !user
+        ) {
+            return;
+        }
+
+        const validateCartItemsAgainstDatabase = async () => {
+            try {
+                // Collect product IDs from current cart items
+                const productIds = Array.from(
+                    new Set(currentCartItems.map((item) => item.id))
+                );
+
+                if (productIds.length === 0) return;
+
+                // Query fresh product data from database
+                const { data: freshProducts, error: queryError } =
+                    await supabase
+                        .from("products")
+                        .select("id, stock, price, status_id, approval_date")
+                        .in("id", productIds);
+
+                if (queryError) {
+                    console.error(
+                        "Error fetching fresh product data:",
+                        queryError
+                    );
+                    return;
+                }
+
+                if (!freshProducts || freshProducts.length === 0) return;
+
+                // Create a map for quick lookup
+                const productMap = {};
+                freshProducts.forEach((p) => {
+                    productMap[p.id] = p;
+                });
+
+                // Merge fresh data into currentCartItems
+                const updatedCartItems = currentCartItems.map((item) => {
+                    const freshData = productMap[item.id];
+                    if (!freshData) return item;
+
+                    return {
+                        ...item,
+                        stock: parseFloat(freshData.stock) || 0,
+                        price: parseFloat(freshData.price),
+                        products: {
+                            ...(item.products || {}),
+                            status_id: freshData.status_id,
+                            approval_date: freshData.approval_date,
+                        },
+                    };
+                });
+
+                // Check if any item is now invalid
+                const anyInvalid = updatedCartItems.some((item) =>
+                    isProductInvalidForCheckout(item)
+                );
+
+                // Update state with merged data
+                setCurrentCartItems(updatedCartItems);
+
+                // If any item is invalid, set the issue state
+                if (anyInvalid && !hasLiveProductIssue) {
+                    setHasLiveProductIssue(true);
+                    setLiveProductMessage(
+                        "Some items changed while you were away. Please review your cart and try again."
+                    );
+
+                    // Show modal once to announce the issue
+                    if (!hasShownLiveProductModal) {
+                        setHasShownLiveProductModal(true);
+                        showModal(
+                            "warning",
+                            "Order Review Needed",
+                            "Some items in your order have changed (price, stock, or availability). Please review your cart and resubmit."
+                        );
+                    }
+                }
+            } catch (error) {
+                console.error("Error validating cart against database:", error);
+                // Silently fail - UI will still work with current state
+            }
+        };
+
+        // Run validation on mount
+        validateCartItemsAgainstDatabase();
+    }, [user, orderPlaced]); // Only run once on mount with user and orderPlaced
+
+    // Real-time product monitoring: subscribe to product changes during checkout
+    useEffect(() => {
+        if (!currentCartItems || currentCartItems.length === 0 || orderPlaced) {
+            return;
+        }
+
+        const productIds = Array.from(
+            new Set(currentCartItems.map((item) => item.id))
+        );
+
+        if (productIds.length === 0) return;
+
+        const subscriptionRef = supabase
+            .channel("checkout-products-channel")
+            .on(
+                "postgres_changes",
+                {
+                    event: "UPDATE",
+                    schema: "public",
+                    table: "products",
+                    filter: `id=in.(${productIds.join(",")})`,
+                },
+                (payload) => {
+                    const newRow = payload.new;
+
+                    // Update local currentCartItems with new product data
+                    setCurrentCartItems((prev) => {
+                        const updated = prev.map((item) => {
+                            if (item.id !== newRow.id) return item;
+
+                            // Patch product fields for accurate totals and validation
+                            return {
+                                ...item,
+                                price: parseFloat(newRow.price),
+                                stock: parseFloat(newRow.stock) || 0,
+                                products: {
+                                    ...(item.products || {}),
+                                    status_id: newRow.status_id,
+                                    approval_date: newRow.approval_date,
+                                },
+                            };
+                        });
+
+                        // Check if any item is now invalid
+                        const anyInvalid = updated.some((item) =>
+                            isProductInvalidForCheckout(item)
+                        );
+
+                        if (anyInvalid && !hasLiveProductIssue) {
+                            setHasLiveProductIssue(true);
+                            setLiveProductMessage(
+                                "Some items changed while you were checking out. Please review your cart and try again."
+                            );
+
+                            // Show modal once to announce the issue
+                            if (!hasShownLiveProductModal) {
+                                setHasShownLiveProductModal(true);
+                                showModal(
+                                    "warning",
+                                    "Order Review Needed",
+                                    "Some items in your order have changed (price, stock, or availability). Please review your cart and resubmit."
+                                );
+                            }
+                        } else if (!anyInvalid && hasLiveProductIssue) {
+                            // If issues resolved, clear the flag
+                            setHasLiveProductIssue(false);
+                            setLiveProductMessage("");
+                            setHasShownLiveProductModal(false);
+                        }
+
+                        return updated;
+                    });
+                }
+            )
+            .on(
+                "postgres_changes",
+                {
+                    event: "DELETE",
+                    schema: "public",
+                    table: "products",
+                },
+                (payload) => {
+                    // If a product in the checkout was deleted, flag the issue
+                    const deletedId = payload.old.id;
+                    const wasInCheckout = currentCartItems.some(
+                        (item) => item.id === deletedId
+                    );
+
+                    if (wasInCheckout) {
+                        setHasLiveProductIssue(true);
+                        setLiveProductMessage(
+                            "A product in your order was removed from the store. Please review your cart."
+                        );
+
+                        if (!hasShownLiveProductModal) {
+                            setHasShownLiveProductModal(true);
+                            showModal(
+                                "error",
+                                "Product No Longer Available",
+                                "A product in your order has been removed from the store. Please review your cart."
+                            );
+                        }
+                    }
+                }
+            )
+            .subscribe();
+
+        return () => subscriptionRef.unsubscribe();
+    }, [currentCartItems.length, orderPlaced]);
 
     const validateForm = () => {
         const newErrors = {};
@@ -1371,13 +1598,52 @@ function Checkout() {
                                     </div>
 
                                     {/* Place Order Button */}
+                                    {hasLiveProductIssue && (
+                                        <div className="bg-red-50 border-2 border-red-300 rounded-lg p-4 my-4">
+                                            <div className="flex items-start gap-3">
+                                                <Icon
+                                                    icon="mingcute:alert-fill"
+                                                    width="24"
+                                                    height="24"
+                                                    className="text-red-600 mt-0.5 flex-shrink-0"
+                                                />
+                                                <div className="flex-1">
+                                                    <h4 className="font-semibold text-red-800 mb-1">
+                                                        Order Review Required
+                                                    </h4>
+                                                    <p className="text-red-700 text-sm mb-3">
+                                                        {liveProductMessage}
+                                                    </p>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() =>
+                                                            navigate("/cart")
+                                                        }
+                                                        className="inline-flex items-center gap-2 bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors font-medium text-sm"
+                                                    >
+                                                        <Icon
+                                                            icon="mingcute:left-line"
+                                                            width="16"
+                                                            height="16"
+                                                        />
+                                                        Back to Cart
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
+
                                     <button
                                         type="submit"
                                         disabled={
-                                            loading || !isCheckoutEnabled()
+                                            loading ||
+                                            !isCheckoutEnabled() ||
+                                            hasLiveProductIssue
                                         }
                                         className={`w-full py-3 rounded-lg font-semibold transition-colors mt-6 flex items-center justify-center gap-2 ${
-                                            loading || !isCheckoutEnabled()
+                                            loading ||
+                                            !isCheckoutEnabled() ||
+                                            hasLiveProductIssue
                                                 ? "bg-gray-300 text-gray-500 cursor-not-allowed"
                                                 : "bg-primary text-white hover:bg-primary-dark"
                                         }`}
@@ -1386,6 +1652,15 @@ function Checkout() {
                                             <>
                                                 <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
                                                 Placing Order...
+                                            </>
+                                        ) : hasLiveProductIssue ? (
+                                            <>
+                                                <Icon
+                                                    icon="mingcute:alert-triangle-line"
+                                                    width="20"
+                                                    height="20"
+                                                />
+                                                Review Order Changes
                                             </>
                                         ) : !isCheckoutEnabled() ? (
                                             <>
@@ -1411,7 +1686,8 @@ function Checkout() {
                                     </button>
 
                                     {!isCheckoutEnabled() &&
-                                        currentCartItems.length > 0 && (
+                                        currentCartItems.length > 0 &&
+                                        !hasLiveProductIssue && (
                                             <p className="text-center text-red-600 text-xs mt-2">
                                                 Some farmers don't meet delivery
                                                 requirements. Use quick-add
