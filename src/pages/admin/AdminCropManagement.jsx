@@ -157,6 +157,78 @@ function AdminCropManagement() {
         localStorage.setItem("adminCropManagementTab", activeTab);
     }, [activeTab]);
 
+    // Set up Realtime subscriptions for selective updates
+    useEffect(() => {
+        const realtimeChannel = supabase.channel("admin_crop_management");
+
+        // Crops, planted_crops, and profiles changes trigger fetchCrops
+        realtimeChannel
+            .on(
+                "postgres_changes",
+                {
+                    event: "*",
+                    schema: "public",
+                    table: "crops",
+                },
+                () => {
+                    fetchCrops();
+                }
+            )
+            .on(
+                "postgres_changes",
+                {
+                    event: "*",
+                    schema: "public",
+                    table: "planted_crops",
+                },
+                () => {
+                    fetchCrops();
+                }
+            )
+            .on(
+                "postgres_changes",
+                {
+                    event: "*",
+                    schema: "public",
+                    table: "profiles",
+                },
+                () => {
+                    fetchCrops();
+                }
+            )
+            // Categories changes trigger fetchCategories
+            .on(
+                "postgres_changes",
+                {
+                    event: "*",
+                    schema: "public",
+                    table: "categories",
+                },
+                () => {
+                    fetchCategories();
+                }
+            )
+            // Farming guides changes trigger fetchFarmingGuides
+            .on(
+                "postgres_changes",
+                {
+                    event: "*",
+                    schema: "public",
+                    table: "farming_guides",
+                },
+                () => {
+                    fetchFarmingGuides();
+                }
+            );
+
+        realtimeChannel.subscribe();
+
+        // Cleanup: unsubscribe on unmount
+        return () => {
+            realtimeChannel.unsubscribe();
+        };
+    }, []);
+
     const resetForm = () => {
         setFormData({
             name: "",
@@ -230,6 +302,11 @@ function AdminCropManagement() {
                 updated_at: new Date().toISOString(),
             };
 
+            // Detect if category changed during edit
+            const categoryChanged =
+                selectedCrop &&
+                selectedCrop.category_id !== formData.category_id;
+
             let error;
             if (selectedCrop) {
                 const { error: updateError } = await supabase
@@ -237,6 +314,20 @@ function AdminCropManagement() {
                     .update(cropData)
                     .eq("id", selectedCrop.id);
                 error = updateError;
+
+                // If category changed, bulk update all associated products
+                if (!error && categoryChanged) {
+                    const { error: productsError } = await supabase
+                        .from("products")
+                        .update({ category_id: formData.category_id })
+                        .eq("crop_id", selectedCrop.id);
+
+                    if (productsError) {
+                        showError(
+                            `Crop updated but failed to update associated products: ${productsError.message}`
+                        );
+                    }
+                }
             } else {
                 const { error: insertError } = await supabase
                     .from("crops")
@@ -261,17 +352,43 @@ function AdminCropManagement() {
 
     const deleteCrop = async () => {
         if (!selectedCrop) return;
-        const { error } = await supabase
-            .from("crops")
-            .delete()
-            .eq("id", selectedCrop.id);
 
-        if (error) {
-            console.error("Error deleting crop:", error);
-        } else {
+        try {
+            // Step 1: Update all products associated with this crop
+            const { error: productsError } = await supabase
+                .from("products")
+                .update({
+                    approval_date: "1970-01-01T00:00:00.000Z",
+                    rejection_reason:
+                        "The crop that this product was associated to has been deleted, please choose a different type of crop",
+                })
+                .eq("crop_id", selectedCrop.id);
+
+            if (productsError) {
+                showError(
+                    `Failed to update associated products: ${productsError.message}`
+                );
+                return;
+            }
+
+            // Step 2: Delete the crop
+            const { error: cropError } = await supabase
+                .from("crops")
+                .delete()
+                .eq("id", selectedCrop.id);
+
+            if (cropError) {
+                showError(`Failed to delete crop: ${cropError.message}`);
+                return;
+            }
+
+            // Step 3: Update UI
             await fetchCrops();
             setShowDeleteModal(false);
             setSelectedCrop(null);
+        } catch (error) {
+            console.error("Error deleting crop:", error);
+            showError(`An error occurred: ${error.message}`);
         }
     };
 

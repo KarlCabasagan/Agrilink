@@ -736,18 +736,87 @@ function ProducerHome() {
         fetchCategories();
     }, []);
 
+    // Helper function to fetch all crops
+    const fetchAllCrops = async () => {
+        const { data, error } = await supabase
+            .from("crops")
+            .select("id, name, min_price, max_price");
+        if (error) {
+            console.error("Error fetching crops:", error);
+        } else {
+            setAllCrops(data);
+        }
+    };
+
+    // Initial fetch of crops
     useEffect(() => {
-        const fetchAllCrops = async () => {
-            const { data, error } = await supabase
-                .from("crops")
-                .select("id, name, min_price, max_price");
-            if (error) {
-                console.error("Error fetching crops:", error);
-            } else {
-                setAllCrops(data);
-            }
-        };
         fetchAllCrops();
+    }, []);
+
+    // Real-time subscription to crops changes
+    useEffect(() => {
+        const channel = supabase
+            .channel("crops-realtime-producer")
+            .on(
+                "postgres_changes",
+                {
+                    event: "INSERT",
+                    schema: "public",
+                    table: "crops",
+                },
+                (payload) => {
+                    // Append new crop to allCrops
+                    const newCrop = {
+                        id: payload.new.id,
+                        name: payload.new.name,
+                        min_price: payload.new.min_price,
+                        max_price: payload.new.max_price,
+                    };
+                    setAllCrops((prev) => [...prev, newCrop]);
+                }
+            )
+            .on(
+                "postgres_changes",
+                {
+                    event: "UPDATE",
+                    schema: "public",
+                    table: "crops",
+                },
+                (payload) => {
+                    // Replace the updated crop in allCrops
+                    setAllCrops((prev) =>
+                        prev.map((crop) =>
+                            crop.id === payload.new.id
+                                ? {
+                                      id: payload.new.id,
+                                      name: payload.new.name,
+                                      min_price: payload.new.min_price,
+                                      max_price: payload.new.max_price,
+                                  }
+                                : crop
+                        )
+                    );
+                }
+            )
+            .on(
+                "postgres_changes",
+                {
+                    event: "DELETE",
+                    schema: "public",
+                    table: "crops",
+                },
+                (payload) => {
+                    // Remove deleted crop from allCrops
+                    setAllCrops((prev) =>
+                        prev.filter((crop) => crop.id !== payload.old.id)
+                    );
+                }
+            )
+            .subscribe();
+
+        return () => {
+            channel.unsubscribe();
+        };
     }, []);
 
     // Handle modal opening and pre-filling from navigation state
@@ -850,7 +919,7 @@ function ProducerHome() {
                                 id,
                                 name
                             ),
-                            crops!inner (
+                            crops (
                                 id,
                                 name
                             ),
@@ -897,7 +966,7 @@ function ProducerHome() {
                                 id,
                                 name
                             ),
-                            crops!inner (
+                            crops (
                                 id,
                                 name
                             ),
@@ -1010,7 +1079,7 @@ function ProducerHome() {
                         id,
                         name
                     ),
-                    crops!inner (
+                    crops (
                         id,
                         name
                     ),
