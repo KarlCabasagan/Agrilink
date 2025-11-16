@@ -3,6 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { Icon } from "@iconify/react";
 import AdminNavigationBar from "../../components/AdminNavigationBar";
 import supabase from "../../SupabaseClient";
+import { getReviewerAvatarUrl } from "../../utils/avatarUtils.js";
 
 function AdminProductReviews() {
     const { productId } = useParams();
@@ -121,9 +122,7 @@ function AdminProductReviews() {
                         id: review.id,
                         customerName: review.reviewer.name,
                         customerEmail: review.reviewer.email,
-                        customerAvatar:
-                            review.reviewer.avatar_url ||
-                            "/assets/blank-profile.jpg",
+                        customerAvatar: getReviewerAvatarUrl(review.reviewer),
                         rating: review.rating,
                         comment: review.review,
                         date: review.created_at,

@@ -9,6 +9,7 @@ import {
     compressImage,
     validateImageFile,
 } from "../utils/imageUpload.js";
+import { getProfileAvatarUrl } from "../utils/avatarUtils.js";
 
 function EditProfile() {
     const { user } = useContext(AuthContext);
@@ -78,9 +79,7 @@ function EditProfile() {
                 // Store initial profile data for change detection
                 setInitialProfileData(profileData);
                 // Set avatar preview to show current avatar or blank profile
-                setAvatarPreview(
-                    data.avatar_url || "/assets/blank-profile.jpg"
-                );
+                setAvatarPreview(getProfileAvatarUrl(data, user));
                 setAddressInput(data.address || "");
             } else if (error && error.code === "PGRST116") {
                 // No profile found, create one
@@ -278,6 +277,18 @@ function EditProfile() {
         formData.contact !== initialProfileData.contact ||
         avatarChanged;
 
+    // Resolve avatar preview: use custom preview if available, otherwise fall back to utility
+    const resolvedAvatarPreview =
+        avatarPreview ||
+        getProfileAvatarUrl(
+            {
+                avatar_url: formData.avatar_url,
+                name: formData.name,
+                email: user?.email,
+            },
+            user
+        );
+
     const handleSubmit = async (e) => {
         e.preventDefault();
         if (!user) {
@@ -323,8 +334,8 @@ function EditProfile() {
                         setIsSubmitting(false);
                         return;
                     }
-                } else if (avatarPreview === "/assets/blank-profile.jpg") {
-                    // Remove avatar (set to empty)
+                } else if (!selectedAvatarFile && !formData.avatar_url) {
+                    // User removed their avatar - set to empty string
                     avatarUrl = "";
                 }
             }
@@ -373,8 +384,6 @@ function EditProfile() {
                 if (avatarPreview && avatarPreview.startsWith("blob:")) {
                     URL.revokeObjectURL(avatarPreview);
                 }
-                // Set final avatar preview (either uploaded URL or blank profile)
-                setAvatarPreview(avatarUrl || "/assets/blank-profile.jpg");
 
                 setLoading(false);
                 // Redirect to profile page
@@ -489,9 +498,15 @@ function EditProfile() {
         if (avatarPreview && avatarPreview.startsWith("blob:")) {
             URL.revokeObjectURL(avatarPreview);
         }
-        setAvatarPreview("/assets/blank-profile.jpg");
+        // Clear preview and set avatarUrl to empty to trigger UI-Avatars fallback
+        setAvatarPreview("");
         setSelectedAvatarFile(null);
-        setAvatarChanged(true); // Mark avatar as changed but don't delete yet
+        setAvatarChanged(true);
+        // Update formData to clear stored avatar URL
+        setFormData((prev) => ({
+            ...prev,
+            avatar_url: "",
+        }));
     };
 
     return (
@@ -552,10 +567,7 @@ function EditProfile() {
                             <div className="relative z-10 text-center">
                                 <div className="w-32 h-32 mx-auto mb-4 relative">
                                     <img
-                                        src={
-                                            avatarPreview ||
-                                            "/assets/blank-profile.jpg"
-                                        }
+                                        src={resolvedAvatarPreview}
                                         alt="profile"
                                         className="w-full h-full object-cover rounded-full border-4 border-white shadow-xl"
                                     />
@@ -579,9 +591,8 @@ function EditProfile() {
                                         />
                                     </label>
                                     {/* Remove Avatar Button - only show when avatar exists */}
-                                    {avatarPreview &&
-                                        avatarPreview !==
-                                            "/assets/blank-profile.jpg" && (
+                                    {(avatarPreview || formData.avatar_url) &&
+                                        !formData.avatar_url && (
                                             <button
                                                 type="button"
                                                 onClick={handleRemoveAvatar}

@@ -6,6 +6,7 @@ import ReviewModal from "../../components/ReviewModal";
 import supabase from "../../SupabaseClient";
 import { AuthContext } from "../../App.jsx";
 import { toast } from "react-hot-toast";
+import { getProfileAvatarUrl } from "../../utils/avatarUtils.js";
 
 // Add subtle pulse animation for ready orders tab
 const styles = `
