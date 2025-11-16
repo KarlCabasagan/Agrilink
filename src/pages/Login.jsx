@@ -162,12 +162,12 @@ function Login() {
                                     : "Login with Google"}
                             </button>
                             <div className="flex justify-center">
-                                <button
-                                    type="button"
-                                    className="text-primary hover:underline text-base font-medium cursor-pointer"
+                                <Link
+                                    to="/forgot-password"
+                                    className="text-primary hover:underline text-base font-medium"
                                 >
                                     Forgot Password?
-                                </button>
+                                </Link>
                             </div>
                         </div>
                         <div className="mt-10 text-center gap-2 flex items-center">

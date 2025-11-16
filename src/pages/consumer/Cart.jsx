@@ -14,6 +14,7 @@ function Cart() {
     const [cartItems, setCartItems] = useState([]);
     const [loading, setLoading] = useState(true);
     const [hasInvalidItems, setHasInvalidItems] = useState(false);
+    const [profileIncomplete, setProfileIncomplete] = useState(false);
     // version increments when cart data is fetched to coordinate one-time autocap
     const [cartVersion, setCartVersion] = useState(0);
     const [modal, setModal] = useState({
@@ -122,6 +123,39 @@ function Cart() {
     useEffect(() => {
         fetchCartItems();
         // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [user]);
+
+    // Check profile completeness
+    useEffect(() => {
+        if (!user) {
+            setProfileIncomplete(false);
+            return;
+        }
+
+        const checkProfileCompletion = async () => {
+            try {
+                const { data, error } = await supabase
+                    .from("profiles")
+                    .select("address, contact")
+                    .eq("id", user.id)
+                    .single();
+
+                if (error) {
+                    console.error("Error checking profile:", error);
+                    setProfileIncomplete(true);
+                    return;
+                }
+
+                // Profile is incomplete if address or contact is missing/blank
+                const isIncomplete = !data?.address || !data?.contact;
+                setProfileIncomplete(isIncomplete);
+            } catch (error) {
+                console.error("Error checking profile completion:", error);
+                setProfileIncomplete(true);
+            }
+        };
+
+        checkProfileCompletion();
     }, [user]);
 
     // Memoize grouping to avoid re-computation and re-mounts
@@ -430,6 +464,20 @@ function Cart() {
     };
 
     const handleCheckout = async () => {
+        // Check profile completeness first - highest priority gate
+        if (profileIncomplete) {
+            showModal(
+                "warning",
+                "Profile Incomplete",
+                "Please complete your address and contact in your profile to proceed to checkout.",
+                () => {
+                    setModal((prev) => ({ ...prev, open: false }));
+                    navigate("/profile");
+                }
+            );
+            return;
+        }
+
         // Filter out zero-quantity items for checkout
         const checkoutItems = cartItems.filter((it) => (it.quantity || 0) > 0);
 
@@ -1127,9 +1175,9 @@ function Cart() {
                         <div className="sticky bottom-20 bg-white rounded-lg shadow-lg p-4 border-t border-gray-200">
                             <button
                                 onClick={handleCheckout}
-                                disabled={hasInvalidItems}
+                                disabled={profileIncomplete || hasInvalidItems}
                                 className={`w-full py-3 rounded-lg font-semibold flex items-center justify-center gap-2 ${
-                                    hasInvalidItems
+                                    profileIncomplete || hasInvalidItems
                                         ? "bg-gray-300 text-gray-500 cursor-not-allowed"
                                         : "bg-primary text-white hover:bg-primary-dark transition-colors"
                                 }`}
@@ -1142,7 +1190,12 @@ function Cart() {
                                 Proceed to Checkout
                             </button>
                             <p className="text-center text-xs mt-2">
-                                {hasInvalidItems ? (
+                                {profileIncomplete ? (
+                                    <span className="text-red-500">
+                                        Please complete your address and contact
+                                        in your profile to proceed to checkout.
+                                    </span>
+                                ) : hasInvalidItems ? (
                                     <span className="text-red-500">
                                         Some items are no longer available.
                                         Please remove them to continue.

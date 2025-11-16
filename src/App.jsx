@@ -23,6 +23,7 @@ import ProducerHome from "./pages/producer/ProducerHome";
 import ProducerProduct from "./pages/producer/ProducerProduct";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
+import ForgotPassword from "./pages/ForgotPassword.jsx";
 import AccountVerified from "./pages/AccountVerified";
 import Favorites from "./pages/consumer/Favorites";
 import Profile from "./pages/consumer/Profile";
@@ -383,6 +384,14 @@ function App() {
                                         element={
                                             <AuthRoute>
                                                 <Register />
+                                            </AuthRoute>
+                                        }
+                                    />
+                                    <Route
+                                        path="/forgot-password"
+                                        element={
+                                            <AuthRoute>
+                                                <ForgotPassword />
                                             </AuthRoute>
                                         }
                                     />

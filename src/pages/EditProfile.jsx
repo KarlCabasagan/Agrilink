@@ -131,6 +131,8 @@ function EditProfile() {
                 ...prev,
                 [field]: limitedValue,
             }));
+            // Clear contact error when user starts typing
+            setContactError("");
         } else {
             setFormData((prev) => ({
                 ...prev,
@@ -227,14 +229,18 @@ function EditProfile() {
         setAddressError("");
         setContactError("");
 
-        // Check if name is empty
+        // Check if name is empty (required)
         if (!formData.name.trim()) {
             setNameError("Full name is required");
             errors.push("Full name is required");
         }
 
-        // Check if address is valid (must be from a valid barangay)
-        if (formData.address.trim()) {
+        // Check if address is empty (required)
+        if (!formData.address.trim()) {
+            setAddressError("Address is required");
+            errors.push("Address is required");
+        } else {
+            // Only validate barangay if address is non-empty
             const isValidAddress = ilignanBarangays.some((barangay) =>
                 formData.address.toLowerCase().includes(barangay.toLowerCase())
             );
@@ -248,10 +254,18 @@ function EditProfile() {
             }
         }
 
-        // Check if contact number is exactly 10 digits
-        if (formData.contact && formData.contact.length !== 10) {
+        // Check if contact is empty (required)
+        if (!formData.contact.trim()) {
+            setContactError("Contact number is required");
+            errors.push("Contact number is required");
+        } else if (formData.contact.length !== 10) {
+            // Only validate length if contact is present
             setContactError("Contact number must be 10 digits long");
             errors.push("Contact number must be 10 digits long");
+        } else if (formData.contact[0] !== "9") {
+            // Validate that first digit is 9
+            setContactError("Contact number must start with 9");
+            errors.push("Contact number must start with 9");
         }
 
         return errors;
@@ -846,7 +860,7 @@ function EditProfile() {
                                                 className="text-gray-400"
                                             />
                                             Enter your 10-digit mobile number
-                                            (without +63)
+                                            starting with 9 (without +63)
                                         </div>
                                     )}
                                 </div>
