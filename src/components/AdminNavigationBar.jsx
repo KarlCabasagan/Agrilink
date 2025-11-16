@@ -2,12 +2,16 @@ import { Icon } from "@iconify/react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useContext } from "react";
 import { AuthContext } from "../App.jsx";
+import { AdminPendingCountsContext } from "../context/AdminPendingCountsContext.jsx";
 import supabase from "../SupabaseClient.jsx";
 
 function AdminNavigationBar() {
     const location = useLocation();
     const navigate = useNavigate();
     const { setUser } = useContext(AuthContext);
+    const { pendingApplicationsCount, pendingProductsCount } = useContext(
+        AdminPendingCountsContext
+    );
 
     const isActive = (path) => {
         return location.pathname === path;
@@ -35,14 +39,14 @@ function AdminNavigationBar() {
             icon: "mingcute:group-line",
             activeIcon: "mingcute:group-fill",
             label: "Users",
-            badge: 5, // Mock pending applications
+            badge: pendingApplicationsCount,
         },
         {
             path: "/admin/products",
             icon: "mingcute:box-2-line",
             activeIcon: "mingcute:box-2-fill",
             label: "Products",
-            badge: 3, // Mock pending products
+            badge: pendingProductsCount,
         },
         // {
         //     path: "/admin/messages",
@@ -92,7 +96,7 @@ function AdminNavigationBar() {
                                 {item.label}
                             </span>
                             {/* Notification badge */}
-                            {item.badge && item.badge > 0 && (
+                            {item.badge > 0 && (
                                 <div className="absolute -top-1 -right-1 bg-red-500 text-white text-xs w-5 h-5 flex items-center justify-center rounded-full">
                                     {item.badge > 9 ? "9+" : item.badge}
                                 </div>
