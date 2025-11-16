@@ -49,7 +49,9 @@ const orderStatuses = [
 ];
 
 function AdminTransactions() {
-    const [filterDate, setFilterDate] = useState("");
+    const [filterDay, setFilterDay] = useState("");
+    const [filterMonth, setFilterMonth] = useState("");
+    const [filterYear, setFilterYear] = useState("");
     const [filterType, setFilterType] = useState("");
     const [searchTerm, setSearchTerm] = useState("");
     const [sortConfig, setSortConfig] = useState({
@@ -116,13 +118,22 @@ function AdminTransactions() {
             );
         }
 
-        // Apply date filter
-        if (filterDate) {
-            filtered = filtered.filter(
-                (item) =>
-                    new Date(item.timestamp).toISOString().split("T")[0] ===
-                    filterDate
-            );
+        // Apply date filters (day/month/year)
+        if (filterDay || filterMonth || filterYear) {
+            filtered = filtered.filter((item) => {
+                const date = new Date(item.timestamp);
+                const day = date.getDate();
+                const month = date.getMonth() + 1;
+                const year = date.getFullYear();
+
+                // Check each filter piece if provided
+                if (filterDay && parseInt(filterDay) !== day) return false;
+                if (filterMonth && parseInt(filterMonth) !== month)
+                    return false;
+                if (filterYear && parseInt(filterYear) !== year) return false;
+
+                return true;
+            });
         }
 
         // Apply status filter
@@ -189,7 +200,8 @@ function AdminTransactions() {
                     product:products(
                         id,
                         name,
-                        description
+                        description,
+                        image_url
                     )
                 )
             `
@@ -230,6 +242,8 @@ function AdminTransactions() {
                         total:
                             (item.quantity || 0) *
                             (item.price_at_purchase || 0),
+                        image:
+                            item.product?.image_url || "/assets/gray-apple.png",
                     })),
                     total: total,
                 };
@@ -240,6 +254,119 @@ function AdminTransactions() {
         };
 
         fetchTransactions();
+    }, []);
+
+    // Top-level helper to fetch transactions
+    const fetchTransactions = async (showLoading = true) => {
+        if (showLoading) setIsLoading(true);
+
+        const { data: orders, error } = await supabase
+            .from("orders")
+            .select(
+                `
+                *,
+                user_id:profiles!orders_user_id_fkey(name),
+                seller_id:profiles!orders_seller_id_fkey(name),
+                payment_method:payment_methods!orders_payment_method_id_fkey(name),
+                status:statuses!orders_status_id_fkey(name),
+                delivery_method:delivery_methods!orders_delivery_method_id_fkey(name),
+                order_items(
+                    id,
+                    quantity,
+                    price_at_purchase,
+                    name_at_purchase,
+                    product:products(
+                        id,
+                        name,
+                        description,
+                        image_url
+                    )
+                )
+            `
+            )
+            .order("created_at", { ascending: false });
+
+        if (error) {
+            console.error("Error fetching transactions:", error);
+            if (showLoading) setIsLoading(false);
+            return;
+        }
+
+        const formattedTransactions = orders.map((order) => {
+            const itemsTotal = order.order_items.reduce(
+                (sum, item) => sum + item.quantity * item.price_at_purchase,
+                0
+            );
+            const total = itemsTotal + (order.delivery_fee_at_order || 0);
+
+            return {
+                id: order.id,
+                orderId: `Order #${order.id}`,
+                customer: order.user_id?.name || "Unknown Customer",
+                producer: order.seller_id?.name || "Unknown Producer",
+                paymentMethod: order.payment_method?.name || "Unknown Method",
+                status: order.status?.name?.toLowerCase() || "unknown",
+                timestamp: order.created_at,
+                deliveryMethod: order.delivery_method?.name || "Unknown Method",
+                deliveryFee: order.delivery_fee_at_order || 0,
+                orderNotes: order.order_notes || "",
+                amount: total,
+                items: (order.order_items || []).map((item) => ({
+                    id: item.id,
+                    name: item.name_at_purchase,
+                    quantity: item.quantity || 0,
+                    price: item.price_at_purchase || 0,
+                    total: (item.quantity || 0) * (item.price_at_purchase || 0),
+                    image:
+                        item.product?.image_url ||
+                        "https://via.placeholder.com/300x200?text=No+Image",
+                })),
+                total: total,
+            };
+        });
+
+        setTransactions(formattedTransactions);
+        if (showLoading) setIsLoading(false);
+    };
+
+    // Set up Realtime subscriptions for transaction updates
+    useEffect(() => {
+        const realtimeChannel = supabase.channel("admin_transactions");
+
+        // Listen to orders changes
+        realtimeChannel
+            .on(
+                "postgres_changes",
+                {
+                    event: "*",
+                    schema: "public",
+                    table: "orders",
+                },
+                () => {
+                    // Refresh transactions without showing loading state
+                    fetchTransactions(false);
+                }
+            )
+            // Listen to order_items changes (affects totals and items)
+            .on(
+                "postgres_changes",
+                {
+                    event: "*",
+                    schema: "public",
+                    table: "order_items",
+                },
+                () => {
+                    // Refresh transactions without showing loading state
+                    fetchTransactions(false);
+                }
+            );
+
+        realtimeChannel.subscribe();
+
+        // Cleanup: unsubscribe on unmount
+        return () => {
+            realtimeChannel.unsubscribe();
+        };
     }, []);
 
     const toggleExpanded = (transactionId) => {
@@ -280,12 +407,40 @@ function AdminTransactions() {
                                     className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary"
                                 />
                             </div>
-                            <input
-                                type="date"
-                                value={filterDate}
-                                onChange={(e) => setFilterDate(e.target.value)}
-                                className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary"
-                            />
+                            <div className="flex gap-2">
+                                <input
+                                    type="number"
+                                    min="1"
+                                    max="31"
+                                    placeholder="Day"
+                                    value={filterDay}
+                                    onChange={(e) =>
+                                        setFilterDay(e.target.value)
+                                    }
+                                    className="w-1/3 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary"
+                                />
+                                <input
+                                    type="number"
+                                    min="1"
+                                    max="12"
+                                    placeholder="Month"
+                                    value={filterMonth}
+                                    onChange={(e) =>
+                                        setFilterMonth(e.target.value)
+                                    }
+                                    className="w-1/3 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary"
+                                />
+                                <input
+                                    type="number"
+                                    min="2000"
+                                    placeholder="Year"
+                                    value={filterYear}
+                                    onChange={(e) =>
+                                        setFilterYear(e.target.value)
+                                    }
+                                    className="w-1/3 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary"
+                                />
+                            </div>
                             <select
                                 value={filterType}
                                 onChange={(e) => setFilterType(e.target.value)}
@@ -543,8 +698,19 @@ function AdminTransactions() {
                                                                                         item.id ||
                                                                                         item.name
                                                                                     }`}
-                                                                                    className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4"
+                                                                                    className="p-4 flex flex-col sm:flex-row sm:items-center gap-4"
                                                                                 >
+                                                                                    <div className="flex-shrink-0">
+                                                                                        <img
+                                                                                            src={
+                                                                                                item.image
+                                                                                            }
+                                                                                            alt={
+                                                                                                item.name
+                                                                                            }
+                                                                                            className="w-20 h-20 object-cover rounded-lg"
+                                                                                        />
+                                                                                    </div>
                                                                                     <div className="flex-1">
                                                                                         <h4 className="text-sm font-medium text-gray-900">
                                                                                             {
