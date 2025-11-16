@@ -45,6 +45,7 @@ import AdminTransactions from "./pages/admin/AdminTransactions.jsx";
 import AdminCropManagement from "./pages/admin/AdminCropManagement";
 import FarmingGuides from "./pages/producer/FarmingGuides";
 import ThesisOnlyPage from "./pages/ThesisOnlyPage";
+import Help from "./pages/Help.jsx";
 import supabase from "./SupabaseClient.jsx";
 import VerifyAccount from "./pages/VerifyAccount.jsx";
 import EditProfile from "./pages/EditProfile.jsx";
@@ -604,6 +605,14 @@ function App() {
                                         element={
                                             <PrivateRoute>
                                                 <ThesisOnlyPage />
+                                            </PrivateRoute>
+                                        }
+                                    />
+                                    <Route
+                                        path="/help"
+                                        element={
+                                            <PrivateRoute>
+                                                <Help />
                                             </PrivateRoute>
                                         }
                                     />

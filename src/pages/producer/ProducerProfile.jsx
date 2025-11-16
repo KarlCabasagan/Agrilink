@@ -371,7 +371,7 @@ function ProducerProfile() {
                                     />
                                 </div>
                                 <span className="text-gray-800">
-                                    Help & Support
+                                    Help & About
                                 </span>
                             </div>
                             <Icon

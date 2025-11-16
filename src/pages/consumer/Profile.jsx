@@ -468,7 +468,10 @@ function Profile() {
                             Support & Information
                         </h3>
                         <div className="divide-y divide-gray-200">
-                            <button className="w-full flex items-center justify-between p-4 hover:bg-gray-50 transition-colors">
+                            <Link
+                                to="/help"
+                                className="w-full flex items-center justify-between p-4 hover:bg-gray-50 transition-colors"
+                            >
                                 <div className="flex items-center gap-3">
                                     <div className="w-10 h-10 bg-orange-100 rounded-lg flex items-center justify-center">
                                         <Icon
@@ -479,7 +482,7 @@ function Profile() {
                                         />
                                     </div>
                                     <span className="text-gray-800">
-                                        Help & Support
+                                        Help & About
                                     </span>
                                 </div>
                                 <Icon
@@ -488,7 +491,7 @@ function Profile() {
                                     height="16"
                                     className="text-gray-400"
                                 />
-                            </button>
+                            </Link>
                         </div>
                     </div>
 
