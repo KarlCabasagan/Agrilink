@@ -551,7 +551,8 @@ function CropRecommendation() {
                                 const newPercentage =
                                     currentProducers > 0
                                         ? Math.round(
-                                              (newCount / currentProducers) * 100
+                                              (newCount / currentProducers) *
+                                                  100
                                           )
                                         : 0;
 
@@ -594,13 +595,17 @@ function CropRecommendation() {
                                         totalProducersRef.current;
 
                                     // Decrement planting count
-                                    const newCount = Math.max(0, currentCount - 1);
+                                    const newCount = Math.max(
+                                        0,
+                                        currentCount - 1
+                                    );
 
                                     // Compute new percentage using current producer count
                                     const newPercentage =
                                         currentProducers > 0
                                             ? Math.round(
-                                                  (newCount / currentProducers) *
+                                                  (newCount /
+                                                      currentProducers) *
                                                       100
                                               )
                                             : 0;
@@ -648,7 +653,8 @@ function CropRecommendation() {
                                     const newPercentage =
                                         currentProducers > 0
                                             ? Math.round(
-                                                  (newCount / currentProducers) *
+                                                  (newCount /
+                                                      currentProducers) *
                                                       100
                                               )
                                             : 0;
