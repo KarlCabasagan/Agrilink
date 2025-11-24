@@ -1,4 +1,4 @@
-import { useState, useContext, useEffect } from "react";
+import { useState, useContext, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { Icon } from "@iconify/react";
 import ProducerNavigationBar from "../../components/ProducerNavigationBar";
@@ -26,6 +26,22 @@ function CropRecommendation() {
         displayedCompetitionPercentages,
         setDisplayedCompetitionPercentages,
     ] = useState({});
+
+    // Refs to avoid stale closure in realtime subscription callback
+    // These are synchronized with state to ensure latest values are always available
+    const totalProducersRef = useRef(0);
+    const plantingCountsRef = useRef({});
+
+    // Helper functions to sync refs with state simultaneously
+    const setTotalProducersWithRef = (value) => {
+        setTotalProducers(value);
+        totalProducersRef.current = value;
+    };
+
+    const setPlantingCountsWithRef = (value) => {
+        setPlantingCounts(value);
+        plantingCountsRef.current = value;
+    };
 
     const fetchInitialData = async () => {
         if (!user) return;
@@ -75,9 +91,10 @@ function CropRecommendation() {
             return acc;
         }, {});
 
-        // Store totalProducers and plantingCounts in state for reuse
-        setTotalProducers(totalProducers);
-        setPlantingCounts(plantingCounts);
+        // Store totalProducers and plantingCounts in state and refs for reuse
+        // Using ref setters ensures realtime callback always has current values
+        setTotalProducersWithRef(totalProducers);
+        setPlantingCountsWithRef(plantingCounts);
 
         const { data, error } = await supabase
             .from("crops")
@@ -521,17 +538,20 @@ function CropRecommendation() {
                             prevCrops.map((crop) => {
                                 if (crop.id !== cropId) return crop;
 
-                                // Decrement planting count
-                                const newCount = Math.max(
-                                    0,
-                                    (plantingCounts[cropId] || 0) - 1
-                                );
+                                // Use ref values instead of stale closure variables
+                                const currentCount =
+                                    plantingCountsRef.current[cropId] || 0;
+                                const currentProducers =
+                                    totalProducersRef.current;
 
-                                // Compute new percentage
+                                // Decrement planting count
+                                const newCount = Math.max(0, currentCount - 1);
+
+                                // Compute new percentage using current producer count
                                 const newPercentage =
-                                    totalProducers > 0
+                                    currentProducers > 0
                                         ? Math.round(
-                                              (newCount / totalProducers) * 100
+                                              (newCount / currentProducers) * 100
                                           )
                                         : 0;
 
@@ -542,11 +562,11 @@ function CropRecommendation() {
                                         crop.demandLevel
                                     );
 
-                                // Update plantingCounts
-                                setPlantingCounts((prev) => ({
-                                    ...prev,
+                                // Update ref for next callback execution
+                                setPlantingCountsWithRef({
+                                    ...plantingCountsRef.current,
                                     [cropId]: newCount,
-                                }));
+                                });
 
                                 return {
                                     ...crop,
@@ -567,17 +587,20 @@ function CropRecommendation() {
                                 prevCrops.map((crop) => {
                                     if (crop.id !== cropId) return crop;
 
-                                    // Decrement planting count
-                                    const newCount = Math.max(
-                                        0,
-                                        (plantingCounts[cropId] || 0) - 1
-                                    );
+                                    // Use ref values instead of stale closure variables
+                                    const currentCount =
+                                        plantingCountsRef.current[cropId] || 0;
+                                    const currentProducers =
+                                        totalProducersRef.current;
 
-                                    // Compute new percentage
+                                    // Decrement planting count
+                                    const newCount = Math.max(0, currentCount - 1);
+
+                                    // Compute new percentage using current producer count
                                     const newPercentage =
-                                        totalProducers > 0
+                                        currentProducers > 0
                                             ? Math.round(
-                                                  (newCount / totalProducers) *
+                                                  (newCount / currentProducers) *
                                                       100
                                               )
                                             : 0;
@@ -589,11 +612,11 @@ function CropRecommendation() {
                                             crop.demandLevel
                                         );
 
-                                    // Update plantingCounts
-                                    setPlantingCounts((prev) => ({
-                                        ...prev,
+                                    // Update ref for next callback execution
+                                    setPlantingCountsWithRef({
+                                        ...plantingCountsRef.current,
                                         [cropId]: newCount,
-                                    }));
+                                    });
 
                                     return {
                                         ...crop,
@@ -612,15 +635,20 @@ function CropRecommendation() {
                                 prevCrops.map((crop) => {
                                     if (crop.id !== cropId) return crop;
 
-                                    // Increment planting count
-                                    const newCount =
-                                        (plantingCounts[cropId] || 0) + 1;
+                                    // Use ref values instead of stale closure variables
+                                    const currentCount =
+                                        plantingCountsRef.current[cropId] || 0;
+                                    const currentProducers =
+                                        totalProducersRef.current;
 
-                                    // Compute new percentage
+                                    // Increment planting count
+                                    const newCount = currentCount + 1;
+
+                                    // Compute new percentage using current producer count
                                     const newPercentage =
-                                        totalProducers > 0
+                                        currentProducers > 0
                                             ? Math.round(
-                                                  (newCount / totalProducers) *
+                                                  (newCount / currentProducers) *
                                                       100
                                               )
                                             : 0;
@@ -632,11 +660,11 @@ function CropRecommendation() {
                                             crop.demandLevel
                                         );
 
-                                    // Update plantingCounts
-                                    setPlantingCounts((prev) => ({
-                                        ...prev,
+                                    // Update ref for next callback execution
+                                    setPlantingCountsWithRef({
+                                        ...plantingCountsRef.current,
                                         [cropId]: newCount,
-                                    }));
+                                    });
 
                                     return {
                                         ...crop,
