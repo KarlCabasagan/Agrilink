@@ -211,6 +211,9 @@ function Orders() {
             });
             console.log("Fetched orders:", transformedOrders);
             setOrders(transformedOrders);
+
+            // Check and auto-cancel stale home delivery orders
+            await checkAndCancelStaleOrders(transformedOrders);
         } catch (error) {
             console.error("Error fetching orders:", error);
         } finally {
@@ -365,6 +368,129 @@ function Orders() {
         };
     }, [user?.id]);
 
+    // Check and auto-cancel stale home delivery orders (created before today)
+    const checkAndCancelStaleOrders = async (fetchedOrders) => {
+        if (
+            !user?.id ||
+            !Array.isArray(fetchedOrders) ||
+            fetchedOrders.length === 0
+        ) {
+            return;
+        }
+
+        const today = new Date();
+        const todayStart = new Date(
+            today.getFullYear(),
+            today.getMonth(),
+            today.getDate()
+        );
+
+        try {
+            // Find orders that meet the stale criteria
+            const staleOrders = fetchedOrders.filter((order) => {
+                const isHomeDelivery = order.deliveryMethod === "Home Delivery";
+                const isNotCompleted = order.status !== "completed";
+                const isNotCancelled = order.status !== "cancelled";
+                const createdDate = new Date(order.created_at);
+                const createdDateStart = new Date(
+                    createdDate.getFullYear(),
+                    createdDate.getMonth(),
+                    createdDate.getDate()
+                );
+                const isBeforeToday = createdDateStart < todayStart;
+
+                return (
+                    isHomeDelivery &&
+                    isNotCompleted &&
+                    isNotCancelled &&
+                    isBeforeToday
+                );
+            });
+
+            if (staleOrders.length === 0) {
+                return; // No stale orders to cancel
+            }
+
+            // Cancel each stale order and restore stock
+            for (const staleOrder of staleOrders) {
+                try {
+                    // Restore stock for all items in the stale order
+                    for (const item of staleOrder.items) {
+                        try {
+                            const { data: currentProduct, error: fetchError } =
+                                await supabase
+                                    .from("products")
+                                    .select("stock")
+                                    .eq("id", item.product_id)
+                                    .single();
+
+                            if (fetchError) {
+                                console.error(
+                                    `Error fetching stock for product ${item.product_id}:`,
+                                    fetchError
+                                );
+                                continue;
+                            }
+
+                            const restoredStock =
+                                currentProduct.stock + item.quantity;
+
+                            const { error: stockError } = await supabase
+                                .from("products")
+                                .update({ stock: restoredStock })
+                                .eq("id", item.product_id);
+
+                            if (stockError) {
+                                console.error(
+                                    `Error restoring stock for product ${item.product_id}:`,
+                                    stockError
+                                );
+                            }
+                        } catch (stockRestoreError) {
+                            console.error(
+                                "Error in stock restoration:",
+                                stockRestoreError
+                            );
+                        }
+                    }
+
+                    // Cancel the order (status_id: 8)
+                    const { error: cancelError } = await supabase
+                        .from("orders")
+                        .update({ status_id: 8 })
+                        .eq("id", staleOrder.id);
+
+                    if (cancelError) {
+                        console.error(
+                            `Error cancelling stale order ${staleOrder.id}:`,
+                            cancelError
+                        );
+                    } else {
+                        console.log(
+                            `Auto-cancelled stale home delivery order: ${staleOrder.id}`
+                        );
+                    }
+                } catch (singleOrderError) {
+                    console.error(
+                        `Error processing stale order ${staleOrder.id}:`,
+                        singleOrderError
+                    );
+                }
+            }
+
+            // Update local state to reflect cancellations
+            setOrders((prev) =>
+                prev.map((order) =>
+                    staleOrders.some((stale) => stale.id === order.id)
+                        ? { ...order, status: "cancelled" }
+                        : order
+                )
+            );
+        } catch (error) {
+            console.error("Error checking and cancelling stale orders:", error);
+        }
+    };
+
     const updateOrderStatus = async (orderId, newStatus) => {
         try {
             // Map status names to IDs from the statuses table
@@ -473,7 +599,89 @@ function Orders() {
         setResolvingRequestId(itemId);
 
         try {
-            // Step 1: Delete the image from storage
+            // Step 1: Find the parent order and buyer ID
+            const parentOrder = orders.find((order) =>
+                order.items.some((item) => item.id === itemId)
+            );
+
+            if (!parentOrder) {
+                throw new Error("Order not found for this item");
+            }
+
+            // Extract buyer/consumer ID from the order
+            // Note: orders are fetched with profiles!orders_user_id_fkey, but we need user_id from the order
+            // We'll fetch it fresh to be safe
+            const { data: orderData, error: orderFetchError } = await supabase
+                .from("orders")
+                .select("user_id, id")
+                .eq("id", parentOrder.id)
+                .single();
+
+            if (orderFetchError) {
+                throw new Error(
+                    `Failed to fetch order details: ${orderFetchError.message}`
+                );
+            }
+
+            const buyerId = orderData.user_id;
+
+            // Step 2: Check for existing conversation or create one
+            const { data: existingConv, error: convFetchError } = await supabase
+                .from("conversations")
+                .select("id")
+                .eq("consumer_id", buyerId)
+                .eq("producer_id", user.id)
+                .maybeSingle();
+
+            if (convFetchError && convFetchError.code !== "PGRST116") {
+                throw new Error(
+                    `Failed to check conversation: ${convFetchError.message}`
+                );
+            }
+
+            let conversationId;
+
+            if (existingConv) {
+                conversationId = existingConv.id;
+            } else {
+                // Create a new conversation
+                const { data: newConv, error: convCreateError } = await supabase
+                    .from("conversations")
+                    .insert({
+                        user_id: buyerId,
+                        seller_id: user.id,
+                    })
+                    .select("id")
+                    .single();
+
+                if (convCreateError) {
+                    throw new Error(
+                        `Failed to create conversation: ${convCreateError.message}`
+                    );
+                }
+
+                conversationId = newConv.id;
+            }
+
+            // Step 3: Insert the automated message
+            const messageBody = `✅ Replacement Request Resolved: ${viewRequestModal.item.name} (Order #${parentOrder.id})`;
+
+            const { error: messageError } = await supabase
+                .from("messages")
+                .insert({
+                    conversation_id: conversationId,
+                    sender_id: user.id,
+                    body: messageBody,
+                });
+
+            if (messageError) {
+                console.warn(
+                    "Failed to send resolution message, but continuing with request resolution:",
+                    messageError
+                );
+            }
+
+            // Step 4: Delete the image from storage
             if (imageUrl) {
                 const deleteResult = await deleteImageFromUrl(
                     imageUrl,
@@ -487,7 +695,7 @@ function Orders() {
                 }
             }
 
-            // Step 2: Update the order_items table to clear the replacement request
+            // Step 5: Update the order_items table to clear the replacement request
             const { error: updateError } = await supabase
                 .from("order_items")
                 .update({
@@ -503,7 +711,7 @@ function Orders() {
                 );
             }
 
-            // Step 3: Update local state
+            // Step 6: Update local state
             setOrders((prev) =>
                 prev.map((order) => ({
                     ...order,
@@ -519,7 +727,7 @@ function Orders() {
                 }))
             );
 
-            // Step 4: Show success and close modal
+            // Step 7: Show success and close modal
             toast.success("Replacement request resolved successfully!");
             setViewRequestModal({ open: false, item: null });
         } catch (error) {
@@ -655,6 +863,15 @@ function Orders() {
             </div>
 
             <div className="w-full max-w-4xl mx-4 sm:mx-auto my-16">
+                {/* Policy Notice Banner */}
+                <div className="bg-yellow-50 border border-yellow-200 text-yellow-800 px-4 py-3 rounded-lg mb-4 text-sm flex items-center gap-2">
+                    <span className="text-base mb-0.5">⚠️</span>
+                    <span>
+                        Note: Home Delivery orders pending completion by the end
+                        of the day will be automatically cancelled.
+                    </span>
+                </div>
+
                 {/* Tabs */}
                 <div className="bg-white rounded-lg shadow-md overflow-hidden mb-6">
                     <div className="flex overflow-x-auto">

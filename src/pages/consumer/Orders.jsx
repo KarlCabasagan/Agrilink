@@ -448,11 +448,96 @@ function Orders() {
             });
 
             setOrders(transformedOrders);
+
+            // Check and auto-cancel stale home delivery orders
+            await checkAndCancelStaleOrders(transformedOrders);
         } catch (error) {
             console.error("Error fetching orders:", error);
             setError("Failed to fetch orders. Please try again.");
         } finally {
             setLoading(false);
+        }
+    };
+
+    // Check and auto-cancel stale home delivery orders (created before today)
+    const checkAndCancelStaleOrders = async (fetchedOrders) => {
+        if (
+            !user?.id ||
+            !Array.isArray(fetchedOrders) ||
+            fetchedOrders.length === 0
+        ) {
+            return;
+        }
+
+        const today = new Date();
+        const todayStart = new Date(
+            today.getFullYear(),
+            today.getMonth(),
+            today.getDate()
+        );
+
+        try {
+            // Find orders that meet the stale criteria
+            const staleOrders = fetchedOrders.filter((order) => {
+                const isHomeDelivery = order.deliveryMethod === "Home Delivery";
+                const isNotCompleted = order.status !== "completed";
+                const isNotCancelled = order.status !== "cancelled";
+                const createdDate = new Date(order.date);
+                const createdDateStart = new Date(
+                    createdDate.getFullYear(),
+                    createdDate.getMonth(),
+                    createdDate.getDate()
+                );
+                const isBeforeToday = createdDateStart < todayStart;
+
+                return (
+                    isHomeDelivery &&
+                    isNotCompleted &&
+                    isNotCancelled &&
+                    isBeforeToday
+                );
+            });
+
+            if (staleOrders.length === 0) {
+                return; // No stale orders to cancel
+            }
+
+            // Cancel each stale order
+            for (const staleOrder of staleOrders) {
+                try {
+                    const { error: cancelError } = await supabase
+                        .from("orders")
+                        .update({ status_id: 8 })
+                        .eq("id", staleOrder.id);
+
+                    if (cancelError) {
+                        console.error(
+                            `Error cancelling stale order ${staleOrder.id}:`,
+                            cancelError
+                        );
+                    } else {
+                        console.log(
+                            `Auto-cancelled stale home delivery order: ${staleOrder.id}`
+                        );
+                    }
+                } catch (singleOrderError) {
+                    console.error(
+                        `Error processing stale order ${staleOrder.id}:`,
+                        singleOrderError
+                    );
+                }
+            }
+
+            // Update local state to reflect cancellations
+            setOrders((prev) =>
+                prev.map((order) =>
+                    staleOrders.some((stale) => stale.id === order.id)
+                        ? { ...order, status: "cancelled" }
+                        : order
+                )
+            );
+        } catch (error) {
+            console.error("Error checking and cancelling stale orders:", error);
         }
     };
 
@@ -1303,6 +1388,15 @@ function Orders() {
             </div>
 
             <div className="w-full max-w-4xl mx-4 sm:mx-auto my-16">
+                {/* Policy Notice Banner */}
+                <div className="bg-yellow-50 border border-yellow-200 text-yellow-800 px-4 py-3 rounded-lg mb-4 text-sm flex items-center gap-2">
+                    <span className="text-base mb-0.5">⚠️</span>
+                    <span>
+                        Note: Home Delivery orders pending completion by the end
+                        of the day will be automatically cancelled.
+                    </span>
+                </div>
+
                 {/* Tabs */}
                 <div className="bg-white rounded-lg shadow-md overflow-hidden mb-6">
                     <div className="flex overflow-x-auto">
