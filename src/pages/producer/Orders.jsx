@@ -368,7 +368,7 @@ function Orders() {
         };
     }, [user?.id]);
 
-    // Check and auto-cancel stale home delivery orders (created before today)
+    // Check and auto-cancel stale orders (any delivery method) created before today
     const checkAndCancelStaleOrders = async (fetchedOrders) => {
         if (
             !user?.id ||
@@ -388,7 +388,6 @@ function Orders() {
         try {
             // Find orders that meet the stale criteria
             const staleOrders = fetchedOrders.filter((order) => {
-                const isHomeDelivery = order.deliveryMethod === "Home Delivery";
                 const isNotCompleted = order.status !== "completed";
                 const isNotCancelled = order.status !== "cancelled";
                 const createdDate = new Date(order.created_at);
@@ -399,12 +398,7 @@ function Orders() {
                 );
                 const isBeforeToday = createdDateStart < todayStart;
 
-                return (
-                    isHomeDelivery &&
-                    isNotCompleted &&
-                    isNotCancelled &&
-                    isBeforeToday
-                );
+                return isNotCompleted && isNotCancelled && isBeforeToday;
             });
 
             if (staleOrders.length === 0) {
@@ -867,8 +861,9 @@ function Orders() {
                 <div className="bg-yellow-50 border border-yellow-200 text-yellow-800 px-4 py-3 rounded-lg mb-4 text-sm flex items-center gap-2">
                     <span className="text-base mb-0.5">⚠️</span>
                     <span>
-                        Note: Home Delivery orders pending completion by the end
-                        of the day will be automatically cancelled.
+                        To guarantee freshness for the customer, All orders
+                        expire at midnight. Please complete delivery today to
+                        avoid auto-cancellation.
                     </span>
                 </div>
 

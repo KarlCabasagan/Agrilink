@@ -56,6 +56,10 @@ function Orders() {
         imagePreview: null,
         isLoading: false,
     });
+    const [trackingModal, setTrackingModal] = useState({
+        open: false,
+        order: null,
+    });
     const replacementFileInputRef = useRef(null);
 
     // Batch check for existing reviews when orders are loaded or updated
@@ -201,6 +205,7 @@ function Orders() {
                                     "unknown",
                                 deliveryFee:
                                     orderData.delivery_fee_at_order || 0,
+                                sellerId: orderData.seller_id,
                                 sellerName:
                                     orderData.profiles?.name ||
                                     "Unknown Seller",
@@ -303,6 +308,7 @@ function Orders() {
                                     "unknown",
                                 deliveryFee:
                                     orderData.delivery_fee_at_order || 0,
+                                sellerId: orderData.seller_id,
                                 sellerName:
                                     orderData.profiles?.name ||
                                     "Unknown Seller",
@@ -420,6 +426,7 @@ function Orders() {
                     deliveryMethod: order.delivery_methods?.name || "unknown",
                     paymentMethod: order.payment_methods?.name || "unknown",
                     deliveryFee: order.delivery_fee_at_order || 0,
+                    sellerId: order.seller_id,
                     sellerName: order.profiles?.name || "Unknown Seller",
                     sellerAddress:
                         order.profiles?.address || "Location not available",
@@ -459,7 +466,7 @@ function Orders() {
         }
     };
 
-    // Check and auto-cancel stale home delivery orders (created before today)
+    // Check and auto-cancel stale orders (any delivery method) created before today
     const checkAndCancelStaleOrders = async (fetchedOrders) => {
         if (
             !user?.id ||
@@ -479,7 +486,6 @@ function Orders() {
         try {
             // Find orders that meet the stale criteria
             const staleOrders = fetchedOrders.filter((order) => {
-                const isHomeDelivery = order.deliveryMethod === "Home Delivery";
                 const isNotCompleted = order.status !== "completed";
                 const isNotCancelled = order.status !== "cancelled";
                 const createdDate = new Date(order.date);
@@ -490,12 +496,7 @@ function Orders() {
                 );
                 const isBeforeToday = createdDateStart < todayStart;
 
-                return (
-                    isHomeDelivery &&
-                    isNotCompleted &&
-                    isNotCancelled &&
-                    isBeforeToday
-                );
+                return isNotCompleted && isNotCancelled && isBeforeToday;
             });
 
             if (staleOrders.length === 0) {
@@ -892,9 +893,68 @@ function Orders() {
         }
     };
 
-    const handleTrackOrder = (orderId) => {
-        console.log("Tracking order:", orderId);
-        alert("Order tracking feature coming soon!");
+    const handleTrackOrder = (order) => {
+        setTrackingModal({
+            open: true,
+            order: order,
+        });
+    };
+
+    const handleMessageSeller = async (sellerId) => {
+        if (!user?.id || !sellerId) {
+            toast.error("Unable to start conversation");
+            return;
+        }
+
+        try {
+            // Check if a conversation exists
+            const { data: existingConv, error: convFetchError } = await supabase
+                .from("conversations")
+                .select("id")
+                .eq("consumer_id", user.id)
+                .eq("producer_id", sellerId)
+                .maybeSingle();
+
+            if (convFetchError && convFetchError.code !== "PGRST116") {
+                throw new Error(
+                    `Failed to check conversation: ${convFetchError.message}`
+                );
+            }
+
+            let conversationId;
+
+            if (existingConv) {
+                // Conversation exists, use it
+                conversationId = existingConv.id;
+            } else {
+                // Create new conversation
+                const { data: newConv, error: convCreateError } = await supabase
+                    .from("conversations")
+                    .insert({
+                        consumer_id: user.id,
+                        producer_id: sellerId,
+                    })
+                    .select("id")
+                    .single();
+
+                if (convCreateError) {
+                    throw new Error(
+                        `Failed to create conversation: ${convCreateError.message}`
+                    );
+                }
+
+                conversationId = newConv.id;
+            }
+
+            // Navigate to messages with conversation ID
+            navigate(`/messages?conversation=${conversationId}`);
+        } catch (error) {
+            console.error("Error initiating conversation:", error);
+            toast.error(
+                error.message ||
+                    "Failed to start conversation. Please try again."
+            );
+        }
     };
 
     const handleOpenReviewModal = (productId, productName) => {
@@ -1388,15 +1448,6 @@ function Orders() {
             </div>
 
             <div className="w-full max-w-4xl mx-4 sm:mx-auto my-16">
-                {/* Policy Notice Banner */}
-                <div className="bg-yellow-50 border border-yellow-200 text-yellow-800 px-4 py-3 rounded-lg mb-4 text-sm flex items-center gap-2">
-                    <span className="text-base mb-0.5">⚠️</span>
-                    <span>
-                        Note: Home Delivery orders pending completion by the end
-                        of the day will be automatically cancelled.
-                    </span>
-                </div>
-
                 {/* Tabs */}
                 <div className="bg-white rounded-lg shadow-md overflow-hidden mb-6">
                     <div className="flex overflow-x-auto">
@@ -2026,7 +2077,7 @@ function Orders() {
                                                         onClick={(e) => {
                                                             e.stopPropagation();
                                                             handleTrackOrder(
-                                                                order.id
+                                                                order
                                                             );
                                                         }}
                                                         className="px-4 py-2 text-sm border border-primary text-primary rounded-lg hover:bg-primary/5 transition-colors"
@@ -2301,6 +2352,169 @@ function Orders() {
                                         Submit Request
                                     </>
                                 )}
+                            </button>
+                        </div>
+                    </div>
+                </>
+            )}
+
+            {/* Track Order Modal */}
+            {trackingModal.open && trackingModal.order && (
+                <>
+                    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black opacity-50"></div>
+                    <div className="bg-white rounded-lg shadow-xl p-6 max-w-md w-full fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-[10000] max-h-[90vh] overflow-y-auto">
+                        {/* Close Button */}
+                        <div className="flex justify-end mb-4">
+                            <button
+                                onClick={() =>
+                                    setTrackingModal({
+                                        open: false,
+                                        order: null,
+                                    })
+                                }
+                                className="text-gray-400 hover:text-gray-600 transition-colors"
+                            >
+                                <Icon
+                                    icon="mingcute:close-line"
+                                    width="20"
+                                    height="20"
+                                />
+                            </button>
+                        </div>
+
+                        {/* Conditional Content Based on Delivery Method */}
+                        {trackingModal.order.deliveryMethod ===
+                        "Home Delivery" ? (
+                            <>
+                                {/* Home Delivery Content */}
+                                <div className="text-center">
+                                    <div className="inline-flex items-center justify-center w-16 h-16 bg-blue-50 rounded-full mb-4">
+                                        <Icon
+                                            icon="mingcute:time-line"
+                                            width="32"
+                                            height="32"
+                                            className="text-blue-600"
+                                        />
+                                    </div>
+                                    <h2 className="text-xl font-semibold text-gray-800 mb-3">
+                                        Delivery Promise
+                                    </h2>
+                                    <p className="text-gray-700 mb-4 leading-relaxed">
+                                        Your order is guaranteed to arrive
+                                        before 12:00 AM tonight.
+                                    </p>
+                                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
+                                        <p className="text-sm text-blue-700">
+                                            <span className="font-semibold">
+                                                Note:{" "}
+                                            </span>
+                                            To ensure freshness, orders not
+                                            completed by the end of the day are
+                                            automatically cancelled.
+                                        </p>
+                                    </div>
+                                    <div className="bg-gray-50 rounded-lg p-4 text-left mb-4">
+                                        <p className="text-sm text-gray-600 mb-2">
+                                            <span className="font-semibold">
+                                                Order ID:
+                                            </span>{" "}
+                                            #{trackingModal.order.id}
+                                        </p>
+                                        <p className="text-sm text-gray-600">
+                                            <span className="font-semibold">
+                                                Status:
+                                            </span>{" "}
+                                            {trackingModal.order.status ===
+                                            "ready for pickup"
+                                                ? "Out for Delivery"
+                                                : trackingModal.order.status}
+                                        </p>
+                                    </div>
+                                </div>
+                            </>
+                        ) : (
+                            <>
+                                {/* Farm Pickup Content */}
+                                <div className="text-center">
+                                    <div className="inline-flex items-center justify-center w-16 h-16 bg-green-50 rounded-full mb-4">
+                                        <Icon
+                                            icon="mingcute:store-line"
+                                            width="32"
+                                            height="32"
+                                            className="text-green-600"
+                                        />
+                                    </div>
+                                    <h2 className="text-xl font-semibold text-gray-800 mb-3">
+                                        Pickup Promise
+                                    </h2>
+                                    <p className="text-gray-700 mb-4 leading-relaxed">
+                                        Please pick up your order at{" "}
+                                        <span className="font-semibold">
+                                            {trackingModal.order
+                                                .sellerAddress || "the farm"}
+                                        </span>{" "}
+                                        before 12:00 AM tonight.
+                                    </p>
+                                    <div className="bg-green-50 border border-green-200 rounded-lg p-3 mb-4">
+                                        <p className="text-sm text-green-700">
+                                            <span className="font-semibold">
+                                                Note:{" "}
+                                            </span>
+                                            Unclaimed orders are automatically
+                                            cancelled at midnight to ensure
+                                            quality.
+                                        </p>
+                                    </div>
+                                    <div className="bg-gray-50 rounded-lg p-4 text-left mb-4">
+                                        <p className="text-sm text-gray-600 mb-2">
+                                            <span className="font-semibold">
+                                                Order ID:
+                                            </span>{" "}
+                                            #{trackingModal.order.id}
+                                        </p>
+                                        <p className="text-sm text-gray-600 mb-2">
+                                            <span className="font-semibold">
+                                                Status:
+                                            </span>{" "}
+                                            {trackingModal.order.status ===
+                                            "ready for pickup"
+                                                ? "Ready for Pickup"
+                                                : trackingModal.order.status}
+                                        </p>
+                                        <p className="text-sm text-gray-600">
+                                            <span className="font-semibold">
+                                                Seller:
+                                            </span>{" "}
+                                            {trackingModal.order.sellerName ||
+                                                "N/A"}
+                                        </p>
+                                    </div>
+                                </div>
+                            </>
+                        )}
+
+                        {/* Buttons */}
+                        <div className="flex gap-3">
+                            <button
+                                onClick={() =>
+                                    handleMessageSeller(
+                                        trackingModal.order.sellerId
+                                    )
+                                }
+                                className="flex-1 px-4 py-2 border border-primary text-primary rounded-lg hover:bg-primary/5 transition-colors font-medium"
+                            >
+                                Message Seller
+                            </button>
+                            <button
+                                onClick={() =>
+                                    setTrackingModal({
+                                        open: false,
+                                        order: null,
+                                    })
+                                }
+                                className="flex-1 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors font-medium"
+                            >
+                                Got it
                             </button>
                         </div>
                     </div>
