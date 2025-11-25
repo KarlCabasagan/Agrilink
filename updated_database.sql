@@ -160,6 +160,8 @@ create table public.order_items (
   price_at_purchase numeric not null,
   created_at timestamp with time zone not null default now(),
   updated_at timestamp with time zone not null default now(),
+  request_replacement_reason text null,
+  request_replacement_image_url text null,
   constraint order_items_pkey primary key (id),
   constraint order_items_order_id_fkey foreign KEY (order_id) references orders (id) on update CASCADE on delete CASCADE,
   constraint order_items_product_id_fkey foreign KEY (product_id) references products (id) on update CASCADE on delete set null
