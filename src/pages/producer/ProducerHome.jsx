@@ -687,9 +687,9 @@ function ProducerHome() {
     const [minimumOrderQuantity, setMinimumOrderQuantity] = useState(2.0); // Default minimum order quantity
     const [originalMinimumOrderQuantity, setOriginalMinimumOrderQuantity] =
         useState(2.0); // Track original value
-    const [dailyDeliveryLimit, setDailyDeliveryLimit] = useState(3); // Default daily delivery limit
+    const [dailyDeliveryLimit, setDailyDeliveryLimit] = useState(); // Default daily delivery limit
     const [originalDailyDeliveryLimit, setOriginalDailyDeliveryLimit] =
-        useState(3); // Track original value
+        useState(); // Track original value
     const [isDeliverySettingsExpanded, setIsDeliverySettingsExpanded] =
         useState(false);
     const [isHowItWorksExpanded, setIsHowItWorksExpanded] = useState(false);
@@ -1032,7 +1032,7 @@ function ProducerHome() {
                     const minOrderValue =
                         parseFloat(data.minimum_order_quantity) || 2.0;
                     const dailyDeliveryLimitValue =
-                        parseInt(data.daily_delivery_limit) || 3;
+                        parseInt(data.daily_delivery_limit) ?? 3;
 
                     setDeliveryCost(deliveryCostValue);
                     setOriginalDeliveryCost(deliveryCostValue);
@@ -1930,9 +1930,9 @@ function ProducerHome() {
                                                         setOriginalDailyDeliveryLimit(
                                                             dailyDeliveryLimit
                                                         );
-                                                        alert(
-                                                            "Delivery settings saved successfully!"
-                                                        );
+                                                        // alert(
+                                                        //     "Delivery settings saved successfully!"
+                                                        // );
                                                     }
                                                 } catch (error) {
                                                     console.error(

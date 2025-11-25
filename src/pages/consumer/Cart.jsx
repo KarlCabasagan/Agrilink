@@ -17,6 +17,10 @@ function Cart() {
     const [profileIncomplete, setProfileIncomplete] = useState(false);
     // version increments when cart data is fetched to coordinate one-time autocap
     const [cartVersion, setCartVersion] = useState(0);
+    // Track today's delivery order counts per farmer to enforce daily limits
+    const [dailyDeliveryOrderCounts, setDailyDeliveryOrderCounts] = useState(
+        {}
+    );
     const [modal, setModal] = useState({
         open: false,
         type: "",
@@ -44,7 +48,7 @@ function Cart() {
                     products(
                         *,
                         categories(name),
-                        profiles!user_id(name, address, delivery_cost, minimum_order_quantity),
+                        profiles!user_id(name, address, delivery_cost, minimum_order_quantity, daily_delivery_limit),
                         approval_date,
                         status_id
                     )
@@ -106,6 +110,8 @@ function Cart() {
                     ) || 1.0,
                 deliveryCost:
                     parseFloat(item.products.profiles?.delivery_cost) || 50.0,
+                dailyDeliveryLimit:
+                    parseInt(item.products.profiles?.daily_delivery_limit) ?? 3,
                 category: item.products.categories?.name || "Other",
             }));
 
@@ -158,7 +164,288 @@ function Cart() {
         checkProfileCompletion();
     }, [user]);
 
-    // Memoize grouping to avoid re-computation and re-mounts
+    // Fetch today's active delivery order counts per farmer
+    useEffect(() => {
+        if (cartItems.length === 0) return;
+
+        const fetchDailyDeliveryOrderCounts = async () => {
+            try {
+                // Get unique seller IDs from cart items
+                const sellerIds = Array.from(
+                    new Set(cartItems.map((item) => item.farmerId))
+                );
+
+                if (sellerIds.length === 0) return;
+
+                // Get today's date range (start and end of day in UTC)
+                const today = new Date();
+                const startOfDay = new Date(
+                    Date.UTC(
+                        today.getUTCFullYear(),
+                        today.getUTCMonth(),
+                        today.getUTCDate(),
+                        0,
+                        0,
+                        0,
+                        0
+                    )
+                );
+                const endOfDay = new Date(
+                    Date.UTC(
+                        today.getUTCFullYear(),
+                        today.getUTCMonth(),
+                        today.getUTCDate(),
+                        23,
+                        59,
+                        59,
+                        999
+                    )
+                );
+
+                // Fetch orders where:
+                // - seller_id is one of the farmers in cart
+                // - delivery_method_id is 2 (Home Delivery)
+                // - created_at is today
+                // - status_id is NOT 8 (Cancelled)
+                const { data: orders, error } = await supabase
+                    .from("orders")
+                    .select("seller_id")
+                    .in("seller_id", sellerIds)
+                    .eq("delivery_method_id", 2)
+                    .neq("status_id", 8)
+                    .gte("created_at", startOfDay.toISOString())
+                    .lte("created_at", endOfDay.toISOString());
+
+                if (error) {
+                    console.error(
+                        "Error fetching daily delivery order counts:",
+                        error
+                    );
+                    return;
+                }
+
+                // Count orders per seller
+                const counts = {};
+                (orders || []).forEach((order) => {
+                    counts[order.seller_id] =
+                        (counts[order.seller_id] || 0) + 1;
+                });
+
+                setDailyDeliveryOrderCounts(counts);
+            } catch (error) {
+                console.error(
+                    "Unexpected error fetching daily delivery order counts:",
+                    error
+                );
+            }
+        };
+
+        fetchDailyDeliveryOrderCounts();
+    }, [cartItems]);
+
+    // Real-time subscription to orders table to update daily delivery limits
+    useEffect(() => {
+        if (cartItems.length === 0) return;
+
+        // Get unique seller IDs from cart items
+        const sellerIds = Array.from(
+            new Set(cartItems.map((item) => item.farmerId))
+        );
+
+        if (sellerIds.length === 0) return;
+
+        const subscriptionRef = supabase
+            .channel("cart-orders-delivery-channel")
+            .on(
+                "postgres_changes",
+                {
+                    event: "INSERT",
+                    schema: "public",
+                    table: "orders",
+                },
+                (payload) => {
+                    const newOrder = payload.new;
+                    // Only refresh if the seller is in our cart
+                    if (
+                        sellerIds.includes(newOrder.seller_id) &&
+                        newOrder.delivery_method_id === 2 &&
+                        newOrder.status_id !== 8 // Exclude cancelled
+                    ) {
+                        // Refresh daily delivery order counts
+                        const fetchUpdatedCounts = async () => {
+                            try {
+                                const today = new Date();
+                                const startOfDay = new Date(
+                                    Date.UTC(
+                                        today.getUTCFullYear(),
+                                        today.getUTCMonth(),
+                                        today.getUTCDate(),
+                                        0,
+                                        0,
+                                        0,
+                                        0
+                                    )
+                                );
+                                const endOfDay = new Date(
+                                    Date.UTC(
+                                        today.getUTCFullYear(),
+                                        today.getUTCMonth(),
+                                        today.getUTCDate(),
+                                        23,
+                                        59,
+                                        59,
+                                        999
+                                    )
+                                );
+
+                                const { data: orders } = await supabase
+                                    .from("orders")
+                                    .select("seller_id")
+                                    .in("seller_id", sellerIds)
+                                    .eq("delivery_method_id", 2)
+                                    .neq("status_id", 8)
+                                    .gte("created_at", startOfDay.toISOString())
+                                    .lte("created_at", endOfDay.toISOString());
+
+                                const counts = {};
+                                (orders || []).forEach((order) => {
+                                    counts[order.seller_id] =
+                                        (counts[order.seller_id] || 0) + 1;
+                                });
+
+                                setDailyDeliveryOrderCounts(counts);
+                            } catch (error) {
+                                console.error(
+                                    "Error updating delivery order counts on INSERT:",
+                                    error
+                                );
+                            }
+                        };
+
+                        fetchUpdatedCounts();
+                    }
+                }
+            )
+            .on(
+                "postgres_changes",
+                {
+                    event: "UPDATE",
+                    schema: "public",
+                    table: "orders",
+                },
+                (payload) => {
+                    const updatedOrder = payload.new;
+                    // Refresh if seller is in cart (handles status changes like cancellations)
+                    if (sellerIds.includes(updatedOrder.seller_id)) {
+                        const fetchUpdatedCounts = async () => {
+                            try {
+                                const today = new Date();
+                                const startOfDay = new Date(
+                                    Date.UTC(
+                                        today.getUTCFullYear(),
+                                        today.getUTCMonth(),
+                                        today.getUTCDate(),
+                                        0,
+                                        0,
+                                        0,
+                                        0
+                                    )
+                                );
+                                const endOfDay = new Date(
+                                    Date.UTC(
+                                        today.getUTCFullYear(),
+                                        today.getUTCMonth(),
+                                        today.getUTCDate(),
+                                        23,
+                                        59,
+                                        59,
+                                        999
+                                    )
+                                );
+
+                                const { data: orders } = await supabase
+                                    .from("orders")
+                                    .select("seller_id")
+                                    .in("seller_id", sellerIds)
+                                    .eq("delivery_method_id", 2)
+                                    .neq("status_id", 8)
+                                    .gte("created_at", startOfDay.toISOString())
+                                    .lte("created_at", endOfDay.toISOString());
+
+                                const counts = {};
+                                (orders || []).forEach((order) => {
+                                    counts[order.seller_id] =
+                                        (counts[order.seller_id] || 0) + 1;
+                                });
+
+                                setDailyDeliveryOrderCounts(counts);
+                            } catch (error) {
+                                console.error(
+                                    "Error updating delivery order counts on UPDATE:",
+                                    error
+                                );
+                            }
+                        };
+
+                        fetchUpdatedCounts();
+                    }
+                }
+            )
+            .subscribe();
+
+        return () => {
+            subscriptionRef.unsubscribe();
+        };
+    }, [cartItems]);
+
+    // Real-time subscription to profiles table to monitor farmer delivery settings changes
+    useEffect(() => {
+        if (cartItems.length === 0) return;
+
+        // Get unique seller IDs from cart items
+        const farmerIds = Array.from(
+            new Set(cartItems.map((item) => item.farmerId))
+        );
+
+        if (farmerIds.length === 0) return;
+
+        const profileSubscriptionRef = supabase
+            .channel("cart-profiles-delivery-channel")
+            .on(
+                "postgres_changes",
+                {
+                    event: "UPDATE",
+                    schema: "public",
+                    table: "profiles",
+                },
+                (payload) => {
+                    const updatedProfile = payload.new;
+                    // Only process if this farmer is in the cart
+                    if (farmerIds.includes(updatedProfile.id)) {
+                        // Update cart items with new daily delivery limit
+                        setCartItems((prevItems) =>
+                            prevItems.map((item) =>
+                                item.farmerId === updatedProfile.id
+                                    ? {
+                                          ...item,
+                                          dailyDeliveryLimit:
+                                              parseInt(
+                                                  updatedProfile.daily_delivery_limit
+                                              ) ?? 3,
+                                      }
+                                    : item
+                            )
+                        );
+                    }
+                }
+            )
+            .subscribe();
+
+        return () => {
+            profileSubscriptionRef.unsubscribe();
+        };
+    }, [cartItems]);
+
     const farmerGroups = useMemo(() => {
         const groups = cartItems.reduce((acc, item) => {
             const farmerId = item.farmerId;
@@ -171,6 +458,7 @@ function Cart() {
                     totalPrice: 0,
                     minimumOrderQuantity: item.minimumOrderQuantity,
                     deliveryCost: item.deliveryCost,
+                    dailyDeliveryLimit: item.dailyDeliveryLimit,
                 };
             }
             acc[farmerId].items.push(item);
@@ -179,8 +467,23 @@ function Cart() {
             return acc;
         }, {});
 
-        return Object.values(groups);
-    }, [cartItems]);
+        // Add isDeliveryLimitReached property to each group
+        const groupsWithLimitStatus = Object.values(groups).map((group) => {
+            const todayOrderCount =
+                dailyDeliveryOrderCounts[group.farmerId] || 0;
+            const isLimitReached =
+                group.dailyDeliveryLimit === 0 ||
+                todayOrderCount >= group.dailyDeliveryLimit;
+
+            return {
+                ...group,
+                isDeliveryLimitReached: isLimitReached,
+                todayOrderCount: todayOrderCount,
+            };
+        });
+
+        return groupsWithLimitStatus;
+    }, [cartItems, dailyDeliveryOrderCounts]);
 
     const updateQuantity = async (id, newQuantity) => {
         // Accept zero; round to 1 decimal and prevent negatives
@@ -438,9 +741,12 @@ function Cart() {
     };
 
     // Helper function to check delivery eligibility per farmer
+    // Considers both minimum order quantity and daily delivery limits
     const getDeliveryIneligibleFarmers = () => {
         return farmerGroups.filter(
-            (group) => group.totalQuantity < group.minimumOrderQuantity
+            (group) =>
+                group.isDeliveryLimitReached ||
+                group.totalQuantity < group.minimumOrderQuantity
         );
     };
 
@@ -807,33 +1113,34 @@ function Cart() {
                                             Home Delivery Requirements
                                         </h3>
                                         <p className="text-orange-700 text-sm mb-2">
-                                            Some farmers require minimum order
-                                            quantities for delivery. Add more
-                                            items or choose pickup during
-                                            checkout.
+                                            Some farmers cannot accept delivery
+                                            orders right now. Add more items
+                                            from other farmers or choose pickup
+                                            during checkout.
                                         </p>
-                                        <div className="text-orange-600 text-xs">
+                                        <div className="text-orange-600 text-xs space-y-1">
                                             {getDeliveryIneligibleFarmers().map(
-                                                (farmer, index) => (
+                                                (farmer) => (
                                                     <p key={farmer.farmerId}>
                                                         •{" "}
                                                         <strong>
                                                             {farmer.farmerName}:
                                                         </strong>{" "}
-                                                        Need{" "}
-                                                        {(
-                                                            farmer.minimumOrderQuantity -
-                                                            farmer.totalQuantity
-                                                        ).toFixed(1)}
-                                                        kg more (currently{" "}
-                                                        {farmer.totalQuantity.toFixed(
-                                                            1
-                                                        )}
-                                                        kg, min:{" "}
-                                                        {
-                                                            farmer.minimumOrderQuantity
-                                                        }
-                                                        kg)
+                                                        {farmer.isDeliveryLimitReached
+                                                            ? farmer.dailyDeliveryLimit ===
+                                                              0
+                                                                ? "Delivery disabled by farmer"
+                                                                : `Daily delivery limit reached (${farmer.todayOrderCount}/${farmer.dailyDeliveryLimit} orders)`
+                                                            : `Need ${(
+                                                                  farmer.minimumOrderQuantity -
+                                                                  farmer.totalQuantity
+                                                              ).toFixed(
+                                                                  1
+                                                              )}kg more (currently ${farmer.totalQuantity.toFixed(
+                                                                  1
+                                                              )}kg, min: ${
+                                                                  farmer.minimumOrderQuantity
+                                                              }kg)`}
                                                     </p>
                                                 )
                                             )}
@@ -846,15 +1153,18 @@ function Cart() {
                         {/* Cart Items Grouped by Farmer */}
                         <div className="space-y-6 mb-6">
                             {farmerGroups.map((group) => {
-                                const isGroupEligible =
+                                const isMinQuantityMet =
                                     group.totalQuantity >=
                                     group.minimumOrderQuantity;
+                                const isDeliveryAvailableForGroup =
+                                    !group.isDeliveryLimitReached &&
+                                    isMinQuantityMet;
 
                                 return (
                                     <div
                                         key={group.farmerId}
                                         className={`bg-white rounded-lg shadow-md overflow-hidden ${
-                                            !isGroupEligible
+                                            !isDeliveryAvailableForGroup
                                                 ? "border-l-4 border-orange-400"
                                                 : "border-l-4 border-green-400"
                                         }`}
@@ -862,7 +1172,7 @@ function Cart() {
                                         {/* Farmer Header */}
                                         <div
                                             className={`p-4 ${
-                                                isGroupEligible
+                                                isDeliveryAvailableForGroup
                                                     ? "bg-green-50"
                                                     : "bg-orange-50"
                                             }`}
@@ -874,7 +1184,7 @@ function Cart() {
                                                         width="20"
                                                         height="20"
                                                         className={
-                                                            isGroupEligible
+                                                            isDeliveryAvailableForGroup
                                                                 ? "text-green-600"
                                                                 : "text-orange-600"
                                                         }
@@ -906,14 +1216,14 @@ function Cart() {
                                                 <div className="text-right">
                                                     <div
                                                         className={`flex items-center gap-2 text-xs ${
-                                                            isGroupEligible
+                                                            isDeliveryAvailableForGroup
                                                                 ? "text-green-700"
                                                                 : "text-orange-600"
                                                         }`}
                                                     >
                                                         <Icon
                                                             icon={
-                                                                isGroupEligible
+                                                                isDeliveryAvailableForGroup
                                                                     ? "mingcute:check-circle-fill"
                                                                     : "mingcute:alert-triangle-fill"
                                                             }
@@ -921,8 +1231,13 @@ function Cart() {
                                                             height="14"
                                                         />
                                                         <span>
-                                                            {isGroupEligible
+                                                            {isDeliveryAvailableForGroup
                                                                 ? "Delivery available ✓"
+                                                                : group.isDeliveryLimitReached
+                                                                ? group.dailyDeliveryLimit ===
+                                                                  0
+                                                                    ? "Delivery disabled"
+                                                                    : `Delivery limit reached`
                                                                 : `${(
                                                                       group.minimumOrderQuantity -
                                                                       group.totalQuantity
@@ -1099,10 +1414,7 @@ function Cart() {
                                     >
                                         {isDeliveryAvailable()
                                             ? "Home Delivery Available for All Farmers"
-                                            : `${
-                                                  getDeliveryIneligibleFarmers()
-                                                      .length
-                                              } Farmer(s) Need Minimum Order`}
+                                            : "Some farmers unavailable for delivery"}
                                     </span>
                                 </div>
                             </div>
@@ -1117,29 +1429,41 @@ function Cart() {
                                 </div>
 
                                 <div className="space-y-1">
-                                    {farmerGroups.map((group) => (
-                                        <div
-                                            key={group.farmerId}
-                                            className="flex justify-between text-gray-600 text-sm"
-                                        >
-                                            <span>
-                                                {group.farmerName} delivery fee
-                                            </span>
-                                            <span
-                                                className={
-                                                    !isDeliveryAvailable()
-                                                        ? "text-gray-400"
-                                                        : ""
-                                                }
+                                    {farmerGroups.map((group) => {
+                                        const isMinQuantityMet =
+                                            group.totalQuantity >=
+                                            group.minimumOrderQuantity;
+                                        const isDeliveryEligible =
+                                            !group.isDeliveryLimitReached &&
+                                            isMinQuantityMet;
+
+                                        return (
+                                            <div
+                                                key={group.farmerId}
+                                                className="flex justify-between text-gray-600 text-sm"
                                             >
-                                                {!isDeliveryAvailable()
-                                                    ? "TBD"
-                                                    : `₱${group.deliveryCost.toFixed(
-                                                          2
-                                                      )}`}
-                                            </span>
-                                        </div>
-                                    ))}
+                                                <span>
+                                                    {group.farmerName}{" "}
+                                                    {isDeliveryEligible
+                                                        ? "delivery fee"
+                                                        : "delivery (unavailable)"}
+                                                </span>
+                                                <span
+                                                    className={
+                                                        !isDeliveryEligible
+                                                            ? "text-gray-400"
+                                                            : ""
+                                                    }
+                                                >
+                                                    {!isDeliveryEligible
+                                                        ? "—"
+                                                        : `₱${group.deliveryCost.toFixed(
+                                                              2
+                                                          )}`}
+                                                </span>
+                                            </div>
+                                        );
+                                    })}
                                 </div>
 
                                 <div className="border-t border-gray-200 pt-2">
@@ -1149,14 +1473,23 @@ function Cart() {
                                             ₱
                                             {(
                                                 getTotalPrice() +
-                                                (isDeliveryAvailable()
-                                                    ? farmerGroups.reduce(
-                                                          (sum, g) =>
-                                                              sum +
-                                                              g.deliveryCost,
-                                                          0
-                                                      )
-                                                    : 0)
+                                                farmerGroups.reduce(
+                                                    (sum, g) => {
+                                                        const isMinQuantityMet =
+                                                            g.totalQuantity >=
+                                                            g.minimumOrderQuantity;
+                                                        const isDeliveryEligible =
+                                                            !g.isDeliveryLimitReached &&
+                                                            isMinQuantityMet;
+                                                        return (
+                                                            sum +
+                                                            (isDeliveryEligible
+                                                                ? g.deliveryCost
+                                                                : 0)
+                                                        );
+                                                    },
+                                                    0
+                                                )
                                             ).toFixed(2)}
                                         </span>
                                     </div>
@@ -1164,9 +1497,12 @@ function Cart() {
                             </div>
 
                             {!isDeliveryAvailable() && (
-                                <div className="text-center text-orange-600 text-xs">
-                                    * Delivery fees apply only when minimum
-                                    quantities are met per farmer
+                                <div className="text-center text-orange-600 text-xs space-y-1">
+                                    <p>
+                                        * Delivery fees apply only when minimum
+                                        quantities are met AND farmer has
+                                        delivery capacity
+                                    </p>
                                 </div>
                             )}
                         </div>
