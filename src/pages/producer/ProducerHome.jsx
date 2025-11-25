@@ -687,6 +687,9 @@ function ProducerHome() {
     const [minimumOrderQuantity, setMinimumOrderQuantity] = useState(2.0); // Default minimum order quantity
     const [originalMinimumOrderQuantity, setOriginalMinimumOrderQuantity] =
         useState(2.0); // Track original value
+    const [dailyDeliveryLimit, setDailyDeliveryLimit] = useState(3); // Default daily delivery limit
+    const [originalDailyDeliveryLimit, setOriginalDailyDeliveryLimit] =
+        useState(3); // Track original value
     const [isDeliverySettingsExpanded, setIsDeliverySettingsExpanded] =
         useState(false);
     const [isHowItWorksExpanded, setIsHowItWorksExpanded] = useState(false);
@@ -1015,7 +1018,9 @@ function ProducerHome() {
             try {
                 const { data, error } = await supabase
                     .from("profiles")
-                    .select("delivery_cost, minimum_order_quantity")
+                    .select(
+                        "delivery_cost, minimum_order_quantity, daily_delivery_limit"
+                    )
                     .eq("id", user.id)
                     .single();
 
@@ -1026,11 +1031,15 @@ function ProducerHome() {
                         parseFloat(data.delivery_cost) || 50;
                     const minOrderValue =
                         parseFloat(data.minimum_order_quantity) || 2.0;
+                    const dailyDeliveryLimitValue =
+                        parseInt(data.daily_delivery_limit) || 3;
 
                     setDeliveryCost(deliveryCostValue);
                     setOriginalDeliveryCost(deliveryCostValue);
                     setMinimumOrderQuantity(minOrderValue);
                     setOriginalMinimumOrderQuantity(minOrderValue);
+                    setDailyDeliveryLimit(dailyDeliveryLimitValue);
+                    setOriginalDailyDeliveryLimit(dailyDeliveryLimitValue);
                 }
             } catch (error) {
                 console.error(
@@ -1714,7 +1723,7 @@ function ProducerHome() {
                         {/* Expandable Content */}
                         {isDeliverySettingsExpanded && (
                             <div className="px-6 pb-6 pt-0">
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 mb-4">
                                     <div>
                                         <label className="block text-sm font-medium text-gray-700 mb-1">
                                             Delivery Cost
@@ -1766,6 +1775,30 @@ function ProducerHome() {
                                         <p className="text-xs text-gray-500 mt-1">
                                             Total quantity required for home
                                             delivery
+                                        </p>
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                                            Daily Delivery Limit
+                                        </label>
+                                        <input
+                                            type="number"
+                                            min="0"
+                                            step="1"
+                                            value={dailyDeliveryLimit}
+                                            onChange={(e) =>
+                                                setDailyDeliveryLimit(
+                                                    parseInt(e.target.value) ||
+                                                        0
+                                                )
+                                            }
+                                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-primary focus:border-primary"
+                                            placeholder="3"
+                                        />
+                                        <p className="text-xs text-gray-500 mt-1">
+                                            {dailyDeliveryLimit === 0
+                                                ? "Home Delivery is disabled"
+                                                : `Maximum ${dailyDeliveryLimit} orders per day`}
                                         </p>
                                     </div>
                                 </div>
@@ -1826,6 +1859,13 @@ function ProducerHome() {
                                                         be combined to meet the
                                                         minimum quantity
                                                     </p>
+                                                    <p>
+                                                        • Setting the Daily
+                                                        Delivery Limit to 0 will
+                                                        disable the Home
+                                                        Delivery option for
+                                                        customers
+                                                    </p>
                                                 </div>
                                             </div>
                                         )}
@@ -1835,7 +1875,9 @@ function ProducerHome() {
                                 {/* Action buttons - only show when there are changes */}
                                 {(deliveryCost !== originalDeliveryCost ||
                                     minimumOrderQuantity !==
-                                        originalMinimumOrderQuantity) && (
+                                        originalMinimumOrderQuantity ||
+                                    dailyDeliveryLimit !==
+                                        originalDailyDeliveryLimit) && (
                                     <div className="flex justify-end gap-3 pt-4 border-t border-gray-200">
                                         <button
                                             onClick={() => {
@@ -1844,6 +1886,9 @@ function ProducerHome() {
                                                 );
                                                 setMinimumOrderQuantity(
                                                     originalMinimumOrderQuantity
+                                                );
+                                                setDailyDeliveryLimit(
+                                                    originalDailyDeliveryLimit
                                                 );
                                             }}
                                             className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
@@ -1862,6 +1907,8 @@ function ProducerHome() {
                                                                     deliveryCost,
                                                                 minimum_order_quantity:
                                                                     minimumOrderQuantity,
+                                                                daily_delivery_limit:
+                                                                    dailyDeliveryLimit,
                                                             })
                                                             .eq("id", user.id);
 
@@ -1879,6 +1926,9 @@ function ProducerHome() {
                                                         );
                                                         setOriginalMinimumOrderQuantity(
                                                             minimumOrderQuantity
+                                                        );
+                                                        setOriginalDailyDeliveryLimit(
+                                                            dailyDeliveryLimit
                                                         );
                                                         alert(
                                                             "Delivery settings saved successfully!"
