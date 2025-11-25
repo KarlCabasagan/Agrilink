@@ -1,12 +1,109 @@
 import React, { useState, useEffect, useContext, useRef } from "react";
 import { Icon } from "@iconify/react";
-import { Link, useSearchParams } from "react-router-dom";
+import { Link, useSearchParams, useNavigate } from "react-router-dom";
 import ProducerNavigationBar from "../../components/ProducerNavigationBar";
 import supabase from "../../SupabaseClient";
 import { AuthContext } from "../../App.jsx";
 import { getProfileAvatarUrl } from "../../utils/avatarUtils.js";
 
+// Helper function to render structured message content
+// Helper function to render structured message content
+// Note: This needs useNavigate which is obtained from the component context
+const createRenderMessageContent = (navigate) => {
+    return (text) => {
+        // Check if this is a replacement request message
+        if (text && text.startsWith(":::REPLACEMENT_REQUEST_V1:::")) {
+            try {
+                // Extract and parse the JSON
+                const jsonString = text.slice(
+                    ":::REPLACEMENT_REQUEST_V1:::".length
+                );
+                const replacementData = JSON.parse(jsonString);
+
+                const handleCardClick = () => {
+                    navigate("/producer/orders", {
+                        state: { highlightOrderId: replacementData.orderId },
+                    });
+                };
+
+                return (
+                    <div
+                        onClick={handleCardClick}
+                        className="bg-orange-50 border border-orange-200 rounded-lg p-4 max-w-xs mt-2 cursor-pointer hover:shadow-md transition-shadow"
+                    >
+                        {/* Header */}
+                        <div className="flex items-center gap-2 mb-3">
+                            <Icon
+                                icon="mingcute:refresh-2-line"
+                                width="18"
+                                height="18"
+                                className="text-orange-600"
+                            />
+                            <h3 className="font-bold text-orange-700">
+                                Replacement Request
+                            </h3>
+                        </div>
+
+                        {/* Item Name */}
+                        <div className="mb-1">
+                            <p className="font-bold text-lg text-gray-800">
+                                {replacementData.itemName}
+                            </p>
+                        </div>
+
+                        {/* Reason */}
+                        <div className="mb-3">
+                            <p className="text-xs font-bold text-gray-600 mb-1">
+                                Reason:
+                            </p>
+                            <p className="text-sm text-gray-700">
+                                {replacementData.reason}
+                            </p>
+                        </div>
+
+                        {/* Order ID */}
+                        <div className="mb-3">
+                            <p className="text-xs text-gray-500">
+                                Order ID: {replacementData.orderId}
+                            </p>
+                        </div>
+
+                        {/* Proof Image */}
+                        {replacementData.proofUrl && (
+                            <div className="mt-3">
+                                <img
+                                    src={replacementData.proofUrl}
+                                    alt="Replacement proof"
+                                    className="w-full rounded-lg border border-orange-200 object-cover max-h-48"
+                                    onError={(e) => {
+                                        e.target.src =
+                                            "/assets/blank-profile.jpg";
+                                    }}
+                                />
+                            </div>
+                        )}
+                    </div>
+                );
+            } catch (error) {
+                console.error(
+                    "Failed to parse replacement request data:",
+                    error
+                );
+                // Fallback to plain text if parsing fails
+                return <p className="text-sm text-gray-700">{text}</p>;
+            }
+        }
+
+        // Standard message - return plain text
+        return <p className="text-sm text-gray-700">{text}</p>;
+    };
+};
+
 function ProducerMessages() {
+    const navigate = useNavigate();
+    // Create the renderMessageContent function with navigate bound
+    const renderMessageContent = createRenderMessageContent(navigate);
+
     // Helper: sort conversations by ISO timestamp `lastMessageAt` (newest first)
     const sortByLastMessageAt = (convs) =>
         [...convs].sort(
@@ -752,11 +849,18 @@ function ProducerMessages() {
                                                                         : "bg-white shadow-sm"
                                                                 }`}
                                                             >
-                                                                <p className="text-sm">
-                                                                    {
+                                                                {message.sender ===
+                                                                "me" ? (
+                                                                    <p className="text-sm">
+                                                                        {
+                                                                            message.text
+                                                                        }
+                                                                    </p>
+                                                                ) : (
+                                                                    renderMessageContent(
                                                                         message.text
-                                                                    }
-                                                                </p>
+                                                                    )
+                                                                )}
                                                                 <p
                                                                     className={`text-xs mt-1 ${
                                                                         message.sender ===
@@ -1291,11 +1395,18 @@ function ProducerMessages() {
                                                                             : "bg-white shadow-sm"
                                                                     }`}
                                                                 >
-                                                                    <p className="text-sm">
-                                                                        {
+                                                                    {message.sender ===
+                                                                    "me" ? (
+                                                                        <p className="text-sm">
+                                                                            {
+                                                                                message.text
+                                                                            }
+                                                                        </p>
+                                                                    ) : (
+                                                                        renderMessageContent(
                                                                             message.text
-                                                                        }
-                                                                    </p>
+                                                                        )
+                                                                    )}
                                                                     <p
                                                                         className={`text-xs mt-1 ${
                                                                             message.sender ===

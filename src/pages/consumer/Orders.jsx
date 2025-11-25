@@ -1154,6 +1154,114 @@ function Orders() {
 
             setOrders(updatedOrders);
 
+            // ==========================================
+            // MESSAGING LOGIC - Send notification to producer
+            // ==========================================
+            try {
+                // Step 1: Retrieve context data from local orders state
+                const order = orders.find(
+                    (o) => o.id === replacementModal.selectedOrderId
+                );
+                const item = order?.items.find(
+                    (i) => i.id === replacementModal.selectedItemId
+                );
+
+                if (!order || !item) {
+                    console.error(
+                        "Order or item not found in local state for messaging"
+                    );
+                    throw new Error(
+                        "Failed to retrieve order details for messaging"
+                    );
+                }
+
+                const farmerId = item.farmerId;
+                const orderId = order.id;
+                const itemName = item.name;
+
+                // Step 2: Check if conversation exists or create new one
+                const {
+                    data: existingConversation,
+                    error: conversationCheckError,
+                } = await supabase
+                    .from("conversations")
+                    .select("id")
+                    .eq("consumer_id", user.id)
+                    .eq("producer_id", farmerId)
+                    .single();
+
+                let conversationId;
+
+                if (
+                    conversationCheckError &&
+                    conversationCheckError.code === "PGRST116"
+                ) {
+                    // No conversation exists, create a new one
+                    const {
+                        data: newConversation,
+                        error: conversationCreateError,
+                    } = await supabase
+                        .from("conversations")
+                        .insert({
+                            consumer_id: user.id,
+                            producer_id: farmerId,
+                        })
+                        .select("id")
+                        .single();
+
+                    if (conversationCreateError) {
+                        throw new Error(
+                            `Failed to create conversation: ${conversationCreateError.message}`
+                        );
+                    }
+
+                    conversationId = newConversation.id;
+                } else if (conversationCheckError) {
+                    throw new Error(
+                        `Failed to check conversation: ${conversationCheckError.message}`
+                    );
+                } else {
+                    // Conversation exists
+                    conversationId = existingConversation.id;
+                }
+
+                // Step 3: Send message with replacement request details
+                const replacementRequestData = {
+                    orderId: orderId,
+                    itemName: itemName,
+                    reason: finalReason,
+                    proofUrl: imageUrl,
+                };
+                const messageBody = `:::REPLACEMENT_REQUEST_V1:::${JSON.stringify(
+                    replacementRequestData
+                )}`;
+
+                const { error: messageInsertError } = await supabase
+                    .from("messages")
+                    .insert({
+                        conversation_id: conversationId,
+                        sender_id: user.id,
+                        body: messageBody,
+                    });
+
+                if (messageInsertError) {
+                    console.error(
+                        "Failed to send message to producer:",
+                        messageInsertError
+                    );
+                    // Log error but don't throw - replacement request was already successful
+                } else {
+                    console.log("Message sent to producer successfully");
+                }
+            } catch (messagingError) {
+                console.error("Messaging logic error:", messagingError);
+                // Don't throw - the replacement request was already successful
+                // Just log the error for debugging
+            }
+            // ==========================================
+            // END OF MESSAGING LOGIC
+            // ==========================================
+
             toast.success("Replacement request submitted successfully!");
             handleCloseReplacementModal();
         } catch (error) {

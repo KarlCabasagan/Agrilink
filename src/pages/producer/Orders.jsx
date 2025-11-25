@@ -4,6 +4,7 @@ import { AuthContext } from "../../App.jsx";
 import ProducerNavigationBar from "../../components/ProducerNavigationBar";
 import supabase from "../../SupabaseClient.jsx";
 import { toast } from "react-hot-toast";
+import { useLocation } from "react-router-dom";
 import { getProfileAvatarUrl } from "../../utils/avatarUtils.js";
 
 // Add subtle pulse animation for ready orders tab
@@ -65,12 +66,41 @@ const orderStatuses = [
 
 function Orders() {
     const { user } = useContext(AuthContext);
+    const location = useLocation();
     const [orders, setOrders] = useState([]);
     const [loading, setLoading] = useState(true);
     const [activeTab, setActiveTab] = useState("all");
     const [expandedOrder, setExpandedOrder] = useState(null);
     const [searchTerm, setSearchTerm] = useState("");
     const [sortBy, setSortBy] = useState("newest");
+
+    // Handle deep linking from messages (highlight order when navigated from replacement request)
+    useEffect(() => {
+        if (location.state?.highlightOrderId) {
+            const orderId = location.state.highlightOrderId;
+            setExpandedOrder(orderId);
+
+            // Optional: Scroll the order into view after a brief delay to ensure DOM is ready
+            setTimeout(() => {
+                const orderElement = document.getElementById(
+                    `order-${orderId}`
+                );
+                if (orderElement) {
+                    orderElement.scrollIntoView({
+                        behavior: "smooth",
+                        block: "start",
+                    });
+                }
+            }, 100);
+
+            // Clear the history state to prevent re-expanding on refresh
+            window.history.replaceState(
+                {},
+                document.title,
+                window.location.pathname
+            );
+        }
+    }, [location]);
 
     useEffect(() => {
         fetchOrders();
@@ -650,6 +680,7 @@ function Orders() {
                             return (
                                 <div
                                     key={order.id}
+                                    id={`order-${order.id}`}
                                     className="bg-white rounded-lg shadow-md overflow-hidden"
                                 >
                                     {/* Order Header */}
