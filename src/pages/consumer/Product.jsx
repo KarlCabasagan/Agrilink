@@ -18,6 +18,28 @@ import { addToCart, getCartCount } from "../../utils/cartUtils.js";
 import { uploadImage, deleteImageFromUrl } from "../../utils/imageUpload.js";
 import { toast } from "react-hot-toast";
 
+// Helper component for lazy-loading review images with smooth transition
+function ReviewImage({ src, alt, className }) {
+    const [isLoading, setIsLoading] = useState(true);
+
+    return (
+        <div className={`relative overflow-hidden bg-gray-100 ${className}`}>
+            {isLoading && (
+                <div className="absolute inset-0 bg-gray-200 animate-pulse z-10" />
+            )}
+            <img
+                src={src}
+                alt={alt}
+                className={`w-full h-full object-cover transition-opacity duration-300 ${
+                    isLoading ? "opacity-0" : "opacity-100"
+                }`}
+                onLoad={() => setIsLoading(false)}
+                onError={() => setIsLoading(false)}
+            />
+        </div>
+    );
+}
+
 function Product() {
     const { id } = useParams();
     const navigate = useNavigate();
@@ -1550,12 +1572,12 @@ function Product() {
                                                             </p>
                                                         )}
                                                         {review.image && (
-                                                            <img
+                                                            <ReviewImage
                                                                 src={
                                                                     review.image
                                                                 }
                                                                 alt="Review"
-                                                                className="mt-3 max-w-xs rounded-lg border border-gray-200 object-cover max-h-60"
+                                                                className="mt-3 max-w-xs rounded-lg border border-gray-200 h-40 w-40"
                                                             />
                                                         )}
                                                         <div className="w-full mt-3 flex items-center justify-end gap-2">
