@@ -15,7 +15,30 @@ import supabase from "../../SupabaseClient";
 import { AuthContext } from "../../App.jsx";
 import { CartCountContext } from "../../context/CartCountContext.jsx";
 import { addToCart, getCartCount } from "../../utils/cartUtils.js";
+import { uploadImage, deleteImageFromUrl } from "../../utils/imageUpload.js";
 import { toast } from "react-hot-toast";
+
+// Helper component for lazy-loading review images with smooth transition
+function ReviewImage({ src, alt, className }) {
+    const [isLoading, setIsLoading] = useState(true);
+
+    return (
+        <div className={`relative overflow-hidden bg-gray-100 ${className}`}>
+            {isLoading && (
+                <div className="absolute inset-0 bg-gray-200 animate-pulse z-10" />
+            )}
+            <img
+                src={src}
+                alt={alt}
+                className={`w-full h-full object-cover transition-opacity duration-300 ${
+                    isLoading ? "opacity-0" : "opacity-100"
+                }`}
+                onLoad={() => setIsLoading(false)}
+                onError={() => setIsLoading(false)}
+            />
+        </div>
+    );
+}
 
 function Product() {
     const { id } = useParams();
@@ -53,6 +76,9 @@ function Product() {
                 isEditing: false,
                 editRating: 0,
                 editComment: "",
+                editImageFile: null,
+                editImagePreview: null,
+                hasDeletedImage: false,
             };
             const next = { ...current, ...updates };
             const newMap = new Map(prev);
@@ -72,6 +98,9 @@ function Product() {
             isEditing: false,
             editRating: 0,
             editComment: "",
+            editImageFile: null,
+            editImagePreview: null,
+            hasDeletedImage: false,
         };
 
         if (currentState.isUpdating) return;
@@ -149,6 +178,9 @@ function Product() {
             isEditing: true,
             editRating: review.rating,
             editComment: review.comment || "",
+            editImagePreview: review.image || null,
+            editImageFile: null,
+            hasDeletedImage: false,
         });
     };
 
@@ -157,6 +189,9 @@ function Product() {
             isEditing: false,
             editRating: 0,
             editComment: "",
+            editImageFile: null,
+            editImagePreview: null,
+            hasDeletedImage: false,
         });
     };
 
@@ -185,6 +220,28 @@ function Product() {
         }));
 
         try {
+            // Delete image from storage if it exists
+            if (review.image) {
+                // 1. Extract the file path from the full URL
+                // URLs are typically: .../storage/v1/object/public/bucket_name/folder/filename.jpg
+                const imagePath = review.image
+                    .split("product_review_images/")
+                    .pop();
+
+                if (imagePath) {
+                    const { error: storageError } = await supabase.storage
+                        .from("product_review_images")
+                        .remove([imagePath]); // .remove takes an array of paths
+
+                    if (storageError) {
+                        console.error("Storage deletion error:", storageError);
+                        // Decide: throw error to stop DB delete, or just log it and continue?
+                        // Usually safer to throw so the user knows something went wrong.
+                        throw storageError;
+                    }
+                }
+            }
+
             const { error } = await supabase
                 .from("reviews")
                 .delete()
@@ -219,6 +276,9 @@ function Product() {
             editRating: 0,
             editComment: "",
             isUpdating: false,
+            editImageFile: null,
+            editImagePreview: null,
+            hasDeletedImage: false,
         };
 
         if (currentState.isUpdating) return;
@@ -229,6 +289,10 @@ function Product() {
         // Save current values for rollback
         const originalRating = review.rating;
         const originalComment = review.comment;
+        const originalImage = review.image;
+
+        // Determine final image URL
+        let finalImageUrl = originalImage;
 
         // Optimistic update
         updateReviewState(reviewId, { isUpdating: true });
@@ -240,17 +304,56 @@ function Product() {
                           ...r,
                           rating: currentState.editRating,
                           comment: currentState.editComment,
+                          image: currentState.editImageFile
+                              ? currentState.editImagePreview
+                              : currentState.hasDeletedImage
+                              ? null
+                              : originalImage,
                       }
                     : r
             ),
         }));
 
         try {
+            // Handle image upload/deletion
+            if (currentState.editImageFile) {
+                // New image selected - delete old one if exists
+                if (originalImage) {
+                    await deleteImageFromUrl(
+                        originalImage,
+                        "product_review_images"
+                    );
+                }
+
+                // Upload new image
+                const uploadResult = await uploadImage(
+                    currentState.editImageFile,
+                    "product_review_images",
+                    user.id
+                );
+
+                if (!uploadResult.success) {
+                    throw new Error(
+                        uploadResult.error || "Failed to upload image"
+                    );
+                }
+
+                finalImageUrl = uploadResult.url;
+            } else if (currentState.hasDeletedImage && originalImage) {
+                // Image removed - delete from storage
+                await deleteImageFromUrl(
+                    originalImage,
+                    "product_review_images"
+                );
+                finalImageUrl = null;
+            }
+
             const { error } = await supabase
                 .from("reviews")
                 .update({
                     rating: currentState.editRating,
                     review: currentState.editComment,
+                    image_url: finalImageUrl,
                     updated_at: new Date().toISOString(),
                 })
                 .eq("id", reviewId)
@@ -265,7 +368,11 @@ function Product() {
                 isUpdating: false,
                 editRating: 0,
                 editComment: "",
+                editImageFile: null,
+                editImagePreview: null,
+                hasDeletedImage: false,
             });
+            toast.success("Review updated successfully");
         } catch (error) {
             console.error("Error updating review:", error);
             // Roll back optimistic update
@@ -277,6 +384,7 @@ function Product() {
                               ...r,
                               rating: originalRating,
                               comment: originalComment,
+                              image: originalImage,
                           }
                         : r
                 ),
@@ -285,8 +393,15 @@ function Product() {
                 isUpdating: false,
                 editRating: originalRating,
                 editComment: originalComment,
+                editImageFile: null,
+                editImagePreview: currentState.hasDeletedImage
+                    ? originalImage
+                    : currentState.editImagePreview,
+                hasDeletedImage: false,
             });
-            toast.error("Failed to update review. Please try again.");
+            toast.error(
+                error.message || "Failed to update review. Please try again."
+            );
         }
     };
 
@@ -301,6 +416,9 @@ function Product() {
             isEditing: false,
             editRating: 0,
             editComment: "",
+            editImageFile: null,
+            editImagePreview: null,
+            hasDeletedImage: false,
         };
 
         if (currentState.isUpdating) return;
@@ -373,6 +491,28 @@ function Product() {
         } finally {
             updateReviewState(reviewId, { isUpdating: false });
         }
+    };
+
+    const handleEditImageSelect = (reviewId, file) => {
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = (event) => {
+            updateReviewState(reviewId, {
+                editImageFile: file,
+                editImagePreview: event.target?.result,
+                hasDeletedImage: false,
+            });
+        };
+        reader.readAsDataURL(file);
+    };
+
+    const handleRemoveEditImage = (reviewId) => {
+        updateReviewState(reviewId, {
+            editImageFile: null,
+            editImagePreview: null,
+            hasDeletedImage: true,
+        });
     };
 
     const showModal = (type, title, message, onConfirm = null) => {
@@ -522,6 +662,9 @@ function Product() {
                         isEditing: false,
                         editRating: 0,
                         editComment: "",
+                        editImageFile: null,
+                        editImagePreview: null,
+                        hasDeletedImage: false,
                     });
                 });
                 setReviewStates(initialReviewStates);
@@ -533,6 +676,7 @@ function Product() {
                     avatar: review.profiles?.avatar_url || null,
                     rating: parseFloat(review.rating),
                     comment: review.review || "",
+                    image: review.image_url || null,
                     rawDate: review.updated_at,
                     date: new Date(review.updated_at).toLocaleDateString(
                         "en-US",
@@ -1427,6 +1571,15 @@ function Product() {
                                                                 {review.comment}
                                                             </p>
                                                         )}
+                                                        {review.image && (
+                                                            <ReviewImage
+                                                                src={
+                                                                    review.image
+                                                                }
+                                                                alt="Review"
+                                                                className="mt-3 max-w-xs rounded-lg border border-gray-200 h-40 w-40"
+                                                            />
+                                                        )}
                                                         <div className="w-full mt-3 flex items-center justify-end gap-2">
                                                             {(() => {
                                                                 const state =
@@ -1443,6 +1596,11 @@ function Product() {
                                                                         editComment:
                                                                             review.comment ||
                                                                             "",
+                                                                        editImageFile:
+                                                                            null,
+                                                                        editImagePreview:
+                                                                            null,
+                                                                        hasDeletedImage: false,
                                                                     };
 
                                                                 const isOwner =
@@ -1691,6 +1849,11 @@ function Product() {
                                                                 editComment:
                                                                     review.comment ||
                                                                     "",
+                                                                editImageFile:
+                                                                    null,
+                                                                editImagePreview:
+                                                                    null,
+                                                                hasDeletedImage: false,
                                                             };
 
                                                         const isOwner =
@@ -1771,6 +1934,76 @@ function Product() {
                                                                             rows="3"
                                                                             placeholder="Write your review here..."
                                                                         />
+                                                                        {/* Image edit section */}
+                                                                        <div>
+                                                                            <label className="text-sm font-medium text-gray-700 mb-2 block">
+                                                                                Review
+                                                                                Image
+                                                                            </label>
+                                                                            <input
+                                                                                type="file"
+                                                                                accept="image/jpeg,image/jpg,image/png,image/webp"
+                                                                                onChange={(
+                                                                                    e
+                                                                                ) =>
+                                                                                    handleEditImageSelect(
+                                                                                        review.id,
+                                                                                        e
+                                                                                            .target
+                                                                                            .files?.[0]
+                                                                                    )
+                                                                                }
+                                                                                className="hidden"
+                                                                                id={`edit-image-${review.id}`}
+                                                                            />
+                                                                            {!state.editImagePreview ? (
+                                                                                <button
+                                                                                    type="button"
+                                                                                    onClick={() =>
+                                                                                        document
+                                                                                            .getElementById(
+                                                                                                `edit-image-${review.id}`
+                                                                                            )
+                                                                                            ?.click()
+                                                                                    }
+                                                                                    className="w-full px-4 py-2 border-2 border-dashed border-gray-300 rounded-lg hover:border-primary hover:bg-primary/5 transition-colors text-sm text-gray-600 hover:text-primary"
+                                                                                >
+                                                                                    <Icon
+                                                                                        icon="mingcute:camera-line"
+                                                                                        width="16"
+                                                                                        height="16"
+                                                                                        className="inline mr-2"
+                                                                                    />
+                                                                                    Add/Update
+                                                                                    Image
+                                                                                </button>
+                                                                            ) : (
+                                                                                <div className="relative inline-block">
+                                                                                    <img
+                                                                                        src={
+                                                                                            state.editImagePreview
+                                                                                        }
+                                                                                        alt="Edit preview"
+                                                                                        className="h-24 w-24 object-cover rounded-lg border border-gray-200"
+                                                                                    />
+                                                                                    <button
+                                                                                        type="button"
+                                                                                        onClick={() =>
+                                                                                            handleRemoveEditImage(
+                                                                                                review.id
+                                                                                            )
+                                                                                        }
+                                                                                        className="absolute -top-2 -right-2 bg-red-500 hover:bg-red-600 text-white rounded-full p-1 transition-colors"
+                                                                                    >
+                                                                                        <Icon
+                                                                                            icon="mingcute:close-line"
+                                                                                            width="14"
+                                                                                            height="14"
+                                                                                        />
+                                                                                    </button>
+                                                                                </div>
+                                                                            )}
+                                                                        </div>
                                                                         <div className="flex justify-end gap-2">
                                                                             <button
                                                                                 onClick={() =>

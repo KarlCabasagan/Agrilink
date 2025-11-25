@@ -4,7 +4,9 @@ import { AuthContext } from "../../App.jsx";
 import ProducerNavigationBar from "../../components/ProducerNavigationBar";
 import supabase from "../../SupabaseClient.jsx";
 import { toast } from "react-hot-toast";
+import { useLocation } from "react-router-dom";
 import { getProfileAvatarUrl } from "../../utils/avatarUtils.js";
+import { deleteImageFromUrl } from "../../utils/imageUpload.js";
 
 // Add subtle pulse animation for ready orders tab
 const styles = `
@@ -65,12 +67,46 @@ const orderStatuses = [
 
 function Orders() {
     const { user } = useContext(AuthContext);
+    const location = useLocation();
     const [orders, setOrders] = useState([]);
     const [loading, setLoading] = useState(true);
     const [activeTab, setActiveTab] = useState("all");
     const [expandedOrder, setExpandedOrder] = useState(null);
     const [searchTerm, setSearchTerm] = useState("");
     const [sortBy, setSortBy] = useState("newest");
+    const [viewRequestModal, setViewRequestModal] = useState({
+        open: false,
+        item: null,
+    });
+    const [resolvingRequestId, setResolvingRequestId] = useState(null);
+
+    // Handle deep linking from messages (highlight order when navigated from replacement request)
+    useEffect(() => {
+        if (location.state?.highlightOrderId) {
+            const orderId = location.state.highlightOrderId;
+            setExpandedOrder(orderId);
+
+            // Optional: Scroll the order into view after a brief delay to ensure DOM is ready
+            setTimeout(() => {
+                const orderElement = document.getElementById(
+                    `order-${orderId}`
+                );
+                if (orderElement) {
+                    orderElement.scrollIntoView({
+                        behavior: "smooth",
+                        block: "start",
+                    });
+                }
+            }, 100);
+
+            // Clear the history state to prevent re-expanding on refresh
+            window.history.replaceState(
+                {},
+                document.title,
+                window.location.pathname
+            );
+        }
+    }, [location]);
 
     useEffect(() => {
         fetchOrders();
@@ -166,11 +202,18 @@ function Orders() {
                             (parseFloat(item.quantity) || 0),
                         category: item.products?.categories?.name || "Other",
                         image_url: item.products?.image_url || "",
+                        request_replacement_reason:
+                            item.request_replacement_reason || null,
+                        request_replacement_image_url:
+                            item.request_replacement_image_url || null,
                     })),
                 };
             });
             console.log("Fetched orders:", transformedOrders);
             setOrders(transformedOrders);
+
+            // Check and auto-cancel stale home delivery orders
+            await checkAndCancelStaleOrders(transformedOrders);
         } catch (error) {
             console.error("Error fetching orders:", error);
         } finally {
@@ -226,6 +269,10 @@ function Orders() {
                         (parseFloat(item.quantity) || 0),
                     category: item.products?.categories?.name || "Other",
                     image_url: item.products?.image_url || "",
+                    request_replacement_reason:
+                        item.request_replacement_reason || null,
+                    request_replacement_image_url:
+                        item.request_replacement_image_url || null,
                 })),
             };
         };
@@ -320,6 +367,123 @@ function Orders() {
             channel.unsubscribe();
         };
     }, [user?.id]);
+
+    // Check and auto-cancel stale orders (any delivery method) created before today
+    const checkAndCancelStaleOrders = async (fetchedOrders) => {
+        if (
+            !user?.id ||
+            !Array.isArray(fetchedOrders) ||
+            fetchedOrders.length === 0
+        ) {
+            return;
+        }
+
+        const today = new Date();
+        const todayStart = new Date(
+            today.getFullYear(),
+            today.getMonth(),
+            today.getDate()
+        );
+
+        try {
+            // Find orders that meet the stale criteria
+            const staleOrders = fetchedOrders.filter((order) => {
+                const isNotCompleted = order.status !== "completed";
+                const isNotCancelled = order.status !== "cancelled";
+                const createdDate = new Date(order.created_at);
+                const createdDateStart = new Date(
+                    createdDate.getFullYear(),
+                    createdDate.getMonth(),
+                    createdDate.getDate()
+                );
+                const isBeforeToday = createdDateStart < todayStart;
+
+                return isNotCompleted && isNotCancelled && isBeforeToday;
+            });
+
+            if (staleOrders.length === 0) {
+                return; // No stale orders to cancel
+            }
+
+            // Cancel each stale order and restore stock
+            for (const staleOrder of staleOrders) {
+                try {
+                    // Restore stock for all items in the stale order
+                    for (const item of staleOrder.items) {
+                        try {
+                            const { data: currentProduct, error: fetchError } =
+                                await supabase
+                                    .from("products")
+                                    .select("stock")
+                                    .eq("id", item.product_id)
+                                    .single();
+
+                            if (fetchError) {
+                                console.error(
+                                    `Error fetching stock for product ${item.product_id}:`,
+                                    fetchError
+                                );
+                                continue;
+                            }
+
+                            const restoredStock =
+                                currentProduct.stock + item.quantity;
+
+                            const { error: stockError } = await supabase
+                                .from("products")
+                                .update({ stock: restoredStock })
+                                .eq("id", item.product_id);
+
+                            if (stockError) {
+                                console.error(
+                                    `Error restoring stock for product ${item.product_id}:`,
+                                    stockError
+                                );
+                            }
+                        } catch (stockRestoreError) {
+                            console.error(
+                                "Error in stock restoration:",
+                                stockRestoreError
+                            );
+                        }
+                    }
+
+                    // Cancel the order (status_id: 8)
+                    const { error: cancelError } = await supabase
+                        .from("orders")
+                        .update({ status_id: 8 })
+                        .eq("id", staleOrder.id);
+
+                    if (cancelError) {
+                        console.error(
+                            `Error cancelling stale order ${staleOrder.id}:`,
+                            cancelError
+                        );
+                    } else {
+                        console.log(
+                            `Auto-cancelled stale home delivery order: ${staleOrder.id}`
+                        );
+                    }
+                } catch (singleOrderError) {
+                    console.error(
+                        `Error processing stale order ${staleOrder.id}:`,
+                        singleOrderError
+                    );
+                }
+            }
+
+            // Update local state to reflect cancellations
+            setOrders((prev) =>
+                prev.map((order) =>
+                    staleOrders.some((stale) => stale.id === order.id)
+                        ? { ...order, status: "cancelled" }
+                        : order
+                )
+            );
+        } catch (error) {
+            console.error("Error checking and cancelling stale orders:", error);
+        }
+    };
 
     const updateOrderStatus = async (orderId, newStatus) => {
         try {
@@ -416,6 +580,158 @@ function Orders() {
         } catch (error) {
             console.error("Error updating order status:", error);
             alert("Failed to update order status. Please try again.");
+        }
+    };
+
+    // Handle resolving a replacement request
+    const handleResolveRequest = async () => {
+        if (!viewRequestModal.item) return;
+
+        const itemId = viewRequestModal.item.id;
+        const imageUrl = viewRequestModal.item.request_replacement_image_url;
+
+        setResolvingRequestId(itemId);
+
+        try {
+            // Step 1: Find the parent order and buyer ID
+            const parentOrder = orders.find((order) =>
+                order.items.some((item) => item.id === itemId)
+            );
+
+            if (!parentOrder) {
+                throw new Error("Order not found for this item");
+            }
+
+            // Extract buyer/consumer ID from the order
+            // Note: orders are fetched with profiles!orders_user_id_fkey, but we need user_id from the order
+            // We'll fetch it fresh to be safe
+            const { data: orderData, error: orderFetchError } = await supabase
+                .from("orders")
+                .select("user_id, id")
+                .eq("id", parentOrder.id)
+                .single();
+
+            if (orderFetchError) {
+                throw new Error(
+                    `Failed to fetch order details: ${orderFetchError.message}`
+                );
+            }
+
+            const buyerId = orderData.user_id;
+
+            // Step 2: Check for existing conversation or create one
+            const { data: existingConv, error: convFetchError } = await supabase
+                .from("conversations")
+                .select("id")
+                .eq("consumer_id", buyerId)
+                .eq("producer_id", user.id)
+                .maybeSingle();
+
+            if (convFetchError && convFetchError.code !== "PGRST116") {
+                throw new Error(
+                    `Failed to check conversation: ${convFetchError.message}`
+                );
+            }
+
+            let conversationId;
+
+            if (existingConv) {
+                conversationId = existingConv.id;
+            } else {
+                // Create a new conversation
+                const { data: newConv, error: convCreateError } = await supabase
+                    .from("conversations")
+                    .insert({
+                        user_id: buyerId,
+                        seller_id: user.id,
+                    })
+                    .select("id")
+                    .single();
+
+                if (convCreateError) {
+                    throw new Error(
+                        `Failed to create conversation: ${convCreateError.message}`
+                    );
+                }
+
+                conversationId = newConv.id;
+            }
+
+            // Step 3: Insert the automated message
+            const messageBody = `✅ Replacement Request Resolved: ${viewRequestModal.item.name} (Order #${parentOrder.id})`;
+
+            const { error: messageError } = await supabase
+                .from("messages")
+                .insert({
+                    conversation_id: conversationId,
+                    sender_id: user.id,
+                    body: messageBody,
+                });
+
+            if (messageError) {
+                console.warn(
+                    "Failed to send resolution message, but continuing with request resolution:",
+                    messageError
+                );
+            }
+
+            // Step 4: Delete the image from storage
+            if (imageUrl) {
+                const deleteResult = await deleteImageFromUrl(
+                    imageUrl,
+                    "request_replacement_images"
+                );
+                if (!deleteResult.success) {
+                    console.warn(
+                        "Failed to delete image, but continuing with request resolution:",
+                        deleteResult.error
+                    );
+                }
+            }
+
+            // Step 5: Update the order_items table to clear the replacement request
+            const { error: updateError } = await supabase
+                .from("order_items")
+                .update({
+                    request_replacement_reason: null,
+                    request_replacement_image_url: null,
+                    updated_at: new Date().toISOString(),
+                })
+                .eq("id", itemId);
+
+            if (updateError) {
+                throw new Error(
+                    `Failed to resolve request: ${updateError.message}`
+                );
+            }
+
+            // Step 6: Update local state
+            setOrders((prev) =>
+                prev.map((order) => ({
+                    ...order,
+                    items: order.items.map((item) =>
+                        item.id === itemId
+                            ? {
+                                  ...item,
+                                  request_replacement_reason: null,
+                                  request_replacement_image_url: null,
+                              }
+                            : item
+                    ),
+                }))
+            );
+
+            // Step 7: Show success and close modal
+            toast.success("Replacement request resolved successfully!");
+            setViewRequestModal({ open: false, item: null });
+        } catch (error) {
+            console.error("Error resolving request:", error);
+            toast.error(
+                error.message ||
+                    "Failed to resolve replacement request. Please try again."
+            );
+        } finally {
+            setResolvingRequestId(null);
         }
     };
 
@@ -541,6 +857,16 @@ function Orders() {
             </div>
 
             <div className="w-full max-w-4xl mx-4 sm:mx-auto my-16">
+                {/* Policy Notice Banner */}
+                <div className="bg-yellow-50 border border-yellow-200 text-yellow-800 px-4 py-3 rounded-lg mb-4 text-sm flex items-center gap-2">
+                    <span className="text-base mb-0.5">⚠️</span>
+                    <span>
+                        To guarantee freshness for the customer, All orders
+                        expire at midnight. Please complete delivery today to
+                        avoid auto-cancellation.
+                    </span>
+                </div>
+
                 {/* Tabs */}
                 <div className="bg-white rounded-lg shadow-md overflow-hidden mb-6">
                     <div className="flex overflow-x-auto">
@@ -650,6 +976,7 @@ function Orders() {
                             return (
                                 <div
                                     key={order.id}
+                                    id={`order-${order.id}`}
                                     className="bg-white rounded-lg shadow-md overflow-hidden"
                                 >
                                     {/* Order Header */}
@@ -841,6 +1168,23 @@ function Orders() {
                                                                             0}
                                                                         kg
                                                                     </p>
+                                                                    {item.request_replacement_reason && (
+                                                                        <button
+                                                                            onClick={() =>
+                                                                                setViewRequestModal(
+                                                                                    {
+                                                                                        open: true,
+                                                                                        item: item,
+                                                                                    }
+                                                                                )
+                                                                            }
+                                                                            className="text-xs text-orange-600 underline cursor-pointer hover:text-orange-700 mt-1"
+                                                                        >
+                                                                            View
+                                                                            Replacement
+                                                                            Request
+                                                                        </button>
+                                                                    )}
                                                                 </div>
                                                                 <div className="text-right">
                                                                     <p className="text-sm font-medium text-gray-800">
@@ -1193,6 +1537,137 @@ function Orders() {
                     </div>
                 )}
             </div>
+
+            {/* View Replacement Request Modal */}
+            {viewRequestModal.open && viewRequestModal.item && (
+                <>
+                    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black opacity-50"></div>
+                    <div className="bg-white rounded-lg shadow-xl p-6 max-w-md w-full fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-[10000] max-h-[90vh] overflow-y-auto">
+                        {/* Header */}
+                        <div className="flex items-center justify-between mb-4">
+                            <h2 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
+                                <Icon
+                                    icon="mingcute:refresh-2-line"
+                                    width="20"
+                                    height="20"
+                                    className="text-orange-600"
+                                />
+                                Replacement Request Details
+                            </h2>
+                            <button
+                                onClick={() =>
+                                    setViewRequestModal({
+                                        open: false,
+                                        item: null,
+                                    })
+                                }
+                                className="text-gray-400 hover:text-gray-600 transition-colors"
+                            >
+                                <Icon
+                                    icon="mingcute:close-line"
+                                    width="20"
+                                    height="20"
+                                />
+                            </button>
+                        </div>
+
+                        {/* Item Info */}
+                        <div className="mb-4 p-3 bg-gray-50 rounded-lg">
+                            <h3 className="font-medium text-gray-800 mb-1">
+                                {viewRequestModal.item.name}
+                            </h3>
+                            <p className="text-xs text-gray-600">
+                                Qty: {viewRequestModal.item.quantity} kg @ ₱
+                                {(
+                                    viewRequestModal.item.unit_price || 0
+                                ).toFixed(2)}
+                                /kg
+                            </p>
+                        </div>
+
+                        {/* Reason */}
+                        <div className="mb-4">
+                            <label className="block text-sm font-semibold text-gray-700 mb-2">
+                                Reason:
+                            </label>
+                            <p className="text-sm text-gray-700 bg-orange-50 p-3 rounded-lg border border-orange-200">
+                                {
+                                    viewRequestModal.item
+                                        .request_replacement_reason
+                                }
+                            </p>
+                        </div>
+
+                        {/* Proof Image */}
+                        {viewRequestModal.item
+                            .request_replacement_image_url && (
+                            <div className="mb-4">
+                                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                                    Proof:
+                                </label>
+                                <img
+                                    src={
+                                        viewRequestModal.item
+                                            .request_replacement_image_url
+                                    }
+                                    alt="Replacement proof"
+                                    className="w-full rounded-lg border border-gray-300 object-cover max-h-56"
+                                    onError={(e) => {
+                                        e.target.src = "/assets/gray-apple.png";
+                                    }}
+                                />
+                            </div>
+                        )}
+
+                        {/* Actions */}
+                        <div className="flex gap-3 pt-4 border-t border-gray-200">
+                            <button
+                                onClick={() =>
+                                    setViewRequestModal({
+                                        open: false,
+                                        item: null,
+                                    })
+                                }
+                                disabled={resolvingRequestId}
+                                className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50"
+                            >
+                                Close
+                            </button>
+                            <button
+                                onClick={handleResolveRequest}
+                                disabled={
+                                    resolvingRequestId ===
+                                    viewRequestModal.item.id
+                                }
+                                className="flex-1 px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                            >
+                                {resolvingRequestId ===
+                                viewRequestModal.item.id ? (
+                                    <>
+                                        <Icon
+                                            icon="mingcute:loading-line"
+                                            width="16"
+                                            height="16"
+                                            className="animate-spin"
+                                        />
+                                        Resolving...
+                                    </>
+                                ) : (
+                                    <>
+                                        <Icon
+                                            icon="mingcute:check-circle-line"
+                                            width="16"
+                                            height="16"
+                                        />
+                                        Resolve Request
+                                    </>
+                                )}
+                            </button>
+                        </div>
+                    </div>
+                </>
+            )}
+
             <ProducerNavigationBar />
         </div>
     );

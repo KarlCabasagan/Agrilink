@@ -1,4 +1,4 @@
-import { useState, useEffect, useContext } from "react";
+import { useState, useEffect, useContext, useRef } from "react";
 import { Icon } from "@iconify/react";
 import { Link, useNavigate } from "react-router-dom";
 import NavigationBar from "../../components/NavigationBar";
@@ -7,6 +7,7 @@ import supabase from "../../SupabaseClient";
 import { AuthContext } from "../../App.jsx";
 import { toast } from "react-hot-toast";
 import { getProfileAvatarUrl } from "../../utils/avatarUtils.js";
+import { uploadImage, validateImageFile } from "../../utils/imageUpload.js";
 
 // Add subtle pulse animation for ready orders tab
 const styles = `
@@ -45,6 +46,21 @@ function Orders() {
         message: "",
     });
     const [productReviews, setProductReviews] = useState({});
+    const [replacementModal, setReplacementModal] = useState({
+        isOpen: false,
+        selectedItemId: null,
+        selectedOrderId: null,
+        reason: "",
+        customReason: "",
+        imageFile: null,
+        imagePreview: null,
+        isLoading: false,
+    });
+    const [trackingModal, setTrackingModal] = useState({
+        open: false,
+        order: null,
+    });
+    const replacementFileInputRef = useRef(null);
 
     // Batch check for existing reviews when orders are loaded or updated
     useEffect(() => {
@@ -178,6 +194,7 @@ function Orders() {
                             const transformedOrder = {
                                 id: orderData.id,
                                 date: orderData.created_at,
+                                updated_at: orderData.updated_at,
                                 status: orderData.statuses?.name || "unknown",
                                 total: total,
                                 deliveryMethod:
@@ -188,6 +205,7 @@ function Orders() {
                                     "unknown",
                                 deliveryFee:
                                     orderData.delivery_fee_at_order || 0,
+                                sellerId: orderData.seller_id,
                                 sellerName:
                                     orderData.profiles?.name ||
                                     "Unknown Seller",
@@ -217,6 +235,11 @@ function Orders() {
                                     category:
                                         item.products?.categories?.name ||
                                         "Other",
+                                    request_replacement_reason:
+                                        item.request_replacement_reason || null,
+                                    request_replacement_image_url:
+                                        item.request_replacement_image_url ||
+                                        null,
                                 })),
                             };
 
@@ -274,6 +297,7 @@ function Orders() {
                             const transformedOrder = {
                                 id: orderData.id,
                                 date: orderData.created_at,
+                                updated_at: orderData.updated_at,
                                 status: orderData.statuses?.name || "unknown",
                                 total: total,
                                 deliveryMethod:
@@ -284,6 +308,7 @@ function Orders() {
                                     "unknown",
                                 deliveryFee:
                                     orderData.delivery_fee_at_order || 0,
+                                sellerId: orderData.seller_id,
                                 sellerName:
                                     orderData.profiles?.name ||
                                     "Unknown Seller",
@@ -313,6 +338,11 @@ function Orders() {
                                     category:
                                         item.products?.categories?.name ||
                                         "Other",
+                                    request_replacement_reason:
+                                        item.request_replacement_reason || null,
+                                    request_replacement_image_url:
+                                        item.request_replacement_image_url ||
+                                        null,
                                 })),
                             };
 
@@ -390,11 +420,13 @@ function Orders() {
                 return {
                     id: order.id,
                     date: order.created_at,
+                    updated_at: order.updated_at,
                     status: order.statuses?.name || "unknown",
                     total: total,
                     deliveryMethod: order.delivery_methods?.name || "unknown",
                     paymentMethod: order.payment_methods?.name || "unknown",
                     deliveryFee: order.delivery_fee_at_order || 0,
+                    sellerId: order.seller_id,
                     sellerName: order.profiles?.name || "Unknown Seller",
                     sellerAddress:
                         order.profiles?.address || "Location not available",
@@ -414,16 +446,99 @@ function Orders() {
                         farmerAddress:
                             order.profiles?.address || "Location not available",
                         category: item.products?.categories?.name || "Other",
+                        request_replacement_reason:
+                            item.request_replacement_reason || null,
+                        request_replacement_image_url:
+                            item.request_replacement_image_url || null,
                     })),
                 };
             });
 
             setOrders(transformedOrders);
+
+            // Check and auto-cancel stale home delivery orders
+            await checkAndCancelStaleOrders(transformedOrders);
         } catch (error) {
             console.error("Error fetching orders:", error);
             setError("Failed to fetch orders. Please try again.");
         } finally {
             setLoading(false);
+        }
+    };
+
+    // Check and auto-cancel stale orders (any delivery method) created before today
+    const checkAndCancelStaleOrders = async (fetchedOrders) => {
+        if (
+            !user?.id ||
+            !Array.isArray(fetchedOrders) ||
+            fetchedOrders.length === 0
+        ) {
+            return;
+        }
+
+        const today = new Date();
+        const todayStart = new Date(
+            today.getFullYear(),
+            today.getMonth(),
+            today.getDate()
+        );
+
+        try {
+            // Find orders that meet the stale criteria
+            const staleOrders = fetchedOrders.filter((order) => {
+                const isNotCompleted = order.status !== "completed";
+                const isNotCancelled = order.status !== "cancelled";
+                const createdDate = new Date(order.date);
+                const createdDateStart = new Date(
+                    createdDate.getFullYear(),
+                    createdDate.getMonth(),
+                    createdDate.getDate()
+                );
+                const isBeforeToday = createdDateStart < todayStart;
+
+                return isNotCompleted && isNotCancelled && isBeforeToday;
+            });
+
+            if (staleOrders.length === 0) {
+                return; // No stale orders to cancel
+            }
+
+            // Cancel each stale order
+            for (const staleOrder of staleOrders) {
+                try {
+                    const { error: cancelError } = await supabase
+                        .from("orders")
+                        .update({ status_id: 8 })
+                        .eq("id", staleOrder.id);
+
+                    if (cancelError) {
+                        console.error(
+                            `Error cancelling stale order ${staleOrder.id}:`,
+                            cancelError
+                        );
+                    } else {
+                        console.log(
+                            `Auto-cancelled stale home delivery order: ${staleOrder.id}`
+                        );
+                    }
+                } catch (singleOrderError) {
+                    console.error(
+                        `Error processing stale order ${staleOrder.id}:`,
+                        singleOrderError
+                    );
+                }
+            }
+
+            // Update local state to reflect cancellations
+            setOrders((prev) =>
+                prev.map((order) =>
+                    staleOrders.some((stale) => stale.id === order.id)
+                        ? { ...order, status: "cancelled" }
+                        : order
+                )
+            );
+        } catch (error) {
+            console.error("Error checking and cancelling stale orders:", error);
         }
     };
 
@@ -778,9 +893,68 @@ function Orders() {
         }
     };
 
-    const handleTrackOrder = (orderId) => {
-        console.log("Tracking order:", orderId);
-        alert("Order tracking feature coming soon!");
+    const handleTrackOrder = (order) => {
+        setTrackingModal({
+            open: true,
+            order: order,
+        });
+    };
+
+    const handleMessageSeller = async (sellerId) => {
+        if (!user?.id || !sellerId) {
+            toast.error("Unable to start conversation");
+            return;
+        }
+
+        try {
+            // Check if a conversation exists
+            const { data: existingConv, error: convFetchError } = await supabase
+                .from("conversations")
+                .select("id")
+                .eq("consumer_id", user.id)
+                .eq("producer_id", sellerId)
+                .maybeSingle();
+
+            if (convFetchError && convFetchError.code !== "PGRST116") {
+                throw new Error(
+                    `Failed to check conversation: ${convFetchError.message}`
+                );
+            }
+
+            let conversationId;
+
+            if (existingConv) {
+                // Conversation exists, use it
+                conversationId = existingConv.id;
+            } else {
+                // Create new conversation
+                const { data: newConv, error: convCreateError } = await supabase
+                    .from("conversations")
+                    .insert({
+                        consumer_id: user.id,
+                        producer_id: sellerId,
+                    })
+                    .select("id")
+                    .single();
+
+                if (convCreateError) {
+                    throw new Error(
+                        `Failed to create conversation: ${convCreateError.message}`
+                    );
+                }
+
+                conversationId = newConv.id;
+            }
+
+            // Navigate to messages with conversation ID
+            navigate(`/messages?conversation=${conversationId}`);
+        } catch (error) {
+            console.error("Error initiating conversation:", error);
+            toast.error(
+                error.message ||
+                    "Failed to start conversation. Please try again."
+            );
+        }
     };
 
     const handleOpenReviewModal = (productId, productName) => {
@@ -920,6 +1094,332 @@ function Orders() {
             toast.error(
                 error.message || "Failed to cancel order. Please try again."
             );
+        }
+    };
+
+    const replacementReasons = [
+        "Received spoiled/rotten produce",
+        "Item weight is significantly less than ordered",
+        "Wrong item received",
+        "Item withered/dried out",
+        "Insect/Pest damage visible",
+        "Others",
+    ];
+
+    const handleOpenReplacementModal = (orderId, itemId) => {
+        setReplacementModal({
+            isOpen: true,
+            selectedItemId: itemId,
+            selectedOrderId: orderId,
+            reason: "",
+            customReason: "",
+            imageFile: null,
+            imagePreview: null,
+            isLoading: false,
+        });
+    };
+
+    const handleCloseReplacementModal = () => {
+        setReplacementModal({
+            isOpen: false,
+            selectedItemId: null,
+            selectedOrderId: null,
+            reason: "",
+            customReason: "",
+            imageFile: null,
+            imagePreview: null,
+            isLoading: false,
+        });
+    };
+
+    const handleReplacementImageSelect = (e) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        const validation = validateImageFile(file);
+        if (!validation.valid) {
+            toast.error(validation.error);
+            return;
+        }
+
+        // Create preview URL
+        const previewUrl = URL.createObjectURL(file);
+        setReplacementModal((prev) => ({
+            ...prev,
+            imageFile: file,
+            imagePreview: previewUrl,
+        }));
+    };
+
+    const handleRemoveReplacementImage = () => {
+        if (replacementModal.imagePreview) {
+            URL.revokeObjectURL(replacementModal.imagePreview);
+        }
+        setReplacementModal((prev) => ({
+            ...prev,
+            imageFile: null,
+            imagePreview: null,
+        }));
+    };
+
+    const handleSubmitReplacementRequest = async () => {
+        // Validation: Reason required
+        if (!replacementModal.reason || replacementModal.reason.trim() === "") {
+            toast.error("Please select a replacement reason");
+            return;
+        }
+
+        // Validation: Custom reason required if "Others" selected
+        if (
+            replacementModal.reason === "Others" &&
+            (!replacementModal.customReason ||
+                !replacementModal.customReason.trim())
+        ) {
+            toast.error("Please enter a custom reason");
+            return;
+        }
+
+        // Validation: Image file is mandatory
+        if (!replacementModal.imageFile) {
+            toast.error("Please upload an image as evidence");
+            return;
+        }
+
+        // Validation: selectedItemId must be valid
+        if (!replacementModal.selectedItemId) {
+            toast.error("Invalid item selected. Please try again.");
+            return;
+        }
+
+        // Validation: selectedOrderId must be valid
+        if (!replacementModal.selectedOrderId) {
+            toast.error("Invalid order selected. Please try again.");
+            return;
+        }
+
+        setReplacementModal((prev) => ({ ...prev, isLoading: true }));
+
+        try {
+            let imageUrl = null;
+
+            // Upload image (mandatory at this point)
+            if (replacementModal.imageFile) {
+                const uploadResult = await uploadImage(
+                    replacementModal.imageFile,
+                    "request_replacement_images",
+                    user.id
+                );
+
+                if (!uploadResult.success) {
+                    toast.error(
+                        uploadResult.error ||
+                            "Failed to upload image. Please try again."
+                    );
+                    setReplacementModal((prev) => ({
+                        ...prev,
+                        isLoading: false,
+                    }));
+                    return;
+                }
+
+                // Ensure imageUrl is correctly captured
+                if (!uploadResult.url) {
+                    toast.error(
+                        "Image uploaded but URL not returned. Please try again."
+                    );
+                    setReplacementModal((prev) => ({
+                        ...prev,
+                        isLoading: false,
+                    }));
+                    return;
+                }
+
+                imageUrl = uploadResult.url;
+            }
+
+            // Determine final reason
+            const finalReason =
+                replacementModal.reason === "Others"
+                    ? replacementModal.customReason.trim()
+                    : replacementModal.reason;
+
+            // Validate final reason is not empty
+            if (!finalReason || finalReason.trim() === "") {
+                throw new Error("Replacement reason cannot be empty");
+            }
+
+            // Update order_items table with proper payload
+            const updatePayload = {
+                request_replacement_reason: finalReason,
+                request_replacement_image_url: imageUrl,
+                updated_at: new Date().toISOString(),
+            };
+
+            // console.log(
+            //     "Updating item with ID:",
+            //     replacementModal.selectedItemId
+            // );
+            // console.log("Update payload:", updatePayload);
+
+            const { data: updateData, error: updateError } = await supabase
+                .from("order_items")
+                .update(updatePayload)
+                .eq("id", replacementModal.selectedItemId)
+                .select();
+
+            if (updateError) {
+                console.error("Database update error:", updateError);
+                throw updateError;
+            }
+
+            if (!updateData || updateData.length === 0) {
+                throw new Error(
+                    "Failed to update order item. Item not found or no rows affected."
+                );
+            }
+
+            // console.log("Database update successful:", updateData);
+
+            // Update local state optimistically
+            const updatedOrders = orders.map((order) => {
+                if (order.id === replacementModal.selectedOrderId) {
+                    return {
+                        ...order,
+                        items: order.items.map((item) => {
+                            if (item.id === replacementModal.selectedItemId) {
+                                return {
+                                    ...item,
+                                    request_replacement_reason: finalReason,
+                                    request_replacement_image_url: imageUrl,
+                                };
+                            }
+                            return item;
+                        }),
+                    };
+                }
+                return order;
+            });
+
+            setOrders(updatedOrders);
+
+            // ==========================================
+            // MESSAGING LOGIC - Send notification to producer
+            // ==========================================
+            try {
+                // Step 1: Retrieve context data from local orders state
+                const order = orders.find(
+                    (o) => o.id === replacementModal.selectedOrderId
+                );
+                const item = order?.items.find(
+                    (i) => i.id === replacementModal.selectedItemId
+                );
+
+                if (!order || !item) {
+                    console.error(
+                        "Order or item not found in local state for messaging"
+                    );
+                    throw new Error(
+                        "Failed to retrieve order details for messaging"
+                    );
+                }
+
+                const farmerId = item.farmerId;
+                const orderId = order.id;
+                const itemName = item.name;
+
+                // Step 2: Check if conversation exists or create new one
+                const {
+                    data: existingConversation,
+                    error: conversationCheckError,
+                } = await supabase
+                    .from("conversations")
+                    .select("id")
+                    .eq("consumer_id", user.id)
+                    .eq("producer_id", farmerId)
+                    .single();
+
+                let conversationId;
+
+                if (
+                    conversationCheckError &&
+                    conversationCheckError.code === "PGRST116"
+                ) {
+                    // No conversation exists, create a new one
+                    const {
+                        data: newConversation,
+                        error: conversationCreateError,
+                    } = await supabase
+                        .from("conversations")
+                        .insert({
+                            consumer_id: user.id,
+                            producer_id: farmerId,
+                        })
+                        .select("id")
+                        .single();
+
+                    if (conversationCreateError) {
+                        throw new Error(
+                            `Failed to create conversation: ${conversationCreateError.message}`
+                        );
+                    }
+
+                    conversationId = newConversation.id;
+                } else if (conversationCheckError) {
+                    throw new Error(
+                        `Failed to check conversation: ${conversationCheckError.message}`
+                    );
+                } else {
+                    // Conversation exists
+                    conversationId = existingConversation.id;
+                }
+
+                // Step 3: Send message with replacement request details
+                const replacementRequestData = {
+                    orderId: orderId,
+                    itemName: itemName,
+                    reason: finalReason,
+                    proofUrl: imageUrl,
+                };
+                const messageBody = `:::REPLACEMENT_REQUEST_V1:::${JSON.stringify(
+                    replacementRequestData
+                )}`;
+
+                const { error: messageInsertError } = await supabase
+                    .from("messages")
+                    .insert({
+                        conversation_id: conversationId,
+                        sender_id: user.id,
+                        body: messageBody,
+                    });
+
+                if (messageInsertError) {
+                    console.error(
+                        "Failed to send message to producer:",
+                        messageInsertError
+                    );
+                    // Log error but don't throw - replacement request was already successful
+                } else {
+                    console.log("Message sent to producer successfully");
+                }
+            } catch (messagingError) {
+                console.error("Messaging logic error:", messagingError);
+                // Don't throw - the replacement request was already successful
+                // Just log the error for debugging
+            }
+            // ==========================================
+            // END OF MESSAGING LOGIC
+            // ==========================================
+
+            toast.success("Replacement request submitted successfully!");
+            handleCloseReplacementModal();
+        } catch (error) {
+            console.error("Error submitting replacement request:", error);
+            toast.error(
+                error.message ||
+                    "Failed to submit replacement request. Please try again."
+            );
+        } finally {
+            setReplacementModal((prev) => ({ ...prev, isLoading: false }));
         }
     };
 
@@ -1238,83 +1738,130 @@ function Orders() {
                                                                                     </div>
                                                                                     <div className="flex-1">
                                                                                         <div className="flex items-start justify-between mb-1">
-                                                                                            <Link
-                                                                                                to={`/product/${item.product_id}`}
-                                                                                                className="font-medium text-green-700"
-                                                                                            >
-                                                                                                {
-                                                                                                    item.name
-                                                                                                }
-                                                                                            </Link>
-                                                                                            {order.status ===
-                                                                                                "completed" &&
-                                                                                                (productReviews[
-                                                                                                    item
-                                                                                                        .product_id
-                                                                                                ] ? (
+                                                                                            <div>
+                                                                                                <div className="mb-2">
                                                                                                     <Link
-                                                                                                        to={`/product/${item.product_id}?reviewFocus=user`}
-                                                                                                        onClick={(
-                                                                                                            e
-                                                                                                        ) =>
-                                                                                                            e.stopPropagation()
+                                                                                                        to={`/product/${item.product_id}`}
+                                                                                                        className="font-medium text-green-700"
+                                                                                                    >
+                                                                                                        {
+                                                                                                            item.name
                                                                                                         }
-                                                                                                        className="px-3 py-1.5 text-sm text-green-500 hover:text-green-700 flex items-center gap-1.5 group transition-colors"
-                                                                                                    >
-                                                                                                        <Icon
-                                                                                                            icon="mingcute:star-fill"
-                                                                                                            width="14"
-                                                                                                            height="14"
-                                                                                                            className="text-yellow-400 group-hover:text-yellow-500"
-                                                                                                        />
-                                                                                                        View
-                                                                                                        Review
                                                                                                     </Link>
-                                                                                                ) : (
-                                                                                                    <button
-                                                                                                        type="button"
-                                                                                                        onClick={(
-                                                                                                            e
-                                                                                                        ) => {
-                                                                                                            e.stopPropagation(); // prevent collapsing the row
-                                                                                                            handleOpenReviewModal(
-                                                                                                                item.product_id,
-                                                                                                                item.name
-                                                                                                            );
-                                                                                                        }}
-                                                                                                        className="px-3 py-1.5 text-sm border border-gray-300 text-gray-600 rounded-lg hover:bg-gray-50 transition-colors flex items-center gap-1.5"
-                                                                                                    >
-                                                                                                        <Icon
-                                                                                                            icon="mingcute:star-line"
-                                                                                                            width="14"
-                                                                                                            height="14"
-                                                                                                        />
-                                                                                                        Rate
-                                                                                                        &
-                                                                                                        Review
-                                                                                                    </button>
-                                                                                                ))}
-                                                                                        </div>
-                                                                                        <div className="text-sm text-gray-600">
-                                                                                            {
-                                                                                                item.quantity
-                                                                                            }{" "}
-                                                                                            kg
-                                                                                            x
-                                                                                            ₱
-                                                                                            {item.price.toFixed(
-                                                                                                2
-                                                                                            )}
-                                                                                        </div>
-                                                                                        <div className="text-sm text-primary font-medium mt-1">
-                                                                                            Total:
-                                                                                            ₱
-                                                                                            {(
-                                                                                                item.quantity *
-                                                                                                item.price
-                                                                                            ).toFixed(
-                                                                                                2
-                                                                                            )}
+                                                                                                </div>
+                                                                                                <div>
+                                                                                                    <div className="text-sm text-gray-600">
+                                                                                                        {
+                                                                                                            item.quantity
+                                                                                                        }{" "}
+                                                                                                        kg
+                                                                                                        x
+                                                                                                        ₱
+                                                                                                        {item.price.toFixed(
+                                                                                                            2
+                                                                                                        )}
+                                                                                                    </div>
+                                                                                                    <div className="text-sm text-primary font-medium mt-1">
+                                                                                                        Total:
+                                                                                                        ₱
+                                                                                                        {(
+                                                                                                            item.quantity *
+                                                                                                            item.price
+                                                                                                        ).toFixed(
+                                                                                                            2
+                                                                                                        )}
+                                                                                                    </div>
+                                                                                                </div>
+                                                                                            </div>
+                                                                                            <div className="flex flex-col items-end gap-2">
+                                                                                                {order.status ===
+                                                                                                    "completed" &&
+                                                                                                    (productReviews[
+                                                                                                        item
+                                                                                                            .product_id
+                                                                                                    ] ? (
+                                                                                                        <Link
+                                                                                                            to={`/product/${item.product_id}?reviewFocus=user`}
+                                                                                                            onClick={(
+                                                                                                                e
+                                                                                                            ) =>
+                                                                                                                e.stopPropagation()
+                                                                                                            }
+                                                                                                            className="px-3 py-1.5 text-sm text-green-500 hover:text-green-700 flex items-center gap-1.5 group transition-colors"
+                                                                                                        >
+                                                                                                            <Icon
+                                                                                                                icon="mingcute:star-fill"
+                                                                                                                width="14"
+                                                                                                                height="14"
+                                                                                                                className="text-yellow-400 group-hover:text-yellow-500"
+                                                                                                            />
+                                                                                                            View
+                                                                                                            Review
+                                                                                                        </Link>
+                                                                                                    ) : (
+                                                                                                        <button
+                                                                                                            type="button"
+                                                                                                            onClick={(
+                                                                                                                e
+                                                                                                            ) => {
+                                                                                                                e.stopPropagation(); // prevent collapsing the row
+                                                                                                                handleOpenReviewModal(
+                                                                                                                    item.product_id,
+                                                                                                                    item.name
+                                                                                                                );
+                                                                                                            }}
+                                                                                                            className="px-3 py-1.5 text-sm border border-gray-300 text-gray-600 rounded-lg hover:bg-gray-50 transition-colors flex items-center gap-1.5"
+                                                                                                        >
+                                                                                                            <Icon
+                                                                                                                icon="mingcute:star-line"
+                                                                                                                width="14"
+                                                                                                                height="14"
+                                                                                                            />
+                                                                                                            Rate
+                                                                                                            &
+                                                                                                            Review
+                                                                                                        </button>
+                                                                                                    ))}
+                                                                                                {order.status ===
+                                                                                                    "completed" &&
+                                                                                                    new Date(
+                                                                                                        order.updated_at
+                                                                                                    ).toDateString() ===
+                                                                                                        new Date().toDateString() &&
+                                                                                                    (item.request_replacement_reason ? (
+                                                                                                        <div className="px-3 py-1.5 text-sm bg-orange-50 text-orange-600 rounded-lg flex items-center gap-1.5 border border-orange-200">
+                                                                                                            <Icon
+                                                                                                                icon="mingcute:alert-line"
+                                                                                                                width="14"
+                                                                                                                height="14"
+                                                                                                            />
+                                                                                                            Replacement
+                                                                                                            Requested
+                                                                                                        </div>
+                                                                                                    ) : (
+                                                                                                        <button
+                                                                                                            type="button"
+                                                                                                            onClick={(
+                                                                                                                e
+                                                                                                            ) => {
+                                                                                                                e.stopPropagation();
+                                                                                                                handleOpenReplacementModal(
+                                                                                                                    order.id,
+                                                                                                                    item.id
+                                                                                                                );
+                                                                                                            }}
+                                                                                                            className="px-3 py-1.5 text-sm border border-gray-300 text-gray-600 rounded-lg hover:bg-gray-50 transition-colors flex items-center gap-1.5"
+                                                                                                        >
+                                                                                                            <Icon
+                                                                                                                icon="mingcute:refresh-2-line"
+                                                                                                                width="14"
+                                                                                                                height="14"
+                                                                                                            />
+                                                                                                            Request
+                                                                                                            Replacement
+                                                                                                        </button>
+                                                                                                    ))}
+                                                                                            </div>
                                                                                         </div>
                                                                                     </div>
                                                                                 </div>
@@ -1530,7 +2077,7 @@ function Orders() {
                                                         onClick={(e) => {
                                                             e.stopPropagation();
                                                             handleTrackOrder(
-                                                                order.id
+                                                                order
                                                             );
                                                         }}
                                                         className="px-4 py-2 text-sm border border-primary text-primary rounded-lg hover:bg-primary/5 transition-colors"
@@ -1627,6 +2174,349 @@ function Orders() {
                         >
                             OK
                         </button>
+                    </div>
+                </>
+            )}
+
+            {/* Replacement Request Modal */}
+            {replacementModal.isOpen && (
+                <>
+                    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black opacity-50"></div>
+                    <div className="bg-white rounded-lg shadow-xl p-6 max-w-md w-full fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-[10000] max-h-[90vh] overflow-y-auto">
+                        {/* Header */}
+                        <div className="flex items-center justify-between mb-4">
+                            <h2 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
+                                <Icon
+                                    icon="mingcute:refresh-2-line"
+                                    width="20"
+                                    height="20"
+                                    className="text-orange-600"
+                                />
+                                Request Replacement
+                            </h2>
+                            <button
+                                onClick={handleCloseReplacementModal}
+                                className="text-gray-400 hover:text-gray-600 transition-colors"
+                            >
+                                <Icon
+                                    icon="mingcute:close-line"
+                                    width="20"
+                                    height="20"
+                                />
+                            </button>
+                        </div>
+
+                        {/* Reason Selection */}
+                        <div className="mb-4">
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                                Reason for Replacement{" "}
+                                <span className="text-red-500">*</span>
+                            </label>
+                            <select
+                                value={replacementModal.reason}
+                                onChange={(e) =>
+                                    setReplacementModal((prev) => ({
+                                        ...prev,
+                                        reason: e.target.value,
+                                    }))
+                                }
+                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 text-gray-700"
+                            >
+                                <option value="">-- Select a reason --</option>
+                                {replacementReasons.map((reason) => (
+                                    <option key={reason} value={reason}>
+                                        {reason}
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+
+                        {/* Custom Reason (if Others selected) */}
+                        {replacementModal.reason === "Others" && (
+                            <div className="mb-4">
+                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    Please specify{" "}
+                                    <span className="text-red-500">*</span>
+                                </label>
+                                <textarea
+                                    value={replacementModal.customReason}
+                                    onChange={(e) =>
+                                        setReplacementModal((prev) => ({
+                                            ...prev,
+                                            customReason: e.target.value,
+                                        }))
+                                    }
+                                    placeholder="Enter your reason..."
+                                    rows="3"
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 text-gray-700"
+                                />
+                            </div>
+                        )}
+
+                        {/* Image Upload */}
+                        <div className="mb-4">
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                                Upload Image (Optional)
+                            </label>
+                            {replacementModal.imagePreview ? (
+                                <div className="relative">
+                                    <img
+                                        src={replacementModal.imagePreview}
+                                        alt="Replacement preview"
+                                        className="w-full h-48 object-cover rounded-lg border border-gray-300"
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={handleRemoveReplacementImage}
+                                        className="absolute top-2 right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600 transition-colors"
+                                    >
+                                        <Icon
+                                            icon="mingcute:close-line"
+                                            width="16"
+                                            height="16"
+                                        />
+                                    </button>
+                                </div>
+                            ) : (
+                                <>
+                                    <button
+                                        type="button"
+                                        onClick={() =>
+                                            replacementFileInputRef.current?.click()
+                                        }
+                                        className="w-full p-6 border-2 border-dashed border-gray-300 rounded-lg hover:border-orange-400 hover:bg-orange-50 transition-colors flex flex-col items-center justify-center gap-2 cursor-pointer"
+                                    >
+                                        <Icon
+                                            icon="mingcute:image-add-line"
+                                            width="24"
+                                            height="24"
+                                            className="text-gray-400"
+                                        />
+                                        <span className="text-sm text-gray-600">
+                                            Click to upload image
+                                        </span>
+                                        <span className="text-xs text-gray-400">
+                                            JPEG, PNG, WebP (max 5MB)
+                                        </span>
+                                    </button>
+                                    <input
+                                        ref={replacementFileInputRef}
+                                        type="file"
+                                        accept="image/jpeg,image/jpg,image/png,image/webp"
+                                        onChange={handleReplacementImageSelect}
+                                        className="hidden"
+                                    />
+                                </>
+                            )}
+                        </div>
+
+                        {/* Buttons */}
+                        <div className="flex gap-3 pt-4">
+                            <button
+                                type="button"
+                                onClick={handleCloseReplacementModal}
+                                disabled={replacementModal.isLoading}
+                                className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                type="button"
+                                onClick={handleSubmitReplacementRequest}
+                                disabled={
+                                    replacementModal.isLoading ||
+                                    !replacementModal.reason ||
+                                    !replacementModal.imageFile ||
+                                    (replacementModal.reason === "Others" &&
+                                        !replacementModal.customReason?.trim())
+                                }
+                                className="flex-1 px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                            >
+                                {replacementModal.isLoading ? (
+                                    <>
+                                        <Icon
+                                            icon="mingcute:loading-line"
+                                            width="16"
+                                            height="16"
+                                            className="animate-spin"
+                                        />
+                                        Submitting...
+                                    </>
+                                ) : (
+                                    <>
+                                        <Icon
+                                            icon="mingcute:check-line"
+                                            width="16"
+                                            height="16"
+                                        />
+                                        Submit Request
+                                    </>
+                                )}
+                            </button>
+                        </div>
+                    </div>
+                </>
+            )}
+
+            {/* Track Order Modal */}
+            {trackingModal.open && trackingModal.order && (
+                <>
+                    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black opacity-50"></div>
+                    <div className="bg-white rounded-lg shadow-xl p-6 max-w-md w-full fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-[10000] max-h-[90vh] overflow-y-auto">
+                        {/* Close Button */}
+                        <div className="flex justify-end mb-4">
+                            <button
+                                onClick={() =>
+                                    setTrackingModal({
+                                        open: false,
+                                        order: null,
+                                    })
+                                }
+                                className="text-gray-400 hover:text-gray-600 transition-colors"
+                            >
+                                <Icon
+                                    icon="mingcute:close-line"
+                                    width="20"
+                                    height="20"
+                                />
+                            </button>
+                        </div>
+
+                        {/* Conditional Content Based on Delivery Method */}
+                        {trackingModal.order.deliveryMethod ===
+                        "Home Delivery" ? (
+                            <>
+                                {/* Home Delivery Content */}
+                                <div className="text-center">
+                                    <div className="inline-flex items-center justify-center w-16 h-16 bg-blue-50 rounded-full mb-4">
+                                        <Icon
+                                            icon="mingcute:time-line"
+                                            width="32"
+                                            height="32"
+                                            className="text-blue-600"
+                                        />
+                                    </div>
+                                    <h2 className="text-xl font-semibold text-gray-800 mb-3">
+                                        Delivery Promise
+                                    </h2>
+                                    <p className="text-gray-700 mb-4 leading-relaxed">
+                                        Your order is guaranteed to arrive
+                                        before 12:00 AM tonight.
+                                    </p>
+                                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
+                                        <p className="text-sm text-blue-700">
+                                            <span className="font-semibold">
+                                                Note:{" "}
+                                            </span>
+                                            To ensure freshness, orders not
+                                            completed by the end of the day are
+                                            automatically cancelled.
+                                        </p>
+                                    </div>
+                                    <div className="bg-gray-50 rounded-lg p-4 text-left mb-4">
+                                        <p className="text-sm text-gray-600 mb-2">
+                                            <span className="font-semibold">
+                                                Order ID:
+                                            </span>{" "}
+                                            #{trackingModal.order.id}
+                                        </p>
+                                        <p className="text-sm text-gray-600">
+                                            <span className="font-semibold">
+                                                Status:
+                                            </span>{" "}
+                                            {trackingModal.order.status ===
+                                            "ready for pickup"
+                                                ? "Out for Delivery"
+                                                : trackingModal.order.status}
+                                        </p>
+                                    </div>
+                                </div>
+                            </>
+                        ) : (
+                            <>
+                                {/* Farm Pickup Content */}
+                                <div className="text-center">
+                                    <div className="inline-flex items-center justify-center w-16 h-16 bg-green-50 rounded-full mb-4">
+                                        <Icon
+                                            icon="mingcute:store-line"
+                                            width="32"
+                                            height="32"
+                                            className="text-green-600"
+                                        />
+                                    </div>
+                                    <h2 className="text-xl font-semibold text-gray-800 mb-3">
+                                        Pickup Promise
+                                    </h2>
+                                    <p className="text-gray-700 mb-4 leading-relaxed">
+                                        Please pick up your order at{" "}
+                                        <span className="font-semibold">
+                                            {trackingModal.order
+                                                .sellerAddress || "the farm"}
+                                        </span>{" "}
+                                        before 12:00 AM tonight.
+                                    </p>
+                                    <div className="bg-green-50 border border-green-200 rounded-lg p-3 mb-4">
+                                        <p className="text-sm text-green-700">
+                                            <span className="font-semibold">
+                                                Note:{" "}
+                                            </span>
+                                            Unclaimed orders are automatically
+                                            cancelled at midnight to ensure
+                                            quality.
+                                        </p>
+                                    </div>
+                                    <div className="bg-gray-50 rounded-lg p-4 text-left mb-4">
+                                        <p className="text-sm text-gray-600 mb-2">
+                                            <span className="font-semibold">
+                                                Order ID:
+                                            </span>{" "}
+                                            #{trackingModal.order.id}
+                                        </p>
+                                        <p className="text-sm text-gray-600 mb-2">
+                                            <span className="font-semibold">
+                                                Status:
+                                            </span>{" "}
+                                            {trackingModal.order.status ===
+                                            "ready for pickup"
+                                                ? "Ready for Pickup"
+                                                : trackingModal.order.status}
+                                        </p>
+                                        <p className="text-sm text-gray-600">
+                                            <span className="font-semibold">
+                                                Seller:
+                                            </span>{" "}
+                                            {trackingModal.order.sellerName ||
+                                                "N/A"}
+                                        </p>
+                                    </div>
+                                </div>
+                            </>
+                        )}
+
+                        {/* Buttons */}
+                        <div className="flex gap-3">
+                            <button
+                                onClick={() =>
+                                    handleMessageSeller(
+                                        trackingModal.order.sellerId
+                                    )
+                                }
+                                className="flex-1 px-4 py-2 border border-primary text-primary rounded-lg hover:bg-primary/5 transition-colors font-medium"
+                            >
+                                Message Seller
+                            </button>
+                            <button
+                                onClick={() =>
+                                    setTrackingModal({
+                                        open: false,
+                                        order: null,
+                                    })
+                                }
+                                className="flex-1 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors font-medium"
+                            >
+                                Got it
+                            </button>
+                        </div>
                     </div>
                 </>
             )}

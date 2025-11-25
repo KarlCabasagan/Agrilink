@@ -23,6 +23,11 @@ function Checkout() {
     const [hasShownLiveProductModal, setHasShownLiveProductModal] =
         useState(false); // One-time guard to avoid spamming modals
 
+    // Delivery capacity tracking state
+    const [farmersAtCapacity, setFarmersAtCapacity] = useState([]);
+    const [deliveryCapacityLoading, setDeliveryCapacityLoading] =
+        useState(true);
+
     // Modal state
     const [modal, setModal] = useState({
         open: false,
@@ -158,6 +163,13 @@ function Checkout() {
 
     const hasIneligibleFarmers = getIneligibleFarmers().length > 0;
     const finalTotal = getUpdatedTotalAmount() + deliveryFee;
+
+    // Helper function to check which farmers have reached their daily delivery capacity
+    const getFarmersAtCapacity = () => {
+        return farmersAtCapacity;
+    };
+
+    const isHomeDeliveryAvailable = getFarmersAtCapacity().length === 0;
 
     // Fetch user profile data and validate completeness
     useEffect(() => {
@@ -456,6 +468,185 @@ function Checkout() {
 
         return () => subscriptionRef.unsubscribe();
     }, [currentCartItems.length, orderPlaced]);
+
+    // Fetch delivery capacity: farmer delivery limits and today's order counts
+    // Includes Real-time subscriptions for Profiles and Orders
+    useEffect(() => {
+        if (!currentCartItems || currentCartItems.length === 0 || orderPlaced) {
+            return;
+        }
+
+        let activeSubscription = null;
+
+        const fetchDeliveryCapacity = async () => {
+            try {
+                // 1. Get unique farmer IDs from cart (Fixed: use farmerId, not seller_id)
+                // Filter out undefined, null, or temporary dummy IDs (which usually start with 'farmer_')
+                const farmerIds = Array.from(
+                    new Set(
+                        currentCartItems
+                            .map((item) => item.farmerId)
+                            .filter(
+                                (id) =>
+                                    id && !id.toString().startsWith("farmer_")
+                            )
+                    )
+                );
+
+                if (farmerIds.length === 0) {
+                    setFarmersAtCapacity([]);
+                    setDeliveryCapacityLoading(false);
+                    return;
+                }
+
+                setDeliveryCapacityLoading(true);
+
+                // 2. Fetch farmer profiles with delivery_limit info
+                const { data: farmerProfiles, error: profileError } =
+                    await supabase
+                        .from("profiles")
+                        .select("id, name, daily_delivery_limit")
+                        .in("id", farmerIds);
+
+                if (profileError) throw profileError;
+
+                // 3. Calculate today's date range (UTC)
+                const today = new Date();
+                const startOfToday = new Date(
+                    Date.UTC(
+                        today.getUTCFullYear(),
+                        today.getUTCMonth(),
+                        today.getUTCDate(),
+                        0,
+                        0,
+                        0,
+                        0
+                    )
+                ).toISOString();
+                const endOfToday = new Date(
+                    Date.UTC(
+                        today.getUTCFullYear(),
+                        today.getUTCMonth(),
+                        today.getUTCDate(),
+                        23,
+                        59,
+                        59,
+                        999
+                    )
+                ).toISOString();
+
+                // 4. Query today's active home delivery orders per farmer
+                const { data: todayOrders, error: orderError } = await supabase
+                    .from("orders")
+                    .select("seller_id")
+                    .in("seller_id", farmerIds)
+                    .eq("delivery_method_id", 2) // Home delivery
+                    .neq("status_id", 8) // Exclude cancelled orders
+                    .gte("created_at", startOfToday)
+                    .lte("created_at", endOfToday);
+
+                if (orderError) throw orderError;
+
+                // 5. Count orders per farmer
+                const orderCounts = {};
+                farmerIds.forEach((id) => {
+                    orderCounts[id] = 0;
+                });
+                todayOrders.forEach((order) => {
+                    orderCounts[order.seller_id] =
+                        (orderCounts[order.seller_id] || 0) + 1;
+                });
+
+                // 6. Determine which farmers are at capacity
+                const atCapacity = farmerProfiles
+                    .filter((farmer) => {
+                        const limit = parseInt(
+                            farmer.daily_delivery_limit ?? 3
+                        );
+                        const orderCount = orderCounts[farmer.id] || 0;
+                        // At capacity if limit is 0 (disabled) or if order count >= limit
+                        return limit === 0 || orderCount >= limit;
+                    })
+                    .map((farmer) => ({
+                        id: farmer.id,
+                        name: farmer.name,
+                    }));
+
+                setFarmersAtCapacity(atCapacity);
+
+                // Auto-switch to pickup if home delivery pre-selected but unavailable
+                if (
+                    atCapacity.length > 0 &&
+                    formData.deliveryMethod === "delivery"
+                ) {
+                    setFormData((prev) => ({
+                        ...prev,
+                        deliveryMethod: "pickup",
+                    }));
+                }
+            } catch (error) {
+                console.error("Error fetching delivery capacity:", error);
+            } finally {
+                setDeliveryCapacityLoading(false);
+            }
+        };
+
+        // Initial Fetch
+        fetchDeliveryCapacity();
+
+        // ---------------------------------------------------------
+        // REAL-TIME SUBSCRIPTION LOGIC
+        // ---------------------------------------------------------
+
+        // Extract valid IDs for the filter
+        const validFarmerIds = Array.from(
+            new Set(
+                currentCartItems
+                    .map((item) => item.farmerId)
+                    .filter((id) => id && !id.toString().startsWith("farmer_"))
+            )
+        );
+
+        if (validFarmerIds.length > 0) {
+            activeSubscription = supabase
+                .channel("checkout-delivery-capacity")
+                // Listen for Limit Changes in Profiles
+                .on(
+                    "postgres_changes",
+                    {
+                        event: "UPDATE",
+                        schema: "public",
+                        table: "profiles",
+                        filter: `id=in.(${validFarmerIds.join(",")})`,
+                    },
+                    () => {
+                        console.log(
+                            "Real-time: Farmer updated delivery settings"
+                        );
+                        fetchDeliveryCapacity();
+                    }
+                )
+                // Listen for New Orders (Inventory/Limit Impact)
+                .on(
+                    "postgres_changes",
+                    {
+                        event: "*", // Listen to INSERT (new order) and UPDATE (cancelled/status change)
+                        schema: "public",
+                        table: "orders",
+                        filter: `seller_id=in.(${validFarmerIds.join(",")})`,
+                    },
+                    () => {
+                        console.log("Real-time: Order count changed");
+                        fetchDeliveryCapacity();
+                    }
+                )
+                .subscribe();
+        }
+
+        return () => {
+            if (activeSubscription) supabase.removeChannel(activeSubscription);
+        };
+    }, [currentCartItems, orderPlaced, formData.deliveryMethod]);
 
     const validateForm = () => {
         const newErrors = {};
@@ -905,7 +1096,13 @@ function Checkout() {
                                         </div>
                                     </label>
 
-                                    <label className="flex items-center p-4 border rounded-lg cursor-pointer hover:bg-gray-50 transition-colors">
+                                    <label
+                                        className={`flex items-center p-4 border rounded-lg transition-colors ${
+                                            !isHomeDeliveryAvailable
+                                                ? "opacity-60 cursor-not-allowed bg-gray-50"
+                                                : "cursor-pointer hover:bg-gray-50"
+                                        }`}
+                                    >
                                         <input
                                             type="radio"
                                             name="deliveryMethod"
@@ -915,6 +1112,7 @@ function Checkout() {
                                                 "delivery"
                                             }
                                             onChange={handleInputChange}
+                                            disabled={!isHomeDeliveryAvailable}
                                             className="mr-3 text-primary focus:ring-primary"
                                         />
                                         <div className="flex items-center gap-3 flex-1">
@@ -922,29 +1120,59 @@ function Checkout() {
                                                 icon="mingcute:home-line"
                                                 width="24"
                                                 height="24"
-                                                className="text-blue-600"
+                                                className={
+                                                    isHomeDeliveryAvailable
+                                                        ? "text-blue-600"
+                                                        : "text-gray-400"
+                                                }
                                             />
                                             <div>
-                                                <span className="font-medium text-gray-800">
+                                                <span
+                                                    className={`font-medium ${
+                                                        isHomeDeliveryAvailable
+                                                            ? "text-gray-800"
+                                                            : "text-gray-600"
+                                                    }`}
+                                                >
                                                     Home Delivery
                                                 </span>
-                                                <p className="text-sm text-gray-600">
-                                                    Get your order delivered to
-                                                    your doorstep
-                                                </p>
-                                                <p className="text-sm text-primary font-medium">
-                                                    + ₱
-                                                    {totalPossibleDeliveryFee.toFixed(
-                                                        2
-                                                    )}{" "}
-                                                    delivery fee
-                                                    {hasIneligibleFarmers && (
-                                                        <span className="text-orange-600 text-xs ml-1">
-                                                            (TBD - min. order
-                                                            not met)
-                                                        </span>
-                                                    )}
-                                                </p>
+                                                {!isHomeDeliveryAvailable && (
+                                                    <p className="text-sm text-red-600 font-medium mt-1">
+                                                        Not available -{" "}
+                                                        {farmersAtCapacity
+                                                            .map((f) => f.name)
+                                                            .join(", ")}{" "}
+                                                        {farmersAtCapacity.length ===
+                                                        1
+                                                            ? "has"
+                                                            : "have"}{" "}
+                                                        reached their daily
+                                                        delivery limit
+                                                    </p>
+                                                )}
+                                                {isHomeDeliveryAvailable && (
+                                                    <>
+                                                        <p className="text-sm text-gray-600">
+                                                            Get your order
+                                                            delivered to your
+                                                            doorstep
+                                                        </p>
+                                                        <p className="text-sm text-primary font-medium">
+                                                            + ₱
+                                                            {totalPossibleDeliveryFee.toFixed(
+                                                                2
+                                                            )}{" "}
+                                                            delivery fee
+                                                            {hasIneligibleFarmers && (
+                                                                <span className="text-orange-600 text-xs ml-1">
+                                                                    (TBD - min.
+                                                                    order not
+                                                                    met)
+                                                                </span>
+                                                            )}
+                                                        </p>
+                                                    </>
+                                                )}
                                             </div>
                                         </div>
                                     </label>

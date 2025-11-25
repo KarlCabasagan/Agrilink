@@ -1,4 +1,4 @@
-import { useState, useEffect, useContext, useCallback } from "react";
+import { useState, useEffect, useContext, useCallback, useRef } from "react";
 import { Icon } from "@iconify/react";
 import { useParams, useNavigate } from "react-router-dom";
 import { AuthContext } from "../../App.jsx";
@@ -7,6 +7,37 @@ import ConfirmModal from "../../components/ConfirmModal";
 import { deleteImageFromUrl, uploadImage } from "../../utils/imageUpload";
 import supabase from "../../SupabaseClient.jsx";
 import { getReviewerAvatarUrl } from "../../utils/avatarUtils.js";
+
+// Helper component for lazy-loading review images with smooth transition
+function ReviewImage({ src, alt, className }) {
+    const [isLoading, setIsLoading] = useState(true);
+    const imgRef = useRef(null);
+
+    useEffect(() => {
+        // If the image is already loaded from cache, cancel loading state immediately
+        if (imgRef.current && imgRef.current.complete) {
+            setIsLoading(false);
+        }
+    }, []);
+
+    return (
+        <div className={`relative overflow-hidden bg-gray-100 ${className}`}>
+            {isLoading && (
+                <div className="absolute inset-0 bg-gray-200 animate-pulse z-10" />
+            )}
+            <img
+                ref={imgRef}
+                src={src}
+                alt={alt}
+                className={`w-full h-full object-cover transition-opacity duration-300 ${
+                    isLoading ? "opacity-0" : "opacity-100"
+                }`}
+                onLoad={() => setIsLoading(false)}
+                onError={() => setIsLoading(false)}
+            />
+        </div>
+    );
+}
 
 // Helper to fetch crops with specific columns ordered by name
 const fetchCropsHelper = async () => {
@@ -250,6 +281,7 @@ function ProducerProduct() {
                             id,
                             rating,
                             review,
+                            image_url,
                             created_at,
                             profiles:user_id (
                                 name,
@@ -326,6 +358,7 @@ function ProducerProduct() {
                         id: review.id,
                         rating: review.rating,
                         comment: review.review,
+                        image: review.image_url || null,
                         date: review.created_at,
                         userName: review.profiles.name,
                         userImage: getReviewerAvatarUrl(review.profiles),
@@ -495,6 +528,7 @@ function ProducerProduct() {
                             id,
                             rating,
                             review,
+                            image_url,
                             created_at,
                             profiles:user_id (
                                 name,
@@ -521,6 +555,7 @@ function ProducerProduct() {
                             id: reviewData.id,
                             rating: reviewData.rating,
                             comment: reviewData.review,
+                            image: reviewData.image_url || null,
                             date: reviewData.created_at,
                             userName: reviewData.profiles.name,
                             userImage: getReviewerAvatarUrl(
@@ -2032,6 +2067,15 @@ function ProducerProduct() {
                                                                                     review.comment
                                                                                 }
                                                                             </p>
+                                                                            {review.image && (
+                                                                                <ReviewImage
+                                                                                    src={
+                                                                                        review.image
+                                                                                    }
+                                                                                    alt="Review"
+                                                                                    className="mt-3 mb-3 max-w-xs rounded-lg h-40 w-40"
+                                                                                />
+                                                                            )}
                                                                             <div className="flex items-center justify-between gap-4 text-sm text-gray-500">
                                                                                 {review.helpfulCount >
                                                                                     0 && (

@@ -1,4 +1,4 @@
-import { useState, useContext, useEffect } from "react";
+import { useState, useContext, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { Icon } from "@iconify/react";
 import ProducerNavigationBar from "../../components/ProducerNavigationBar";
@@ -26,6 +26,22 @@ function CropRecommendation() {
         displayedCompetitionPercentages,
         setDisplayedCompetitionPercentages,
     ] = useState({});
+
+    // Refs to avoid stale closure in realtime subscription callback
+    // These are synchronized with state to ensure latest values are always available
+    const totalProducersRef = useRef(0);
+    const plantingCountsRef = useRef({});
+
+    // Helper functions to sync refs with state simultaneously
+    const setTotalProducersWithRef = (value) => {
+        setTotalProducers(value);
+        totalProducersRef.current = value;
+    };
+
+    const setPlantingCountsWithRef = (value) => {
+        setPlantingCounts(value);
+        plantingCountsRef.current = value;
+    };
 
     const fetchInitialData = async () => {
         if (!user) return;
@@ -75,9 +91,10 @@ function CropRecommendation() {
             return acc;
         }, {});
 
-        // Store totalProducers and plantingCounts in state for reuse
-        setTotalProducers(totalProducers);
-        setPlantingCounts(plantingCounts);
+        // Store totalProducers and plantingCounts in state and refs for reuse
+        // Using ref setters ensures realtime callback always has current values
+        setTotalProducersWithRef(totalProducers);
+        setPlantingCountsWithRef(plantingCounts);
 
         const { data, error } = await supabase
             .from("crops")
@@ -504,14 +521,167 @@ function CropRecommendation() {
                     table: "planted_crops",
                 },
                 (payload) => {
-                    // Compute the event's user id
-                    const eventUserId = payload.new?.user_id ?? payload.old?.user_id;
+                    // Only react to other users' plantings
+                    if (payload.new?.user_id === user.id) return;
 
-                    // Only ignore events from the current user; refetch for all other events
-                    if (eventUserId === user.id) return;
+                    const eventType = payload.eventType;
+                    const cropId =
+                        eventType === "DELETE"
+                            ? payload.old?.crop_id
+                            : payload.new?.crop_id;
 
-                    // Refetch crops and competition data to keep competition percentages in sync
-                    fetchCropsAndCompetition();
+                    if (!cropId) return;
+
+                    // For DELETE events, always decrement the planting count
+                    if (eventType === "DELETE") {
+                        setCrops((prevCrops) =>
+                            prevCrops.map((crop) => {
+                                if (crop.id !== cropId) return crop;
+
+                                // Use ref values instead of stale closure variables
+                                const currentCount =
+                                    plantingCountsRef.current[cropId] || 0;
+                                const currentProducers =
+                                    totalProducersRef.current;
+
+                                // Decrement planting count
+                                const newCount = Math.max(0, currentCount - 1);
+
+                                // Compute new percentage using current producer count
+                                const newPercentage =
+                                    currentProducers > 0
+                                        ? Math.round(
+                                              (newCount / currentProducers) *
+                                                  100
+                                          )
+                                        : 0;
+
+                                // Recalculate recommendation and color
+                                const { recommendation, color } =
+                                    getRecommendationFromPercentage(
+                                        newPercentage,
+                                        crop.demandLevel
+                                    );
+
+                                // Update ref for next callback execution
+                                setPlantingCountsWithRef({
+                                    ...plantingCountsRef.current,
+                                    [cropId]: newCount,
+                                });
+
+                                return {
+                                    ...crop,
+                                    plantingPercentage: newPercentage,
+                                    recommendation,
+                                    color,
+                                };
+                            })
+                        );
+                    }
+                    // For UPDATE events, only decrement if is_harvested changed from false to true
+                    else if (eventType === "UPDATE") {
+                        if (
+                            payload.old?.is_harvested === false &&
+                            payload.new?.is_harvested === true
+                        ) {
+                            setCrops((prevCrops) =>
+                                prevCrops.map((crop) => {
+                                    if (crop.id !== cropId) return crop;
+
+                                    // Use ref values instead of stale closure variables
+                                    const currentCount =
+                                        plantingCountsRef.current[cropId] || 0;
+                                    const currentProducers =
+                                        totalProducersRef.current;
+
+                                    // Decrement planting count
+                                    const newCount = Math.max(
+                                        0,
+                                        currentCount - 1
+                                    );
+
+                                    // Compute new percentage using current producer count
+                                    const newPercentage =
+                                        currentProducers > 0
+                                            ? Math.round(
+                                                  (newCount /
+                                                      currentProducers) *
+                                                      100
+                                              )
+                                            : 0;
+
+                                    // Recalculate recommendation and color
+                                    const { recommendation, color } =
+                                        getRecommendationFromPercentage(
+                                            newPercentage,
+                                            crop.demandLevel
+                                        );
+
+                                    // Update ref for next callback execution
+                                    setPlantingCountsWithRef({
+                                        ...plantingCountsRef.current,
+                                        [cropId]: newCount,
+                                    });
+
+                                    return {
+                                        ...crop,
+                                        plantingPercentage: newPercentage,
+                                        recommendation,
+                                        color,
+                                    };
+                                })
+                            );
+                        }
+                    }
+                    // For INSERT events, increment the planting count
+                    else if (eventType === "INSERT") {
+                        if (!payload.new?.is_harvested) {
+                            setCrops((prevCrops) =>
+                                prevCrops.map((crop) => {
+                                    if (crop.id !== cropId) return crop;
+
+                                    // Use ref values instead of stale closure variables
+                                    const currentCount =
+                                        plantingCountsRef.current[cropId] || 0;
+                                    const currentProducers =
+                                        totalProducersRef.current;
+
+                                    // Increment planting count
+                                    const newCount = currentCount + 1;
+
+                                    // Compute new percentage using current producer count
+                                    const newPercentage =
+                                        currentProducers > 0
+                                            ? Math.round(
+                                                  (newCount /
+                                                      currentProducers) *
+                                                      100
+                                              )
+                                            : 0;
+
+                                    // Recalculate recommendation and color
+                                    const { recommendation, color } =
+                                        getRecommendationFromPercentage(
+                                            newPercentage,
+                                            crop.demandLevel
+                                        );
+
+                                    // Update ref for next callback execution
+                                    setPlantingCountsWithRef({
+                                        ...plantingCountsRef.current,
+                                        [cropId]: newCount,
+                                    });
+
+                                    return {
+                                        ...crop,
+                                        plantingPercentage: newPercentage,
+                                        recommendation,
+                                        color,
+                                    };
+                                })
+                            );
+                        }
+                    }
                 }
             )
             .on(

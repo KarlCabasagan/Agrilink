@@ -3,6 +3,7 @@ import { createPortal } from "react-dom";
 import { Icon } from "@iconify/react";
 import supabase from "../SupabaseClient";
 import { toast } from "react-hot-toast";
+import { uploadImage, validateImageFile } from "../utils/imageUpload";
 
 export default function ReviewModal({
     isOpen,
@@ -16,11 +17,14 @@ export default function ReviewModal({
     const [hoveredRating, setHoveredRating] = useState(0);
     const [review, setReview] = useState("");
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [imageFile, setImageFile] = useState(null);
+    const [imagePreview, setImagePreview] = useState(null);
 
     const modalRef = useRef(null);
     const previousFocusRef = useRef(null);
     const closeButtonRef = useRef(null);
     const submitButtonRef = useRef(null);
+    const fileInputRef = useRef(null);
 
     const handleEscape = useCallback(
         (e) => {
@@ -62,6 +66,35 @@ export default function ReviewModal({
         }
     };
 
+    const handleImageSelect = (e) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        // Validate image file
+        const validation = validateImageFile(file);
+        if (!validation.valid) {
+            toast.error(validation.error);
+            return;
+        }
+
+        setImageFile(file);
+
+        // Create preview
+        const reader = new FileReader();
+        reader.onload = (event) => {
+            setImagePreview(event.target?.result);
+        };
+        reader.readAsDataURL(file);
+    };
+
+    const handleRemoveImage = () => {
+        setImageFile(null);
+        setImagePreview(null);
+        if (fileInputRef.current) {
+            fileInputRef.current.value = "";
+        }
+    };
+
     const handleSubmit = async (e) => {
         e.preventDefault();
         if (rating === 0) {
@@ -71,11 +104,32 @@ export default function ReviewModal({
 
         setIsSubmitting(true);
         try {
+            let imageUrl = null;
+
+            // Upload image if selected
+            if (imageFile) {
+                const uploadResult = await uploadImage(
+                    imageFile,
+                    "product_review_images",
+                    userId
+                );
+
+                if (!uploadResult.success) {
+                    toast.error(uploadResult.error || "Failed to upload image");
+                    setIsSubmitting(false);
+                    return;
+                }
+
+                imageUrl = uploadResult.url;
+            }
+
+            // Insert review with image URL if available
             const { error } = await supabase.from("reviews").insert({
                 user_id: userId,
                 product_id: productId,
                 review: review.trim() || null,
                 rating,
+                image_url: imageUrl,
             });
 
             if (error) throw error;
@@ -239,6 +293,61 @@ export default function ReviewModal({
                                 className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors resize-none placeholder:text-gray-400"
                                 disabled={isSubmitting}
                             />
+                        </div>
+
+                        {/* Image Upload Section */}
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                                Add Photo (Optional)
+                            </label>
+                            <input
+                                ref={fileInputRef}
+                                type="file"
+                                accept="image/jpeg,image/jpg,image/png,image/webp"
+                                onChange={handleImageSelect}
+                                className="hidden"
+                                disabled={isSubmitting}
+                            />
+                            {!imagePreview ? (
+                                <button
+                                    type="button"
+                                    onClick={() =>
+                                        fileInputRef.current?.click()
+                                    }
+                                    disabled={isSubmitting}
+                                    className="w-full px-4 py-3 border-2 border-dashed border-gray-300 rounded-lg hover:border-primary hover:bg-primary/5 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-gray-600 hover:text-primary"
+                                >
+                                    <Icon
+                                        icon="mingcute:camera-line"
+                                        width="20"
+                                        height="20"
+                                    />
+                                    <span className="text-sm font-medium">
+                                        Click to upload or drag and drop
+                                    </span>
+                                </button>
+                            ) : (
+                                <div className="relative inline-block">
+                                    <img
+                                        src={imagePreview}
+                                        alt="Review preview"
+                                        className="h-32 w-32 object-cover rounded-lg border border-gray-200"
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={handleRemoveImage}
+                                        disabled={isSubmitting}
+                                        className="absolute -top-2 -right-2 bg-red-500 hover:bg-red-600 text-white rounded-full p-1 transition-colors disabled:opacity-50"
+                                        aria-label="Remove image"
+                                    >
+                                        <Icon
+                                            icon="mingcute:close-line"
+                                            width="16"
+                                            height="16"
+                                        />
+                                    </button>
+                                </div>
+                            )}
                         </div>
 
                         <div className="flex justify-end gap-3 pt-2">

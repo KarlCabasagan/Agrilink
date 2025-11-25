@@ -5,6 +5,28 @@ import AdminNavigationBar from "../../components/AdminNavigationBar";
 import supabase from "../../SupabaseClient";
 import { getReviewerAvatarUrl } from "../../utils/avatarUtils.js";
 
+// Helper component for lazy-loading review images with smooth transition
+function ReviewImage({ src, alt, className }) {
+    const [isLoading, setIsLoading] = useState(true);
+
+    return (
+        <div className={`relative overflow-hidden bg-gray-100 ${className}`}>
+            {isLoading && (
+                <div className="absolute inset-0 bg-gray-200 animate-pulse z-10" />
+            )}
+            <img
+                src={src}
+                alt={alt}
+                className={`w-full h-full object-cover transition-opacity duration-300 ${
+                    isLoading ? "opacity-0" : "opacity-100"
+                }`}
+                onLoad={() => setIsLoading(false)}
+                onError={() => setIsLoading(false)}
+            />
+        </div>
+    );
+}
+
 function AdminProductReviews() {
     const { productId } = useParams();
     const navigate = useNavigate();
@@ -67,6 +89,7 @@ function AdminProductReviews() {
                         id,
                         review,
                         rating,
+                        image_url,
                         created_at,
                         product: products!reviews_product_id_fkey (
                             id,
@@ -125,6 +148,7 @@ function AdminProductReviews() {
                         customerAvatar: getReviewerAvatarUrl(review.reviewer),
                         rating: review.rating,
                         comment: review.review,
+                        reviewImage: review.image_url || null,
                         date: review.created_at,
                         verified: review.reviewer.id === review.product.user_id, // Verified if reviewer is the product owner
                         helpful: helpfulCounts[review.id] || 0,
@@ -572,34 +596,45 @@ function AdminProductReviews() {
                                         <p className="text-gray-600 mb-4 leading-relaxed">
                                             {review.comment ?? ""}
                                         </p>
-                                        <div className="flex items-center gap-6 text-sm">
-                                            <span className="flex items-center gap-2 text-gray-600 font-medium">
-                                                <Icon
-                                                    icon="mingcute:thumb-up-fill"
-                                                    width="18"
-                                                    className="text-primary"
-                                                />
-                                                {review.helpful} helpful
-                                            </span>
-                                            <span
-                                                className={`flex items-center gap-2 font-medium ${
-                                                    review.reported > 0
-                                                        ? "text-red-600"
-                                                        : "text-gray-400"
-                                                }`}
-                                            >
-                                                <Icon
-                                                    icon="mingcute:flag-2-fill"
-                                                    width="18"
-                                                />
-                                                {review.reported} reported
-                                            </span>
-                                        </div>
+                                        {review.reviewImage && (
+                                            <ReviewImage
+                                                src={review.reviewImage}
+                                                alt="Review"
+                                                className="mb-4 max-w-xs rounded-lg h-40 w-40"
+                                            />
+                                        )}
                                     </div>
                                 </div>
 
                                 {/* Delete action */}
-                                <div className="flex justify-end pt-4 border-t border-gray-100">
+                                <div className="flex justify-between pt-4 border-t border-gray-100">
+                                    <div className="flex items-center gap-6 text-sm">
+                                        <span className="flex items-center gap-2 text-gray-600 font-medium">
+                                            <Icon
+                                                icon="mingcute:thumb-up-fill"
+                                                width="18"
+                                                className={`${
+                                                    review.helpful > 0
+                                                        ? "text-primary"
+                                                        : "text-gray-400"
+                                                }`}
+                                            />
+                                            {review.helpful} helpful
+                                        </span>
+                                        <span
+                                            className={`flex items-center gap-2 font-medium ${
+                                                review.reported > 0
+                                                    ? "text-red-600"
+                                                    : "text-gray-400"
+                                            }`}
+                                        >
+                                            <Icon
+                                                icon="mingcute:flag-2-fill"
+                                                width="18"
+                                            />
+                                            {review.reported} reported
+                                        </span>
+                                    </div>
                                     <button
                                         onClick={() =>
                                             handleDeleteReview(review.id)
