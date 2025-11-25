@@ -1225,7 +1225,7 @@ function Cart() {
                                                             icon={
                                                                 isDeliveryAvailableForGroup
                                                                     ? "mingcute:check-circle-fill"
-                                                                    : "mingcute:alert-triangle-fill"
+                                                                    : "mingcute:alert-fill"
                                                             }
                                                             width="14"
                                                             height="14"

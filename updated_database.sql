@@ -316,6 +316,7 @@ create table public.reviews (
   rating numeric not null,
   created_at timestamp with time zone not null default now(),
   updated_at timestamp with time zone not null default now(),
+  image_url text null,
   constraint reviews_pkey primary key (id),
   constraint reviews_product_id_fkey foreign KEY (product_id) references products (id) on update CASCADE on delete CASCADE,
   constraint reviews_user_id_fkey foreign KEY (user_id) references profiles (id) on update CASCADE on delete CASCADE
