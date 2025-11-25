@@ -65,7 +65,7 @@ const renderMessageContent = (text, isMe) => {
                                 alt="Replacement proof"
                                 className="w-full rounded-lg border border-orange-200 object-cover max-h-48"
                                 onError={(e) => {
-                                    e.target.src = "/assets/blank-profile.jpg";
+                                    e.target.src = "/assets/resolved-stamp.png";
                                 }}
                             />
                         </div>

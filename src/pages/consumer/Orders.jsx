@@ -190,6 +190,7 @@ function Orders() {
                             const transformedOrder = {
                                 id: orderData.id,
                                 date: orderData.created_at,
+                                updated_at: orderData.updated_at,
                                 status: orderData.statuses?.name || "unknown",
                                 total: total,
                                 deliveryMethod:
@@ -291,6 +292,7 @@ function Orders() {
                             const transformedOrder = {
                                 id: orderData.id,
                                 date: orderData.created_at,
+                                updated_at: orderData.updated_at,
                                 status: orderData.statuses?.name || "unknown",
                                 total: total,
                                 deliveryMethod:
@@ -412,6 +414,7 @@ function Orders() {
                 return {
                     id: order.id,
                     date: order.created_at,
+                    updated_at: order.updated_at,
                     status: order.statuses?.name || "unknown",
                     total: total,
                     deliveryMethod: order.delivery_methods?.name || "unknown",
@@ -1676,6 +1679,10 @@ function Orders() {
                                                                                                     ))}
                                                                                                 {order.status ===
                                                                                                     "completed" &&
+                                                                                                    new Date(
+                                                                                                        order.updated_at
+                                                                                                    ).toDateString() ===
+                                                                                                        new Date().toDateString() &&
                                                                                                     (item.request_replacement_reason ? (
                                                                                                         <div className="px-3 py-1.5 text-sm bg-orange-50 text-orange-600 rounded-lg flex items-center gap-1.5 border border-orange-200">
                                                                                                             <Icon

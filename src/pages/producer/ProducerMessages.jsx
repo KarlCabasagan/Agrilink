@@ -77,7 +77,7 @@ const createRenderMessageContent = (navigate) => {
                                     className="w-full rounded-lg border border-orange-200 object-cover max-h-48"
                                     onError={(e) => {
                                         e.target.src =
-                                            "/assets/blank-profile.jpg";
+                                            "/assets/resolved-stamp.png";
                                     }}
                                 />
                             </div>
