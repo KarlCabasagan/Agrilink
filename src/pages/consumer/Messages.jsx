@@ -7,6 +7,79 @@ import { AuthContext } from "../../App.jsx";
 import { UnreadConversationsContext } from "../../context/UnreadConversationsContext.jsx";
 import { getProfileAvatarUrl } from "../../utils/avatarUtils.js";
 
+const ReplacementRequestCard = ({ replacementData }) => {
+    const [imageLoaded, setImageLoaded] = useState(false);
+    const [imageError, setImageError] = useState(false);
+
+    return (
+        <div className="bg-orange-50 border border-orange-200 rounded-lg p-4 max-w-xs mt-2">
+            {/* Header */}
+            <div className="flex items-center gap-2 mb-3">
+                <Icon
+                    icon="mingcute:refresh-2-line"
+                    width="18"
+                    height="18"
+                    className="text-orange-600"
+                />
+                <h3 className="font-bold text-orange-700">
+                    Replacement Request
+                </h3>
+            </div>
+
+            {/* Item Name */}
+            <div className="mb-1">
+                <p className="font-bold text-lg text-gray-800">
+                    {replacementData.itemName}
+                </p>
+            </div>
+
+            {/* Reason */}
+            <div className="mb-3">
+                <p className="text-xs font-bold text-gray-600 mb-1">Reason:</p>
+                <p className="text-sm text-gray-700">
+                    {replacementData.reason}
+                </p>
+            </div>
+
+            {/* Order ID */}
+            <div className="mb-3">
+                <p className="text-xs text-gray-500">
+                    Order ID: {replacementData.orderId}
+                </p>
+            </div>
+
+            {/* Proof Image with Loading State */}
+            {replacementData.proofUrl && (
+                <div className="mt-3 relative w-full">
+                    {!imageLoaded && !imageError && (
+                        <div className="w-full h-48 bg-gray-200 animate-pulse rounded-lg flex items-center justify-center border border-orange-100">
+                            <Icon
+                                icon="mingcute:loading-line"
+                                className="animate-spin text-orange-400"
+                                width="24"
+                                height="24"
+                            />
+                        </div>
+                    )}
+                    <img
+                        src={replacementData.proofUrl}
+                        alt="Replacement proof"
+                        className={`w-full rounded-lg border border-orange-200 object-cover max-h-48 ${
+                            !imageLoaded ? "hidden" : "block"
+                        }`}
+                        onLoad={() => setImageLoaded(true)}
+                        onError={(e) => {
+                            setImageError(true);
+                            setImageLoaded(true);
+                            e.target.src = "/assets/resolved-stamp.png";
+                        }}
+                    />
+                </div>
+            )}
+        </div>
+    );
+};
+
 // Helper function to render structured message content
 const renderMessageContent = (text, isMe) => {
     // Check if this is a replacement request message
@@ -18,60 +91,8 @@ const renderMessageContent = (text, isMe) => {
             );
             const replacementData = JSON.parse(jsonString);
 
-            return (
-                <div className="bg-orange-50 border border-orange-200 rounded-lg p-4 max-w-xs mt-2">
-                    {/* Header */}
-                    <div className="flex items-center gap-2 mb-3">
-                        <Icon
-                            icon="mingcute:refresh-2-line"
-                            width="18"
-                            height="18"
-                            className="text-orange-600"
-                        />
-                        <h3 className="font-bold text-orange-700">
-                            Replacement Request
-                        </h3>
-                    </div>
-
-                    {/* Item Name */}
-                    <div className="mb-1">
-                        <p className="font-bold text-lg text-gray-800">
-                            {replacementData.itemName}
-                        </p>
-                    </div>
-
-                    {/* Reason */}
-                    <div className="mb-3">
-                        <p className="text-xs font-bold text-gray-600 mb-1">
-                            Reason:
-                        </p>
-                        <p className="text-sm text-gray-700">
-                            {replacementData.reason}
-                        </p>
-                    </div>
-
-                    {/* Order ID */}
-                    <div className="mb-3">
-                        <p className="text-xs text-gray-500">
-                            Order ID: {replacementData.orderId}
-                        </p>
-                    </div>
-
-                    {/* Proof Image */}
-                    {replacementData.proofUrl && (
-                        <div className="mt-3">
-                            <img
-                                src={replacementData.proofUrl}
-                                alt="Replacement proof"
-                                className="w-full rounded-lg border border-orange-200 object-cover max-h-48"
-                                onError={(e) => {
-                                    e.target.src = "/assets/resolved-stamp.png";
-                                }}
-                            />
-                        </div>
-                    )}
-                </div>
-            );
+            // Return the new component instead of inline JSX
+            return <ReplacementRequestCard replacementData={replacementData} />;
         } catch (error) {
             console.error("Failed to parse replacement request data:", error);
             // Fallback
