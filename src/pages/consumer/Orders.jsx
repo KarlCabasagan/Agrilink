@@ -2453,7 +2453,7 @@ function Orders() {
                                             {trackingModal.order
                                                 .sellerAddress || "the farm"}
                                         </span>{" "}
-                                        before 12:00 AM tonight.
+                                        before 5:00 PM today.
                                     </p>
                                     <div className="bg-green-50 border border-green-200 rounded-lg p-3 mb-4">
                                         <p className="text-sm text-green-700">

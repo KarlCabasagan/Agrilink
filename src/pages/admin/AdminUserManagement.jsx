@@ -65,18 +65,14 @@ function AdminUserManagement() {
 
     const filterData = (data) => {
         if (!searchTerm) return data;
+        const lowerTerm = searchTerm.toLowerCase(); // Optimization: compute once
+
         return data.filter(
             (item) =>
-                item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                item.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                (item.role &&
-                    item.role
-                        .toLowerCase()
-                        .includes(searchTerm.toLowerCase())) ||
-                (item.address &&
-                    item.address
-                        .toLowerCase()
-                        .includes(searchTerm.toLowerCase()))
+                (item.name && item.name.toLowerCase().includes(lowerTerm)) ||
+                (item.email && item.email.toLowerCase().includes(lowerTerm)) ||
+                (item.role && item.role.toLowerCase().includes(lowerTerm)) ||
+                (item.address && item.address.toLowerCase().includes(lowerTerm))
         );
     };
 
