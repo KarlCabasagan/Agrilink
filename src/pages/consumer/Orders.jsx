@@ -2053,9 +2053,7 @@ function Orders() {
 
                                             {/* Order Actions */}
                                             <div className="flex flex-wrap gap-2">
-                                                {(order.status === "pending" ||
-                                                    order.status ===
-                                                        "confirmed") && (
+                                                {order.status === "pending" && (
                                                     <button
                                                         onClick={(e) => {
                                                             e.stopPropagation();
@@ -2069,10 +2067,8 @@ function Orders() {
                                                     </button>
                                                 )}
 
-                                                {(order.status ===
-                                                    "preparing" ||
-                                                    order.status ===
-                                                        "ready for pickup") && (
+                                                {order.status ===
+                                                    "ready for pickup" && (
                                                     <button
                                                         onClick={(e) => {
                                                             e.stopPropagation();
@@ -2453,7 +2449,7 @@ function Orders() {
                                             {trackingModal.order
                                                 .sellerAddress || "the farm"}
                                         </span>{" "}
-                                        before 5:00 PM today.
+                                        before 6:00 PM today.
                                     </p>
                                     <div className="bg-green-50 border border-green-200 rounded-lg p-3 mb-4">
                                         <p className="text-sm text-green-700">
