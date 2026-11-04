@@ -1157,7 +1157,7 @@ function Product() {
                                             className="min-w-[44px] min-h-[44px] flex items-center justify-center rounded-xl border border-slate-200 bg-white hover:bg-slate-50 active:scale-95 text-slate-700 disabled:opacity-40 transition-all"
                                             aria-label="Decrease quantity"
                                         >
-                                            <Icon icon="mingcute:minus-line" width="16" height="16" />
+                                            <Icon icon="mingcute:minimize-line" width="16" height="16" />
                                         </button>
                                         {/* Input */}
                                         <input

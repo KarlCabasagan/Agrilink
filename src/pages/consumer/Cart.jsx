@@ -541,7 +541,7 @@ function Cart() {
                                                                     className="min-w-[36px] min-h-[36px] rounded-lg border border-slate-200 bg-white hover:bg-slate-50 flex items-center justify-center text-slate-700 disabled:opacity-40 active:scale-95 transition-all"
                                                                     aria-label="Decrease quantity by 0.5kg"
                                                                 >
-                                                                    <Icon icon="mingcute:minus-line" width="14" height="14" />
+                                                                    <Icon icon="mingcute:minimize-line" width="14" height="14" />
                                                                 </button>
                                                                 <input
                                                                     type="number"
