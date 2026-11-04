@@ -427,7 +427,11 @@ function App() {
                                     {/* Role-based routes */}
                                     <Route
                                         path="/"
-                                        element={<RoleBasedHome />}
+                                        element={
+                                            <PrivateRoute>
+                                                <RoleBasedHome />
+                                            </PrivateRoute>
+                                        }
                                     />
                                     <Route
                                         path="/profile"
