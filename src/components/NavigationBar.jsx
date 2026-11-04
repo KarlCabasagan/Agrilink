@@ -1,7 +1,7 @@
 import { Link, useLocation } from "react-router-dom";
 import { Icon } from "@iconify/react";
 import { useState, useEffect, useContext } from "react";
-import { AuthContext } from "../App.jsx";
+import { AuthContext } from "../context/AuthContext.jsx";
 import { CartCountContext } from "../context/CartCountContext.jsx";
 import { UnreadConversationsContext } from "../context/UnreadConversationsContext.jsx";
 import supabase from "../SupabaseClient.jsx";

@@ -1,7 +1,7 @@
 import { Icon } from "@iconify/react";
 import { Link } from "react-router-dom";
 import { useState, useEffect, useContext } from "react";
-import { AuthContext } from "../App.jsx";
+import { AuthContext } from "../context/AuthContext.jsx";
 import { CartCountContext } from "../context/CartCountContext.jsx";
 import { UnreadConversationsContext } from "../context/UnreadConversationsContext.jsx";
 

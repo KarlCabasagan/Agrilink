@@ -52,12 +52,10 @@ import VerifyAccount from "./pages/VerifyAccount.jsx";
 import EditProfile from "./pages/EditProfile.jsx";
 import PasswordReset from "./pages/PasswordReset.jsx";
 
-export const AuthContext = createContext({
-    user: null,
-    setUser: () => {},
-    userRole: null,
-    setUserRole: () => {},
-});
+import { AuthContext } from "./context/AuthContext.jsx";
+import { resolveRouteAccess } from "./utils/authGuard.js";
+
+export { AuthContext };
 
 // Component to handle email verification redirect
 function EmailVerificationHandler() {
@@ -292,7 +290,6 @@ function App() {
     const RoleGuard = ({ children, allowedRoles }) => {
         const location = useLocation();
 
-        // Wait until userRole is known before making decisions
         if (!user || !isVerified) {
             return <Navigate to="/login" replace />;
         }
@@ -306,19 +303,15 @@ function App() {
             );
         }
 
-        if (!allowedRoles.includes(userRole)) {
-            // If user is admin (role 3) and trying to access non-admin routes
-            if (userRole === 3) {
-                return (
-                    <Navigate
-                        to="/admin/dashboard"
-                        state={{ from: location }}
-                        replace
-                    />
-                );
-            }
-            // Other roles go home
-            return <Navigate to="/" state={{ from: location }} replace />;
+        const access = resolveRouteAccess({ user, userRole, allowedRoles });
+        if (!access.allowed) {
+            return (
+                <Navigate
+                    to={access.redirectTo}
+                    state={{ from: location }}
+                    replace
+                />
+            );
         }
 
         return children;

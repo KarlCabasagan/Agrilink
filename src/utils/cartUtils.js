@@ -1,4 +1,7 @@
 import supabase from "../SupabaseClient.jsx";
+import { validateCartInput } from "./validators.js";
+
+export { validateCartInput };
 
 /**
  * Add item to cart or update quantity if already exists
@@ -8,9 +11,11 @@ import supabase from "../SupabaseClient.jsx";
  * @returns {Promise<{success: boolean, message: string}>}
  */
 export const addToCart = async (userId, productId, quantity = 1.0) => {
-    if (!userId || !productId) {
-        return { success: false, message: "Missing required information" };
+    const validation = validateCartInput(userId, productId, quantity);
+    if (!validation.valid) {
+        return { success: false, message: validation.error };
     }
+    const cleanQuantity = validation.sanitizedQuantity;
 
     try {
         // First ensure user has a cart
@@ -43,7 +48,7 @@ export const addToCart = async (userId, productId, quantity = 1.0) => {
             .from("cart_items")
             .select("*")
             .eq("cart_id", userCart.id)
-            .eq("product_id", productId)
+            .eq("product_id", Number(productId))
             .single();
 
         if (fetchError && fetchError.code !== "PGRST116") {
@@ -54,7 +59,7 @@ export const addToCart = async (userId, productId, quantity = 1.0) => {
         if (existingItem) {
             // Update existing item quantity
             const newQuantity =
-                parseFloat(existingItem.quantity) + parseFloat(quantity);
+                parseFloat(existingItem.quantity) + cleanQuantity;
 
             const { error: updateError } = await supabase
                 .from("cart_items")
@@ -73,8 +78,8 @@ export const addToCart = async (userId, productId, quantity = 1.0) => {
                 .from("cart_items")
                 .insert({
                     cart_id: userCart.id,
-                    product_id: productId,
-                    quantity: parseFloat(quantity),
+                    product_id: Number(productId),
+                    quantity: cleanQuantity,
                 });
 
             if (insertError) {

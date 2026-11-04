@@ -1,7 +1,7 @@
 import { Icon } from "@iconify/react/dist/iconify.js";
 import { useState, useEffect, useContext, useCallback } from "react";
 import supabase from "../SupabaseClient.jsx";
-import { AuthContext } from "../App.jsx";
+import { AuthContext } from "../context/AuthContext.jsx";
 import { Link, useNavigate } from "react-router-dom";
 import { ilignanBarangays } from "../data/barangays.js";
 import {

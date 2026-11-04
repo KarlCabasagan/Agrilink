@@ -1,7 +1,7 @@
 import { Icon } from "@iconify/react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useContext } from "react";
-import { AuthContext } from "../App.jsx";
+import { AuthContext } from "../context/AuthContext.jsx";
 import { AdminPendingCountsContext } from "../context/AdminPendingCountsContext.jsx";
 import supabase from "../SupabaseClient.jsx";
 

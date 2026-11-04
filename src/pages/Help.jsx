@@ -1,6 +1,6 @@
 import { useContext } from "react";
 import { Icon } from "@iconify/react";
-import { AuthContext } from "../App.jsx";
+import { AuthContext } from "../context/AuthContext.jsx";
 import NavigationBar from "../components/NavigationBar";
 import ProducerNavigationBar from "../components/ProducerNavigationBar";
 

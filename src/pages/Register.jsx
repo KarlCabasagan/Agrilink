@@ -3,7 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { Icon } from "@iconify/react";
 import full_logo from "../assets/full_logo.png";
 
-import { AuthContext } from "../App.jsx";
+import { AuthContext } from "../context/AuthContext.jsx";
 import supabase from "../SupabaseClient.jsx";
 
 function Register() {

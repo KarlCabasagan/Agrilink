@@ -1,7 +1,7 @@
 import { Link, useNavigate } from "react-router-dom";
 import { Icon } from "@iconify/react";
 import { useContext, useEffect } from "react";
-import { AuthContext } from "../App.jsx";
+import { AuthContext } from "../context/AuthContext.jsx";
 import supabase from "../SupabaseClient.jsx";
 
 function AccountVerified() {

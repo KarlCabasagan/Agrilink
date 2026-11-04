@@ -1,4 +1,7 @@
 import supabase from "../SupabaseClient";
+import { validateImageFile } from "./validators.js";
+
+export { validateImageFile };
 
 /**
  * Uploads an image to Supabase Storage
@@ -10,37 +13,13 @@ import supabase from "../SupabaseClient";
  */
 export const uploadImage = async (file, bucket, userId, oldImageUrl = null) => {
     try {
-        // Validate file
-        if (!file) {
-            return { success: false, error: "No file provided" };
+        const validation = validateImageFile(file);
+        if (!validation.valid) {
+            return { success: false, error: validation.error };
         }
 
-        // Validate userId
         if (!userId) {
             return { success: false, error: "User ID is required for upload" };
-        }
-
-        // Validate file type
-        const allowedTypes = [
-            "image/jpeg",
-            "image/jpg",
-            "image/png",
-            "image/webp",
-        ];
-        if (!allowedTypes.includes(file.type)) {
-            return {
-                success: false,
-                error: "Invalid file type. Only JPEG, PNG, and WebP images are allowed.",
-            };
-        }
-
-        // Validate file size (5MB limit)
-        const maxSize = 5 * 1024 * 1024; // 5MB in bytes
-        if (file.size > maxSize) {
-            return {
-                success: false,
-                error: "File size too large. Maximum size is 5MB.",
-            };
         }
 
         // Delete old image if provided
@@ -49,7 +28,7 @@ export const uploadImage = async (file, bucket, userId, oldImageUrl = null) => {
         }
 
         // Generate unique filename (simplified for RLS compatibility)
-        const fileExt = file.name.split(".").pop();
+        const fileExt = file.name ? file.name.split(".").pop() : "jpg";
         const fileName = `${Date.now()}-${Math.random()
             .toString(36)
             .substr(2, 9)}.${fileExt}`;
@@ -124,7 +103,7 @@ export const deleteImageFromUrl = async (imageUrl, bucket) => {
  * @returns {Promise<File>} - Compressed file
  */
 export const compressImage = (file, maxWidth = 800, quality = 0.8) => {
-    return new Promise((resolve, reject) => {
+    return new Promise((resolve) => {
         const canvas = document.createElement("canvas");
         const ctx = canvas.getContext("2d");
         const img = new Image();
@@ -161,16 +140,6 @@ export const compressImage = (file, maxWidth = 800, quality = 0.8) => {
                             lastModified: Date.now(),
                         });
 
-                        console.log("Compression successful:", {
-                            original: file.size,
-                            compressed: compressedFile.size,
-                            ratio:
-                                (
-                                    (compressedFile.size / file.size) *
-                                    100
-                                ).toFixed(2) + "%",
-                        });
-
                         resolve(compressedFile);
                     },
                     file.type,
@@ -189,33 +158,4 @@ export const compressImage = (file, maxWidth = 800, quality = 0.8) => {
 
         img.src = URL.createObjectURL(file);
     });
-};
-
-/**
- * Validates image file
- * @param {File} file - The file to validate
- * @returns {{valid: boolean, error?: string}}
- */
-export const validateImageFile = (file) => {
-    if (!file) {
-        return { valid: false, error: "No file selected" };
-    }
-
-    const allowedTypes = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
-    if (!allowedTypes.includes(file.type)) {
-        return {
-            valid: false,
-            error: "Invalid file type. Only JPEG, PNG, and WebP images are allowed.",
-        };
-    }
-
-    const maxSize = 5 * 1024 * 1024; // 5MB
-    if (file.size > maxSize) {
-        return {
-            valid: false,
-            error: "File size too large. Maximum size is 5MB.",
-        };
-    }
-
-    return { valid: true };
 };
