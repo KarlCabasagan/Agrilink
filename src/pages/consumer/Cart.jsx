@@ -1,8 +1,9 @@
-import { useState, useEffect, useContext, useRef, useMemo } from "react";
+import { useState, useEffect, useContext, useRef, useMemo, useCallback } from "react";
 import { Icon } from "@iconify/react";
 import { Link, useNavigate } from "react-router-dom";
 import NavigationBar from "../../components/NavigationBar";
 import Modal from "../../components/Modal";
+import StateView from "../../components/StateView";
 import supabase from "../../SupabaseClient.jsx";
 import { AuthContext } from "../../context/AuthContext.jsx";
 import { CartCountContext } from "../../context/CartCountContext.jsx";
@@ -11,19 +12,16 @@ function Cart() {
     const { user } = useContext(AuthContext);
     const { cartCount, setCartCount } = useContext(CartCountContext);
     const navigate = useNavigate();
+
     const [cartItems, setCartItems] = useState([]);
     const [loading, setLoading] = useState(true);
     const [hasInvalidItems, setHasInvalidItems] = useState(false);
     const [profileIncomplete, setProfileIncomplete] = useState(false);
-    // version increments when cart data is fetched to coordinate one-time autocap
     const [cartVersion, setCartVersion] = useState(0);
-    // Track today's delivery order counts per farmer to enforce daily limits
-    const [dailyDeliveryOrderCounts, setDailyDeliveryOrderCounts] = useState(
-        {}
-    );
+    const [dailyDeliveryOrderCounts, setDailyDeliveryOrderCounts] = useState({});
     const [modal, setModal] = useState({
         open: false,
-        type: "",
+        type: "info",
         title: "",
         message: "",
         onConfirm: null,
@@ -33,11 +31,11 @@ function Cart() {
         setModal({ open: true, type, title, message, onConfirm });
     };
 
-    // Fetch cart items from database (extracted so we can re-use it)
-    const fetchCartItems = async () => {
+    // Fetch cart items
+    const fetchCartItems = useCallback(async () => {
         if (!user) return;
-
         setLoading(true);
+
         try {
             const { data, error } = await supabase
                 .from("cart_items")
@@ -52,21 +50,22 @@ function Cart() {
                         approval_date,
                         status_id
                     )
-                `
+                    `
                 )
                 .eq("carts.user_id", user.id)
                 .order("created_at", { ascending: false });
 
-            // Check for invalid products
+            if (error) {
+                console.error("Error fetching cart items:", error);
+                return;
+            }
+
             const hasInvalid = data?.some((item) => {
                 const product = item.products;
-                // Convert approval_date to a standardized format for comparison
                 const approvalDate = product?.approval_date
                     ? new Date(product.approval_date).toISOString()
                     : null;
-                const defaultDate = new Date(
-                    "1970-01-01T00:00:00.000Z"
-                ).toISOString();
+                const defaultDate = new Date("1970-01-01T00:00:00.000Z").toISOString();
 
                 return (
                     !product?.approval_date ||
@@ -78,136 +77,81 @@ function Cart() {
 
             setHasInvalidItems(hasInvalid);
 
-            if (error) {
-                console.error("Error fetching cart items:", error);
-                return;
-            }
-
-            console.log("Raw cart data:", data); // Debug log
-
-            const formattedCartItems = data.map((item) => ({
+            const formatted = (data || []).map((item) => ({
                 id: item.product_id,
                 cartItemId: item.id,
                 name: item.products.name,
-                price: parseFloat(item.products.price),
-                quantity: parseFloat(item.quantity),
+                price: parseFloat(item.products.price) || 0,
+                quantity: parseFloat(item.quantity) || 0,
                 image:
                     item.products.image_url ||
-                    "https://via.placeholder.com/300x200?text=No+Image",
-                farmerName: item.products.profiles?.name || "Unknown Farmer",
-                farmerId: item.products.user_id, // Updated to use user_id
-                products: {
-                    status_id: item.products.status_id,
-                    approval_date: item.products.approval_date,
-                },
-                farmerAddress:
-                    item.products.profiles?.address || "Location not available",
-                stock: parseFloat(item.products.stock),
-                unit: "kg", // Default unit since not in new schema
+                    "https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&q=80&w=400",
+                farmerName: item.products.profiles?.name || "Local Farmer",
+                farmerId: item.products.user_id,
+                farmerAddress: item.products.profiles?.address || "Iligan City",
+                stock: parseFloat(item.products.stock) || 0,
+                unit: "kg",
                 minimumOrderQuantity:
-                    parseFloat(
-                        item.products.profiles?.minimum_order_quantity
-                    ) || 1.0,
+                    parseFloat(item.products.profiles?.minimum_order_quantity) || 1.0,
                 deliveryCost:
                     parseFloat(item.products.profiles?.delivery_cost) || 50.0,
                 dailyDeliveryLimit:
                     parseInt(item.products.profiles?.daily_delivery_limit) ?? 3,
-                category: item.products.categories?.name || "Other",
+                category: item.products.categories?.name || "Produce",
+                products: {
+                    status_id: item.products.status_id,
+                    approval_date: item.products.approval_date,
+                },
             }));
 
-            console.log("Formatted cart items:", formattedCartItems); // Debug log
-            setCartItems(formattedCartItems);
-            // bump cart version so autocap runs once per fetch
+            setCartItems(formatted);
             setCartVersion((v) => v + 1);
         } catch (error) {
             console.error("Error fetching cart items:", error);
         } finally {
             setLoading(false);
         }
-    };
+    }, [user]);
 
     useEffect(() => {
         fetchCartItems();
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [user]);
+    }, [fetchCartItems]);
 
-    // Check profile completeness
+    // Check profile completion
     useEffect(() => {
-        if (!user) {
-            setProfileIncomplete(false);
-            return;
-        }
+        if (!user) return;
 
-        const checkProfileCompletion = async () => {
+        const checkProfile = async () => {
             try {
-                const { data, error } = await supabase
+                const { data } = await supabase
                     .from("profiles")
                     .select("address, contact")
                     .eq("id", user.id)
                     .single();
 
-                if (error) {
-                    console.error("Error checking profile:", error);
-                    setProfileIncomplete(true);
-                    return;
-                }
-
-                // Profile is incomplete if address or contact is missing/blank
-                const isIncomplete = !data?.address || !data?.contact;
-                setProfileIncomplete(isIncomplete);
-            } catch (error) {
-                console.error("Error checking profile completion:", error);
+                setProfileIncomplete(!data?.address || !data?.contact);
+            } catch {
                 setProfileIncomplete(true);
             }
         };
 
-        checkProfileCompletion();
+        checkProfile();
     }, [user]);
 
-    // Fetch today's active delivery order counts per farmer
+    // Daily delivery order counts per farmer
     useEffect(() => {
         if (cartItems.length === 0) return;
 
-        const fetchDailyDeliveryOrderCounts = async () => {
+        const sellerIds = Array.from(new Set(cartItems.map((it) => it.farmerId)));
+        if (sellerIds.length === 0) return;
+
+        const fetchDailyCounts = async () => {
             try {
-                // Get unique seller IDs from cart items
-                const sellerIds = Array.from(
-                    new Set(cartItems.map((item) => item.farmerId))
-                );
-
-                if (sellerIds.length === 0) return;
-
-                // Get today's date range (start and end of day in UTC)
                 const today = new Date();
-                const startOfDay = new Date(
-                    Date.UTC(
-                        today.getUTCFullYear(),
-                        today.getUTCMonth(),
-                        today.getUTCDate(),
-                        0,
-                        0,
-                        0,
-                        0
-                    )
-                );
-                const endOfDay = new Date(
-                    Date.UTC(
-                        today.getUTCFullYear(),
-                        today.getUTCMonth(),
-                        today.getUTCDate(),
-                        23,
-                        59,
-                        59,
-                        999
-                    )
-                );
+                const startOfDay = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate(), 0, 0, 0, 0));
+                const endOfDay = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate(), 23, 59, 59, 999));
 
-                // Fetch orders where:
-                // - seller_id is one of the farmers in cart
-                // - delivery_method_id is 2 (Home Delivery)
-                // - created_at is today
-                // - status_id is NOT 8 (Cancelled)
-                const { data: orders, error } = await supabase
+                const { data: orders } = await supabase
                     .from("orders")
                     .select("seller_id")
                     .in("seller_id", sellerIds)
@@ -216,243 +160,28 @@ function Cart() {
                     .gte("created_at", startOfDay.toISOString())
                     .lte("created_at", endOfDay.toISOString());
 
-                if (error) {
-                    console.error(
-                        "Error fetching daily delivery order counts:",
-                        error
-                    );
-                    return;
-                }
-
-                // Count orders per seller
                 const counts = {};
-                (orders || []).forEach((order) => {
-                    counts[order.seller_id] =
-                        (counts[order.seller_id] || 0) + 1;
+                (orders || []).forEach((o) => {
+                    counts[o.seller_id] = (counts[o.seller_id] || 0) + 1;
                 });
-
                 setDailyDeliveryOrderCounts(counts);
-            } catch (error) {
-                console.error(
-                    "Unexpected error fetching daily delivery order counts:",
-                    error
-                );
+            } catch (err) {
+                console.error("Error fetching daily delivery counts:", err);
             }
         };
 
-        fetchDailyDeliveryOrderCounts();
+        fetchDailyCounts();
     }, [cartItems]);
 
-    // Real-time subscription to orders table to update daily delivery limits
-    useEffect(() => {
-        if (cartItems.length === 0) return;
-
-        // Get unique seller IDs from cart items
-        const sellerIds = Array.from(
-            new Set(cartItems.map((item) => item.farmerId))
-        );
-
-        if (sellerIds.length === 0) return;
-
-        const subscriptionRef = supabase
-            .channel("cart-orders-delivery-channel")
-            .on(
-                "postgres_changes",
-                {
-                    event: "INSERT",
-                    schema: "public",
-                    table: "orders",
-                },
-                (payload) => {
-                    const newOrder = payload.new;
-                    // Only refresh if the seller is in our cart
-                    if (
-                        sellerIds.includes(newOrder.seller_id) &&
-                        newOrder.delivery_method_id === 2 &&
-                        newOrder.status_id !== 8 // Exclude cancelled
-                    ) {
-                        // Refresh daily delivery order counts
-                        const fetchUpdatedCounts = async () => {
-                            try {
-                                const today = new Date();
-                                const startOfDay = new Date(
-                                    Date.UTC(
-                                        today.getUTCFullYear(),
-                                        today.getUTCMonth(),
-                                        today.getUTCDate(),
-                                        0,
-                                        0,
-                                        0,
-                                        0
-                                    )
-                                );
-                                const endOfDay = new Date(
-                                    Date.UTC(
-                                        today.getUTCFullYear(),
-                                        today.getUTCMonth(),
-                                        today.getUTCDate(),
-                                        23,
-                                        59,
-                                        59,
-                                        999
-                                    )
-                                );
-
-                                const { data: orders } = await supabase
-                                    .from("orders")
-                                    .select("seller_id")
-                                    .in("seller_id", sellerIds)
-                                    .eq("delivery_method_id", 2)
-                                    .neq("status_id", 8)
-                                    .gte("created_at", startOfDay.toISOString())
-                                    .lte("created_at", endOfDay.toISOString());
-
-                                const counts = {};
-                                (orders || []).forEach((order) => {
-                                    counts[order.seller_id] =
-                                        (counts[order.seller_id] || 0) + 1;
-                                });
-
-                                setDailyDeliveryOrderCounts(counts);
-                            } catch (error) {
-                                console.error(
-                                    "Error updating delivery order counts on INSERT:",
-                                    error
-                                );
-                            }
-                        };
-
-                        fetchUpdatedCounts();
-                    }
-                }
-            )
-            .on(
-                "postgres_changes",
-                {
-                    event: "UPDATE",
-                    schema: "public",
-                    table: "orders",
-                },
-                (payload) => {
-                    const updatedOrder = payload.new;
-                    // Refresh if seller is in cart (handles status changes like cancellations)
-                    if (sellerIds.includes(updatedOrder.seller_id)) {
-                        const fetchUpdatedCounts = async () => {
-                            try {
-                                const today = new Date();
-                                const startOfDay = new Date(
-                                    Date.UTC(
-                                        today.getUTCFullYear(),
-                                        today.getUTCMonth(),
-                                        today.getUTCDate(),
-                                        0,
-                                        0,
-                                        0,
-                                        0
-                                    )
-                                );
-                                const endOfDay = new Date(
-                                    Date.UTC(
-                                        today.getUTCFullYear(),
-                                        today.getUTCMonth(),
-                                        today.getUTCDate(),
-                                        23,
-                                        59,
-                                        59,
-                                        999
-                                    )
-                                );
-
-                                const { data: orders } = await supabase
-                                    .from("orders")
-                                    .select("seller_id")
-                                    .in("seller_id", sellerIds)
-                                    .eq("delivery_method_id", 2)
-                                    .neq("status_id", 8)
-                                    .gte("created_at", startOfDay.toISOString())
-                                    .lte("created_at", endOfDay.toISOString());
-
-                                const counts = {};
-                                (orders || []).forEach((order) => {
-                                    counts[order.seller_id] =
-                                        (counts[order.seller_id] || 0) + 1;
-                                });
-
-                                setDailyDeliveryOrderCounts(counts);
-                            } catch (error) {
-                                console.error(
-                                    "Error updating delivery order counts on UPDATE:",
-                                    error
-                                );
-                            }
-                        };
-
-                        fetchUpdatedCounts();
-                    }
-                }
-            )
-            .subscribe();
-
-        return () => {
-            subscriptionRef.unsubscribe();
-        };
-    }, [cartItems]);
-
-    // Real-time subscription to profiles table to monitor farmer delivery settings changes
-    useEffect(() => {
-        if (cartItems.length === 0) return;
-
-        // Get unique seller IDs from cart items
-        const farmerIds = Array.from(
-            new Set(cartItems.map((item) => item.farmerId))
-        );
-
-        if (farmerIds.length === 0) return;
-
-        const profileSubscriptionRef = supabase
-            .channel("cart-profiles-delivery-channel")
-            .on(
-                "postgres_changes",
-                {
-                    event: "UPDATE",
-                    schema: "public",
-                    table: "profiles",
-                },
-                (payload) => {
-                    const updatedProfile = payload.new;
-                    // Only process if this farmer is in the cart
-                    if (farmerIds.includes(updatedProfile.id)) {
-                        // Update cart items with new daily delivery limit
-                        setCartItems((prevItems) =>
-                            prevItems.map((item) =>
-                                item.farmerId === updatedProfile.id
-                                    ? {
-                                          ...item,
-                                          dailyDeliveryLimit:
-                                              parseInt(
-                                                  updatedProfile.daily_delivery_limit
-                                              ) ?? 3,
-                                      }
-                                    : item
-                            )
-                        );
-                    }
-                }
-            )
-            .subscribe();
-
-        return () => {
-            profileSubscriptionRef.unsubscribe();
-        };
-    }, [cartItems]);
-
+    // Farmer groups memo
     const farmerGroups = useMemo(() => {
         const groups = cartItems.reduce((acc, item) => {
-            const farmerId = item.farmerId;
-            if (!acc[farmerId]) {
-                acc[farmerId] = {
+            const fid = item.farmerId;
+            if (!acc[fid]) {
+                acc[fid] = {
                     farmerName: item.farmerName,
-                    farmerId: farmerId,
+                    farmerId: fid,
+                    farmerAddress: item.farmerAddress,
                     items: [],
                     totalQuantity: 0,
                     totalPrice: 0,
@@ -461,321 +190,140 @@ function Cart() {
                     dailyDeliveryLimit: item.dailyDeliveryLimit,
                 };
             }
-            acc[farmerId].items.push(item);
-            acc[farmerId].totalQuantity += item.quantity;
-            acc[farmerId].totalPrice += item.price * item.quantity;
+            acc[fid].items.push(item);
+            acc[fid].totalQuantity += item.quantity;
+            acc[fid].totalPrice += item.price * item.quantity;
             return acc;
         }, {});
 
-        // Add isDeliveryLimitReached property to each group
-        const groupsWithLimitStatus = Object.values(groups).map((group) => {
-            const todayOrderCount =
-                dailyDeliveryOrderCounts[group.farmerId] || 0;
-            const isLimitReached =
-                group.dailyDeliveryLimit === 0 ||
-                todayOrderCount >= group.dailyDeliveryLimit;
-
+        return Object.values(groups).map((group) => {
+            const todayCount = dailyDeliveryOrderCounts[group.farmerId] || 0;
+            const isLimitReached = group.dailyDeliveryLimit === 0 || todayCount >= group.dailyDeliveryLimit;
             return {
                 ...group,
                 isDeliveryLimitReached: isLimitReached,
-                todayOrderCount: todayOrderCount,
+                todayOrderCount: todayCount,
             };
         });
-
-        return groupsWithLimitStatus;
     }, [cartItems, dailyDeliveryOrderCounts]);
 
+    // Quantity update
     const updateQuantity = async (id, newQuantity) => {
-        // Accept zero; round to 1 decimal and prevent negatives
-        const roundedQuantity = Math.round(newQuantity * 10) / 10;
-        if (isNaN(roundedQuantity) || roundedQuantity < 0) return;
+        const rounded = Math.round(newQuantity * 10) / 10;
+        if (isNaN(rounded) || rounded < 0) return;
 
-        const item = cartItems.find((item) => item.id === id);
+        const item = cartItems.find((it) => it.id === id);
         if (!item) return;
 
-        // Cap to stock defensively
-        const finalQuantity = Math.min(roundedQuantity, item.stock);
-
+        const finalQty = Math.min(rounded, item.stock);
         try {
-            // Persist zero quantities (do not delete rows)
-            const { error } = await supabase
+            await supabase
                 .from("cart_items")
-                .update({ quantity: finalQuantity })
+                .update({ quantity: finalQty })
                 .eq("id", item.cartItemId);
 
-            if (error) {
-                console.error("Error updating quantity:", error);
-                return;
-            }
-
-            setCartItems((items) =>
-                items.map((cartItem) =>
-                    cartItem.id === id
-                        ? { ...cartItem, quantity: finalQuantity }
-                        : cartItem
-                )
+            setCartItems((prev) =>
+                prev.map((it) => (it.id === id ? { ...it, quantity: finalQty } : it))
             );
-        } catch (error) {
-            console.error("Error updating cart item:", error);
+        } catch (err) {
+            console.error("Error updating cart quantity:", err);
         }
     };
 
-    // Auto-cap effect: ensure cart item quantities do not exceed product stock
-    const autoCapDoneForVersionRef = useRef(0);
-    const autoCapTimerRef = useRef(null);
-    useEffect(() => {
-        // debounce and run once per cartVersion
-        if (autoCapDoneForVersionRef.current === cartVersion) return;
-        if (!cartItems || cartItems.length === 0) return;
-
-        if (autoCapTimerRef.current) clearTimeout(autoCapTimerRef.current);
-        autoCapTimerRef.current = setTimeout(async () => {
-            try {
-                const productIds = Array.from(
-                    new Set(cartItems.map((it) => it.id))
-                ).filter(Boolean);
-                if (productIds.length === 0) {
-                    autoCapDoneForVersionRef.current = cartVersion;
-                    return;
-                }
-
-                const { data: productsData, error: productsError } =
-                    await supabase
-                        .from("products")
-                        .select("id, stock")
-                        .in("id", productIds);
-
-                if (productsError) {
-                    console.error(
-                        "Error fetching product stocks:",
-                        productsError
-                    );
-                    autoCapDoneForVersionRef.current = cartVersion;
-                    return;
-                }
-
-                const stockMap = new Map();
-                (productsData || []).forEach((p) => {
-                    const s = parseFloat(p.stock);
-                    stockMap.set(p.id, isNaN(s) ? 0 : Math.round(s * 10) / 10);
-                });
-
-                // identify items that need capping
-                const toCap = [];
-                const newCartItems = cartItems.map((it) => {
-                    const stock = stockMap.has(it.id) ? stockMap.get(it.id) : 0;
-                    const capped = Math.min(
-                        Math.round(it.quantity * 10) / 10,
-                        stock
-                    );
-                    const cappedRounded = Math.round(capped * 10) / 10;
-                    if (cappedRounded !== it.quantity) {
-                        toCap.push({ ...it, capped: cappedRounded });
-                        return { ...it, quantity: cappedRounded };
-                    }
-                    return it;
-                });
-
-                if (toCap.length === 0) {
-                    autoCapDoneForVersionRef.current = cartVersion;
-                    return;
-                }
-
-                // Optimistically update local state so UI reflows smoothly
-                setCartItems(newCartItems);
-
-                // Persist caps to DB (batch via Promise.all)
-                await Promise.all(
-                    toCap.map((it) =>
-                        supabase
-                            .from("cart_items")
-                            .update({ quantity: it.capped })
-                            .eq("id", it.cartItemId)
-                    )
-                );
-
-                // Do NOT re-fetch canonical data here to avoid visible remounts.
-                // Rely on optimistic update and mark autocap done for this version.
-                autoCapDoneForVersionRef.current = cartVersion;
-            } catch (error) {
-                console.error("Error auto-capping cart items:", error);
-                autoCapDoneForVersionRef.current = cartVersion;
-            }
-        }, 300);
-
-        return () => {
-            if (autoCapTimerRef.current) clearTimeout(autoCapTimerRef.current);
-        };
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [cartVersion, cartItems]);
-
-    const handleQuantityChange = (id, value) => {
-        const numValue = parseFloat(value);
-        // Allow zero and positive values; prevent negatives
-        if (!isNaN(numValue) && numValue >= 0) {
-            const item = cartItems.find((item) => item.id === id);
-            if (!item) return;
-            // Apply stock cap; zeros allowed
-            const capped = Math.min(numValue, item.stock);
-            updateQuantity(id, Math.round(capped * 10) / 10);
-        } else if (value === "") {
-            // treat empty input as 0 for UX but persist as 0
-            updateQuantity(id, 0);
-        }
+    const handleQuantityStep = (id, delta) => {
+        const item = cartItems.find((it) => it.id === id);
+        if (!item) return;
+        const next = Math.max(0.1, Math.min(item.stock, Math.round((item.quantity + delta) * 10) / 10));
+        updateQuantity(id, next);
     };
 
     const removeItem = async (id) => {
-        const item = cartItems.find((item) => item.id === id);
+        const item = cartItems.find((it) => it.id === id);
         if (!item) return;
 
-        // Store item quantity for optimistic decrement
-        const quantityToRemove = Math.round(item.quantity * 10) / 10;
-
         try {
-            const { error } = await supabase
+            await supabase
                 .from("cart_items")
                 .delete()
                 .eq("id", item.cartItemId);
 
-            if (error) {
-                console.error("Error removing item:", error);
-                return;
-            }
-
-            // Update cart items and recalculate hasInvalidItems
-            setCartItems((prevItems) => {
-                const updatedItems = prevItems.filter(
-                    (cartItem) => cartItem.id !== id
-                );
-
-                // Check remaining items for invalid products
-                const hasInvalid = updatedItems.some((item) => {
-                    const product = item.products;
-                    const approvalDate = product?.approval_date
-                        ? new Date(product.approval_date).toISOString()
-                        : null;
-                    const defaultDate = new Date(
-                        "1970-01-01T00:00:00.000Z"
-                    ).toISOString();
-
-                    return (
-                        !product?.approval_date ||
-                        approvalDate.startsWith("1970-01-01T00:00:00") ||
-                        approvalDate === defaultDate ||
-                        product.status_id === 2
-                    );
-                });
-
-                // Update hasInvalidItems state
-                setHasInvalidItems(hasInvalid);
-
-                return updatedItems;
+            setCartItems((prev) => {
+                const next = prev.filter((it) => it.id !== id);
+                setHasInvalidItems(next.some((it) => it.products?.status_id === 2 || !it.products?.approval_date));
+                return next;
             });
 
-            // Optimistically decrement shared cart count by the item quantity
-            // Clamp at zero to prevent negative counts
-            const newCount = Math.max(0, cartCount - 1); // One distinct item removed
-            setCartCount(newCount);
-
-            // Background reconciliation: fetch authoritative cart count to ensure accuracy
-            // This runs without blocking UI or navigation
-            (async () => {
-                try {
-                    const { data: userCart, error: cartError } = await supabase
-                        .from("carts")
-                        .select("id")
-                        .eq("user_id", user.id)
-                        .single();
-
-                    if (cartError && cartError.code !== "PGRST116") {
-                        console.error(
-                            "Error fetching cart for reconciliation:",
-                            cartError
-                        );
-                        return;
-                    }
-
-                    if (!userCart) {
-                        setCartCount(0);
-                        return;
-                    }
-
-                    const { data: cartItems, error: itemsError } =
-                        await supabase
-                            .from("cart_items")
-                            .select("id")
-                            .eq("cart_id", userCart.id);
-
-                    if (itemsError) {
-                        console.error("Error counting cart items:", itemsError);
-                        return;
-                    }
-
-                    const authoritativeCount = cartItems?.length || 0;
-                    // Only update shared state if it differs from optimistic count
-                    if (authoritativeCount !== newCount) {
-                        setCartCount(authoritativeCount);
-                    }
-                } catch (error) {
-                    console.error(
-                        "Background cart reconciliation failed:",
-                        error
-                    );
-                    // Silently fail - optimistic update already showed to user
-                }
-            })();
-        } catch (error) {
-            console.error("Error removing cart item:", error);
+            setCartCount((c) => Math.max(0, c - 1));
+        } catch (err) {
+            console.error("Error removing cart item:", err);
         }
     };
 
-    const getTotalPrice = () => {
-        return cartItems.reduce(
-            (total, item) => total + item.price * item.quantity,
-            0
-        );
-    };
+    // Auto-cap stock watcher
+    const autoCapDoneRef = useRef(0);
+    useEffect(() => {
+        if (autoCapDoneRef.current === cartVersion || cartItems.length === 0) return;
 
-    const getTotalItems = () => {
-        return cartItems.reduce((total, item) => total + item.quantity, 0);
-    };
+        const timer = setTimeout(async () => {
+            try {
+                const productIds = Array.from(new Set(cartItems.map((it) => it.id)));
+                const { data } = await supabase.from("products").select("id, stock").in("id", productIds);
 
-    // Helper function to check delivery eligibility per farmer
-    // Considers both minimum order quantity and daily delivery limits
+                if (!data) return;
+                const stockMap = new Map(data.map((p) => [p.id, Math.round(parseFloat(p.stock) * 10) / 10]));
+
+                const toCap = [];
+                const updated = cartItems.map((it) => {
+                    const st = stockMap.get(it.id) ?? 0;
+                    const capped = Math.min(it.quantity, st);
+                    if (capped !== it.quantity) {
+                        toCap.push({ ...it, capped });
+                        return { ...it, quantity: capped };
+                    }
+                    return it;
+                });
+
+                if (toCap.length > 0) {
+                    setCartItems(updated);
+                    await Promise.all(
+                        toCap.map((it) =>
+                            supabase.from("cart_items").update({ quantity: it.capped }).eq("id", it.cartItemId)
+                        )
+                    );
+                }
+                autoCapDoneRef.current = cartVersion;
+            } catch (err) {
+                console.error("Auto cap error:", err);
+            }
+        }, 300);
+
+        return () => clearTimeout(timer);
+    }, [cartVersion, cartItems]);
+
+    // Totals calculations
+    const totalPrice = cartItems.reduce((sum, it) => sum + it.price * it.quantity, 0);
+    const totalItems = cartItems.reduce((sum, it) => sum + it.quantity, 0);
+
     const getDeliveryIneligibleFarmers = () => {
-        return farmerGroups.filter(
-            (group) =>
-                group.isDeliveryLimitReached ||
-                group.totalQuantity < group.minimumOrderQuantity
-        );
+        return farmerGroups.filter((g) => g.isDeliveryLimitReached || g.totalQuantity < g.minimumOrderQuantity);
     };
 
-    const isDeliveryAvailable = () => {
-        return getDeliveryIneligibleFarmers().length === 0;
-    };
+    const isDeliveryAvailable = getDeliveryIneligibleFarmers().length === 0;
 
-    // Helper function to check if a product is invalid (no approval, epoch 1970, or suspended)
-    const isProductInvalid = (product) => {
-        const approvalDate = product?.approval_date
-            ? new Date(product.approval_date).toISOString()
-            : null;
-        const defaultDate = new Date("1970-01-01T00:00:00.000Z").toISOString();
+    const deliveryTotal = farmerGroups.reduce((sum, g) => {
+        const isEligible = !g.isDeliveryLimitReached && g.totalQuantity >= g.minimumOrderQuantity;
+        return sum + (isEligible ? g.deliveryCost : 0);
+    }, 0);
 
-        return (
-            !product?.approval_date ||
-            approvalDate.startsWith("1970-01-01T00:00:00") ||
-            approvalDate === defaultDate ||
-            product.status_id === 2
-        );
-    };
+    const grandTotal = totalPrice + deliveryTotal;
 
+    // Checkout gate
     const handleCheckout = async () => {
-        // Check profile completeness first - highest priority gate
         if (profileIncomplete) {
             showModal(
                 "warning",
                 "Profile Incomplete",
-                "Please complete your address and contact in your profile to proceed to checkout.",
+                "Please add your contact number and delivery address in your profile before checking out.",
                 () => {
                     setModal((prev) => ({ ...prev, open: false }));
                     navigate("/profile");
@@ -784,588 +332,246 @@ function Cart() {
             return;
         }
 
-        // Filter out zero-quantity items for checkout
-        const checkoutItems = cartItems.filter((it) => (it.quantity || 0) > 0);
-
-        if (checkoutItems.length === 0) {
-            showModal("warning", "Empty Cart", "Your cart is empty!", () =>
+        const validItems = cartItems.filter((it) => it.quantity > 0);
+        if (validItems.length === 0) {
+            showModal("warning", "Empty Cart", "Please ensure your cart has at least one valid item.", () =>
                 setModal((prev) => ({ ...prev, open: false }))
             );
             return;
         }
 
-        // Check for invalid products before proceeding
-        try {
-            const { data: productsData, error: productsError } = await supabase
-                .from("products")
-                .select("id, approval_date, status_id")
-                .in(
-                    "id",
-                    checkoutItems.map((item) => item.id)
-                );
-
-            if (productsError) {
-                console.error("Error checking products:", productsError);
-                showModal(
-                    "error",
-                    "Checkout Error",
-                    "Unable to verify products. Please try again.",
-                    () => setModal((prev) => ({ ...prev, open: false }))
-                );
-                return;
-            }
-
-            const invalidProducts = productsData.filter(
-                (product) =>
-                    !product.approval_date ||
-                    product.approval_date === "1970-01-01 00:00:00+00" ||
-                    product.status_id === 2
-            );
-
-            if (invalidProducts.length > 0) {
-                showModal(
-                    "error",
-                    "Unable to Checkout",
-                    "Some items in your cart are no longer available for purchase. Please remove them and try again.",
-                    () => setModal((prev) => ({ ...prev, open: false }))
-                );
-                return;
-            }
-        } catch (error) {
-            console.error("Error verifying products:", error);
+        if (hasInvalidItems) {
             showModal(
                 "error",
-                "Checkout Error",
-                "Unable to verify products. Please try again.",
+                "Unavailable Items",
+                "Some items in your cart are no longer approved or suspended. Please remove them to proceed.",
                 () => setModal((prev) => ({ ...prev, open: false }))
             );
             return;
         }
 
-        // Check if user profile is complete before checkout
-        try {
-            const { data, error } = await supabase
-                .from("profiles")
-                .select("name, contact, address")
-                .eq("id", user.id)
-                .single();
-
-            if (error) {
-                console.error("Error checking profile:", error);
-                showModal(
-                    "error",
-                    "Profile Error",
-                    "Error checking profile information. Please try again.",
-                    () => setModal((prev) => ({ ...prev, open: false }))
-                );
-                return;
-            }
-
-            // Validate profile completeness
-            const isProfileComplete =
-                data && data.name && data.contact && data.address;
-
-            if (!isProfileComplete) {
-                showModal(
-                    "warning",
-                    "Profile Incomplete",
-                    "Please complete your profile information (name, contact, and address) before proceeding to checkout.",
-                    () => {
-                        setModal((prev) => ({ ...prev, open: false }));
-                        navigate("/profile");
-                    }
-                );
-                return;
-            }
-
-            // Profile is complete, proceed to checkout with filtered items
-            // Recompute farmer groups and totals only for checkoutItems
-            const itemsByFarmer = checkoutItems.reduce((groups, item) => {
-                const farmerId = item.farmerId;
-                if (!groups[farmerId]) {
-                    groups[farmerId] = {
-                        farmerName: item.farmerName,
-                        farmerId: farmerId,
-                        items: [],
-                        totalQuantity: 0,
-                        totalPrice: 0,
-                        minimumOrderQuantity: item.minimumOrderQuantity,
-                        deliveryCost: item.deliveryCost,
-                    };
-                }
-                groups[farmerId].items.push(item);
-                groups[farmerId].totalQuantity += item.quantity;
-                groups[farmerId].totalPrice += item.price * item.quantity;
-                return groups;
-            }, {});
-
-            const checkoutFarmerGroups = Object.values(itemsByFarmer);
-            const totalAmount = checkoutItems.reduce(
-                (sum, it) => sum + it.price * it.quantity,
-                0
-            );
-
-            navigate("/checkout", {
-                state: {
-                    cartItems: checkoutItems,
-                    totalAmount,
-                    farmerGroups: checkoutFarmerGroups,
-                },
-            });
-        } catch (error) {
-            console.error("Error validating profile:", error);
-            showModal(
-                "error",
-                "Profile Error",
-                "Error checking profile information. Please try again.",
-                () => setModal((prev) => ({ ...prev, open: false }))
-            );
-        }
+        navigate("/checkout", {
+            state: {
+                cartItems: validItems,
+                totalAmount: totalPrice,
+                farmerGroups,
+            },
+        });
     };
 
-    useEffect(() => {
-        if (cartItems.length === 0) return;
-
-        // Use the same identifier the UI uses (item.id) which corresponds to product_id
-        const productIds = Array.from(
-            new Set(cartItems.map((item) => item.id))
-        );
-        const subscriptionRef = supabase
-            .channel("cart-products-channel")
-            .on(
-                "postgres_changes",
-                {
-                    event: "UPDATE",
-                    schema: "public",
-                    table: "products",
-                    filter: `id=in.(${productIds.join(",")})`,
-                },
-                (payload) => {
-                    const newRow = payload.new;
-                    const quantitiesToPersist = []; // Track updates to persist to DB
-
-                    // First pass: update local state and collect capping operations
-                    const updatedItems = cartItems.map((item) => {
-                        if (item.id !== newRow.id) return item;
-
-                        const newStock = parseFloat(newRow.stock) || 0;
-                        const currentQuantity =
-                            Math.round(item.quantity * 10) / 10;
-                        const cappedQuantity =
-                            currentQuantity > newStock
-                                ? Math.round(newStock * 10) / 10
-                                : currentQuantity;
-
-                        // If quantity was capped, track it for persistence
-                        if (cappedQuantity !== currentQuantity) {
-                            quantitiesToPersist.push({
-                                cartItemId: item.cartItemId,
-                                newQuantity: cappedQuantity,
-                            });
-                        }
-
-                        // Merge primitive fields and update nested products object
-                        return {
-                            ...item,
-                            price: parseFloat(newRow.price),
-                            stock: newStock,
-                            quantity: cappedQuantity, // Apply cap immediately
-                            products: {
-                                ...(item.products || {}),
-                                status_id: newRow.status_id,
-                                approval_date: newRow.approval_date,
-                            },
-                        };
-                    });
-
-                    // Update local state with capped quantities
-                    setCartItems(updatedItems);
-
-                    // Recompute hasInvalidItems based on updated state
-                    const newHasInvalidItems = updatedItems.some((item) =>
-                        isProductInvalid(item.products)
-                    );
-                    setHasInvalidItems(newHasInvalidItems);
-
-                    // Persist capped quantities to DB in background (don't await to avoid blocking UI)
-                    quantitiesToPersist.forEach((update) => {
-                        supabase
-                            .from("cart_items")
-                            .update({ quantity: update.newQuantity })
-                            .eq("id", update.cartItemId)
-                            .catch((error) => {
-                                console.error(
-                                    "Error persisting capped quantity:",
-                                    error
-                                );
-                                // Silently fail; UI already reflects the cap
-                            });
-                    });
-                }
-            )
-            .on(
-                "postgres_changes",
-                {
-                    event: "DELETE",
-                    schema: "public",
-                    table: "products",
-                },
-                (payload) => {
-                    // Remove cart item if product is deleted (match by the id used in UI)
-                    const filteredItems = cartItems.filter(
-                        (item) => item.id !== payload.old.id
-                    );
-                    setCartItems(filteredItems);
-
-                    // Recompute hasInvalidItems based on remaining items
-                    const newHasInvalidItems = filteredItems.some((item) =>
-                        isProductInvalid(item.products)
-                    );
-                    setHasInvalidItems(newHasInvalidItems);
-                }
-            )
-            .subscribe();
-
-        return () => subscriptionRef.unsubscribe();
-    }, [cartItems.length]);
-
     return (
-        <div className="min-h-screen w-full flex flex-col relative items-center scrollbar-hide bg-background overflow-x-hidden text-text pb-20">
-            {/* Header */}
-            <div className="fixed top-0 left-0 w-full bg-white shadow-md z-50 px-4 py-3 flex justify-between items-center">
-                <Link to="/" className="text-gray-600 hover:text-primary">
-                    <Icon icon="mingcute:left-line" width="24" height="24" />
-                </Link>
-                <h1 className="text-lg font-semibold">My Cart</h1>
-                <div className="flex items-center gap-2">
-                    <Icon
-                        icon="mingcute:shopping-cart-1-line"
-                        width="20"
-                        height="20"
-                        className="text-primary"
-                    />
-                    <span className="text-primary font-medium">
-                        {getTotalItems().toFixed(1)} items
+        <div className="min-h-screen w-full flex flex-col bg-slate-50/50 text-slate-900 pb-28 lg:pb-16 md:pt-16">
+            {/* MOBILE TOP BAR (< 768px) */}
+            <header className="md:hidden sticky top-0 left-0 w-full bg-white/95 backdrop-blur-md border-b border-slate-200/80 z-40 px-4 py-3 flex items-center justify-between shadow-xs">
+                <button
+                    type="button"
+                    onClick={() => navigate(-1)}
+                    className="min-w-[44px] min-h-[44px] flex items-center justify-center -ml-2 text-slate-700 hover:text-emerald-800 active:scale-95"
+                    aria-label="Go back"
+                >
+                    <Icon icon="mingcute:left-line" width="22" height="22" />
+                </button>
+                <div className="flex items-center gap-1.5 font-bold text-slate-900">
+                    <span>My Cart</span>
+                    <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 tabular-nums">
+                        {totalItems.toFixed(1)} kg
                     </span>
                 </div>
-            </div>
+                <div className="w-8" />
+            </header>
 
-            <div className="w-full max-w-2xl mx-4 sm:mx-auto my-16">
+            {/* MAIN CONTAINER */}
+            <main className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-4 md:mt-8">
+                {/* Desktop Breadcrumbs & Header */}
+                <div className="hidden md:flex items-center justify-between mb-8">
+                    <div>
+                        <h1 className="text-3xl font-bold tracking-tight text-slate-900">
+                            Shopping Cart
+                        </h1>
+                        <p className="text-xs text-slate-600 mt-1 tabular-nums">
+                            {farmerGroups.length} farmer {farmerGroups.length === 1 ? "group" : "groups"} · {totalItems.toFixed(1)} kg total produce
+                        </p>
+                    </div>
+                    <Link
+                        to="/"
+                        className="text-xs font-semibold text-emerald-800 hover:text-emerald-950 flex items-center gap-1"
+                    >
+                        <span>Continue Shopping</span>
+                        <Icon icon="mingcute:arrow-right-line" width="14" height="14" />
+                    </Link>
+                </div>
+
                 {loading ? (
-                    // Loading skeleton
-                    <div className="space-y-4">
+                    <div className="space-y-4 max-w-3xl">
                         {Array.from({ length: 3 }).map((_, i) => (
-                            <div
-                                key={i}
-                                className="bg-white rounded-lg shadow-md p-4 animate-pulse"
-                            >
-                                <div className="flex items-center gap-3 mb-3">
-                                    <div className="w-4 h-4 bg-gray-300 rounded"></div>
-                                    <div className="h-4 bg-gray-300 rounded w-32"></div>
-                                </div>
-                                <div className="flex gap-3">
-                                    <div className="w-16 h-16 bg-gray-300 rounded-lg"></div>
-                                    <div className="flex-1">
-                                        <div className="h-4 bg-gray-300 rounded mb-2"></div>
-                                        <div className="h-3 bg-gray-300 rounded w-3/4 mb-2"></div>
-                                        <div className="h-4 bg-gray-300 rounded w-1/3"></div>
-                                    </div>
-                                </div>
+                            <div key={i} className="bg-white rounded-2xl p-5 border border-slate-200 animate-pulse space-y-3">
+                                <div className="h-5 bg-slate-200 rounded w-1/3" />
+                                <div className="h-16 bg-slate-200 rounded-xl" />
                             </div>
                         ))}
                     </div>
                 ) : cartItems.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center py-16">
-                        <Icon
+                    <div className="py-12">
+                        <StateView
+                            type="empty"
                             icon="mingcute:shopping-cart-1-line"
-                            width="80"
-                            height="80"
-                            className="text-gray-300 mb-4"
+                            title="Your cart is empty"
+                            description="Directly support local Iligan growers by adding fresh harvest to your cart."
+                            actionText="Browse Marketplace"
+                            onAction={() => navigate("/")}
                         />
-                        <h2 className="text-xl font-bold text-gray-600 mb-2">
-                            Your cart is empty
-                        </h2>
-                        <p className="text-gray-500 text-center mb-6">
-                            Start shopping and add some fresh products from
-                            local farmers!
-                        </p>
-                        <Link
-                            to="/"
-                            className="bg-primary text-white px-6 py-3 rounded-lg hover:bg-primary-dark transition-colors font-medium"
-                        >
-                            Start Shopping
-                        </Link>
                     </div>
                 ) : (
-                    <>
-                        {/* Delivery Eligibility Info */}
-                        {!isDeliveryAvailable() && (
-                            <div className="bg-orange-50 border border-orange-200 rounded-lg p-4 mb-6">
-                                <div className="flex items-start gap-3">
-                                    <Icon
-                                        icon="mingcute:truck-line"
-                                        width="24"
-                                        height="24"
-                                        className="text-orange-600 mt-0.5"
-                                    />
-                                    <div>
-                                        <h3 className="font-semibold text-orange-800 mb-1">
-                                            Home Delivery Requirements
-                                        </h3>
-                                        <p className="text-orange-700 text-sm mb-2">
-                                            Some farmers cannot accept delivery
-                                            orders right now. Add more items
-                                            from other farmers or choose pickup
-                                            during checkout.
-                                        </p>
-                                        <div className="text-orange-600 text-xs space-y-1">
-                                            {getDeliveryIneligibleFarmers().map(
-                                                (farmer) => (
-                                                    <p key={farmer.farmerId}>
-                                                        •{" "}
-                                                        <strong>
-                                                            {farmer.farmerName}:
-                                                        </strong>{" "}
-                                                        {farmer.isDeliveryLimitReached
-                                                            ? farmer.dailyDeliveryLimit ===
-                                                              0
-                                                                ? "Delivery disabled by farmer"
-                                                                : `Daily delivery limit reached (${farmer.todayOrderCount}/${farmer.dailyDeliveryLimit} orders)`
-                                                            : `Need ${(
-                                                                  farmer.minimumOrderQuantity -
-                                                                  farmer.totalQuantity
-                                                              ).toFixed(
-                                                                  1
-                                                              )}kg more (currently ${farmer.totalQuantity.toFixed(
-                                                                  1
-                                                              )}kg, min: ${
-                                                                  farmer.minimumOrderQuantity
-                                                              }kg)`}
-                                                    </p>
-                                                )
-                                            )}
-                                        </div>
+                    <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-10 items-start">
+                        {/* LEFT COLUMN: Items Grouped by Farmer (col-span-8) */}
+                        <div className="lg:col-span-8 space-y-6">
+                            {/* Ineligible Delivery Alert */}
+                            {!isDeliveryAvailable && (
+                                <div className="p-4 rounded-2xl bg-amber-50 border border-amber-200/90 text-amber-900 text-xs space-y-1.5 shadow-xs">
+                                    <div className="flex items-center gap-2 font-bold text-amber-950">
+                                        <Icon icon="mingcute:truck-line" className="w-4 h-4 text-amber-700" />
+                                        <span>Delivery Requirement Notice</span>
                                     </div>
+                                    <p className="text-amber-800">
+                                        Some farms require a minimum weight or have reached today's delivery limit. You may still choose farm pickup at checkout.
+                                    </p>
                                 </div>
-                            </div>
-                        )}
+                            )}
 
-                        {/* Cart Items Grouped by Farmer */}
-                        <div className="space-y-6 mb-6">
+                            {/* Farmer Groups */}
                             {farmerGroups.map((group) => {
-                                const isMinQuantityMet =
-                                    group.totalQuantity >=
-                                    group.minimumOrderQuantity;
-                                const isDeliveryAvailableForGroup =
-                                    !group.isDeliveryLimitReached &&
-                                    isMinQuantityMet;
+                                const isMinMet = group.totalQuantity >= group.minimumOrderQuantity;
+                                const isEligible = !group.isDeliveryLimitReached && isMinMet;
 
                                 return (
                                     <div
                                         key={group.farmerId}
-                                        className={`bg-white rounded-lg shadow-md overflow-hidden ${
-                                            !isDeliveryAvailableForGroup
-                                                ? "border-l-4 border-orange-400"
-                                                : "border-l-4 border-green-400"
-                                        }`}
+                                        className="bg-white rounded-3xl border border-slate-200/90 overflow-hidden shadow-xs space-y-0"
                                     >
                                         {/* Farmer Header */}
-                                        <div
-                                            className={`p-4 ${
-                                                isDeliveryAvailableForGroup
-                                                    ? "bg-green-50"
-                                                    : "bg-orange-50"
-                                            }`}
-                                        >
-                                            <div className="flex items-center justify-between">
-                                                <div className="flex items-center gap-3">
-                                                    <Icon
-                                                        icon="mingcute:user-3-line"
-                                                        width="20"
-                                                        height="20"
-                                                        className={
-                                                            isDeliveryAvailableForGroup
-                                                                ? "text-green-600"
-                                                                : "text-orange-600"
-                                                        }
-                                                    />
-                                                    <div>
-                                                        <h3 className="font-semibold text-gray-800">
+                                        <div className="p-4 sm:p-5 bg-slate-50/80 border-b border-slate-200/80 flex flex-wrap items-center justify-between gap-2">
+                                            <div className="flex items-center gap-2.5">
+                                                <div className="w-8 h-8 rounded-full bg-emerald-700 text-white flex items-center justify-center font-bold text-xs">
+                                                    {group.farmerName.charAt(0).toUpperCase()}
+                                                </div>
+                                                <div>
+                                                    <div className="flex items-center gap-1.5">
+                                                        <h3 className="font-bold text-sm text-slate-900">
                                                             {group.farmerName}
                                                         </h3>
-                                                        <p className="text-xs text-gray-600 flex items-center gap-1 mt-0.5">
-                                                            <Icon
-                                                                icon="mingcute:location-line"
-                                                                width="12"
-                                                                height="12"
-                                                            />
-                                                            {group.items[0]
-                                                                ?.farmerAddress ||
-                                                                "Location not available"}
-                                                        </p>
-                                                        <div className="bg-primary/10 px-2 py-1 rounded-md inline-block mt-1">
-                                                            <p className="text-sm font-bold text-primary">
-                                                                ₱
-                                                                {group.totalPrice.toFixed(
-                                                                    2
-                                                                )}
-                                                            </p>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                                <div className="text-right">
-                                                    <div
-                                                        className={`flex items-center gap-2 text-xs ${
-                                                            isDeliveryAvailableForGroup
-                                                                ? "text-green-700"
-                                                                : "text-orange-600"
-                                                        }`}
-                                                    >
                                                         <Icon
-                                                            icon={
-                                                                isDeliveryAvailableForGroup
-                                                                    ? "mingcute:check-circle-fill"
-                                                                    : "mingcute:alert-fill"
-                                                            }
-                                                            width="14"
-                                                            height="14"
+                                                            icon="mingcute:check-circle-fill"
+                                                            className="w-3.5 h-3.5 text-emerald-700"
+                                                            title="Verified Grower"
                                                         />
-                                                        <span>
-                                                            {isDeliveryAvailableForGroup
-                                                                ? "Delivery available ✓"
-                                                                : group.isDeliveryLimitReached
-                                                                ? group.dailyDeliveryLimit ===
-                                                                  0
-                                                                    ? "Delivery disabled"
-                                                                    : `Delivery limit reached`
-                                                                : `${(
-                                                                      group.minimumOrderQuantity -
-                                                                      group.totalQuantity
-                                                                  ).toFixed(
-                                                                      1
-                                                                  )}kg left for delivery`}
-                                                        </span>
                                                     </div>
+                                                    <p className="text-xs text-slate-600 flex items-center gap-1">
+                                                        <Icon icon="mingcute:location-line" width="12" height="12" />
+                                                        <span className="truncate max-w-[200px]">{group.farmerAddress}</span>
+                                                    </p>
                                                 </div>
+                                            </div>
+
+                                            {/* Delivery Status Chip */}
+                                            <div className="flex items-center gap-1.5">
+                                                <span
+                                                    className={`inline-flex items-center gap-1 text-[11px] font-semibold px-2.5 py-1 rounded-full tabular-nums ${
+                                                        isEligible
+                                                            ? "bg-emerald-100 text-emerald-800"
+                                                            : "bg-amber-100 text-amber-900"
+                                                    }`}
+                                                >
+                                                    <Icon
+                                                        icon={isEligible ? "mingcute:check-fill" : "mingcute:alert-line"}
+                                                        width="12"
+                                                        height="12"
+                                                    />
+                                                    <span>
+                                                        {isEligible
+                                                            ? "Delivery available"
+                                                            : group.isDeliveryLimitReached
+                                                            ? "Delivery capacity full"
+                                                            : `Min. order: ${group.minimumOrderQuantity} kg`}
+                                                    </span>
+                                                </span>
                                             </div>
                                         </div>
 
-                                        {/* Farmer's Items */}
-                                        <div className="divide-y divide-gray-100">
+                                        {/* Items in Farmer Group */}
+                                        <div className="divide-y divide-slate-100">
                                             {group.items.map((item) => (
-                                                <div
-                                                    key={item.cartItemId}
-                                                    className="p-4"
-                                                >
-                                                    <div className="flex gap-4">
-                                                        <img
-                                                            src={item.image}
-                                                            alt={item.name}
-                                                            className="w-16 h-16 object-cover rounded-lg"
-                                                        />
-                                                        <div className="flex-1">
-                                                            <div className="flex items-center gap-3 mb-1">
-                                                                <h4 className="font-semibold text-gray-800">
+                                                <div key={item.cartItemId} className="p-4 sm:p-5 flex gap-4 items-center">
+                                                    {/* Produce Image */}
+                                                    <img
+                                                        src={item.image}
+                                                        alt={item.name}
+                                                        className="w-20 h-20 rounded-2xl object-cover border border-slate-200 shrink-0"
+                                                    />
+
+                                                    {/* Details & Controls */}
+                                                    <div className="flex-1 min-w-0">
+                                                        <div className="flex items-start justify-between gap-2">
+                                                            <div>
+                                                                <h4 className="font-semibold text-sm text-slate-900 truncate">
                                                                     {item.name}
                                                                 </h4>
-                                                                {item.products
-                                                                    ?.status_id ===
-                                                                    2 && (
-                                                                    <span className="inline-flex items-center px-2 rounded text-xs font-medium bg-red-100 text-red-800">
-                                                                        <Icon
-                                                                            icon="mingcute:alert-fill"
-                                                                            className="mr-1"
-                                                                            width="12"
-                                                                            height="12"
-                                                                        />
-                                                                        Suspended
-                                                                    </span>
-                                                                )}
-                                                                {(!item.products
-                                                                    ?.approval_date ||
-                                                                    new Date(
-                                                                        item.products?.approval_date
-                                                                    )
-                                                                        .toISOString()
-                                                                        .startsWith(
-                                                                            "1970-01-01"
-                                                                        )) && (
-                                                                    <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-yellow-100 text-yellow-800">
-                                                                        <Icon
-                                                                            icon="mingcute:time-fill"
-                                                                            className="mr-1"
-                                                                            width="12"
-                                                                            height="12"
-                                                                        />
-                                                                        Not
-                                                                        Approved
-                                                                    </span>
-                                                                )}
+                                                                <span className="text-xs text-slate-600">
+                                                                    {item.category} · ₱{item.price.toFixed(2)} /kg
+                                                                </span>
                                                             </div>
-                                                            <p className="text-primary font-bold text-lg">
-                                                                ₱
-                                                                {item.price.toFixed(
-                                                                    2
-                                                                )}
-                                                                /{item.unit}
-                                                            </p>
+                                                            {/* Remove Button (44×44px hit area) */}
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => removeItem(item.id)}
+                                                                className="min-w-[44px] min-h-[44px] flex items-center justify-center -mr-2 text-slate-400 hover:text-rose-600 active:scale-95 transition-colors"
+                                                                aria-label={`Remove ${item.name} from cart`}
+                                                            >
+                                                                <Icon icon="mingcute:delete-2-line" width="18" height="18" />
+                                                            </button>
                                                         </div>
-                                                        <button
-                                                            onClick={() =>
-                                                                removeItem(
-                                                                    item.id
-                                                                )
-                                                            }
-                                                            className="text-gray-400 hover:text-red-500 transition-colors"
-                                                        >
-                                                            <Icon
-                                                                icon="mingcute:delete-2-line"
-                                                                width="20"
-                                                                height="20"
-                                                            />
-                                                        </button>
-                                                    </div>
 
-                                                    <div className="flex items-center justify-between mt-4 pt-4 border-t border-gray-100">
-                                                        <div className="flex items-center gap-3">
-                                                            <span className="text-sm font-medium text-gray-700">
-                                                                Quantity (
-                                                                {item.unit}):
-                                                            </span>
-                                                            <input
-                                                                type="number"
-                                                                value={
-                                                                    item.quantity
-                                                                }
-                                                                onChange={(e) =>
-                                                                    handleQuantityChange(
-                                                                        item.id,
-                                                                        e.target
-                                                                            .value
-                                                                    )
-                                                                }
-                                                                step="0.5"
-                                                                // min="0.1"
-                                                                max={item.stock}
-                                                                className="px-2 py-1 border border-gray-300 rounded-lg w-20 text-center focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary"
-                                                            />
-                                                        </div>
-                                                        <div className="text-right">
-                                                            <p className="text-sm text-gray-500">
-                                                                Subtotal
-                                                            </p>
-                                                            <p className="font-bold text-gray-800">
-                                                                ₱
-                                                                {(
-                                                                    item.price *
-                                                                    item.quantity
-                                                                ).toFixed(2)}
-                                                            </p>
-                                                            <p className="text-xs text-gray-500">
-                                                                Stock:{" "}
-                                                                {item.stock}{" "}
-                                                                {item.unit}
-                                                            </p>
+                                                        {/* Steppers & Subtotal Row */}
+                                                        <div className="mt-3 flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-slate-100">
+                                                            {/* Stepper */}
+                                                            <div className="flex items-center gap-1.5">
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => handleQuantityStep(item.id, -0.5)}
+                                                                    disabled={item.quantity <= 0.1}
+                                                                    className="min-w-[36px] min-h-[36px] rounded-lg border border-slate-200 bg-white hover:bg-slate-50 flex items-center justify-center text-slate-700 disabled:opacity-40 active:scale-95 transition-all"
+                                                                    aria-label="Decrease quantity by 0.5kg"
+                                                                >
+                                                                    <Icon icon="mingcute:minus-line" width="14" height="14" />
+                                                                </button>
+                                                                <input
+                                                                    type="number"
+                                                                    value={item.quantity}
+                                                                    onChange={(e) => updateQuantity(item.id, parseFloat(e.target.value) || 0)}
+                                                                    step="0.5"
+                                                                    max={item.stock}
+                                                                    className="w-16 py-1 text-center font-bold text-xs tabular-nums border border-slate-200 rounded-lg bg-slate-50 focus:outline-none focus:ring-2 focus:ring-emerald-700"
+                                                                />
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => handleQuantityStep(item.id, 0.5)}
+                                                                    disabled={item.quantity >= item.stock}
+                                                                    className="min-w-[36px] min-h-[36px] rounded-lg border border-slate-200 bg-white hover:bg-slate-50 flex items-center justify-center text-slate-700 disabled:opacity-40 active:scale-95 transition-all"
+                                                                    aria-label="Increase quantity by 0.5kg"
+                                                                >
+                                                                    <Icon icon="mingcute:add-line" width="14" height="14" />
+                                                                </button>
+                                                                <span className="text-xs text-slate-600 font-medium ml-1">kg</span>
+                                                            </div>
+
+                                                            {/* Item Total */}
+                                                            <div className="text-right tabular-nums">
+                                                                <span className="font-extrabold text-sm text-emerald-800">
+                                                                    ₱{(item.price * item.quantity).toFixed(2)}
+                                                                </span>
+                                                                <span className="block text-[10px] text-slate-600">
+                                                                    {item.stock} kg in farm stock
+                                                                </span>
+                                                            </div>
                                                         </div>
                                                     </div>
                                                 </div>
@@ -1376,186 +582,104 @@ function Cart() {
                             })}
                         </div>
 
-                        {/* Order Summary */}
-                        <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-                            <h3 className="font-semibold text-gray-800 mb-4">
-                                Order Summary
-                            </h3>
+                        {/* RIGHT COLUMN: Sticky Order Summary (col-span-4) */}
+                        <div className="lg:col-span-4 lg:sticky lg:top-24 space-y-6">
+                            <div className="bg-white rounded-3xl border border-slate-200/90 p-6 shadow-xs space-y-5">
+                                <h2 className="text-lg font-bold text-slate-900 pb-3 border-b border-slate-100">
+                                    Order Summary
+                                </h2>
 
-                            {/* Delivery Status */}
-                            <div
-                                className={`mb-4 p-3 rounded-lg ${
-                                    isDeliveryAvailable()
-                                        ? "bg-green-50 border border-green-200"
-                                        : "bg-orange-50 border border-orange-200"
-                                }`}
-                            >
-                                <div className="flex items-center gap-2">
-                                    <Icon
-                                        icon={
-                                            isDeliveryAvailable()
-                                                ? "mingcute:check-circle-fill"
-                                                : "mingcute:alert-triangle-fill"
-                                        }
-                                        width="16"
-                                        height="16"
-                                        className={
-                                            isDeliveryAvailable()
-                                                ? "text-green-600"
-                                                : "text-orange-600"
-                                        }
-                                    />
-                                    <span
-                                        className={`text-sm font-medium ${
-                                            isDeliveryAvailable()
-                                                ? "text-green-800"
-                                                : "text-orange-800"
-                                        }`}
-                                    >
-                                        {isDeliveryAvailable()
-                                            ? "Home Delivery Available for All Farmers"
-                                            : "Some farmers unavailable for delivery"}
-                                    </span>
-                                </div>
-                            </div>
+                                <div className="space-y-3 text-xs text-slate-600">
+                                    <div className="flex justify-between items-baseline">
+                                        <span>Produce Subtotal ({totalItems.toFixed(1)} kg)</span>
+                                        <span className="font-bold text-sm text-slate-900 tabular-nums">
+                                            ₱{totalPrice.toFixed(2)}
+                                        </span>
+                                    </div>
 
-                            <div className="space-y-2 mb-4">
-                                <div className="flex justify-between text-gray-600">
-                                    <span>
-                                        Total Items:{" "}
-                                        {getTotalItems().toFixed(1)} kg
-                                    </span>
-                                    <span>₱{getTotalPrice().toFixed(2)}</span>
-                                </div>
+                                    {/* Per-farmer delivery estimate */}
+                                    <div className="space-y-1.5 pt-2 border-t border-slate-100">
+                                        <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider block">
+                                            Delivery Estimates
+                                        </span>
+                                        {farmerGroups.map((g) => {
+                                            const isEligible = !g.isDeliveryLimitReached && g.totalQuantity >= g.minimumOrderQuantity;
+                                            return (
+                                                <div key={g.farmerId} className="flex justify-between items-baseline text-slate-600">
+                                                    <span className="truncate max-w-[180px]">{g.farmerName}</span>
+                                                    <span className="tabular-nums font-medium text-slate-800">
+                                                        {isEligible ? `₱${g.deliveryCost.toFixed(2)}` : "Pickup only"}
+                                                    </span>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
 
-                                <div className="space-y-1">
-                                    {farmerGroups.map((group) => {
-                                        const isMinQuantityMet =
-                                            group.totalQuantity >=
-                                            group.minimumOrderQuantity;
-                                        const isDeliveryEligible =
-                                            !group.isDeliveryLimitReached &&
-                                            isMinQuantityMet;
-
-                                        return (
-                                            <div
-                                                key={group.farmerId}
-                                                className="flex justify-between text-gray-600 text-sm"
-                                            >
-                                                <span>
-                                                    {group.farmerName}{" "}
-                                                    {isDeliveryEligible
-                                                        ? "delivery fee"
-                                                        : "delivery (unavailable)"}
-                                                </span>
-                                                <span
-                                                    className={
-                                                        !isDeliveryEligible
-                                                            ? "text-gray-400"
-                                                            : ""
-                                                    }
-                                                >
-                                                    {!isDeliveryEligible
-                                                        ? "—"
-                                                        : `₱${group.deliveryCost.toFixed(
-                                                              2
-                                                          )}`}
-                                                </span>
-                                            </div>
-                                        );
-                                    })}
-                                </div>
-
-                                <div className="border-t border-gray-200 pt-2">
-                                    <div className="flex justify-between font-bold text-lg text-gray-800">
-                                        <span>Total</span>
-                                        <span>
-                                            ₱
-                                            {(
-                                                getTotalPrice() +
-                                                farmerGroups.reduce(
-                                                    (sum, g) => {
-                                                        const isMinQuantityMet =
-                                                            g.totalQuantity >=
-                                                            g.minimumOrderQuantity;
-                                                        const isDeliveryEligible =
-                                                            !g.isDeliveryLimitReached &&
-                                                            isMinQuantityMet;
-                                                        return (
-                                                            sum +
-                                                            (isDeliveryEligible
-                                                                ? g.deliveryCost
-                                                                : 0)
-                                                        );
-                                                    },
-                                                    0
-                                                )
-                                            ).toFixed(2)}
+                                    {/* Grand Total */}
+                                    <div className="pt-3 border-t border-slate-200 flex justify-between items-baseline">
+                                        <span className="font-bold text-sm text-slate-900">Total Amount</span>
+                                        <span className="font-extrabold text-2xl text-emerald-800 tabular-nums">
+                                            ₱{grandTotal.toFixed(2)}
                                         </span>
                                     </div>
                                 </div>
-                            </div>
 
-                            {!isDeliveryAvailable() && (
-                                <div className="text-center text-orange-600 text-xs space-y-1">
-                                    <p>
-                                        * Delivery fees apply only when minimum
-                                        quantities are met AND farmer has
-                                        delivery capacity
-                                    </p>
+                                {/* Desktop Checkout Action */}
+                                <div className="hidden lg:block pt-2">
+                                    <button
+                                        type="button"
+                                        onClick={handleCheckout}
+                                        disabled={profileIncomplete || hasInvalidItems}
+                                        className="w-full min-h-[48px] py-3 px-6 rounded-2xl bg-emerald-800 hover:bg-emerald-900 text-white font-semibold text-sm shadow-xs active:scale-[0.98] transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+                                    >
+                                        <Icon icon="mingcute:wallet-3-line" width="18" height="18" />
+                                        <span>Proceed to Checkout</span>
+                                    </button>
+
+                                    {profileIncomplete && (
+                                        <p className="text-[11px] text-amber-700 text-center mt-2">
+                                            Address and contact info required in profile before checkout.
+                                        </p>
+                                    )}
                                 </div>
-                            )}
+                            </div>
                         </div>
-
-                        {/* Checkout Button */}
-                        <div className="sticky bottom-20 bg-white rounded-lg shadow-lg p-4 border-t border-gray-200">
-                            <button
-                                onClick={handleCheckout}
-                                disabled={profileIncomplete || hasInvalidItems}
-                                className={`w-full py-3 rounded-lg font-semibold flex items-center justify-center gap-2 ${
-                                    profileIncomplete || hasInvalidItems
-                                        ? "bg-gray-300 text-gray-500 cursor-not-allowed"
-                                        : "bg-primary text-white hover:bg-primary-dark transition-colors"
-                                }`}
-                            >
-                                <Icon
-                                    icon="mingcute:wallet-3-line"
-                                    width="20"
-                                    height="20"
-                                />
-                                Proceed to Checkout
-                            </button>
-                            <p className="text-center text-xs mt-2">
-                                {profileIncomplete ? (
-                                    <span className="text-red-500">
-                                        Please complete your address and contact
-                                        in your profile to proceed to checkout.
-                                    </span>
-                                ) : hasInvalidItems ? (
-                                    <span className="text-red-500">
-                                        Some items are no longer available.
-                                        Please remove them to continue.
-                                    </span>
-                                ) : (
-                                    <span className="text-gray-500">
-                                        {isDeliveryAvailable()
-                                            ? "Home delivery & farm pickup available for all items"
-                                            : "Farm pickup available • Some deliveries need min. quantities"}
-                                    </span>
-                                )}
-                            </p>
-                        </div>
-                    </>
+                    </div>
                 )}
-            </div>
+            </main>
+
+            {/* MOBILE STICKY CHECKOUT BAR (< 1024px) */}
+            {cartItems.length > 0 && (
+                <div className="lg:hidden fixed bottom-14 left-0 w-full bg-white/95 backdrop-blur-md border-t border-slate-200 z-40 px-4 py-2.5 flex items-center justify-between shadow-[0_-4px_16px_rgba(0,0,0,0.06)]">
+                    <div>
+                        <span className="text-[10px] text-slate-600 uppercase font-semibold block">Total</span>
+                        <span className="font-extrabold text-lg text-emerald-800 tabular-nums">
+                            ₱{grandTotal.toFixed(2)}
+                        </span>
+                    </div>
+                    <button
+                        type="button"
+                        onClick={handleCheckout}
+                        disabled={profileIncomplete || hasInvalidItems}
+                        className="min-h-[44px] px-6 py-2 rounded-xl bg-emerald-800 hover:bg-emerald-900 text-white font-semibold text-xs shadow-xs active:scale-95 flex items-center gap-1.5 disabled:opacity-50"
+                    >
+                        <Icon icon="mingcute:wallet-3-line" width="16" height="16" />
+                        <span>Checkout</span>
+                    </button>
+                </div>
+            )}
+
+            {/* SHARED NAVIGATION */}
             <NavigationBar />
+
+            {/* MODAL */}
             <Modal
-                isOpen={modal.open}
+                open={modal.open}
                 type={modal.type}
                 title={modal.title}
                 message={modal.message}
                 onConfirm={modal.onConfirm}
-                onCancel={() => setModal((prev) => ({ ...prev, open: false }))}
+                onClose={() => setModal((prev) => ({ ...prev, open: false }))}
             />
         </div>
     );
