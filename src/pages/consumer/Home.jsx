@@ -2,14 +2,55 @@ import { useState, useMemo, useEffect, useContext } from "react";
 import { Icon } from "@iconify/react";
 import { Link } from "react-router-dom";
 import NavigationBar from "../../components/NavigationBar";
-import ConsumerSearch from "../../components/ConsumerSearch.jsx";
 import Modal from "../../components/Modal";
 import StateView from "../../components/StateView.jsx";
 import supabase from "../../SupabaseClient.jsx";
 import { AuthContext } from "../../context/AuthContext.jsx";
-import { getCartCount } from "../../utils/cartUtils.js";
-
 import useUpdateLastLogin from "../../hooks/useUpdateLastLogin";
+
+function formatProductRow(product) {
+    const reviews = product.reviews || [];
+    const rating = reviews.length
+        ? reviews.reduce((sum, r) => sum + (parseFloat(r.rating) || 0), 0) / reviews.length
+        : 0;
+
+    return {
+        id: product.id,
+        name: product.name,
+        price: parseFloat(product.price) || 0,
+        image:
+            product.image_url ||
+            "https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&q=80&w=400",
+        address: product.profiles?.address || "Location not available",
+        category: product.categories?.name || "Other",
+        farmerName: product.profiles?.name || "Local Farmer",
+        description: product.description || "",
+        stock: parseFloat(product.stock) || 0,
+        rating,
+        reviewCount: reviews.length,
+        minimumOrderQuantity: parseFloat(product.profiles?.minimum_order_quantity) || 1,
+        deliveryCost: parseFloat(product.profiles?.delivery_cost) || 50,
+        pickupLocation: product.profiles?.address || "Farm location",
+        farmerId: product.user_id,
+    };
+}
+
+function ProductRating({ rating, reviewCount }) {
+    if (!reviewCount || reviewCount === 0) {
+        return (
+            <span className="text-[11px] text-slate-600 font-medium">
+                No reviews yet
+            </span>
+        );
+    }
+    return (
+        <div className="flex items-center gap-1 tabular-nums text-xs font-semibold text-slate-700">
+            <Icon icon="mingcute:star-fill" className="text-amber-400 w-3.5 h-3.5" />
+            <span>{rating.toFixed(1)}</span>
+            <span className="text-slate-600 font-normal">({reviewCount})</span>
+        </div>
+    );
+}
 
 function Home() {
     const { user } = useContext(AuthContext);
@@ -22,8 +63,7 @@ function Home() {
         { name: "All", icon: "mdi:apps-box" },
     ]);
     const [loading, setLoading] = useState(true);
-    const [favorites, setFavorites] = useState(new Set()); // Track favorite product IDs
-    const [cartCount, setCartCount] = useState(0);
+    const [favorites, setFavorites] = useState(new Set());
     const [hasOrdersWithStatus6, setHasOrdersWithStatus6] = useState(false);
     const [modal, setModal] = useState({
         open: false,
@@ -37,7 +77,7 @@ function Home() {
         setModal({ open: true, type, title, message, onConfirm });
     };
 
-    // Helper: Fisher-Yates shuffle algorithm to randomize array in place
+    // Helper: Fisher-Yates shuffle
     const shuffleArray = (array) => {
         const shuffled = [...array];
         for (let i = shuffled.length - 1; i > 0; i--) {
@@ -47,7 +87,7 @@ function Home() {
         return shuffled;
     };
 
-    // Fetch categories from database
+    // Fetch categories
     useEffect(() => {
         const fetchCategories = async () => {
             try {
@@ -63,7 +103,7 @@ function Home() {
 
                 const dbCategories = data.map((cat) => ({
                     name: cat.name,
-                    icon: cat.icon || "mingcute:leaf-line", // Use icon from DB, with a fallback
+                    icon: cat.icon || "mingcute:leaf-line",
                     id: cat.id,
                 }));
 
@@ -79,7 +119,7 @@ function Home() {
         fetchCategories();
     }, []);
 
-    // Fetch user's favorites from database
+    // Fetch user favorites
     useEffect(() => {
         const fetchFavorites = async () => {
             if (!user) return;
@@ -105,24 +145,7 @@ function Home() {
         fetchFavorites();
     }, [user]);
 
-    // Fetch cart count
-    useEffect(() => {
-        const fetchCartCount = async () => {
-            if (user) {
-                const count = await getCartCount(user.id);
-                setCartCount(count);
-            }
-        };
-
-        fetchCartCount();
-
-        // Optional: Set up interval to refresh cart count every 30 seconds
-        const interval = setInterval(fetchCartCount, 30000);
-
-        return () => clearInterval(interval);
-    }, [user]);
-
-    // Check for orders with status_id 6 and subscribe to real-time changes
+    // Check order status 6 for mobile badge
     useEffect(() => {
         if (!user?.id) return;
 
@@ -145,12 +168,10 @@ function Home() {
             }
         };
 
-        // Initial check
         checkOrderStatus();
 
-        // Subscribe to real-time changes
         const channel = supabase
-            .channel(`orders-status-${user.id}`)
+            .channel(`orders-status-home-${user.id}`)
             .on(
                 "postgres_changes",
                 {
@@ -159,10 +180,7 @@ function Home() {
                     table: "orders",
                     filter: `user_id=eq.${user.id}`,
                 },
-                () => {
-                    // On any order change, recheck status
-                    checkOrderStatus();
-                }
+                () => checkOrderStatus()
             )
             .subscribe();
 
@@ -171,7 +189,7 @@ function Home() {
         };
     }, [user?.id]);
 
-    // Handle adding/removing favorites
+    // Toggle favorite
     const toggleFavorite = async (productId, event) => {
         event.preventDefault();
         event.stopPropagation();
@@ -190,7 +208,6 @@ function Home() {
 
         try {
             if (isFavorite) {
-                // Remove from favorites
                 const { error } = await supabase
                     .from("favorites")
                     .delete()
@@ -200,12 +217,11 @@ function Home() {
                 if (error) throw error;
 
                 setFavorites((prev) => {
-                    const newFavorites = new Set(prev);
-                    newFavorites.delete(productId);
-                    return newFavorites;
+                    const next = new Set(prev);
+                    next.delete(productId);
+                    return next;
                 });
             } else {
-                // Add to favorites
                 const { error } = await supabase.from("favorites").insert({
                     user_id: user.id,
                     product_id: productId,
@@ -227,7 +243,7 @@ function Home() {
         }
     };
 
-    // Fetch products from database
+    // Fetch products
     useEffect(() => {
         const fetchProducts = async () => {
             setLoading(true);
@@ -236,18 +252,16 @@ function Home() {
                     .from("products")
                     .select(
                         `
-                    *,
-                    categories(name),
-                    profiles!user_id(name, address, delivery_cost, minimum_order_quantity),
-                    statuses(name),
-                    reviews!reviews_product_id_fkey(
-                        rating
+                        *,
+                        categories(name),
+                        profiles!user_id(name, address, delivery_cost, minimum_order_quantity),
+                        statuses(name),
+                        reviews!reviews_product_id_fkey(rating)
+                        `
                     )
-                `
-                    )
-                    .neq("status_id", 2) // exclude status_id = 2
-                    .not("approval_date", "is", null) // exclude NULL
-                    .neq("approval_date", "1970-01-01 00:00:00+00") // exclude default date
+                    .neq("status_id", 2)
+                    .not("approval_date", "is", null)
+                    .neq("approval_date", "1970-01-01 00:00:00+00")
                     .eq("statuses.name", "active")
                     .order("created_at", { ascending: false });
 
@@ -258,44 +272,12 @@ function Home() {
                 }
 
                 if (!data || data.length === 0) {
-                    console.log("No products found in database");
                     setProducts([]);
                     return;
                 }
 
-                const formattedProducts = data.map((product) => ({
-                    id: product.id,
-                    name: product.name,
-                    price: parseFloat(product.price),
-                    image:
-                        product.image_url ||
-                        "https://via.placeholder.com/300x200?text=No+Image",
-                    address:
-                        product.profiles?.address || "Location not available",
-                    category: product.categories?.name || "Other",
-                    farmerName: product.profiles?.name || "Unknown Farmer",
-                    description: product.description,
-                    stock: parseFloat(product.stock) || 0,
-                    rating: product.reviews?.length
-                        ? product.reviews.reduce(
-                              (sum, review) => sum + parseFloat(review.rating),
-                              0
-                          ) / product.reviews.length
-                        : 0,
-                    reviewCount: product.reviews?.length || 0,
-                    minimumOrderQuantity:
-                        parseFloat(product.profiles?.minimum_order_quantity) ||
-                        1,
-                    deliveryCost:
-                        parseFloat(product.profiles?.delivery_cost) || 50,
-                    pickupLocation:
-                        product.profiles?.address || "Farm location",
-                    farmerId: product.user_id,
-                }));
-
-                // Randomize product order before setting state
-                const randomizedProducts = shuffleArray(formattedProducts);
-                setProducts(randomizedProducts);
+                const formatted = data.map(formatProductRow);
+                setProducts(shuffleArray(formatted));
             } catch (error) {
                 console.error("Error fetching products:", error);
                 setProducts([]);
@@ -307,10 +289,10 @@ function Home() {
         fetchProducts();
     }, []);
 
-    // Set up real-time subscription to product changes
+    // Real-time product sync
     useEffect(() => {
-        const subscriptionRef = supabase
-            .channel("products-channel")
+        const subscription = supabase
+            .channel("products-channel-home")
             .on(
                 "postgres_changes",
                 {
@@ -319,19 +301,16 @@ function Home() {
                     table: "products",
                 },
                 async (payload) => {
-                    // Fetch the new product with all filters to verify it should be visible
                     const { data, error } = await supabase
                         .from("products")
                         .select(
                             `
-                        *,
-                        categories(name),
-                        profiles!user_id(name, address, delivery_cost, minimum_order_quantity),
-                        statuses(name),
-                        reviews!reviews_product_id_fkey(
-                            rating
-                        )
-                    `
+                            *,
+                            categories(name),
+                            profiles!user_id(name, address, delivery_cost, minimum_order_quantity),
+                            statuses(name),
+                            reviews!reviews_product_id_fkey(rating)
+                            `
                         )
                         .eq("id", payload.new.id)
                         .neq("status_id", 2)
@@ -340,45 +319,7 @@ function Home() {
                         .eq("statuses.name", "active");
 
                     if (!error && data && data.length === 1) {
-                        // Product passes filters, add to list
-                        const product = data[0];
-                        const formattedProduct = {
-                            id: product.id,
-                            name: product.name,
-                            price: parseFloat(product.price),
-                            image:
-                                product.image_url ||
-                                "https://via.placeholder.com/300x200?text=No+Image",
-                            address:
-                                product.profiles?.address ||
-                                "Location not available",
-                            category: product.categories?.name || "Other",
-                            farmerName:
-                                product.profiles?.name || "Unknown Farmer",
-                            description: product.description,
-                            stock: parseFloat(product.stock) || 0,
-                            rating: product.reviews?.length
-                                ? product.reviews.reduce(
-                                      (sum, review) =>
-                                          sum + parseFloat(review.rating),
-                                      0
-                                  ) / product.reviews.length
-                                : 0,
-                            reviewCount: product.reviews?.length || 0,
-                            minimumOrderQuantity:
-                                parseFloat(
-                                    product.profiles?.minimum_order_quantity
-                                ) || 1,
-                            deliveryCost:
-                                parseFloat(product.profiles?.delivery_cost) ||
-                                50,
-                            pickupLocation:
-                                product.profiles?.address || "Farm location",
-                            farmerId: product.user_id,
-                        };
-
-                        // Append new product to the end of the list
-                        setProducts((prev) => [...prev, formattedProduct]);
+                        setProducts((prev) => [...prev, formatProductRow(data[0])]);
                     }
                 }
             )
@@ -390,19 +331,16 @@ function Home() {
                     table: "products",
                 },
                 async (payload) => {
-                    // Fetch the updated product with all filters
                     const { data, error } = await supabase
                         .from("products")
                         .select(
                             `
-                        *,
-                        categories(name),
-                        profiles!user_id(name, address, delivery_cost, minimum_order_quantity),
-                        statuses(name),
-                        reviews!reviews_product_id_fkey(
-                            rating
-                        )
-                    `
+                            *,
+                            categories(name),
+                            profiles!user_id(name, address, delivery_cost, minimum_order_quantity),
+                            statuses(name),
+                            reviews!reviews_product_id_fkey(rating)
+                            `
                         )
                         .eq("id", payload.new.id)
                         .neq("status_id", 2)
@@ -411,83 +349,32 @@ function Home() {
                         .eq("statuses.name", "active");
 
                     setProducts((prev) => {
-                        const productIndex = prev.findIndex(
-                            (p) => p.id === payload.new.id
-                        );
-
-                        if (data && data.length === 1) {
-                            // Product still passes filters
-                            const product = data[0];
-                            const formattedProduct = {
-                                id: product.id,
-                                name: product.name,
-                                price: parseFloat(product.price),
-                                image:
-                                    product.image_url ||
-                                    "https://via.placeholder.com/300x200?text=No+Image",
-                                address:
-                                    product.profiles?.address ||
-                                    "Location not available",
-                                category: product.categories?.name || "Other",
-                                farmerName:
-                                    product.profiles?.name || "Unknown Farmer",
-                                description: product.description,
-                                stock: parseFloat(product.stock) || 0,
-                                rating: product.reviews?.length
-                                    ? product.reviews.reduce(
-                                          (sum, review) =>
-                                              sum + parseFloat(review.rating),
-                                          0
-                                      ) / product.reviews.length
-                                    : 0,
-                                reviewCount: product.reviews?.length || 0,
-                                minimumOrderQuantity:
-                                    parseFloat(
-                                        product.profiles?.minimum_order_quantity
-                                    ) || 1,
-                                deliveryCost:
-                                    parseFloat(
-                                        product.profiles?.delivery_cost
-                                    ) || 50,
-                                pickupLocation:
-                                    product.profiles?.address ||
-                                    "Farm location",
-                                farmerId: product.user_id,
-                            };
-
+                        const productIndex = prev.findIndex((p) => p.id === payload.new.id);
+                        if (!error && data && data.length === 1) {
+                            const updatedProduct = formatProductRow(data[0]);
                             if (productIndex !== -1) {
-                                // Replace existing product at same index
-                                const updated = [...prev];
-                                updated[productIndex] = formattedProduct;
-                                return updated;
-                            } else {
-                                // Product not in list but now passes filters, append it
-                                return [...prev, formattedProduct];
+                                const copy = [...prev];
+                                copy[productIndex] = updatedProduct;
+                                return copy;
                             }
-                        } else {
-                            // Product no longer passes filters (suspended/unapproved)
-                            if (productIndex !== -1) {
-                                // Remove it from the list
-                                return prev.filter(
-                                    (p) => p.id !== payload.new.id
-                                );
-                            }
-                            return prev;
+                            return [...prev, updatedProduct];
                         }
+                        if (productIndex !== -1) {
+                            return prev.filter((p) => p.id !== payload.new.id);
+                        }
+                        return prev;
                     });
                 }
             )
             .subscribe();
 
         return () => {
-            subscriptionRef.unsubscribe();
+            subscription.unsubscribe();
         };
     }, []);
 
     const filteredProducts = useMemo(() => {
-        if (!products || products.length === 0) {
-            return [];
-        }
+        if (!products || products.length === 0) return [];
 
         return products
             .filter(
@@ -502,137 +389,164 @@ function Home() {
             );
     }, [products, selectedCategory, search]);
 
-    const renderStars = (rating) => {
-        const fullStars = Math.floor(rating);
-        const hasHalfStar = rating % 1 !== 0;
-        const emptyStars = 5 - Math.ceil(rating);
-
-        return (
-            <>
-                {[...Array(fullStars)].map((_, i) => (
-                    <Icon
-                        key={i}
-                        icon="mingcute:star-fill"
-                        className="text-yellow-400"
-                        width="12"
-                        height="12"
-                    />
-                ))}
-                {hasHalfStar && (
-                    <Icon
-                        key="half"
-                        icon="mingcute:star-half-fill"
-                        className="text-yellow-400"
-                        width="12"
-                        height="12"
-                    />
-                )}
-                {[...Array(emptyStars)].map((_, i) => (
-                    <Icon
-                        key={`empty-${i}`}
-                        icon="mingcute:star-line"
-                        className="text-gray-300"
-                        width="12"
-                        height="12"
-                    />
-                ))}
-            </>
-        );
-    };
-
     return (
-        <div className="min-h-screen w-full flex flex-col relative items-center scrollbar-hide bg-background overflow-x-hidden text-text pb-20">
-            {/* Header with Search and Cart */}
-            <div className="fixed top-0 left-0 w-full bg-white shadow-md z-50 px-4 py-3 flex justify-between items-center">
-                <h1 className="text-lg font-semibold text-primary">AgriLink</h1>
+        <div className="min-h-screen w-full flex flex-col items-center bg-slate-50/50 text-slate-900 pb-24 md:pb-12 md:pt-16">
+            {/* MOBILE TOP BAR (< 768px) */}
+            <header className="md:hidden sticky top-0 left-0 w-full bg-white/95 backdrop-blur-md border-b border-slate-200/80 z-40 px-4 py-3 flex items-center justify-between shadow-xs">
+                <div className="flex items-center gap-2">
+                    <img
+                        src="/components/icon_logo.png"
+                        alt="AgriLink"
+                        className="w-7 h-7 object-contain"
+                    />
+                    <span className="font-bold text-base text-emerald-800 tracking-tight">
+                        AgriLink
+                    </span>
+                </div>
                 <Link
                     to="/orders"
-                    className="relative text-gray-600 hover:text-primary"
+                    className="relative min-w-[44px] min-h-[44px] flex items-center justify-center text-slate-700 hover:text-emerald-800"
+                    aria-label="View orders"
                 >
-                    <Icon icon="mingcute:truck-line" width="24" height="24" />
+                    <Icon icon="mingcute:truck-line" width="22" height="22" />
                     {hasOrdersWithStatus6 && (
-                        <span className="absolute -top-1 -right-2 w-2.5 h-2.5 bg-red-500 rounded-full"></span>
+                        <span className="absolute top-2 right-2 w-2.5 h-2.5 bg-amber-500 rounded-full animate-pulse" />
                     )}
                 </Link>
-            </div>
+            </header>
 
-            <div className="w-full max-w-6xl mx-4 sm:mx-auto my-16">
-                {/* Search Bar */}
-                <div className="mb-6 mt-4">
-                    <ConsumerSearch
+            {/* MOBILE SEARCH BAR */}
+            <div className="md:hidden w-full px-4 pt-3 pb-2">
+                <div className="relative w-full">
+                    <Icon
+                        icon="mingcute:search-line"
+                        width="18"
+                        height="18"
+                        className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"
+                    />
+                    <input
+                        type="text"
+                        className="w-full pl-10 pr-9 py-2.5 rounded-xl border border-slate-200 bg-white shadow-xs text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-700"
+                        placeholder="Search crops, produce, or farm..."
                         value={search}
                         onChange={(e) => setSearch(e.target.value)}
                     />
+                    {search && (
+                        <button
+                            type="button"
+                            onClick={() => setSearch("")}
+                            className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 text-slate-400"
+                            aria-label="Clear search"
+                        >
+                            <Icon icon="mingcute:close-line" width="16" height="16" />
+                        </button>
+                    )}
                 </div>
+            </div>
 
-                {/* Category Filter */}
-                <div className="mb-6">
-                    <div className="flex overflow-x-auto gap-4 px-2 py-2 scrollbar-hide">
-                        {categories.map((category) => (
-                            <button
-                                key={category.name}
-                                className={`flex flex-col items-center justify-center min-w-[70px] py-3 px-2 rounded-lg transition-all ${
-                                    selectedCategory === category.name
-                                        ? "bg-primary text-white shadow-md"
-                                        : "bg-white hover:bg-gray-50 shadow-sm"
-                                }`}
-                                onClick={() =>
-                                    setSelectedCategory(category.name)
-                                }
-                            >
-                                <Icon
-                                    icon={category.icon}
-                                    width="32"
-                                    height="32"
-                                    className={
-                                        selectedCategory === category.name
-                                            ? "text-white"
-                                            : "text-gray-600"
-                                    }
-                                />
-                                <span
-                                    className={`mt-1 text-xs font-medium truncate max-w-[70px] ${
-                                        selectedCategory === category.name
-                                            ? "text-white"
-                                            : "text-gray-700"
+            {/* MAIN CONTENT CONTAINER */}
+            <main className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-3 md:mt-8">
+                {/* DESKTOP HERO & SEARCH */}
+                <section className="hidden md:block w-full bg-gradient-to-br from-emerald-50/80 via-white to-emerald-50/30 p-8 rounded-3xl mb-8 border border-emerald-100/70 shadow-xs">
+                    <div className="max-w-3xl">
+                        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-100/70 text-emerald-800 text-xs font-semibold mb-3">
+                            <Icon icon="mingcute:leaf-line" className="w-3.5 h-3.5" />
+                            <span>Direct Farm Marketplace</span>
+                        </div>
+                        <h1 className="text-3xl font-bold tracking-tight text-slate-900 mb-2">
+                            Fresh Produce, Straight From Iligan Growers
+                        </h1>
+                        <p className="text-sm text-slate-600 measure-prose mb-6">
+                            Directly connecting local producers with consumers — guaranteed fresh harvest with no middleman markups.
+                        </p>
+
+                        <div className="relative max-w-xl">
+                            <Icon
+                                icon="mingcute:search-line"
+                                width="20"
+                                height="20"
+                                className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"
+                            />
+                            <input
+                                type="text"
+                                className="w-full pl-11 pr-10 py-3 rounded-xl border border-slate-300 bg-white shadow-xs text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-700 focus:border-transparent transition-all"
+                                placeholder="Search fresh vegetables, fruits, crops, or farms…"
+                                value={search}
+                                onChange={(e) => setSearch(e.target.value)}
+                            />
+                            {search && (
+                                <button
+                                    type="button"
+                                    onClick={() => setSearch("")}
+                                    className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-600"
+                                    aria-label="Clear search"
+                                >
+                                    <Icon icon="mingcute:close-line" width="16" height="16" />
+                                </button>
+                            )}
+                        </div>
+                    </div>
+                </section>
+
+                {/* CATEGORY FILTER PILLS */}
+                <div className="w-full mb-6">
+                    <div className="flex items-center gap-2 overflow-x-auto scrollbar-hide py-1">
+                        {categories.map((category) => {
+                            const isSelected = selectedCategory === category.name;
+                            return (
+                                <button
+                                    key={category.name}
+                                    type="button"
+                                    onClick={() => setSelectedCategory(category.name)}
+                                    className={`inline-flex items-center gap-2 px-4 py-2 rounded-full text-xs font-medium whitespace-nowrap transition-all duration-150 ${
+                                        isSelected
+                                            ? "bg-emerald-800 text-white shadow-xs"
+                                            : "bg-white text-slate-700 hover:bg-slate-50 border border-slate-200/90 shadow-2xs"
                                     }`}
                                 >
-                                    {category.name}
-                                </span>
-                            </button>
-                        ))}
+                                    <Icon
+                                        icon={category.icon}
+                                        width="16"
+                                        height="16"
+                                        className={isSelected ? "text-white" : "text-emerald-700"}
+                                    />
+                                    <span>{category.name}</span>
+                                </button>
+                            );
+                        })}
                     </div>
                 </div>
 
-                {/* Section Header */}
-                <div className="mb-4 px-2">
-                    <h2 className="text-xl font-bold text-gray-800">
-                        {selectedCategory} Products
-                    </h2>
-                    <p className="text-gray-600 text-sm">
-                        {filteredProducts.length} products found
-                    </p>
+                {/* SECTION HEADER */}
+                <div className="mb-4 flex items-baseline justify-between">
+                    <div>
+                        <h2 className="text-xl font-bold text-slate-900">
+                            {selectedCategory} Produce
+                        </h2>
+                        <p className="text-slate-600 text-xs mt-0.5 tabular-nums">
+                            {filteredProducts.length} listings available
+                        </p>
+                    </div>
                 </div>
 
-                {/* Products Grid */}
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 sm:gap-4 px-2">
+                {/* PRODUCTS GRID */}
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 sm:gap-4 md:gap-5">
                     {loading ? (
-                        // Loading skeleton
-                        Array.from({ length: 10 }).map((_, i) => (
+                        Array.from({ length: 12 }).map((_, i) => (
                             <div
                                 key={i}
-                                className="bg-white rounded-xl shadow-xs border border-slate-200 overflow-hidden animate-pulse"
+                                className="bg-white rounded-2xl border border-slate-200 overflow-hidden animate-pulse flex flex-col"
                             >
-                                <div className="w-full h-36 sm:h-44 bg-slate-200"></div>
-                                <div className="p-3">
-                                    <div className="h-4 bg-slate-200 rounded mb-2 w-3/4"></div>
-                                    <div className="h-3 bg-slate-200 rounded mb-2 w-1/2"></div>
-                                    <div className="h-4 bg-slate-200 rounded w-1/3"></div>
+                                <div className="aspect-4/3 w-full bg-slate-200" />
+                                <div className="p-3 space-y-2">
+                                    <div className="h-4 bg-slate-200 rounded w-3/4" />
+                                    <div className="h-3 bg-slate-200 rounded w-1/2" />
+                                    <div className="h-4 bg-slate-200 rounded w-1/3 pt-2" />
                                 </div>
                             </div>
                         ))
                     ) : !products || products.length === 0 ? (
-                        <div className="col-span-full">
+                        <div className="col-span-full py-8">
                             <StateView
                                 type="empty"
                                 title="No products available"
@@ -640,7 +554,7 @@ function Home() {
                             />
                         </div>
                     ) : filteredProducts.length === 0 ? (
-                        <div className="col-span-full">
+                        <div className="col-span-full py-8">
                             <StateView
                                 type="empty"
                                 icon="mingcute:search-line"
@@ -653,98 +567,107 @@ function Home() {
                             <Link
                                 to={`/product/${product.id}`}
                                 key={product.id}
-                                className="bg-white rounded-xl shadow-xs hover:shadow-md border border-slate-200/80 hover:border-emerald-600/50 active:scale-[0.98] transition-all duration-150 overflow-hidden flex flex-col"
+                                className="group bg-white rounded-2xl border border-slate-200/90 hover:border-emerald-700/40 hover:shadow-md transition-all duration-150 overflow-hidden flex flex-col active:scale-[0.98]"
                             >
-                                <div className="relative">
+                                {/* Image Container */}
+                                <div className="relative aspect-4/3 w-full bg-slate-100 overflow-hidden">
                                     <img
                                         src={product.image}
                                         alt={product.name}
-                                        className="w-full h-40 sm:h-48 object-cover"
+                                        className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
                                         loading="lazy"
                                         onError={(e) => {
                                             e.target.src =
-                                                "https://via.placeholder.com/300x200?text=No+Image";
+                                                "https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&q=80&w=400";
                                         }}
                                     />
-                                    <div className="absolute top-2 left-2 bg-primary text-white px-2 py-1 rounded-full text-xs font-medium">
+                                    {/* Category Pill */}
+                                    <span className="absolute top-2 left-2 bg-white/90 backdrop-blur-xs text-emerald-800 text-[11px] font-semibold px-2 py-0.5 rounded-full border border-emerald-100/80 shadow-xs">
                                         {product.category}
-                                    </div>
+                                    </span>
+                                    {/* Favorite Button (44x44px Hit Target) */}
                                     <button
-                                        onClick={(e) =>
-                                            toggleFavorite(product.id, e)
+                                        type="button"
+                                        onClick={(e) => toggleFavorite(product.id, e)}
+                                        className="absolute top-1 right-1 min-w-[44px] min-h-[44px] flex items-center justify-center text-slate-600 hover:text-red-500 active:scale-95 transition-all"
+                                        aria-label={
+                                            favorites.has(product.id)
+                                                ? "Remove from favorites"
+                                                : "Add to favorites"
                                         }
-                                        className="absolute top-2 right-2 bg-white rounded-full p-1 shadow-md hover:bg-gray-50 transition-colors"
                                     >
-                                        <Icon
-                                            icon={
-                                                favorites.has(product.id)
-                                                    ? "mingcute:heart-fill"
-                                                    : "mingcute:heart-line"
-                                            }
-                                            width="16"
-                                            height="16"
-                                            className={
-                                                favorites.has(product.id)
-                                                    ? "text-red-500"
-                                                    : "text-gray-400"
-                                            }
-                                        />
+                                        <div className="w-8 h-8 rounded-full bg-white/90 backdrop-blur-xs flex items-center justify-center shadow-xs">
+                                            <Icon
+                                                icon={
+                                                    favorites.has(product.id)
+                                                        ? "mingcute:heart-fill"
+                                                        : "mingcute:heart-line"
+                                                }
+                                                width="17"
+                                                height="17"
+                                                className={
+                                                    favorites.has(product.id)
+                                                        ? "text-red-500"
+                                                        : "text-slate-400"
+                                                }
+                                            />
+                                        </div>
                                     </button>
                                 </div>
 
-                                <div className="p-3">
-                                    <h3 className="font-semibold text-gray-800 line-clamp-2 mb-1 text-sm">
-                                        {product.name}
-                                    </h3>
-                                    <div className="flex items-center gap-2 mb-2">
-                                        <Icon
-                                            icon="mingcute:user-3-line"
-                                            width="12"
-                                            height="12"
-                                            className="text-green-600"
-                                        />
-                                        <span className="text-xs text-green-700 font-medium">
-                                            {product.farmerName}
-                                        </span>
-                                    </div>
-                                    <div className="flex items-center gap-1 mb-2">
-                                        <div className="flex">
-                                            {renderStars(product.rating)}
+                                {/* Content Details */}
+                                <div className="p-3 sm:p-3.5 flex flex-col flex-1 justify-between gap-1.5">
+                                    <div>
+                                        <h3 className="font-semibold text-slate-900 text-sm line-clamp-1 leading-snug group-hover:text-emerald-800 transition-colors">
+                                            {product.name}
+                                        </h3>
+
+                                        {/* Farmer & Address */}
+                                        <div className="flex items-center gap-1.5 mt-1 text-xs text-slate-600">
+                                            <Icon
+                                                icon="mingcute:user-3-line"
+                                                className="w-3.5 h-3.5 text-emerald-700 shrink-0"
+                                            />
+                                            <span className="font-medium text-slate-700 truncate">
+                                                {product.farmerName}
+                                            </span>
                                         </div>
-                                        <span className="text-xs text-gray-500">
-                                            {product.reviewCount > 0
-                                                ? product.rating.toFixed(1)
-                                                : "No"}{" "}
-                                            {product.reviewCount === 1
-                                                ? "review"
-                                                : "reviews"}
-                                        </span>
-                                    </div>{" "}
-                                    <div className="flex items-center gap-1 mb-2">
-                                        <Icon
-                                            icon="mingcute:location-line"
-                                            width="12"
-                                            height="12"
-                                            className="text-gray-400"
-                                        />
-                                        <span className="text-xs text-gray-500 line-clamp-1">
-                                            {product.address}
-                                        </span>
+                                        <div className="flex items-center gap-1 mt-0.5 text-xs text-slate-600">
+                                            <Icon
+                                                icon="mingcute:location-line"
+                                                className="w-3.5 h-3.5 text-slate-400 shrink-0"
+                                            />
+                                            <span className="truncate">
+                                                {product.address}
+                                            </span>
+                                        </div>
                                     </div>
-                                    <div className="flex items-center justify-between mt-auto pt-2 border-t border-slate-100">
-                                        <p className="text-emerald-800 font-bold text-base tabular-nums">
-                                            ₱{product.price.toFixed(2)}
-                                            <span className="text-xs font-normal text-slate-500">/kg</span>
-                                        </p>
+
+                                    {/* Rating */}
+                                    <ProductRating
+                                        rating={product.rating}
+                                        reviewCount={product.reviewCount}
+                                    />
+
+                                    {/* Price & Stock */}
+                                    <div className="pt-2 border-t border-slate-100 flex items-baseline justify-between gap-1 mt-auto">
+                                        <div className="tabular-nums">
+                                            <span className="text-emerald-800 font-bold text-base">
+                                                ₱{product.price.toFixed(2)}
+                                            </span>
+                                            <span className="text-[11px] font-normal text-slate-600 ml-0.5">
+                                                /kg
+                                            </span>
+                                        </div>
                                         <span
-                                            className={`text-xs font-medium tabular-nums ${
+                                            className={`text-[11px] font-medium tabular-nums ${
                                                 product.stock > 0
                                                     ? "text-emerald-700"
-                                                    : "text-red-600"
+                                                    : "text-rose-600"
                                             }`}
                                         >
                                             {product.stock > 0
-                                                ? `${product.stock} kg left`
+                                                ? `${product.stock} kg`
                                                 : "Out of stock"}
                                         </span>
                                     </div>
@@ -753,8 +676,12 @@ function Home() {
                         ))
                     )}
                 </div>
-            </div>
+            </main>
+
+            {/* SHARED NAVIGATION */}
             <NavigationBar />
+
+            {/* MODAL */}
             <Modal
                 isOpen={modal.open}
                 type={modal.type}
