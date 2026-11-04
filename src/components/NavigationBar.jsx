@@ -115,14 +115,17 @@ function NavigationBar() {
     const isActive = (path) => location.pathname === path;
 
     return (
-        <div className="fixed bottom-0 left-0 w-full bg-white shadow-lg border-t border-gray-200 z-[1000]">
-            <div className="flex justify-around items-center py-3 px-4 max-w-lg mx-auto">
+        <nav
+            className="fixed bottom-0 left-0 w-full bg-white/95 backdrop-blur-md shadow-[0_-4px_20px_rgba(0,0,0,0.04)] border-t border-slate-200 z-50"
+            aria-label="Main Navigation"
+        >
+            <div className="flex justify-around items-center py-2 px-3 max-w-lg mx-auto">
                 <Link
                     to="/"
-                    className={`flex flex-col items-center min-w-[60px] py-2 px-3 rounded-lg transition-all duration-200 ${
+                    className={`flex flex-col items-center min-w-[54px] min-h-[44px] py-1.5 px-3 rounded-xl transition-colors duration-150 ${
                         isActive("/")
-                            ? "bg-primary text-white shadow-md"
-                            : "text-gray-600 hover:text-primary hover:bg-gray-50"
+                            ? "bg-emerald-700 text-white shadow-xs"
+                            : "text-slate-600 hover:text-emerald-800 hover:bg-slate-100/70"
                     }`}
                 >
                     <Icon
@@ -131,18 +134,18 @@ function NavigationBar() {
                                 ? "mingcute:home-2-fill"
                                 : "mingcute:home-2-line"
                         }
-                        width="24"
-                        height="24"
+                        width="22"
+                        height="22"
                     />
-                    <span className="text-xs mt-1 font-medium">Home</span>
+                    <span className="text-[11px] mt-0.5 font-medium">Home</span>
                 </Link>
 
                 <Link
                     to="/favorites"
-                    className={`flex flex-col items-center min-w-[60px] py-2 px-3 rounded-lg transition-all duration-200 ${
+                    className={`flex flex-col items-center min-w-[54px] min-h-[44px] py-1.5 px-3 rounded-xl transition-colors duration-150 ${
                         isActive("/favorites")
-                            ? "bg-primary text-white shadow-md"
-                            : "text-gray-600 hover:text-primary hover:bg-gray-50"
+                            ? "bg-emerald-700 text-white shadow-xs"
+                            : "text-slate-600 hover:text-emerald-800 hover:bg-slate-100/70"
                     }`}
                 >
                     <Icon
@@ -151,18 +154,18 @@ function NavigationBar() {
                                 ? "mingcute:heart-fill"
                                 : "mingcute:heart-line"
                         }
-                        width="24"
-                        height="24"
+                        width="22"
+                        height="22"
                     />
-                    <span className="text-xs mt-1 font-medium">Favorites</span>
+                    <span className="text-[11px] mt-0.5 font-medium">Favorites</span>
                 </Link>
 
                 <Link
                     to="/cart"
-                    className={`flex flex-col items-center min-w-[60px] py-2 px-3 rounded-lg transition-all duration-200 relative ${
+                    className={`flex flex-col items-center min-w-[54px] min-h-[44px] py-1.5 px-3 rounded-xl transition-colors duration-150 relative ${
                         isActive("/cart")
-                            ? "bg-primary text-white shadow-md"
-                            : "text-gray-600 hover:text-primary hover:bg-gray-50"
+                            ? "bg-emerald-700 text-white shadow-xs"
+                            : "text-slate-600 hover:text-emerald-800 hover:bg-slate-100/70"
                     }`}
                 >
                     <Icon
@@ -171,24 +174,24 @@ function NavigationBar() {
                                 ? "mingcute:shopping-cart-1-fill"
                                 : "mingcute:shopping-cart-1-line"
                         }
-                        width="24"
-                        height="24"
+                        width="22"
+                        height="22"
                     />
-                    <span className="text-xs mt-1 font-medium">Cart</span>
+                    <span className="text-[11px] mt-0.5 font-medium">Cart</span>
                     {/* Cart badge */}
                     {cartCount > 0 && (
-                        <div className="absolute -top-1 -right-1 bg-red-500 text-white text-xs w-5 h-5 flex items-center justify-center rounded-full">
+                        <span className="absolute top-1 right-2 bg-emerald-800 text-white text-[10px] font-bold tabular-nums min-w-[16px] h-[16px] px-0.5 flex items-center justify-center rounded-full shadow-xs">
                             {cartCount}
-                        </div>
+                        </span>
                     )}
                 </Link>
 
                 <Link
                     to="/messages"
-                    className={`flex flex-col items-center min-w-[60px] py-2 px-3 rounded-lg transition-all duration-200 relative ${
+                    className={`flex flex-col items-center min-w-[54px] min-h-[44px] py-1.5 px-3 rounded-xl transition-colors duration-150 relative ${
                         isActive("/messages")
-                            ? "bg-primary text-white shadow-md"
-                            : "text-gray-600 hover:text-primary hover:bg-gray-50"
+                            ? "bg-emerald-700 text-white shadow-xs"
+                            : "text-slate-600 hover:text-emerald-800 hover:bg-slate-100/70"
                     }`}
                 >
                     <Icon
@@ -197,24 +200,23 @@ function NavigationBar() {
                                 ? "mingcute:message-3-fill"
                                 : "mingcute:message-3-line"
                         }
-                        width="24"
-                        height="24"
+                        width="22"
+                        height="22"
                     />
-                    <span className="text-xs mt-1 font-medium">Messages</span>
-                    {/* Message badge - only shown when unreadConversationCount > 0 */}
+                    <span className="text-[11px] mt-0.5 font-medium">Messages</span>
                     {unreadConversationCount > 0 && (
-                        <div className="absolute -top-1 -right-1 bg-red-500 text-white text-xs w-5 h-5 flex items-center justify-center rounded-full animate-pulse">
+                        <span className="absolute top-1 right-2 bg-emerald-800 text-white text-[10px] font-bold tabular-nums min-w-[16px] h-[16px] px-0.5 flex items-center justify-center rounded-full shadow-xs">
                             {unreadConversationCount}
-                        </div>
+                        </span>
                     )}
                 </Link>
 
                 <Link
                     to="/profile"
-                    className={`flex flex-col items-center min-w-[60px] py-2 px-3 rounded-lg transition-all duration-200 relative ${
+                    className={`flex flex-col items-center min-w-[54px] min-h-[44px] py-1.5 px-3 rounded-xl transition-colors duration-150 relative ${
                         isActive("/profile")
-                            ? "bg-primary text-white shadow-md"
-                            : "text-gray-600 hover:text-primary hover:bg-gray-50"
+                            ? "bg-emerald-700 text-white shadow-xs"
+                            : "text-slate-600 hover:text-emerald-800 hover:bg-slate-100/70"
                     }`}
                 >
                     <Icon
@@ -223,17 +225,16 @@ function NavigationBar() {
                                 ? "mingcute:user-3-fill"
                                 : "mingcute:user-3-line"
                         }
-                        width="24"
-                        height="24"
+                        width="22"
+                        height="22"
                     />
-                    <span className="text-xs mt-1 font-medium">Profile</span>
-                    {/* Profile badge - shows when order or seller rejection badge conditions are met */}
+                    <span className="text-[11px] mt-0.5 font-medium">Profile</span>
                     {showProfileBadge && (
-                        <span className="absolute top-0 right-0 w-2.5 h-2.5 bg-red-500 rounded-full"></span>
+                        <span className="absolute top-1.5 right-3 w-2 h-2 bg-amber-500 rounded-full" title="Action needed in profile" />
                     )}
                 </Link>
             </div>
-        </div>
+        </nav>
     );
 }
 

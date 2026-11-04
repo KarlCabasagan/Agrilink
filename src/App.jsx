@@ -17,6 +17,7 @@ import { CartCountProvider } from "./context/CartCountContext.jsx";
 import { UnreadConversationsProvider } from "./context/UnreadConversationsContext.jsx";
 import { ProducerOrderCountProvider } from "./context/ProducerOrderCountContext.jsx";
 import { AdminPendingCountsProvider } from "./context/AdminPendingCountsContext.jsx";
+import { Toaster } from "react-hot-toast";
 
 import Home from "./pages/consumer/Home";
 import ProducerHome from "./pages/producer/ProducerHome";
@@ -362,6 +363,20 @@ function App() {
                             user={userRole === 3 ? user : null}
                         >
                             <Router>
+                                <Toaster
+                                    position="top-center"
+                                    toastOptions={{
+                                        duration: 2500,
+                                        style: {
+                                            background: "#0f172a",
+                                            color: "#f8fafc",
+                                            borderRadius: "12px",
+                                            fontSize: "14px",
+                                            fontWeight: 500,
+                                            boxShadow: "0 10px 15px -3px rgba(0,0,0,0.1)",
+                                        },
+                                    }}
+                                />
                                 <EmailVerificationHandler />
                                 <Routes>
                                     <Route

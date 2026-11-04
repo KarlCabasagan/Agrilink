@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useRef } from "react";
 import { Icon } from "@iconify/react";
 
 function Modal({
@@ -14,6 +14,8 @@ function Modal({
     icon,
     children,
 }) {
+    const dialogRef = useRef(null);
+
     useEffect(() => {
         if (!open) return;
         const handleKeyDown = (e) => {
@@ -30,35 +32,35 @@ function Modal({
             case "success":
                 return {
                     iconColor: "text-emerald-700",
-                    buttonColor: "bg-emerald-700 hover:bg-emerald-800 text-white focus:ring-emerald-700",
+                    buttonColor: "bg-emerald-700 hover:bg-emerald-800 text-white focus-visible:ring-emerald-700",
                     defaultIcon: "mingcute:check-circle-fill",
                     bgAccent: "bg-emerald-50",
                 };
             case "warning":
                 return {
                     iconColor: "text-amber-700",
-                    buttonColor: "bg-amber-700 hover:bg-amber-800 text-white focus:ring-amber-700",
+                    buttonColor: "bg-amber-700 hover:bg-amber-800 text-white focus-visible:ring-amber-700",
                     defaultIcon: "mingcute:alert-triangle-fill",
                     bgAccent: "bg-amber-50",
                 };
             case "error":
                 return {
                     iconColor: "text-red-700",
-                    buttonColor: "bg-red-700 hover:bg-red-800 text-white focus:ring-red-700",
+                    buttonColor: "bg-red-700 hover:bg-red-800 text-white focus-visible:ring-red-700",
                     defaultIcon: "mingcute:close-circle-fill",
                     bgAccent: "bg-red-50",
                 };
             case "confirm":
                 return {
                     iconColor: "text-emerald-700",
-                    buttonColor: "bg-emerald-700 hover:bg-emerald-800 text-white focus:ring-emerald-700",
+                    buttonColor: "bg-emerald-700 hover:bg-emerald-800 text-white focus-visible:ring-emerald-700",
                     defaultIcon: "mingcute:question-line",
                     bgAccent: "bg-emerald-50",
                 };
             default: // info
                 return {
                     iconColor: "text-sky-700",
-                    buttonColor: "bg-sky-700 hover:bg-sky-800 text-white focus:ring-sky-700",
+                    buttonColor: "bg-sky-700 hover:bg-sky-800 text-white focus-visible:ring-sky-700",
                     defaultIcon: "mingcute:information-fill",
                     bgAccent: "bg-sky-50",
                 };
@@ -75,14 +77,22 @@ function Modal({
             aria-modal="true"
             aria-labelledby="modal-title"
         >
-            {/* Backdrop */}
+            {/* Backdrop: 150ms opacity transition */}
             <div
-                className="fixed inset-0 bg-slate-900/50 backdrop-blur-xs transition-opacity duration-150"
+                className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs transition-opacity duration-150 ease-out"
                 onClick={onClose}
             />
 
-            {/* Modal Card */}
-            <div className="relative bg-white rounded-2xl shadow-xl p-6 sm:p-8 w-full max-w-md text-center border border-slate-200 z-10 transform scale-100 transition-all duration-150 ease-out">
+            {/* Modal Card: Emil Kowalski rules:
+                - Never scale from 0; start from scale(0.96)
+                - GPU transform + opacity only
+                - 180ms snappy ease-out
+                - Origin top center/center
+            */}
+            <div
+                ref={dialogRef}
+                className="relative bg-white rounded-2xl shadow-[0_20px_25px_-5px_rgba(15,23,42,0.1),0_8px_10px_-6px_rgba(15,23,42,0.06)] p-6 sm:p-8 w-full max-w-md text-center border border-slate-200/90 z-10 origin-center transition-all duration-180 ease-[cubic-bezier(0.16,1,0.3,1)] motion-safe:animate-[modal-in_180ms_cubic-bezier(0.16,1,0.3,1)]"
+            >
                 {displayIcon && (
                     <div className="mb-4">
                         <div
@@ -101,26 +111,26 @@ function Modal({
                 {title && (
                     <h3
                         id="modal-title"
-                        className="text-xl font-bold text-slate-900 mb-2"
+                        className="text-xl font-bold text-slate-900 mb-2 tracking-tight"
                     >
                         {title}
                     </h3>
                 )}
 
                 {message && (
-                    <p className="text-slate-600 mb-6 leading-relaxed text-sm max-w-prose mx-auto">
+                    <p className="text-slate-600 mb-6 leading-relaxed text-sm max-w-[65ch] mx-auto">
                         {message}
                     </p>
                 )}
 
                 {children}
 
-                {/* Button actions */}
+                {/* Actions: Minimum 44x44px touch targets */}
                 <div className="flex justify-center items-center gap-3 mt-6">
                     {showCancel && (
                         <button
                             type="button"
-                            className="min-h-[44px] min-w-[44px] px-5 py-2.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium text-sm transition-colors border border-slate-300 focus:ring-2 focus:ring-slate-400 focus:outline-none"
+                            className="min-h-[44px] min-w-[44px] px-5 py-2.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium text-sm transition-colors duration-150 border border-slate-300/80 focus-visible:ring-2 focus-visible:ring-slate-400 focus:outline-none"
                             onClick={onClose}
                         >
                             {cancelText}
@@ -128,7 +138,7 @@ function Modal({
                     )}
                     <button
                         type="button"
-                        className={`min-h-[44px] min-w-[44px] px-6 py-2.5 rounded-lg font-medium text-sm transition-colors shadow-sm focus:ring-2 focus:outline-none ${styles.buttonColor}`}
+                        className={`min-h-[44px] min-w-[44px] px-6 py-2.5 rounded-lg font-medium text-sm transition-colors duration-150 shadow-xs focus-visible:ring-2 focus:outline-none ${styles.buttonColor}`}
                         onClick={onConfirm || onClose}
                     >
                         {confirmText}
