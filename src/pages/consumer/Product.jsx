@@ -12,7 +12,7 @@ import { Link } from "react-router-dom";
 import NavigationBar from "../../components/NavigationBar";
 import Modal from "../../components/Modal";
 import supabase from "../../SupabaseClient";
-import { AuthContext } from "../../App.jsx";
+import { AuthContext } from "../../context/AuthContext.jsx";
 import { CartCountContext } from "../../context/CartCountContext.jsx";
 import { addToCart, getCartCount } from "../../utils/cartUtils.js";
 import { uploadImage, deleteImageFromUrl } from "../../utils/imageUpload.js";

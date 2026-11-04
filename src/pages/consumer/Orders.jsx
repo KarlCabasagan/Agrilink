@@ -4,7 +4,7 @@ import { Link, useNavigate } from "react-router-dom";
 import NavigationBar from "../../components/NavigationBar";
 import ReviewModal from "../../components/ReviewModal";
 import supabase from "../../SupabaseClient";
-import { AuthContext } from "../../App.jsx";
+import { AuthContext } from "../../context/AuthContext.jsx";
 import { toast } from "react-hot-toast";
 import { getProfileAvatarUrl } from "../../utils/avatarUtils.js";
 import { uploadImage, validateImageFile } from "../../utils/imageUpload.js";

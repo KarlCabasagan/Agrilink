@@ -3,7 +3,7 @@ import { Icon } from "@iconify/react";
 import { Link, useSearchParams } from "react-router-dom";
 import NavigationBar from "../../components/NavigationBar";
 import supabase from "../../SupabaseClient";
-import { AuthContext } from "../../App.jsx";
+import { AuthContext } from "../../context/AuthContext.jsx";
 import { UnreadConversationsContext } from "../../context/UnreadConversationsContext.jsx";
 import { getProfileAvatarUrl } from "../../utils/avatarUtils.js";
 

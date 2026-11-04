@@ -3,7 +3,7 @@ import { Icon } from "@iconify/react";
 import { Link, useSearchParams, useNavigate } from "react-router-dom";
 import ProducerNavigationBar from "../../components/ProducerNavigationBar";
 import supabase from "../../SupabaseClient";
-import { AuthContext } from "../../App.jsx";
+import { AuthContext } from "../../context/AuthContext.jsx";
 import { getProfileAvatarUrl } from "../../utils/avatarUtils.js";
 
 const ReplacementRequestCard = ({ replacementData, onClick }) => {

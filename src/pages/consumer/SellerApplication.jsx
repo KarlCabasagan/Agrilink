@@ -4,7 +4,7 @@ import { useNavigate, Link } from "react-router-dom";
 import NavigationBar from "../../components/NavigationBar";
 import supabase from "../../SupabaseClient";
 import ValidIdUpload from "../../components/ValidIdUpload";
-import { AuthContext } from "../../App";
+import { AuthContext } from "../../context/AuthContext.jsx";
 import { uploadImage } from "../../utils/imageUpload";
 
 function SellerApplication() {

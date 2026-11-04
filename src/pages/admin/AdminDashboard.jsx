@@ -6,7 +6,7 @@ import supabase from "../../SupabaseClient";
 
 import useUpdateLastLogin from "../../hooks/useUpdateLastLogin";
 import { useContext } from "react";
-import { AuthContext } from "../../App";
+import { AuthContext } from "../../context/AuthContext.jsx";
 
 function AdminDashboard() {
     const { user } = useContext(AuthContext);

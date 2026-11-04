@@ -8,7 +8,7 @@ import {
 } from "react";
 import { Icon } from "@iconify/react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
-import { AuthContext } from "../../App.jsx";
+import { AuthContext } from "../../context/AuthContext.jsx";
 import ProducerNavigationBar from "../../components/ProducerNavigationBar";
 import ConfirmModal from "../../components/ConfirmModal";
 import ImageUpload from "../../components/ImageUpload";

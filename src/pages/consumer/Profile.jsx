@@ -2,7 +2,7 @@ import { Icon } from "@iconify/react";
 import NavigationBar from "../../components/NavigationBar";
 import { Link, useNavigate } from "react-router-dom";
 import { useContext, useEffect, useState } from "react";
-import { AuthContext } from "../../App.jsx";
+import { AuthContext } from "../../context/AuthContext.jsx";
 import supabase from "../../SupabaseClient.jsx";
 import { getProfileAvatarUrl } from "../../utils/avatarUtils.js";
 

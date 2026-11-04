@@ -1,7 +1,7 @@
 import { useState, useEffect, useContext, useCallback, useRef } from "react";
 import { Icon } from "@iconify/react";
 import { useParams, useNavigate } from "react-router-dom";
-import { AuthContext } from "../../App.jsx";
+import { AuthContext } from "../../context/AuthContext.jsx";
 import ProducerNavigationBar from "../../components/ProducerNavigationBar";
 import ConfirmModal from "../../components/ConfirmModal";
 import { deleteImageFromUrl, uploadImage } from "../../utils/imageUpload";

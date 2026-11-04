@@ -1,6 +1,6 @@
 import { useState, useEffect, useContext } from "react";
 import { Icon } from "@iconify/react";
-import { AuthContext } from "../../App.jsx";
+import { AuthContext } from "../../context/AuthContext.jsx";
 import ProducerNavigationBar from "../../components/ProducerNavigationBar";
 import supabase from "../../SupabaseClient.jsx";
 import { toast } from "react-hot-toast";

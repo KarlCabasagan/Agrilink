@@ -3,7 +3,7 @@ import { Icon } from "@iconify/react";
 import AdminNavigationBar from "../../components/AdminNavigationBar";
 import ConfirmModal from "../../components/ConfirmModal";
 import supabase from "../../SupabaseClient";
-import { AuthContext } from "../../App";
+import { AuthContext } from "../../context/AuthContext.jsx";
 
 function AdminCropManagement() {
     const { user } = useContext(AuthContext);

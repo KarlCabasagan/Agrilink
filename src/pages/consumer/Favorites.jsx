@@ -4,7 +4,7 @@ import NavigationBar from "../../components/NavigationBar";
 import ConsumerSearch from "../../components/ConsumerSearch.jsx";
 import { useState, useEffect, useContext } from "react";
 import supabase from "../../SupabaseClient.jsx";
-import { AuthContext } from "../../App.jsx";
+import { AuthContext } from "../../context/AuthContext.jsx";
 import { CartCountContext } from "../../context/CartCountContext.jsx";
 
 function Favorites() {

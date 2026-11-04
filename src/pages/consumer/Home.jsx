@@ -4,8 +4,9 @@ import { Link } from "react-router-dom";
 import NavigationBar from "../../components/NavigationBar";
 import ConsumerSearch from "../../components/ConsumerSearch.jsx";
 import Modal from "../../components/Modal";
+import StateView from "../../components/StateView.jsx";
 import supabase from "../../SupabaseClient.jsx";
-import { AuthContext } from "../../App.jsx";
+import { AuthContext } from "../../context/AuthContext.jsx";
 import { getCartCount } from "../../utils/cartUtils.js";
 
 import useUpdateLastLogin from "../../hooks/useUpdateLastLogin";
@@ -614,59 +615,45 @@ function Home() {
                 </div>
 
                 {/* Products Grid */}
-                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 px-2">
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 sm:gap-4 px-2">
                     {loading ? (
                         // Loading skeleton
-                        Array.from({ length: 8 }).map((_, i) => (
+                        Array.from({ length: 10 }).map((_, i) => (
                             <div
                                 key={i}
-                                className="bg-white rounded-lg shadow-md overflow-hidden animate-pulse"
+                                className="bg-white rounded-xl shadow-xs border border-slate-200 overflow-hidden animate-pulse"
                             >
-                                <div className="w-full h-40 sm:h-48 bg-gray-300"></div>
+                                <div className="w-full h-36 sm:h-44 bg-slate-200"></div>
                                 <div className="p-3">
-                                    <div className="h-4 bg-gray-300 rounded mb-2"></div>
-                                    <div className="h-3 bg-gray-300 rounded mb-2 w-3/4"></div>
-                                    <div className="h-3 bg-gray-300 rounded mb-2 w-1/2"></div>
-                                    <div className="h-4 bg-gray-300 rounded w-1/3"></div>
+                                    <div className="h-4 bg-slate-200 rounded mb-2 w-3/4"></div>
+                                    <div className="h-3 bg-slate-200 rounded mb-2 w-1/2"></div>
+                                    <div className="h-4 bg-slate-200 rounded w-1/3"></div>
                                 </div>
                             </div>
                         ))
                     ) : !products || products.length === 0 ? (
-                        <div className="col-span-full flex flex-col items-center justify-center py-16">
-                            <Icon
-                                icon="mingcute:inbox-line"
-                                width="64"
-                                height="64"
-                                className="text-gray-300 mb-4"
+                        <div className="col-span-full">
+                            <StateView
+                                type="empty"
+                                title="No products available"
+                                description="Fresh farm produce will appear here when local producers publish their listings."
                             />
-                            <p className="text-gray-400 text-lg">
-                                No products available
-                            </p>
-                            <p className="text-gray-400 text-sm">
-                                Products will appear here when farmers add them
-                            </p>
                         </div>
                     ) : filteredProducts.length === 0 ? (
-                        <div className="col-span-full flex flex-col items-center justify-center py-16">
-                            <Icon
+                        <div className="col-span-full">
+                            <StateView
+                                type="empty"
                                 icon="mingcute:search-line"
-                                width="64"
-                                height="64"
-                                className="text-gray-300 mb-4"
+                                title="No products found"
+                                description="Try adjusting your search query or selecting another crop category."
                             />
-                            <p className="text-gray-400 text-lg">
-                                No products found
-                            </p>
-                            <p className="text-gray-400 text-sm">
-                                Try adjusting your search or filters
-                            </p>
                         </div>
                     ) : (
                         filteredProducts.map((product) => (
                             <Link
                                 to={`/product/${product.id}`}
                                 key={product.id}
-                                className="bg-white rounded-lg shadow-md hover:shadow-lg transition-shadow duration-300 overflow-hidden"
+                                className="bg-white rounded-xl shadow-xs hover:shadow-md border border-slate-200/80 hover:border-emerald-600/50 active:scale-[0.98] transition-all duration-150 overflow-hidden flex flex-col"
                             >
                                 <div className="relative">
                                     <img
@@ -744,15 +731,16 @@ function Home() {
                                             {product.address}
                                         </span>
                                     </div>
-                                    <div className="flex items-center justify-between">
-                                        <p className="text-primary font-bold text-lg">
-                                            ₱{product.price.toFixed(2)}/kg
+                                    <div className="flex items-center justify-between mt-auto pt-2 border-t border-slate-100">
+                                        <p className="text-emerald-800 font-bold text-base tabular-nums">
+                                            ₱{product.price.toFixed(2)}
+                                            <span className="text-xs font-normal text-slate-500">/kg</span>
                                         </p>
                                         <span
-                                            className={`text-xs ${
+                                            className={`text-xs font-medium tabular-nums ${
                                                 product.stock > 0
-                                                    ? "text-green-600"
-                                                    : "text-red-500"
+                                                    ? "text-emerald-700"
+                                                    : "text-red-600"
                                             }`}
                                         >
                                             {product.stock > 0

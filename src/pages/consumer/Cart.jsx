@@ -4,7 +4,7 @@ import { Link, useNavigate } from "react-router-dom";
 import NavigationBar from "../../components/NavigationBar";
 import Modal from "../../components/Modal";
 import supabase from "../../SupabaseClient.jsx";
-import { AuthContext } from "../../App.jsx";
+import { AuthContext } from "../../context/AuthContext.jsx";
 import { CartCountContext } from "../../context/CartCountContext.jsx";
 
 function Cart() {

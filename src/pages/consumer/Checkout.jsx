@@ -1,7 +1,7 @@
 import { useState, useContext, useEffect } from "react";
 import { Icon } from "@iconify/react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { AuthContext } from "../../App";
+import { AuthContext } from "../../context/AuthContext.jsx";
 import NavigationBar from "../../components/NavigationBar";
 import Modal from "../../components/Modal";
 import supabase from "../../SupabaseClient";
