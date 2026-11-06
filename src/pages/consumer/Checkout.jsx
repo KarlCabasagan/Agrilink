@@ -114,8 +114,8 @@ function Checkout() {
         const handleScroll = () => {
             const scrollBottom = window.innerHeight + window.scrollY;
             const totalHeight = document.documentElement.scrollHeight;
-            // Within 160px of page bottom means user reached bottom summary/submit area
-            const atBottom = scrollBottom >= totalHeight - 160;
+            // Within 200px of page bottom means user reached bottom summary/submit area
+            const atBottom = scrollBottom >= totalHeight - 200;
             setIsBottomVisible((prev) => (prev !== atBottom ? atBottom : prev));
         };
 
@@ -685,7 +685,7 @@ function Checkout() {
 
             <NavigationBar />
 
-            <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 pb-32 md:pb-12">
+            <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 pb-36 md:pb-12">
                 {/* Header breadcrumb & back link */}
                 <div className="flex items-center gap-3 mb-6">
                     <button
@@ -1049,7 +1049,7 @@ function Checkout() {
                             </div>
 
                             {/* Price Breakdown */}
-                            <div className="border-t border-slate-100 pt-4 space-y-2 text-sm">
+                            <div className="border-t border-slate-100 pt-4 space-y-2.5 text-sm">
                                 <div className="flex justify-between text-slate-600">
                                     <span>Produce Subtotal</span>
                                     <span className="tabular-nums font-medium text-slate-900">
@@ -1064,9 +1064,9 @@ function Checkout() {
                                             : "Free (Pickup)"}
                                     </span>
                                 </div>
-                                <div className="flex justify-between text-base font-bold text-slate-900 border-t border-slate-200 pt-3">
+                                <div className="flex justify-between items-baseline text-base font-bold text-slate-900 border-t border-slate-200/80 pt-3.5 mt-2">
                                     <span>Total Amount</span>
-                                    <span className="text-emerald-800 tabular-nums">
+                                    <span className="text-xl font-extrabold text-emerald-800 tabular-nums">
                                         ₱{summary.finalTotal.toFixed(2)}
                                     </span>
                                 </div>
@@ -1081,14 +1081,14 @@ function Checkout() {
                             )}
 
                             {/* Desktop/In-Page Submit Button */}
-                            <div ref={bottomSubmitRef}>
+                            <div ref={bottomSubmitRef} className="pt-2">
                                 <button
                                     type="button"
                                     onClick={handleSubmit}
                                     disabled={!isCheckoutAllowed}
-                                    className={`w-full min-h-[48px] py-3 px-4 font-semibold text-sm rounded-xl transition duration-150 flex items-center justify-center gap-2 ${
+                                    className={`w-full min-h-[50px] py-3.5 px-5 font-semibold text-sm rounded-xl transition duration-150 flex items-center justify-center gap-2 ${
                                         isCheckoutAllowed
-                                            ? "bg-emerald-700 hover:bg-emerald-800 text-white shadow-sm active:scale-[0.98]"
+                                            ? "bg-emerald-700 hover:bg-emerald-800 text-white shadow-xs active:scale-[0.98]"
                                             : "bg-slate-200 text-slate-400 cursor-not-allowed"
                                     }`}
                                 >
@@ -1112,33 +1112,42 @@ function Checkout() {
 
             {/* Mobile Fixed Sticky Checkout Bottom Bar (sits above mobile NavigationBar; vanishes when bottom submit button is in view) */}
             <div
-                className={`md:hidden fixed bottom-14 left-0 right-0 bg-white/95 backdrop-blur-md border-t border-slate-200 p-3.5 px-4 shadow-lg z-30 flex items-center justify-between gap-4 transition-all duration-200 ease-out ${
+                className={`md:hidden fixed bottom-[60px] left-0 right-0 bg-white/95 backdrop-blur-md border-t border-slate-200/90 shadow-lg z-30 transition-all duration-200 ease-out ${
                     isBottomVisible
                         ? "opacity-0 translate-y-4 pointer-events-none"
                         : "opacity-100 translate-y-0 pointer-events-auto"
                 }`}
                 aria-hidden={isBottomVisible}
             >
-                <div>
-                    <span className="text-[11px] font-medium uppercase tracking-wider text-slate-500 block">
-                        Total
-                    </span>
-                    <span className="text-lg font-bold text-slate-900 tabular-nums">
-                        ₱{summary.finalTotal.toFixed(2)}
-                    </span>
+                <div className="max-w-lg mx-auto py-3 px-4 sm:px-6 flex items-center justify-between gap-4">
+                    <div>
+                        <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 block leading-tight">
+                            Total
+                        </span>
+                        <span className="text-xl font-extrabold text-slate-900 tabular-nums leading-tight">
+                            ₱{summary.finalTotal.toFixed(2)}
+                        </span>
+                    </div>
+                    <button
+                        type="button"
+                        onClick={handleSubmit}
+                        disabled={!isCheckoutAllowed}
+                        className={`min-h-[46px] py-2.5 px-6 font-semibold text-sm rounded-xl transition duration-150 flex items-center justify-center gap-2 flex-1 max-w-[210px] ${
+                            isCheckoutAllowed
+                                ? "bg-emerald-700 hover:bg-emerald-800 text-white shadow-xs active:scale-[0.98]"
+                                : "bg-slate-200 text-slate-400 cursor-not-allowed"
+                        }`}
+                    >
+                        {loading ? (
+                            <>
+                                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                                <span>Placing…</span>
+                            </>
+                        ) : (
+                            <span>Place Order</span>
+                        )}
+                    </button>
                 </div>
-                <button
-                    type="button"
-                    onClick={handleSubmit}
-                    disabled={!isCheckoutAllowed}
-                    className={`min-h-[44px] py-2.5 px-5 font-semibold text-sm rounded-xl transition duration-150 flex items-center justify-center gap-2 flex-1 max-w-[200px] ${
-                        isCheckoutAllowed
-                            ? "bg-emerald-700 hover:bg-emerald-800 text-white active:scale-[0.98]"
-                            : "bg-slate-200 text-slate-400 cursor-not-allowed"
-                    }`}
-                >
-                    {loading ? "Placing…" : "Place Order"}
-                </button>
             </div>
         </div>
     );
