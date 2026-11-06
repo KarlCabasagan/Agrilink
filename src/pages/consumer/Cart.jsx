@@ -360,7 +360,7 @@ function Cart() {
     };
 
     return (
-        <div className="min-h-screen w-full flex flex-col bg-slate-50/50 text-slate-900 pb-28 lg:pb-16 md:pt-16">
+        <div className="min-h-screen w-full max-w-full overflow-x-hidden flex flex-col bg-slate-50/50 text-slate-900 pb-28 lg:pb-16 md:pt-16">
             {/* MOBILE TOP BAR (< 768px) */}
             <header className="md:hidden sticky top-0 left-0 w-full bg-white/95 backdrop-blur-md border-b border-slate-200/80 z-40 px-4 py-3 flex items-center justify-between shadow-xs">
                 <button
@@ -650,22 +650,24 @@ function Cart() {
 
             {/* MOBILE STICKY CHECKOUT BAR (< 1024px) */}
             {cartItems.length > 0 && (
-                <div className="lg:hidden fixed bottom-14 left-0 w-full bg-white/95 backdrop-blur-md border-t border-slate-200 z-40 px-4 py-2.5 flex items-center justify-between shadow-[0_-4px_16px_rgba(0,0,0,0.06)]">
-                    <div>
-                        <span className="text-[10px] text-slate-600 uppercase font-semibold block">Total</span>
-                        <span className="font-extrabold text-lg text-emerald-800 tabular-nums">
-                            ₱{grandTotal.toFixed(2)}
-                        </span>
+                <div className="lg:hidden fixed bottom-[60px] left-0 right-0 bg-white/95 backdrop-blur-md border-t border-slate-200 z-40 px-4 py-2.5 shadow-[0_-4px_16px_rgba(0,0,0,0.06)]">
+                    <div className="max-w-lg mx-auto flex items-center justify-between">
+                        <div>
+                            <span className="text-[10px] text-slate-600 uppercase font-semibold block">Total</span>
+                            <span className="font-extrabold text-lg text-emerald-800 tabular-nums">
+                                ₱{grandTotal.toFixed(2)}
+                            </span>
+                        </div>
+                        <button
+                            type="button"
+                            onClick={handleCheckout}
+                            disabled={profileIncomplete || hasInvalidItems}
+                            className="min-h-[44px] px-6 py-2 rounded-xl bg-emerald-800 hover:bg-emerald-900 text-white font-semibold text-xs shadow-xs active:scale-95 flex items-center gap-1.5 disabled:opacity-50"
+                        >
+                            <Icon icon="mingcute:wallet-3-line" width="16" height="16" />
+                            <span>Checkout</span>
+                        </button>
                     </div>
-                    <button
-                        type="button"
-                        onClick={handleCheckout}
-                        disabled={profileIncomplete || hasInvalidItems}
-                        className="min-h-[44px] px-6 py-2 rounded-xl bg-emerald-800 hover:bg-emerald-900 text-white font-semibold text-xs shadow-xs active:scale-95 flex items-center gap-1.5 disabled:opacity-50"
-                    >
-                        <Icon icon="mingcute:wallet-3-line" width="16" height="16" />
-                        <span>Checkout</span>
-                    </button>
                 </div>
             )}
 

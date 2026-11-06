@@ -77,7 +77,7 @@ function Register() {
 
     return (
         <>
-            <div className="min-h-screen min-w-screen flex items-center justify-center flex-col bg-background text-text">
+            <div className="min-h-screen w-full max-w-full overflow-x-hidden flex items-center justify-center flex-col bg-background text-text">
                 <div className="w-10/12 max-w-6xl h-[90vh] flex flex-col items-center md:flex-row md:justify-between p-4">
                     <div className="">
                         <img

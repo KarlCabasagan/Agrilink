@@ -70,9 +70,9 @@ function AdminNavigationBar() {
     ];
 
     return (
-        <div className="fixed bottom-0 left-0 w-full bg-white shadow-lg border-t border-gray-200 z-[1000]">
+        <div className="fixed bottom-0 left-0 right-0 bg-white shadow-lg border-t border-gray-200 z-[1000]">
             <div className="w-full overflow-x-auto scrollbar-hide">
-                <div className="flex justify-around items-center py-3 px-4 min-w-[560px] max-w-2xl mx-auto">
+                <div className="flex justify-around items-center py-3 px-4 min-w-[320px] max-w-2xl mx-auto">
                     {navItems.map((item) => (
                         <Link
                             key={item.path}

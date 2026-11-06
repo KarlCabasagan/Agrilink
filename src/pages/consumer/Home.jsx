@@ -390,9 +390,9 @@ function Home() {
     }, [products, selectedCategory, search]);
 
     return (
-        <div className="min-h-screen w-full flex flex-col items-center bg-slate-50/50 text-slate-900 pb-24 md:pb-12 md:pt-16">
+        <div className="min-h-screen w-full max-w-full overflow-x-hidden flex flex-col bg-slate-50/50 text-slate-900 pb-24 md:pb-12 md:pt-16">
             {/* MOBILE TOP BAR (< 768px) */}
-            <header className="md:hidden sticky top-0 left-0 w-full bg-white/95 backdrop-blur-md border-b border-slate-200/80 z-40 px-4 py-3 flex items-center justify-between shadow-xs">
+            <header className="md:hidden sticky top-0 left-0 right-0 w-full bg-white/95 backdrop-blur-md border-b border-slate-200/80 z-40 px-4 py-3 flex items-center justify-between shadow-xs">
                 <div className="flex items-center gap-2">
                     <img
                         src="/components/icon_logo.png"

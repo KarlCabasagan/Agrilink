@@ -51,7 +51,7 @@ function PasswordReset() {
     };
 
     return (
-        <div className="min-h-screen min-w-screen flex items-center justify-center flex-col bg-background text-text">
+        <div className="min-h-screen w-full max-w-full overflow-x-hidden flex items-center justify-center flex-col bg-background text-text">
             {/* Modal */}
             {modalOpen && (
                 <>

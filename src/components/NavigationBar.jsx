@@ -115,7 +115,7 @@ function NavigationBar() {
     return (
         <>
             {/* DESKTOP HEADER (>= 768px) */}
-            <header className="hidden md:block fixed top-0 left-0 w-full bg-white/95 backdrop-blur-md border-b border-slate-200/80 z-50 shadow-xs">
+            <header className="hidden md:block fixed top-0 left-0 right-0 bg-white/95 backdrop-blur-md border-b border-slate-200/80 z-50 shadow-xs">
                 <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
                     {/* Brand */}
                     <Link to="/" className="flex items-center gap-2.5 group">
@@ -211,7 +211,7 @@ function NavigationBar() {
 
             {/* MOBILE BOTTOM NAVIGATION (< 768px) */}
             <nav
-                className="md:hidden fixed bottom-0 left-0 w-full bg-white/95 backdrop-blur-md shadow-[0_-4px_20px_rgba(0,0,0,0.04)] border-t border-slate-200 z-50"
+                className="md:hidden fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-md shadow-[0_-4px_20px_rgba(0,0,0,0.04)] border-t border-slate-200 z-50"
                 aria-label="Mobile Navigation"
             >
                 <div className="flex justify-around items-center py-2 px-3 max-w-lg mx-auto">

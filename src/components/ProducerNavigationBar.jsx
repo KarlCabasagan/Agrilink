@@ -49,7 +49,7 @@ function ProducerNavigationBar() {
     ];
 
     return (
-        <div className="fixed bottom-0 left-0 w-full bg-white shadow-lg border-t border-gray-200 z-[1000]">
+        <div className="fixed bottom-0 left-0 right-0 bg-white shadow-lg border-t border-gray-200 z-[1000]">
             <div className="flex justify-around items-center py-3 px-4 max-w-lg mx-auto">
                 {navItems.map((item) => (
                     <Link

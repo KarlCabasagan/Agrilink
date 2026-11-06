@@ -560,7 +560,7 @@ function Checkout() {
     // -------------------------------------------------------------
     if (profileLoading) {
         return (
-            <div className="min-h-screen bg-slate-50/50 flex flex-col justify-between md:pt-16">
+            <div className="min-h-screen w-full max-w-full overflow-x-hidden bg-slate-50/50 flex flex-col justify-between md:pt-16">
                 <NavigationBar />
                 <div className="flex-1 flex flex-col items-center justify-center p-8">
                     <div className="w-10 h-10 border-2 border-emerald-700 border-t-transparent rounded-full animate-spin mb-4" />
@@ -575,7 +575,7 @@ function Checkout() {
     // -------------------------------------------------------------
     if (orderPlaced) {
         return (
-            <div className="min-h-screen bg-slate-50/50 flex flex-col justify-between md:pt-16">
+            <div className="min-h-screen w-full max-w-full overflow-x-hidden bg-slate-50/50 flex flex-col justify-between md:pt-16">
                 <NavigationBar />
                 <div className="flex-1 flex items-center justify-center p-4 py-12">
                     <div className="bg-white border border-slate-200 rounded-2xl shadow-sm p-6 sm:p-8 max-w-lg w-full text-center">
@@ -642,7 +642,7 @@ function Checkout() {
     // -------------------------------------------------------------
     if (!currentCartItems.length) {
         return (
-            <div className="min-h-screen bg-slate-50/50 flex flex-col justify-between md:pt-16">
+            <div className="min-h-screen w-full max-w-full overflow-x-hidden bg-slate-50/50 flex flex-col justify-between md:pt-16">
                 <NavigationBar />
                 <div className="flex-1 flex flex-col items-center justify-center p-6 text-center">
                     <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center text-slate-400 mb-4">
@@ -673,7 +673,7 @@ function Checkout() {
         !loading;
 
     return (
-        <div className="min-h-screen bg-slate-50/50 text-slate-900 flex flex-col justify-between md:pt-16">
+        <div className="min-h-screen w-full max-w-full overflow-x-hidden bg-slate-50/50 text-slate-900 flex flex-col justify-between md:pt-16">
             {/* Standard Modal Render */}
             <Modal
                 open={modal.open}
@@ -980,11 +980,11 @@ function Checkout() {
                                                     : "border-slate-200 bg-slate-50/50"
                                             }`}
                                         >
-                                            <div className="flex items-center justify-between pb-2 mb-2 border-b border-slate-200/60 text-xs">
-                                                <div className="font-semibold text-slate-900 truncate">
+                                            <div className="flex items-center justify-between pb-2 mb-2 border-b border-slate-200/60 text-xs gap-2">
+                                                <div className="font-semibold text-slate-900 truncate min-w-0 flex-1">
                                                     {farmer.farmerName}
                                                 </div>
-                                                <span className="text-slate-500 tabular-nums">
+                                                <span className="text-slate-500 tabular-nums shrink-0">
                                                     {farmer.totalQuantity.toFixed(1)} kg total
                                                 </span>
                                             </div>
@@ -993,27 +993,27 @@ function Checkout() {
                                                 {farmer.items.map((item) => (
                                                     <div
                                                         key={item.id}
-                                                        className="flex items-center justify-between gap-3 text-xs"
+                                                        className="flex items-center justify-between gap-2.5 text-xs min-w-0"
                                                     >
-                                                        <div className="flex items-center gap-2.5 min-w-0">
+                                                        <div className="flex items-center gap-2.5 min-w-0 flex-1">
                                                             {item.image && (
                                                                 <img
                                                                     src={item.image}
                                                                     alt={item.name}
-                                                                    className="w-9 h-9 rounded-lg object-cover border border-slate-200 flex-shrink-0"
+                                                                    className="w-9 h-9 rounded-lg object-cover border border-slate-200 shrink-0"
                                                                 />
                                                             )}
-                                                            <div className="truncate">
+                                                            <div className="truncate min-w-0 flex-1">
                                                                 <p className="font-medium text-slate-800 truncate">
                                                                     {item.name}
                                                                 </p>
-                                                                <p className="text-slate-500 tabular-nums">
+                                                                <p className="text-slate-500 tabular-nums text-[11px]">
                                                                     ₱{Number(item.price).toFixed(2)} × {item.quantity} {item.unit || "kg"}
                                                                 </p>
                                                             </div>
                                                         </div>
 
-                                                        <div className="flex items-center gap-2 flex-shrink-0">
+                                                        <div className="flex items-center gap-2 shrink-0">
                                                             <span className="font-semibold text-slate-900 tabular-nums">
                                                                 ₱{(item.price * item.quantity).toFixed(2)}
                                                             </span>

@@ -28,6 +28,24 @@
     -moz-osx-font-smoothing: grayscale;
 }
 
+/* Global viewport discipline: eradicate mobile horizontal scroll and side gaps */
+html,
+body {
+    overflow-x: hidden;
+    max-width: 100%;
+    width: 100%;
+    margin: 0;
+    padding: 0;
+    -webkit-text-size-adjust: 100%;
+}
+
+#root {
+    overflow-x: hidden;
+    max-width: 100%;
+    width: 100%;
+    min-height: 100vh;
+}
+
 /* Touch targets & button feedback (Emil Kowalski rules) */
 button,
 a,
