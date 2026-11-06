@@ -1,4 +1,4 @@
-import { useState, useContext, useEffect, useMemo, useCallback } from "react";
+import { useState, useContext, useEffect, useMemo, useCallback, useRef } from "react";
 import { Icon } from "@iconify/react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { AuthContext } from "../../context/AuthContext.jsx";
@@ -18,6 +18,10 @@ function Checkout() {
     const [userProfile, setUserProfile] = useState(null);
     const [orderPlaced, setOrderPlaced] = useState(false);
     const [createdOrderId, setCreatedOrderId] = useState("");
+
+    // Bottom sentinel visibility for mobile floating bar
+    const [isBottomVisible, setIsBottomVisible] = useState(false);
+    const bottomSubmitRef = useRef(null);
 
     // Real-time product monitoring state
     const [hasLiveProductIssue, setHasLiveProductIssue] = useState(false);
@@ -102,6 +106,25 @@ function Checkout() {
             updateItemQuantity(itemId, newQuantity);
         }
     };
+
+    // Watch in-page bottom submit button to hide mobile floating bar when in view
+    useEffect(() => {
+        const el = bottomSubmitRef.current;
+        if (!el) return;
+
+        const observer = new IntersectionObserver(
+            ([entry]) => {
+                setIsBottomVisible(entry.isIntersecting);
+            },
+            {
+                root: null,
+                threshold: 0.1,
+            }
+        );
+
+        observer.observe(el);
+        return () => observer.disconnect();
+    }, [currentCartItems.length]);
 
     // 1. Fetch user profile and verify completeness
     useEffect(() => {
@@ -521,7 +544,7 @@ function Checkout() {
     // -------------------------------------------------------------
     if (profileLoading) {
         return (
-            <div className="min-h-screen bg-slate-50/50 flex flex-col justify-between">
+            <div className="min-h-screen bg-slate-50/50 flex flex-col justify-between md:pt-16">
                 <NavigationBar />
                 <div className="flex-1 flex flex-col items-center justify-center p-8">
                     <div className="w-10 h-10 border-2 border-emerald-700 border-t-transparent rounded-full animate-spin mb-4" />
@@ -536,7 +559,7 @@ function Checkout() {
     // -------------------------------------------------------------
     if (orderPlaced) {
         return (
-            <div className="min-h-screen bg-slate-50/50 flex flex-col justify-between">
+            <div className="min-h-screen bg-slate-50/50 flex flex-col justify-between md:pt-16">
                 <NavigationBar />
                 <div className="flex-1 flex items-center justify-center p-4 py-12">
                     <div className="bg-white border border-slate-200 rounded-2xl shadow-sm p-6 sm:p-8 max-w-lg w-full text-center">
@@ -603,7 +626,7 @@ function Checkout() {
     // -------------------------------------------------------------
     if (!currentCartItems.length) {
         return (
-            <div className="min-h-screen bg-slate-50/50 flex flex-col justify-between">
+            <div className="min-h-screen bg-slate-50/50 flex flex-col justify-between md:pt-16">
                 <NavigationBar />
                 <div className="flex-1 flex flex-col items-center justify-center p-6 text-center">
                     <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center text-slate-400 mb-4">
@@ -634,7 +657,7 @@ function Checkout() {
         !loading;
 
     return (
-        <div className="min-h-screen bg-slate-50/50 text-slate-900 flex flex-col justify-between">
+        <div className="min-h-screen bg-slate-50/50 text-slate-900 flex flex-col justify-between md:pt-16">
             {/* Standard Modal Render */}
             <Modal
                 open={modal.open}
@@ -1041,36 +1064,45 @@ function Checkout() {
                                 </div>
                             )}
 
-                            {/* Desktop Submit Button */}
-                            <button
-                                type="button"
-                                onClick={handleSubmit}
-                                disabled={!isCheckoutAllowed}
-                                className={`w-full min-h-[48px] py-3 px-4 font-semibold text-sm rounded-xl transition duration-150 flex items-center justify-center gap-2 ${
-                                    isCheckoutAllowed
-                                        ? "bg-emerald-700 hover:bg-emerald-800 text-white shadow-sm active:scale-[0.98]"
-                                        : "bg-slate-200 text-slate-400 cursor-not-allowed"
-                                }`}
-                            >
-                                {loading ? (
-                                    <>
-                                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                                        <span>Processing Order…</span>
-                                    </>
-                                ) : (
-                                    <>
-                                        <Icon icon="mingcute:check-circle-line" className="w-4 h-4" />
-                                        <span>Place Order (₱{summary.finalTotal.toFixed(2)})</span>
-                                    </>
-                                )}
-                            </button>
+                            {/* Desktop/In-Page Submit Button */}
+                            <div ref={bottomSubmitRef}>
+                                <button
+                                    type="button"
+                                    onClick={handleSubmit}
+                                    disabled={!isCheckoutAllowed}
+                                    className={`w-full min-h-[48px] py-3 px-4 font-semibold text-sm rounded-xl transition duration-150 flex items-center justify-center gap-2 ${
+                                        isCheckoutAllowed
+                                            ? "bg-emerald-700 hover:bg-emerald-800 text-white shadow-sm active:scale-[0.98]"
+                                            : "bg-slate-200 text-slate-400 cursor-not-allowed"
+                                    }`}
+                                >
+                                    {loading ? (
+                                        <>
+                                            <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                                            <span>Processing Order…</span>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <Icon icon="mingcute:check-circle-line" className="w-4 h-4" />
+                                            <span>Place Order (₱{summary.finalTotal.toFixed(2)})</span>
+                                        </>
+                                    )}
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>
             </main>
 
-            {/* Mobile Fixed Sticky Checkout Bottom Bar (sits above mobile NavigationBar) */}
-            <div className="md:hidden fixed bottom-14 left-0 right-0 bg-white/95 backdrop-blur-md border-t border-slate-200 p-3.5 px-4 shadow-lg z-30 flex items-center justify-between gap-4">
+            {/* Mobile Fixed Sticky Checkout Bottom Bar (sits above mobile NavigationBar; vanishes when bottom submit button is in view) */}
+            <div
+                className={`md:hidden fixed bottom-14 left-0 right-0 bg-white/95 backdrop-blur-md border-t border-slate-200 p-3.5 px-4 shadow-lg z-30 flex items-center justify-between gap-4 transition-all duration-200 ease-out ${
+                    isBottomVisible
+                        ? "opacity-0 translate-y-4 pointer-events-none"
+                        : "opacity-100 translate-y-0 pointer-events-auto"
+                }`}
+                aria-hidden={isBottomVisible}
+            >
                 <div>
                     <span className="text-[11px] font-medium uppercase tracking-wider text-slate-500 block">
                         Total
