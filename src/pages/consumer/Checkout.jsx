@@ -107,24 +107,40 @@ function Checkout() {
         }
     };
 
-    // Watch in-page bottom submit button to hide mobile floating bar when in view
+    // Watch scroll position & in-page bottom submit button to hide mobile floating bar when user reaches bottom of page
     useEffect(() => {
+        if (profileLoading || !currentCartItems.length) return;
+
+        const handleScroll = () => {
+            const scrollBottom = window.innerHeight + window.scrollY;
+            const totalHeight = document.documentElement.scrollHeight;
+            // Within 160px of page bottom means user reached bottom summary/submit area
+            const atBottom = scrollBottom >= totalHeight - 160;
+            setIsBottomVisible((prev) => (prev !== atBottom ? atBottom : prev));
+        };
+
+        window.addEventListener("scroll", handleScroll, { passive: true });
+        handleScroll();
+
+        let observer = null;
         const el = bottomSubmitRef.current;
-        if (!el) return;
+        if (el) {
+            observer = new IntersectionObserver(
+                ([entry]) => {
+                    if (entry.isIntersecting) {
+                        setIsBottomVisible(true);
+                    }
+                },
+                { root: null, threshold: 0.1 }
+            );
+            observer.observe(el);
+        }
 
-        const observer = new IntersectionObserver(
-            ([entry]) => {
-                setIsBottomVisible(entry.isIntersecting);
-            },
-            {
-                root: null,
-                threshold: 0.1,
-            }
-        );
-
-        observer.observe(el);
-        return () => observer.disconnect();
-    }, [currentCartItems.length]);
+        return () => {
+            window.removeEventListener("scroll", handleScroll);
+            if (observer) observer.disconnect();
+        };
+    }, [profileLoading, currentCartItems.length]);
 
     // 1. Fetch user profile and verify completeness
     useEffect(() => {
@@ -669,7 +685,7 @@ function Checkout() {
 
             <NavigationBar />
 
-            <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 pb-28 md:pb-12">
+            <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 pb-32 md:pb-12">
                 {/* Header breadcrumb & back link */}
                 <div className="flex items-center gap-3 mb-6">
                     <button
