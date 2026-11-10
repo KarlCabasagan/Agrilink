@@ -1,13 +1,14 @@
 import { Icon } from "@iconify/react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import NavigationBar from "../../components/NavigationBar";
-import ConsumerSearch from "../../components/ConsumerSearch.jsx";
 import { useState, useEffect, useContext } from "react";
 import supabase from "../../SupabaseClient.jsx";
 import { AuthContext } from "../../context/AuthContext.jsx";
 import { CartCountContext } from "../../context/CartCountContext.jsx";
+import { StateView } from "../../components/StateView.jsx";
 
 function Favorites() {
+    const navigate = useNavigate();
     const { user } = useContext(AuthContext);
     const { cartCount, setCartCount, updateCartCount } =
         useContext(CartCountContext);
@@ -607,235 +608,280 @@ function Favorites() {
     };
 
     return (
-        <div className="min-h-screen w-full flex flex-col relative items-center scrollbar-hide bg-background overflow-x-hidden text-text pb-20">
-            {/* Header with Back button and Title */}
-            <div className="fixed top-0 left-0 w-full bg-white shadow-md z-50 px-4 py-3 flex justify-between items-center">
-                <Link to="/" className="text-gray-600 hover:text-primary">
-                    <Icon icon="mingcute:left-line" width="24" height="24" />
-                </Link>
-                <h1 className="text-lg font-semibold">My Favorites</h1>
-                <div className="fixed top-0 left-0 w-full bg-white shadow-md z-50 px-4 py-3 flex justify-between items-center">
-                    <h1 className="text-lg font-semibold text-primary">
-                        AgriLink
-                    </h1>
-                    <Link
-                        to="/orders"
-                        className="relative text-gray-600 hover:text-primary"
+        <div className="min-h-screen w-full max-w-full overflow-x-hidden flex flex-col bg-slate-50/50 text-slate-900 pb-24 md:pb-12 md:pt-16">
+            {/* MOBILE TOP BAR (< 768px) */}
+            <header className="md:hidden sticky top-0 left-0 right-0 w-full bg-white/95 backdrop-blur-md border-b border-slate-200/80 z-40 px-4 py-3 flex items-center justify-between shadow-xs">
+                <div className="flex items-center gap-2">
+                    <button
+                        type="button"
+                        onClick={() => navigate(-1)}
+                        className="min-w-[44px] min-h-[44px] flex items-center justify-center -ml-2 text-slate-700 hover:text-emerald-800 active:scale-95 transition-all"
+                        aria-label="Go back"
                     >
-                        <Icon
-                            icon="mingcute:truck-line"
-                            width="24"
-                            height="24"
-                        />
-                        {hasOrdersWithStatus6 && (
-                            <span className="absolute -top-1 -right-2 w-2.5 h-2.5 bg-red-500 rounded-full"></span>
-                        )}
-                    </Link>
+                        <Icon icon="mingcute:left-line" width="22" height="22" />
+                    </button>
+                    <div className="flex items-center gap-1.5 font-bold text-base text-slate-900 tracking-tight">
+                        <Icon icon="mingcute:heart-fill" className="w-5 h-5 text-red-500" />
+                        <span>Favorites</span>
+                    </div>
                 </div>
-            </div>
+                <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-emerald-100/80 text-emerald-800 tabular-nums border border-emerald-200/60">
+                    {filteredFavorites.length} saved
+                </span>
+            </header>
 
-            <div className="w-full max-w-6xl mx-4 sm:mx-auto my-16">
-                {/* Search Bar */}
-                <div className="mb-6 mt-4">
-                    <ConsumerSearch
+            {/* MOBILE SEARCH BAR */}
+            <div className="md:hidden w-full px-4 pt-3 pb-2">
+                <div className="relative w-full">
+                    <Icon
+                        icon="mingcute:search-line"
+                        width="18"
+                        height="18"
+                        className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"
+                    />
+                    <input
+                        type="text"
+                        className="w-full pl-10 pr-9 py-2.5 rounded-xl border border-slate-200 bg-white shadow-xs text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-700"
+                        placeholder="Search saved produce…"
                         value={search}
                         onChange={(e) => setSearch(e.target.value)}
                     />
+                    {search && (
+                        <button
+                            type="button"
+                            onClick={() => setSearch("")}
+                            className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 text-slate-400"
+                            aria-label="Clear search"
+                        >
+                            <Icon icon="mingcute:close-line" width="16" height="16" />
+                        </button>
+                    )}
                 </div>
-                {/* Section Header */}
-                <div className="mb-6 px-2">
-                    <div className="flex items-center w-full gap-3 mb-2 justify-between">
+            </div>
+
+            {/* MAIN CONTENT CONTAINER */}
+            <main className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-3 md:mt-8 flex-1">
+                {/* DESKTOP HEADER & SEARCH */}
+                <div className="hidden md:flex items-center justify-between gap-4 mb-8">
+                    <div>
                         <div className="flex items-center gap-2">
-                            <Icon
-                                icon="mingcute:heart-fill"
-                                width="24"
-                                height="24"
-                                className="text-red-500"
-                            />
-                            <h2 className="text-xl font-bold text-gray-800">
-                                Favorite Products
-                            </h2>
+                            <div className="w-8 h-8 rounded-xl bg-red-50 text-red-500 flex items-center justify-center">
+                                <Icon icon="mingcute:heart-fill" width="20" height="20" />
+                            </div>
+                            <h1 className="text-3xl font-bold tracking-tight text-slate-900">
+                                Saved Favorites
+                            </h1>
                         </div>
-                        {filteredFavorites.length > 0 && (
-                            <div className="hidden flex-wrap gap-3 sm:flex">
+                        <p className="text-xs text-slate-600 mt-1 max-w-prose">
+                            Quickly order your favorite fresh produce from local Iligan growers.
+                        </p>
+                    </div>
+
+                    {/* Desktop Right Controls: Search + Batch Actions */}
+                    <div className="flex items-center gap-3">
+                        <div className="relative w-64">
+                            <Icon
+                                icon="mingcute:search-line"
+                                width="18"
+                                height="18"
+                                className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"
+                            />
+                            <input
+                                type="text"
+                                className="w-full pl-10 pr-8 py-2 rounded-xl border border-slate-300 bg-white shadow-xs text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-700 transition-all"
+                                placeholder="Search favorites…"
+                                value={search}
+                                onChange={(e) => setSearch(e.target.value)}
+                            />
+                            {search && (
                                 <button
-                                    onClick={handleOpenAddToCartModal}
-                                    className="flex items-center gap-2 bg-primary text-white px-4 py-2 rounded-lg hover:bg-primary-dark transition-colors"
+                                    type="button"
+                                    onClick={() => setSearch("")}
+                                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                                    aria-label="Clear search"
                                 >
-                                    <Icon
-                                        icon="mingcute:shopping-cart-1-line"
-                                        width="16"
-                                        height="16"
-                                    />
-                                    Add All to Cart
+                                    <Icon icon="mingcute:close-line" width="16" height="16" />
+                                </button>
+                            )}
+                        </div>
+
+                        {filteredFavorites.length > 0 && (
+                            <div className="flex items-center gap-2">
+                                <button
+                                    type="button"
+                                    onClick={handleOpenAddToCartModal}
+                                    className="min-h-[42px] px-4 py-2 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-semibold text-xs shadow-xs active:scale-[0.98] transition-all flex items-center gap-1.5"
+                                >
+                                    <Icon icon="mingcute:shopping-cart-1-line" width="16" height="16" />
+                                    <span>Add All to Cart</span>
                                 </button>
                                 <button
-                                    className="flex items-center gap-2 bg-red-50 text-red-600 px-4 py-2 rounded-lg hover:bg-red-100 transition-colors"
+                                    type="button"
                                     onClick={handleOpenClearModal}
+                                    className="min-h-[42px] px-3.5 py-2 rounded-xl border border-slate-200 bg-white hover:bg-red-50 text-slate-600 hover:text-red-600 font-medium text-xs shadow-2xs active:scale-[0.98] transition-all flex items-center gap-1.5"
                                 >
-                                    <Icon
-                                        icon="mingcute:delete-2-line"
-                                        width="16"
-                                        height="16"
-                                    />
-                                    Clear All
+                                    <Icon icon="mingcute:delete-2-line" width="16" height="16" />
+                                    <span>Clear</span>
                                 </button>
                             </div>
                         )}
                     </div>
-                    <p className="text-gray-600 text-sm">
-                        {filteredFavorites.length} favorite products
-                    </p>
                 </div>
-                {/* Favorites Grid */}
-                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 px-2">
+
+                {/* MOBILE ACTIONS ROW (< 768px) */}
+                {filteredFavorites.length > 0 && (
+                    <div className="md:hidden flex items-center justify-between gap-2 mb-4 px-1">
+                        <span className="text-xs text-slate-600 font-medium tabular-nums">
+                            {filteredFavorites.length} {filteredFavorites.length === 1 ? "listing" : "listings"}
+                        </span>
+                        <div className="flex items-center gap-2">
+                            <button
+                                type="button"
+                                onClick={handleOpenAddToCartModal}
+                                className="min-h-[38px] px-3.5 py-1.5 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-semibold text-xs shadow-xs active:scale-[0.98] transition-all flex items-center gap-1.5"
+                            >
+                                <Icon icon="mingcute:shopping-cart-1-line" width="15" height="15" />
+                                <span>Add All</span>
+                            </button>
+                            <button
+                                type="button"
+                                onClick={handleOpenClearModal}
+                                className="min-h-[38px] px-3 py-1.5 rounded-xl border border-slate-200 bg-white hover:bg-red-50 text-slate-600 hover:text-red-600 font-medium text-xs shadow-2xs active:scale-[0.98] transition-all flex items-center gap-1"
+                            >
+                                <Icon icon="mingcute:delete-2-line" width="15" height="15" />
+                                <span>Clear</span>
+                            </button>
+                        </div>
+                    </div>
+                )}
+
+                {/* FAVORITES GRID */}
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 sm:gap-4 md:gap-5 mb-8">
                     {loading ? (
-                        // Loading skeleton
-                        Array.from({ length: 4 }).map((_, i) => (
+                        Array.from({ length: 8 }).map((_, i) => (
                             <div
                                 key={i}
-                                className="bg-white rounded-lg shadow-md overflow-hidden animate-pulse"
+                                className="bg-white rounded-2xl border border-slate-200 overflow-hidden animate-pulse flex flex-col"
                             >
-                                <div className="w-full h-40 sm:h-48 bg-gray-300"></div>
-                                <div className="p-3">
-                                    <div className="h-4 bg-gray-300 rounded mb-2"></div>
-                                    <div className="h-3 bg-gray-300 rounded mb-2 w-3/4"></div>
-                                    <div className="h-3 bg-gray-300 rounded mb-2 w-1/2"></div>
-                                    <div className="h-4 bg-gray-300 rounded w-1/3"></div>
+                                <div className="aspect-4/3 w-full bg-slate-200" />
+                                <div className="p-3 space-y-2">
+                                    <div className="h-4 bg-slate-200 rounded w-3/4" />
+                                    <div className="h-3 bg-slate-200 rounded w-1/2" />
+                                    <div className="h-4 bg-slate-200 rounded w-1/3 pt-2" />
                                 </div>
                             </div>
                         ))
                     ) : !user ? (
-                        <div className="col-span-full flex flex-col items-center justify-center py-16">
-                            <Icon
-                                icon="mingcute:user-line"
-                                width="64"
-                                height="64"
-                                className="text-gray-300 mb-4"
+                        <div className="col-span-full py-12">
+                            <StateView
+                                type="empty"
+                                icon="mingcute:user-3-line"
+                                title="Please sign in"
+                                description="You need to be signed in to your AgriLink account to view and save favorite harvest listings."
+                                actionLabel="Sign In"
+                                onAction={() => navigate("/login")}
                             />
-                            <p className="text-gray-400 text-lg">
-                                Please log in
-                            </p>
-                            <p className="text-gray-400 text-sm text-center">
-                                You need to be logged in to view your favorites
-                            </p>
                         </div>
                     ) : filteredFavorites.length === 0 ? (
-                        <div className="col-span-full flex flex-col items-center justify-center py-16">
-                            <Icon
+                        <div className="col-span-full py-12">
+                            <StateView
+                                type="empty"
                                 icon="mingcute:heart-line"
-                                width="64"
-                                height="64"
-                                className="text-gray-300 mb-4"
+                                title="No saved favorites yet"
+                                description={
+                                    search
+                                        ? "No favorites matched your search criteria. Try a different query."
+                                        : "Tap the heart icon on any fresh produce listing to keep it easily accessible here."
+                                }
+                                actionLabel="Explore Marketplace"
+                                onAction={() => navigate("/")}
                             />
-                            <p className="text-gray-400 text-lg">
-                                No favorite products found
-                            </p>
-                            <p className="text-gray-400 text-sm text-center">
-                                {search
-                                    ? "Try adjusting your search"
-                                    : "Start adding products to your favorites!"}
-                            </p>
                         </div>
                     ) : (
                         filteredFavorites.map((product) => (
                             <Link
                                 to={`/product/${product.id}`}
                                 key={product.id}
-                                className="bg-white rounded-lg shadow-md hover:shadow-lg transition-shadow duration-300 overflow-hidden relative"
+                                className="group bg-white rounded-2xl border border-slate-200/90 hover:border-emerald-700/40 hover:shadow-md transition-all duration-150 overflow-hidden flex flex-col active:scale-[0.98]"
                             >
-                                <div className="relative">
+                                {/* Image Container */}
+                                <div className="relative aspect-4/3 w-full bg-slate-100 overflow-hidden">
                                     <img
                                         src={product.image}
                                         alt={product.name}
-                                        className="w-full h-40 sm:h-48 object-cover"
+                                        className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
                                         loading="lazy"
+                                        onError={(e) => {
+                                            e.target.src =
+                                                "https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&q=80&w=400";
+                                        }}
                                     />
-                                    <button
-                                        onClick={(e) =>
-                                            handleRemoveFromFavorites(
-                                                product.id,
-                                                e
-                                            )
-                                        }
-                                        className="absolute top-2 right-2 bg-white rounded-full p-1.5 shadow-md hover:bg-red-50 transition-colors"
-                                    >
-                                        <Icon
-                                            icon="mingcute:heart-fill"
-                                            width="16"
-                                            height="16"
-                                            className="text-red-500"
-                                        />
-                                    </button>
-                                    <div className="absolute top-2 left-2 bg-primary text-white px-2 py-1 rounded-full text-xs font-medium">
+                                    {/* Category Badge */}
+                                    <span className="absolute top-2 left-2 bg-white/90 backdrop-blur-xs text-emerald-800 text-[11px] font-semibold px-2 py-0.5 rounded-full border border-emerald-100/80 shadow-xs">
                                         {product.category}
-                                    </div>
+                                    </span>
+
+                                    {/* Suspended / Unapproved Badges */}
                                     {product.suspended && (
-                                        <div className="absolute top-9 left-2 bg-red-500 text-white px-2 py-1 rounded-full text-xs font-medium">
+                                        <span className="absolute top-8 left-2 bg-red-600/90 text-white text-[10px] font-semibold px-2 py-0.5 rounded-full shadow-xs">
                                             Suspended
-                                        </div>
+                                        </span>
                                     )}
-                                    {product.notApproved &&
-                                        !product.suspended && (
-                                            <div className="absolute top-9 left-2 bg-yellow-500 text-white px-2 py-1 rounded-full text-xs font-medium">
-                                                Not Approved
-                                            </div>
-                                        )}
+                                    {product.notApproved && !product.suspended && (
+                                        <span className="absolute top-8 left-2 bg-amber-600/90 text-white text-[10px] font-semibold px-2 py-0.5 rounded-full shadow-xs">
+                                            Not Approved
+                                        </span>
+                                    )}
+
+                                    {/* Remove Favorite Button (44x44px Hit Target) */}
+                                    <button
+                                        type="button"
+                                        onClick={(e) => handleRemoveFromFavorites(product.id, e)}
+                                        className="absolute top-1 right-1 min-w-[44px] min-h-[44px] flex items-center justify-center text-red-500 hover:text-red-600 active:scale-95 transition-all"
+                                        aria-label={`Remove ${product.name} from favorites`}
+                                    >
+                                        <div className="w-8 h-8 rounded-full bg-white/90 backdrop-blur-xs flex items-center justify-center shadow-xs">
+                                            <Icon icon="mingcute:heart-fill" width="17" height="17" className="text-red-500" />
+                                        </div>
+                                    </button>
                                 </div>
 
-                                <div className="p-3">
-                                    <h3 className="font-semibold text-gray-800 line-clamp-2 mb-1 text-sm">
-                                        {product.name}
-                                    </h3>
+                                {/* Content Details */}
+                                <div className="p-3 sm:p-3.5 flex flex-col flex-1 justify-between gap-1.5">
+                                    <div>
+                                        <h3 className="font-semibold text-slate-900 text-sm line-clamp-1 leading-snug group-hover:text-emerald-800 transition-colors">
+                                            {product.name}
+                                        </h3>
 
-                                    <div className="flex items-center gap-2 mb-2">
-                                        <Icon
-                                            icon="mingcute:user-3-line"
-                                            width="12"
-                                            height="12"
-                                            className="text-green-600"
-                                        />
-                                        <span className="text-xs text-green-700 font-medium">
-                                            {product.farmerName}
-                                        </span>
-                                    </div>
-
-                                    <div className="flex items-center gap-1 mb-2">
-                                        <div className="flex">
-                                            {renderStars(product.rating)}
+                                        {/* Farmer & Location */}
+                                        <div className="flex items-center gap-1.5 mt-1 text-xs text-slate-600">
+                                            <Icon icon="mingcute:user-3-line" className="w-3.5 h-3.5 text-emerald-700 shrink-0" />
+                                            <span className="font-medium text-slate-700 truncate">{product.farmerName}</span>
                                         </div>
-                                        <span className="text-xs text-gray-500">
-                                            ({product.rating})
-                                        </span>
+                                        <div className="flex items-center gap-1 mt-0.5 text-xs text-slate-600">
+                                            <Icon icon="mingcute:location-line" className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                                            <span className="truncate">{product.address}</span>
+                                        </div>
                                     </div>
 
-                                    <div className="flex items-center gap-1 mb-2">
-                                        <Icon
-                                            icon="mingcute:location-line"
-                                            width="12"
-                                            height="12"
-                                            className="text-gray-400"
-                                        />
-                                        <span className="text-xs text-gray-500 line-clamp-1">
-                                            {product.address}
-                                        </span>
-                                    </div>
+                                    {/* Rating */}
+                                    {product.rating > 0 ? (
+                                        <div className="flex items-center gap-1 text-xs">
+                                            <Icon icon="mingcute:star-fill" className="w-3.5 h-3.5 text-amber-500" />
+                                            <span className="font-semibold text-slate-800 tabular-nums">{product.rating.toFixed(1)}</span>
+                                        </div>
+                                    ) : (
+                                        <span className="text-[11px] text-slate-400">No reviews yet</span>
+                                    )}
 
-                                    <div className="flex items-center justify-between">
-                                        <p className="text-primary font-bold text-lg">
-                                            ₱{product.price.toFixed(2)}/
-                                            {product.unit}
-                                        </p>
-                                        <span
-                                            className={`text-xs ${
-                                                product.stock > 0
-                                                    ? "text-green-600"
-                                                    : "text-red-500"
-                                            }`}
-                                        >
-                                            {product.stock > 0
-                                                ? `${product.stock} ${product.unit} left`
-                                                : "Out of stock"}
+                                    {/* Price & Stock */}
+                                    <div className="pt-2 border-t border-slate-100 flex items-baseline justify-between gap-1 mt-auto">
+                                        <div className="tabular-nums">
+                                            <span className="text-emerald-800 font-bold text-base">₱{product.price.toFixed(2)}</span>
+                                            <span className="text-[11px] font-normal text-slate-600 ml-0.5">/{product.unit}</span>
+                                        </div>
+                                        <span className={`text-[11px] font-medium ${product.stock > 0 ? "text-emerald-700" : "text-red-600"}`}>
+                                            {product.stock > 0 ? `${product.stock} ${product.unit}` : "Out of stock"}
                                         </span>
                                     </div>
                                 </div>
@@ -843,337 +889,174 @@ function Favorites() {
                         ))
                     )}
                 </div>
-                {/* Toast Notification */}
-                {addToCartResult && (
-                    <div
-                        className={`fixed bottom-23 left-1/2 sm:left-auto -translate-x-1/2 sm:-translate-x-0 sm:bottom-25 sm:right-8 transform px-4 py-3 rounded-lg shadow-xl
-                            ${
-                                addToCartResult.type === "success"
-                                    ? "bg-white border-l-4 border-l-primary"
-                                    : "bg-white border-l-4 border-l-red-500"
-                            }
-                            flex flex-col min-w-[320px] max-w-md z-50 animate-[slide-up_0.3s_ease-out]`}
-                        role="alert"
-                    >
-                        {/* Header */}
-                        <div className="flex items-center justify-between pb-2">
-                            <div className="flex items-center gap-2">
-                                <Icon
-                                    icon={
-                                        addToCartResult.type === "success"
-                                            ? "mingcute:check-circle-fill"
-                                            : "mingcute:warning-fill"
-                                    }
-                                    width="20"
-                                    height="20"
-                                    className={
-                                        addToCartResult.type === "success"
-                                            ? "text-primary"
-                                            : "text-red-500"
-                                    }
-                                />
-                                <h4
-                                    className={`font-medium ${
-                                        addToCartResult.type === "success"
-                                            ? "text-primary"
-                                            : "text-red-500"
-                                    }`}
-                                >
+            </main>
+
+            {/* Toast Notification */}
+            {addToCartResult && (
+                <div
+                    className="fixed bottom-20 left-4 right-4 sm:left-auto sm:right-8 sm:w-96 bg-white/95 backdrop-blur-md rounded-2xl border border-slate-200/90 shadow-xl p-4 z-50 animate-[slide-up_0.2s_cubic-bezier(0.16,1,0.3,1)]"
+                    role="alert"
+                >
+                    <div className="flex items-start justify-between gap-3">
+                        <div className="flex items-start gap-2.5">
+                            <Icon
+                                icon={
+                                    addToCartResult.type === "success"
+                                        ? "mingcute:check-circle-fill"
+                                        : "mingcute:warning-fill"
+                                }
+                                width="20"
+                                height="20"
+                                className={`shrink-0 mt-0.5 ${
+                                    addToCartResult.type === "success"
+                                        ? "text-emerald-700"
+                                        : "text-red-500"
+                                }`}
+                            />
+                            <div>
+                                <h4 className="font-semibold text-sm text-slate-900">
                                     {addToCartResult.type === "success"
-                                        ? "Cart Updated Successfully"
-                                        : "Failed to Update Cart"}
+                                        ? addToCartResult.title || "Cart Updated"
+                                        : "Action Failed"}
                                 </h4>
+                                <div className="mt-1 space-y-1 text-xs text-slate-600">
+                                    {addToCartResult.type === "success" ? (
+                                        <>
+                                            {addToCartResult.details?.actions?.map((action, idx) => (
+                                                <div key={idx} className="inline-block bg-emerald-50 text-emerald-800 px-2 py-0.5 rounded-full font-medium mr-1.5 mb-1 border border-emerald-100">
+                                                    {action.text}
+                                                </div>
+                                            ))}
+                                            {addToCartResult.details?.skipped?.map((skip, idx) => (
+                                                <div key={idx} className="inline-block bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full font-medium mr-1.5 mb-1">
+                                                    {skip.text}
+                                                </div>
+                                            ))}
+                                        </>
+                                    ) : (
+                                        <p>{addToCartResult.message}</p>
+                                    )}
+                                </div>
                             </div>
+                        </div>
+                        <button
+                            type="button"
+                            onClick={() => setAddToCartResult(null)}
+                            className="text-slate-400 hover:text-slate-600 p-1"
+                            aria-label="Close notification"
+                        >
+                            <Icon icon="mingcute:close-line" width="16" height="16" />
+                        </button>
+                    </div>
+                </div>
+            )}
+
+            {/* Add to Cart Modal */}
+            {isModalOpen && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-xs">
+                    <div className="bg-white rounded-2xl border border-slate-200/90 shadow-xl max-w-md w-full p-6 animate-[scale-in_0.15s_cubic-bezier(0.16,1,0.3,1)]">
+                        <div className="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-700 flex items-center justify-center mb-4 border border-emerald-100/80">
+                            <Icon icon="mingcute:shopping-cart-1-fill" width="24" height="24" />
+                        </div>
+                        <h3 className="text-lg font-bold text-slate-900 mb-2">
+                            Add All Favorites to Cart?
+                        </h3>
+                        {getCartSummary() && (
+                            <div className="space-y-2 text-sm text-slate-600 mb-6">
+                                <p className="font-medium text-slate-800">
+                                    <span className="font-bold tabular-nums text-emerald-800">
+                                        {getCartSummary().totalToAdd}
+                                    </span>{" "}
+                                    available {getCartSummary().totalToAdd === 1 ? "item" : "items"} will be added to your cart.
+                                </p>
+                                {getCartSummary().outOfStockCount > 0 && (
+                                    <p className="text-xs text-amber-700 flex items-center gap-1.5">
+                                        <Icon icon="mingcute:alert-line" className="w-3.5 h-3.5 shrink-0" />
+                                        <span>{getCartSummary().outOfStockCount} out-of-stock items will be skipped.</span>
+                                    </p>
+                                )}
+                                {getCartSummary().suspendedCount > 0 && (
+                                    <p className="text-xs text-red-600 flex items-center gap-1.5">
+                                        <Icon icon="mingcute:close-circle-line" className="w-3.5 h-3.5 shrink-0" />
+                                        <span>{getCartSummary().suspendedCount} suspended items will be skipped.</span>
+                                    </p>
+                                )}
+                            </div>
+                        )}
+
+                        <div className="flex items-center justify-end gap-3 pt-2 border-t border-slate-100">
                             <button
-                                onClick={() => setAddToCartResult(null)}
-                                className="text-gray-400 hover:text-gray-600"
-                                aria-label="Close notification"
+                                type="button"
+                                onClick={() => setIsModalOpen(false)}
+                                disabled={isAddingToCart}
+                                className="min-h-[44px] px-5 py-2.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 font-medium text-sm active:scale-[0.98] transition-all"
                             >
-                                <Icon
-                                    icon="mingcute:close-line"
-                                    width="18"
-                                    height="18"
-                                />
+                                Cancel
+                            </button>
+                            <button
+                                type="button"
+                                onClick={handleAddAllToCart}
+                                disabled={isAddingToCart}
+                                className="min-h-[44px] px-6 py-2.5 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-semibold text-sm shadow-xs active:scale-[0.98] transition-all flex items-center gap-2 disabled:opacity-50"
+                            >
+                                {isAddingToCart ? (
+                                    <>
+                                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                                        <span>Adding…</span>
+                                    </>
+                                ) : (
+                                    <span>Confirm & Add</span>
+                                )}
                             </button>
                         </div>
+                    </div>
+                </div>
+            )}
 
-                        {/* Content */}
-                        <div className="space-y-1.5">
-                            {addToCartResult.type === "success" ? (
-                                <>
-                                    {/* Actions Summary */}
-                                    {addToCartResult.details?.actions.map(
-                                        (action, idx) => (
-                                            <div
-                                                key={`action-${idx}`}
-                                                className="flex items-center gap-2"
-                                            >
-                                                <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-primary/10 text-primary">
-                                                    {action.text}
-                                                </span>
-                                            </div>
-                                        )
-                                    )}
+            {/* Clear Favorites Modal */}
+            {isClearModalOpen && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-xs">
+                    <div className="bg-white rounded-2xl border border-slate-200/90 shadow-xl max-w-md w-full p-6 animate-[scale-in_0.15s_cubic-bezier(0.16,1,0.3,1)]">
+                        <div className="w-12 h-12 rounded-2xl bg-red-50 text-red-600 flex items-center justify-center mb-4 border border-red-100">
+                            <Icon icon="mingcute:delete-2-line" width="24" height="24" />
+                        </div>
+                        <h3 className="text-lg font-bold text-slate-900 mb-2">
+                            Remove All Favorites?
+                        </h3>
+                        <p className="text-sm text-slate-600 mb-6">
+                            This will remove all {filteredFavorites.length} saved harvest listings from your favorites. You can always add them back later from the marketplace.
+                        </p>
 
-                                    {/* Skipped Items */}
-                                    {addToCartResult.details?.skipped.length >
-                                        0 && (
-                                        <div className="pt-1 space-y-1">
-                                            {addToCartResult.details.skipped.map(
-                                                (skip, idx) => (
-                                                    <div
-                                                        key={`skip-${idx}`}
-                                                        className="flex items-center gap-2"
-                                                    >
-                                                        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-600">
-                                                            {skip.text}
-                                                        </span>
-                                                    </div>
-                                                )
-                                            )}
-                                        </div>
-                                    )}
-                                </>
-                            ) : (
-                                <div className="flex items-center justify-between">
-                                    <p className="text-sm text-gray-600">
-                                        {addToCartResult.message}
-                                    </p>
-                                    <button
-                                        onClick={handleAddAllToCart}
-                                        className="text-sm font-medium text-red-500 hover:text-red-600 underline underline-offset-2"
-                                        disabled={isAddingToCart}
-                                    >
-                                        Retry
-                                    </button>
-                                </div>
-                            )}
+                        <div className="flex items-center justify-end gap-3 pt-2 border-t border-slate-100">
+                            <button
+                                type="button"
+                                onClick={() => setIsClearModalOpen(false)}
+                                disabled={isClearingFavorites}
+                                className="min-h-[44px] px-5 py-2.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 font-medium text-sm active:scale-[0.98] transition-all"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                type="button"
+                                onClick={handleClearAllFavorites}
+                                disabled={isClearingFavorites}
+                                className="min-h-[44px] px-6 py-2.5 rounded-xl bg-red-600 hover:bg-red-700 text-white font-semibold text-sm shadow-xs active:scale-[0.98] transition-all flex items-center gap-2 disabled:opacity-50"
+                            >
+                                {isClearingFavorites ? (
+                                    <>
+                                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                                        <span>Removing…</span>
+                                    </>
+                                ) : (
+                                    <span>Remove All</span>
+                                )}
+                            </button>
                         </div>
                     </div>
-                )}
-                {/* Add to Cart Modal */}
-                {isModalOpen && (
-                    <>
-                        <div className="fixed inset-0 bg-black opacity-50 z-[9998] flex items-center justify-center p-4" />
-                        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
-                            <div className="bg-white rounded-lg shadow-xl z-[9999] max-w-md w-full mx-auto">
-                                <div className="p-6">
-                                    <h3 className="text-lg font-semibold text-gray-800 mb-4">
-                                        Add All to Cart
-                                    </h3>
-                                    <div className="space-y-3 mb-6">
-                                        {getCartSummary() && (
-                                            <>
-                                                <p className="text-gray-600">
-                                                    {
-                                                        getCartSummary()
-                                                            .totalToAdd
-                                                    }{" "}
-                                                    items will be added to your
-                                                    cart.
-                                                </p>
-                                                {getCartSummary()
-                                                    .outOfStockCount > 0 && (
-                                                    <p className="text-yellow-600 text-sm">
-                                                        Note:{" "}
-                                                        {
-                                                            getCartSummary()
-                                                                .outOfStockCount
-                                                        }{" "}
-                                                        items are out of stock
-                                                        and will be skipped
-                                                    </p>
-                                                )}
-                                                {getCartSummary()
-                                                    .suspendedCount > 0 && (
-                                                    <p className="text-red-600 text-sm">
-                                                        Note:{" "}
-                                                        {
-                                                            getCartSummary()
-                                                                .suspendedCount
-                                                        }{" "}
-                                                        {getCartSummary()
-                                                            .suspendedCount ===
-                                                        1
-                                                            ? "item is"
-                                                            : "items are"}{" "}
-                                                        suspended and will be
-                                                        skipped
-                                                    </p>
-                                                )}
-                                                {getCartSummary()
-                                                    .notApprovedCount > 0 && (
-                                                    <p className="text-yellow-600 text-sm">
-                                                        Note:{" "}
-                                                        {
-                                                            getCartSummary()
-                                                                .notApprovedCount
-                                                        }{" "}
-                                                        {getCartSummary()
-                                                            .notApprovedCount ===
-                                                        1
-                                                            ? "item is"
-                                                            : "items are"}{" "}
-                                                        not yet approved and
-                                                        will be skipped
-                                                    </p>
-                                                )}
-                                            </>
-                                        )}
-                                    </div>
-                                    <div className="flex items-center justify-end gap-3">
-                                        <button
-                                            onClick={() =>
-                                                setIsModalOpen(false)
-                                            }
-                                            className="px-4 py-2 text-gray-600 hover:text-gray-800 font-medium disabled:opacity-50"
-                                            disabled={isAddingToCart}
-                                        >
-                                            Cancel
-                                        </button>
-                                        <button
-                                            onClick={handleAddAllToCart}
-                                            className="flex items-center gap-2 bg-primary text-white px-6 py-2 rounded-lg hover:bg-primary-dark transition-all disabled:opacity-50"
-                                            disabled={isAddingToCart}
-                                        >
-                                            {isAddingToCart ? (
-                                                <>
-                                                    <Icon
-                                                        icon="mingcute:loading-line"
-                                                        className="animate-spin"
-                                                        width="20"
-                                                        height="20"
-                                                    />
-                                                    Adding...
-                                                </>
-                                            ) : (
-                                                <>
-                                                    <Icon
-                                                        icon="mingcute:shopping-cart-1-line"
-                                                        width="20"
-                                                        height="20"
-                                                    />
-                                                    Confirm
-                                                </>
-                                            )}
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </>
-                )}
+                </div>
+            )}
 
-                {/* Clear Favorites Modal */}
-                {isClearModalOpen && (
-                    <>
-                        <div className="fixed inset-0 bg-black opacity-50 z-[9998] flex items-center justify-center p-4" />
-                        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
-                            <div className="bg-white rounded-lg shadow-xl z-[9999] max-w-md w-full mx-auto">
-                                <div className="p-6">
-                                    <h3 className="text-lg font-semibold text-gray-800 mb-4">
-                                        Remove All Favorites
-                                    </h3>
-                                    <div className="space-y-3 mb-6">
-                                        <div className="flex items-center gap-2 text-gray-600">
-                                            <Icon
-                                                icon="mingcute:warning-fill"
-                                                className="text-yellow-500"
-                                                width="20"
-                                                height="20"
-                                            />
-                                            <p>
-                                                Are you sure you want to remove
-                                                all favorites? This action
-                                                cannot be undone.
-                                            </p>
-                                        </div>
-                                        <p className="text-gray-500 text-sm">
-                                            You currently have{" "}
-                                            {filteredFavorites.length} favorite{" "}
-                                            {filteredFavorites.length === 1
-                                                ? "product"
-                                                : "products"}
-                                            .
-                                        </p>
-                                    </div>
-                                    <div className="flex items-center justify-end gap-3">
-                                        <button
-                                            onClick={() =>
-                                                setIsClearModalOpen(false)
-                                            }
-                                            className="px-4 py-2 text-gray-600 hover:text-gray-800 font-medium disabled:opacity-50"
-                                            disabled={isClearingFavorites}
-                                        >
-                                            Cancel
-                                        </button>
-                                        <button
-                                            onClick={handleClearAllFavorites}
-                                            className="flex items-center gap-2 bg-red-500 text-white px-6 py-2 rounded-lg hover:bg-red-600 transition-all disabled:opacity-50"
-                                            disabled={isClearingFavorites}
-                                        >
-                                            {isClearingFavorites ? (
-                                                <>
-                                                    <Icon
-                                                        icon="mingcute:loading-line"
-                                                        className="animate-spin"
-                                                        width="20"
-                                                        height="20"
-                                                    />
-                                                    Removing...
-                                                </>
-                                            ) : (
-                                                <>
-                                                    <Icon
-                                                        icon="mingcute:delete-2-line"
-                                                        width="20"
-                                                        height="20"
-                                                    />
-                                                    Remove All
-                                                </>
-                                            )}
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </>
-                )}
-                {/* Quick Actions */}
-                {filteredFavorites.length > 0 && (
-                    <div className="mt-8 px-2 sm:hidden">
-                        <div className="bg-white rounded-lg shadow-md p-4">
-                            <h3 className="font-semibold text-gray-800 mb-3">
-                                Quick Actions
-                            </h3>
-                            <div className="flex flex-wrap gap-3">
-                                <button
-                                    onClick={handleOpenAddToCartModal}
-                                    className="flex items-center gap-2 bg-primary text-white px-4 py-2 rounded-lg hover:bg-primary-dark transition-colors"
-                                >
-                                    <Icon
-                                        icon="mingcute:shopping-cart-1-line"
-                                        width="16"
-                                        height="16"
-                                    />
-                                    Add All to Cart
-                                </button>
-                                <button
-                                    className="flex items-center gap-2 bg-red-50 text-red-600 px-4 py-2 rounded-lg hover:bg-red-100 transition-colors"
-                                    onClick={handleOpenClearModal}
-                                >
-                                    <Icon
-                                        icon="mingcute:delete-2-line"
-                                        width="16"
-                                        height="16"
-                                    />
-                                    Clear All
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                )}
-            </div>
+            {/* SHARED NAVIGATION */}
             <NavigationBar />
         </div>
     );
