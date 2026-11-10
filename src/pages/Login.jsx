@@ -157,6 +157,7 @@ function Login() {
                                     />
                                 </button>
                             </div>
+                        </div>
                         {error && (
                             <div className="mb-4 flex items-center gap-2 text-rose-700 text-xs bg-rose-50 border border-rose-200/80 p-3 rounded-xl">
                                 <Icon
