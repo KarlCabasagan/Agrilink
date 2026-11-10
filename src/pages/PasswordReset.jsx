@@ -54,28 +54,34 @@ function PasswordReset() {
         <div className="min-h-screen w-full max-w-full overflow-x-hidden flex items-center justify-center flex-col bg-slate-50/50 text-slate-800 p-4 md:p-8">
             {/* Modal */}
             {modalOpen && (
-                <>
-                    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black opacity-50"></div>
-                    <div className="bg-white rounded-lg shadow-xl p-6 max-w-sm w-full text-center fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-[10000]">
-                        <div className="mb-4">
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-xs animate-in fade-in duration-200">
+                    <div className="bg-white rounded-2xl shadow-xl border border-slate-200/90 p-6 max-w-sm w-full text-center flex flex-col items-center">
+                        <div
+                            className={`w-12 h-12 rounded-2xl flex items-center justify-center mb-3 ${
+                                isSuccess
+                                    ? "bg-emerald-50 text-emerald-700 border border-emerald-200/80"
+                                    : "bg-rose-50 text-rose-700 border border-rose-200/80"
+                            }`}
+                        >
                             <Icon
                                 icon={
                                     isSuccess
                                         ? "mingcute:check-circle-fill"
                                         : "mingcute:alert-circle-fill"
                                 }
-                                width="48"
-                                height="48"
-                                className={`mx-auto mb-3 ${
-                                    isSuccess
-                                        ? "text-green-500"
-                                        : "text-red-500"
-                                }`}
+                                width="28"
+                                height="28"
                             />
-                            <p className="text-gray-700">{modalMessage}</p>
                         </div>
+                        <h3 className="text-base font-bold text-slate-900 mb-1">
+                            {isSuccess ? "Password Updated" : "Reset Failed"}
+                        </h3>
+                        <p className="text-xs text-slate-600 mb-5 leading-relaxed">
+                            {modalMessage}
+                        </p>
                         <button
-                            className="inline-block w-full mt-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors cursor-pointer"
+                            type="button"
+                            className="w-full h-10 bg-emerald-700 hover:bg-emerald-800 active:scale-[0.98] text-white font-medium text-xs rounded-xl transition duration-150 flex items-center justify-center cursor-pointer shadow-xs"
                             onClick={() => {
                                 setModalOpen(false);
                                 if (isSuccess) {
@@ -83,10 +89,10 @@ function PasswordReset() {
                                 }
                             }}
                         >
-                            OK
+                            {isSuccess ? "Go to Sign In" : "Try Again"}
                         </button>
                     </div>
-                </>
+                </div>
             )}
 
             <div className="w-full max-w-5xl flex flex-col md:flex-row items-center justify-between gap-8 md:gap-16 py-6 md:py-12">
@@ -148,7 +154,7 @@ function PasswordReset() {
                             <div className="space-y-4">
                                 {/* New Password Field */}
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
                                         New Password
                                     </label>
                                     <div className="relative">
@@ -158,8 +164,8 @@ function PasswordReset() {
                                                     ? "text"
                                                     : "password"
                                             }
-                                            placeholder="Enter new password"
-                                            className="w-full px-3 py-3 pr-10 border border-gray-300 rounded-lg text-base outline-none focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
+                                            placeholder="Enter at least 6 characters"
+                                            className="w-full h-11 px-3.5 pr-11 bg-slate-50/50 border border-slate-200 rounded-xl text-sm text-slate-900 placeholder:text-slate-400 outline-none focus:bg-white focus:border-emerald-600 focus:ring-2 focus:ring-emerald-600/15 transition-all"
                                             value={password}
                                             onChange={(e) =>
                                                 setPassword(e.target.value)
@@ -173,7 +179,12 @@ function PasswordReset() {
                                                     !passwordVisible
                                                 )
                                             }
-                                            className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                                            className="absolute right-0 top-0 bottom-0 w-11 flex items-center justify-center text-slate-400 hover:text-slate-600 transition-colors"
+                                            aria-label={
+                                                passwordVisible
+                                                    ? "Hide password"
+                                                    : "Show password"
+                                            }
                                             tabIndex={-1}
                                         >
                                             <Icon
@@ -182,8 +193,8 @@ function PasswordReset() {
                                                         ? "mingcute:eye-line"
                                                         : "mingcute:eye-close-line"
                                                 }
-                                                width="20"
-                                                height="20"
+                                                width="18"
+                                                height="18"
                                             />
                                         </button>
                                     </div>
@@ -191,7 +202,7 @@ function PasswordReset() {
 
                                 {/* Confirm Password Field */}
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
                                         Confirm Password
                                     </label>
                                     <div className="relative">
@@ -201,8 +212,8 @@ function PasswordReset() {
                                                     ? "text"
                                                     : "password"
                                             }
-                                            placeholder="Confirm new password"
-                                            className="w-full px-3 py-3 pr-10 border border-gray-300 rounded-lg text-base outline-none focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
+                                            placeholder="Re-enter your new password"
+                                            className="w-full h-11 px-3.5 pr-11 bg-slate-50/50 border border-slate-200 rounded-xl text-sm text-slate-900 placeholder:text-slate-400 outline-none focus:bg-white focus:border-emerald-600 focus:ring-2 focus:ring-emerald-600/15 transition-all"
                                             value={confirmPassword}
                                             onChange={(e) =>
                                                 setConfirmPassword(
@@ -218,7 +229,12 @@ function PasswordReset() {
                                                     !confirmPasswordVisible
                                                 )
                                             }
-                                            className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                                            className="absolute right-0 top-0 bottom-0 w-11 flex items-center justify-center text-slate-400 hover:text-slate-600 transition-colors"
+                                            aria-label={
+                                                confirmPasswordVisible
+                                                    ? "Hide confirm password"
+                                                    : "Show confirm password"
+                                            }
                                             tabIndex={-1}
                                         >
                                             <Icon
@@ -227,8 +243,8 @@ function PasswordReset() {
                                                         ? "mingcute:eye-line"
                                                         : "mingcute:eye-close-line"
                                                 }
-                                                width="20"
-                                                height="20"
+                                                width="18"
+                                                height="18"
                                             />
                                         </button>
                                     </div>
@@ -257,52 +273,50 @@ function PasswordReset() {
                                 </div>
                             </div>
 
-                            {/* Action Buttons */}
-                            <div className="flex flex-col sm:flex-row gap-3 mt-6">
-                                <Link
-                                    to="/login"
-                                    className="flex-1 text-center bg-gray-100 text-gray-700 px-4 py-3 rounded-lg hover:bg-gray-200 transition-colors font-medium"
-                                >
-                                    Back to Login
-                                </Link>
-                                <button
-                                    type="submit"
-                                    disabled={isLoading}
-                                    className={`flex-1 px-4 py-3 rounded-lg font-medium transition-colors ${
-                                        isLoading
-                                            ? "bg-gray-300 text-gray-500 cursor-not-allowed"
-                                            : "bg-primary text-white hover:bg-primary-dark"
-                                    }`}
-                                >
-                                    {isLoading ? (
-                                        <div className="flex items-center justify-center gap-2">
-                                            <Icon
-                                                icon="mingcute:loading-line"
-                                                width="16"
-                                                height="16"
-                                                className="animate-spin"
-                                            />
-                                            Updating...
-                                        </div>
-                                    ) : (
-                                        "Update Password"
-                                    )}
-                                </button>
-                            </div>
+                            {/* Submit Button */}
+                            <button
+                                type="submit"
+                                disabled={isLoading}
+                                className="w-full h-11 mt-5 bg-emerald-700 hover:bg-emerald-800 active:scale-[0.98] text-white font-medium text-sm rounded-xl transition duration-150 flex items-center justify-center gap-2 shadow-xs cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100"
+                            >
+                                {isLoading ? (
+                                    <>
+                                        <Icon
+                                            icon="mingcute:loading-line"
+                                            width="16"
+                                            height="16"
+                                            className="animate-spin"
+                                        />
+                                        <span>Updating Password...</span>
+                                    </>
+                                ) : (
+                                    <>
+                                        <Icon
+                                            icon="mingcute:check-fill"
+                                            width="16"
+                                            height="16"
+                                        />
+                                        <span>Update Password</span>
+                                    </>
+                                )}
+                            </button>
 
                             {/* Back to Login Link */}
-                            <div className="mt-6 text-center">
-                                <span className="text-text font-light text-sm">
+                            <div className="mt-6 pt-5 border-t border-slate-100 text-center flex flex-col items-center gap-1.5">
+                                <span className="text-xs text-slate-500">
                                     Remember your password?
                                 </span>
-                                <div>
-                                    <Link
-                                        to="/login"
-                                        className="text-primary hover:underline font-medium text-sm"
-                                    >
-                                        Back to Login
-                                    </Link>
-                                </div>
+                                <Link
+                                    to="/login"
+                                    className="inline-flex items-center gap-1.5 text-sm font-semibold text-emerald-700 hover:text-emerald-800 transition-colors min-h-[44px] px-2 py-1"
+                                >
+                                    <Icon
+                                        icon="mingcute:arrow-left-line"
+                                        width="15"
+                                        height="15"
+                                    />
+                                    <span>Back to Sign In</span>
+                                </Link>
                             </div>
                         </form>
                     </div>
