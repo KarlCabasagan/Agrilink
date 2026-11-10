@@ -1251,7 +1251,6 @@ function Messages() {
                             </div>
                         )}
                     </div>
-                    <NavigationBar />
                 </div>
             )}
 
@@ -1496,6 +1495,11 @@ function Messages() {
                         </div>
                     )}
                 </div>
+            </div>
+
+            {/* Navigation Bar (visible on desktop always; on mobile only when not inside a conversation) */}
+            <div className={selectedConversation ? "hidden md:block" : "block"}>
+                <NavigationBar />
             </div>
         </div>
     );
