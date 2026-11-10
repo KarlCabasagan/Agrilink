@@ -96,11 +96,20 @@ function Login() {
                         </span>
                     </div>
                 </div>
-                <div className="flex flex-col items-center w-full max-w-md">
-                        <form
-                            className="w-full max-w-md flex flex-col items-center"
-                            onSubmit={handleSubmit}
-                        >
+                {/* Form Card */}
+                <div className="w-full max-w-md bg-white rounded-2xl border border-slate-200/90 shadow-2xs p-6 sm:p-8">
+                    <div className="mb-6">
+                        <h2 className="text-xl font-bold text-slate-900 tracking-tight">
+                            Welcome back
+                        </h2>
+                        <p className="text-xs text-slate-500 mt-1">
+                            Sign in to your account to continue
+                        </p>
+                    </div>
+                    <form
+                        className="w-full flex flex-col"
+                        onSubmit={handleSubmit}
+                    >
                             <input
                                 type="email"
                                 className="bg-white w-full max-w-sm p-3 rounded-md mb-4 text-base outline-none focus:outline-none focus:ring-0 shadow-sm"
