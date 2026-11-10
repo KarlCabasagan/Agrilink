@@ -2,6 +2,7 @@ import React, { useState, useEffect, useContext, useRef } from "react";
 import { Icon } from "@iconify/react";
 import { Link, useSearchParams } from "react-router-dom";
 import NavigationBar from "../../components/NavigationBar";
+import StateView from "../../components/StateView.jsx";
 import supabase from "../../SupabaseClient";
 import { AuthContext } from "../../context/AuthContext.jsx";
 import { UnreadConversationsContext } from "../../context/UnreadConversationsContext.jsx";
@@ -12,59 +13,58 @@ const ReplacementRequestCard = ({ replacementData }) => {
     const [imageError, setImageError] = useState(false);
 
     return (
-        <div className="bg-orange-50 border border-orange-200 rounded-lg p-4 max-w-xs mt-2">
+        <div className="bg-amber-50/80 border border-amber-200/80 rounded-2xl p-4 max-w-xs mt-2 text-slate-900 shadow-2xs">
             {/* Header */}
-            <div className="flex items-center gap-2 mb-3">
-                <Icon
-                    icon="mingcute:refresh-2-line"
-                    width="18"
-                    height="18"
-                    className="text-orange-600"
-                />
-                <h3 className="font-bold text-orange-700">
+            <div className="flex items-center gap-2 mb-2.5">
+                <div className="w-6 h-6 rounded-md bg-amber-100 flex items-center justify-center text-amber-700">
+                    <Icon
+                        icon="mingcute:refresh-2-line"
+                        width="15"
+                        height="15"
+                    />
+                </div>
+                <h3 className="font-bold text-xs uppercase tracking-wider text-amber-800">
                     Replacement Request
                 </h3>
             </div>
 
             {/* Item Name */}
-            <div className="mb-1">
-                <p className="font-bold text-lg text-gray-800">
+            <div className="mb-1.5">
+                <p className="font-bold text-sm text-slate-900">
                     {replacementData.itemName}
                 </p>
             </div>
 
             {/* Reason */}
-            <div className="mb-3">
-                <p className="text-xs font-bold text-gray-600 mb-1">Reason:</p>
-                <p className="text-sm text-gray-700">
+            <div className="mb-2">
+                <p className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider mb-0.5">Reason:</p>
+                <p className="text-xs text-slate-700 leading-relaxed">
                     {replacementData.reason}
                 </p>
             </div>
 
             {/* Order ID */}
-            <div className="mb-3">
-                <p className="text-xs text-gray-500">
-                    Order ID: {replacementData.orderId}
-                </p>
+            <div className="mb-2 text-[11px] text-slate-500 font-mono tabular-nums">
+                Order #{replacementData.orderId}
             </div>
 
             {/* Proof Image with Loading State */}
             {replacementData.proofUrl && (
-                <div className="mt-3 relative w-full">
+                <div className="mt-2.5 relative w-full">
                     {!imageLoaded && !imageError && (
-                        <div className="w-full h-48 bg-gray-200 animate-pulse rounded-lg flex items-center justify-center border border-orange-100">
+                        <div className="w-full h-44 bg-slate-100 animate-pulse rounded-xl flex items-center justify-center border border-amber-100">
                             <Icon
                                 icon="mingcute:loading-line"
-                                className="animate-spin text-orange-400"
-                                width="24"
-                                height="24"
+                                className="animate-spin text-amber-600"
+                                width="22"
+                                height="22"
                             />
                         </div>
                     )}
                     <img
                         src={replacementData.proofUrl}
                         alt="Replacement proof"
-                        className={`w-full rounded-lg border border-orange-200 object-cover max-h-48 ${
+                        className={`w-full rounded-xl border border-amber-200/70 object-cover max-h-48 ${
                             !imageLoaded ? "hidden" : "block"
                         }`}
                         onLoad={() => setImageLoaded(true)}
@@ -769,46 +769,46 @@ function Messages() {
         <button
             key={conversation.id}
             onClick={() => setSelectedConversation(conversation.id)}
-            className={`w-full bg-white rounded-lg shadow-sm p-4 hover:shadow-md transition-shadow text-left ${
+            className={`w-full bg-white rounded-2xl border p-3.5 sm:p-4 transition-all duration-150 text-left flex items-center gap-3 active:scale-[0.99] ${
                 selectedConversation === conversation.id
-                    ? "ring-2 ring-primary"
-                    : ""
+                    ? "border-emerald-600 bg-emerald-50/30 shadow-xs ring-1 ring-emerald-600/30"
+                    : "border-slate-200/90 hover:border-slate-300 shadow-2xs hover:bg-slate-50/50"
             }`}
         >
-            <div className="flex items-center gap-3">
-                <div className="relative">
-                    <img
-                        src={
-                            conversation.farmerAvatar ||
-                            "/assets/blank-profile.jpg"
-                        }
-                        alt={conversation.farmerName}
-                        className="w-12 h-12 rounded-full object-cover"
-                        onError={(e) => {
-                            e.target.src = "/assets/blank-profile.jpg";
-                        }}
-                    />
+            <div className="relative shrink-0">
+                <img
+                    src={
+                        conversation.farmerAvatar ||
+                        "/assets/blank-profile.jpg"
+                    }
+                    alt={conversation.farmerName}
+                    className="w-11 h-11 sm:w-12 sm:h-12 rounded-full object-cover border border-slate-200/80"
+                    onError={(e) => {
+                        e.target.src = "/assets/blank-profile.jpg";
+                    }}
+                />
+            </div>
+            <div className="flex-1 min-w-0">
+                <div className="flex items-center justify-between mb-0.5">
+                    <h3 className="font-semibold text-slate-900 text-sm truncate">
+                        {conversation.farmerName}
+                    </h3>
+                    <span className="text-[11px] text-slate-400 tabular-nums shrink-0 ml-2">
+                        {conversation?.timestamp
+                            ? formatTimestamp(conversation.timestamp)
+                            : "Just now"}
+                    </span>
                 </div>
-                <div className="flex-1 min-w-0">
-                    <div className="flex items-center justify-between mb-1">
-                        <h3 className="font-semibold text-gray-800 truncate">
-                            {conversation.farmerName}
-                        </h3>
-                    </div>
-                    <p className="text-sm text-gray-600 truncate">
+                <div className="flex items-center justify-between gap-2">
+                    <p className="text-xs text-slate-500 truncate">
                         {conversation.lastMessage}
                     </p>
+                    {conversation.unread > 0 && (
+                        <div className="bg-emerald-700 text-white text-[11px] font-bold min-w-[18px] h-[18px] px-1 flex items-center justify-center rounded-full shrink-0 tabular-nums">
+                            {conversation.unread}
+                        </div>
+                    )}
                 </div>
-                <span className="text-xs text-gray-500">
-                    {conversation?.timestamp
-                        ? formatTimestamp(conversation.timestamp)
-                        : "Just now"}
-                </span>
-                {conversation.unread > 0 && (
-                    <div className="bg-primary text-white text-xs w-5 h-5 flex items-center justify-center rounded-full">
-                        {conversation.unread}
-                    </div>
-                )}
             </div>
         </button>
     );
@@ -959,66 +959,64 @@ function Messages() {
     }
 
     return (
-        <div className="min-h-screen w-full flex flex-col relative bg-background text-text">
+        <div className="min-h-screen w-full max-w-full overflow-x-hidden flex flex-col bg-slate-50/50 text-slate-900">
             {/* ===== MOBILE LAYOUT (md:hidden) ===== */}
             {selectedConversation && farmer ? (
-                <div className="md:hidden h-screen w-full flex flex-col relative overflow-hidden">
+                <div className="md:hidden h-screen w-full flex flex-col relative overflow-hidden bg-slate-50/30">
                     {/* Fixed header for mobile chat */}
-                    <div className="fixed top-0 left-0 w-full bg-white shadow-md z-50 px-4 py-3 flex items-center gap-3">
+                    <header className="fixed top-0 left-0 w-full bg-white/95 backdrop-blur-md border-b border-slate-200/80 z-50 px-4 py-3 flex items-center gap-3">
                         <button
                             onClick={() => setSelectedConversation(null)}
-                            className="text-gray-600 hover:text-primary"
+                            className="min-w-[40px] min-h-[40px] inline-flex items-center justify-center text-slate-600 hover:text-emerald-700 rounded-xl hover:bg-slate-100 active:scale-[0.97] transition-all"
+                            aria-label="Back to conversations"
                         >
                             <Icon
                                 icon="mingcute:left-line"
-                                width="24"
-                                height="24"
+                                width="22"
+                                height="22"
                             />
                         </button>
                         <img
                             src={farmer.farmerAvatar || "/assets/adel.jpg"}
                             alt={farmer.farmerName || "Farmer"}
-                            className="w-10 h-10 rounded-full object-cover"
+                            className="w-10 h-10 rounded-full object-cover border border-slate-200"
                         />
-                        <div className="flex-1">
-                            <h2 className="font-semibold text-gray-800">
+                        <div className="flex-1 min-w-0">
+                            <h2 className="font-bold text-sm text-slate-900 truncate">
                                 {farmer.farmerName || "Loading..."}
                             </h2>
+                            <p className="text-[11px] text-emerald-700 font-medium flex items-center gap-1">
+                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 animate-pulse"></span>
+                                Local Producer
+                            </p>
                         </div>
-                    </div>
+                    </header>
 
-                    {/* Messages */}
+                    {/* Messages Container */}
                     <div className="flex-1 mt-16 flex flex-col overflow-hidden">
                         <div
                             ref={containerRef}
-                            className="flex-1 px-4 py-4 overflow-y-auto pb-20"
+                            className="flex-1 px-4 py-4 overflow-y-auto pb-24"
                         >
                             <div className="space-y-4">
                                 {loadingMessages ? (
                                     <div className="text-center py-8">
-                                        <Icon
-                                            icon="mingcute:loading-line"
-                                            width="24"
-                                            height="24"
-                                            className="text-gray-400 mx-auto mb-2 animate-spin"
-                                        />
-                                        <p className="text-gray-500 text-sm">
-                                            Loading messages...
-                                        </p>
+                                        <StateView type="loading" message="Loading messages..." />
                                     </div>
                                 ) : conversationMessages.length === 0 ? (
-                                    <div className="text-center py-8">
-                                        <Icon
-                                            icon="mingcute:message-3-line"
-                                            width="48"
-                                            height="48"
-                                            className="text-gray-300 mx-auto mb-2"
-                                        />
-                                        <p className="text-gray-500 text-sm">
+                                    <div className="text-center py-12">
+                                        <div className="w-12 h-12 rounded-full mx-auto mb-3 bg-emerald-50 border border-emerald-200/70 flex items-center justify-center text-emerald-700">
+                                            <Icon
+                                                icon="mingcute:message-3-line"
+                                                width="24"
+                                                height="24"
+                                            />
+                                        </div>
+                                        <p className="text-sm font-semibold text-slate-700">
                                             No messages yet
                                         </p>
-                                        <p className="text-gray-400 text-xs">
-                                            Start the conversation!
+                                        <p className="text-xs text-slate-400 mt-0.5">
+                                            Say hello to start the conversation!
                                         </p>
                                     </div>
                                 ) : (
@@ -1031,11 +1029,11 @@ function Messages() {
                                             <div key={dateKey}>
                                                 {/* Date Separator */}
                                                 <div className="flex items-center gap-3 my-4">
-                                                    <div className="flex-1 h-px bg-gray-200"></div>
-                                                    <span className="text-xs text-gray-400 px-2">
+                                                    <div className="flex-1 h-px bg-slate-200/70"></div>
+                                                    <span className="text-[10px] uppercase tracking-wider text-slate-400 font-bold px-2">
                                                         {group.label}
                                                     </span>
-                                                    <div className="flex-1 h-px bg-gray-200"></div>
+                                                    <div className="flex-1 h-px bg-slate-200/70"></div>
                                                 </div>
 
                                                 {/* Messages for this date */}
@@ -1051,11 +1049,11 @@ function Messages() {
                                                             }`}
                                                         >
                                                             <div
-                                                                className={`max-w-xs px-4 py-2 rounded-2xl ${
+                                                                className={`max-w-[82%] sm:max-w-md px-4 py-2.5 rounded-2xl shadow-2xs text-sm ${
                                                                     message.sender ===
                                                                     "me"
-                                                                        ? "bg-primary text-white"
-                                                                        : "bg-white shadow-sm"
+                                                                        ? "bg-emerald-700 text-white rounded-br-xs"
+                                                                        : "bg-white border border-slate-200/80 text-slate-800 rounded-bl-xs"
                                                                 }`}
                                                             >
                                                                 {renderMessageContent(
@@ -1064,11 +1062,11 @@ function Messages() {
                                                                         "me"
                                                                 )}
                                                                 <p
-                                                                    className={`text-xs mt-1 ${
+                                                                    className={`text-[10px] mt-1 tabular-nums ${
                                                                         message.sender ===
                                                                         "me"
-                                                                            ? "text-primary-light"
-                                                                            : "text-gray-500"
+                                                                            ? "text-emerald-100 text-right"
+                                                                            : "text-slate-400"
                                                                     }`}
                                                                 >
                                                                     {
@@ -1088,13 +1086,13 @@ function Messages() {
                     </div>
 
                     {/* Message Input */}
-                    <div className="fixed bottom-0 left-0 w-full bg-white border-t border-gray-200 px-4 py-3">
-                        <div className="flex items-center gap-3">
+                    <div className="fixed bottom-0 left-0 w-full bg-white/95 backdrop-blur-md border-t border-slate-200/80 px-4 py-3 z-50">
+                        <div className="flex items-center gap-2">
                             <div className="flex-1 relative">
                                 <input
                                     type="text"
                                     placeholder="Type a message..."
-                                    className="w-full px-4 py-2 border border-gray-300 rounded-full outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                                    className="w-full h-11 px-4 bg-slate-50 border border-slate-200 rounded-full text-sm text-slate-900 placeholder:text-slate-400 outline-none focus:bg-white focus:border-emerald-600 focus:ring-2 focus:ring-emerald-600/15 transition-all"
                                     value={newMessage}
                                     onChange={(e) =>
                                         setNewMessage(e.target.value)
@@ -1106,35 +1104,37 @@ function Messages() {
                             </div>
                             <button
                                 onClick={handleSendMessage}
-                                className="bg-primary text-white p-2 rounded-full hover:bg-primary-dark transition-colors"
+                                className="w-11 h-11 bg-emerald-700 text-white rounded-full flex items-center justify-center hover:bg-emerald-800 active:scale-95 transition-all disabled:opacity-50 disabled:pointer-events-none shadow-xs"
                                 disabled={!newMessage.trim()}
+                                aria-label="Send message"
                             >
                                 <Icon
                                     icon="mingcute:send-line"
-                                    width="20"
-                                    height="20"
+                                    width="18"
+                                    height="18"
                                 />
                             </button>
                         </div>
                     </div>
                 </div>
             ) : (
-                <div className="md:hidden min-h-screen w-full flex flex-col relative items-center scrollbar-hide bg-background overflow-x-hidden text-text pb-20">
+                <div className="md:hidden min-h-screen w-full flex flex-col relative items-center scrollbar-hide bg-slate-50/50 overflow-x-hidden text-slate-900 pb-24">
                     {/* Header */}
-                    <div className="fixed top-0 left-0 w-full bg-white shadow-md z-50 px-4 py-3">
+                    <header className="fixed top-0 left-0 w-full bg-white/95 backdrop-blur-md border-b border-slate-200/80 z-50 px-4 py-3">
                         {showSearch ? (
-                            <div className="flex items-center gap-3">
+                            <div className="flex items-center gap-2">
                                 <button
                                     onClick={() => {
                                         setShowSearch(false);
                                         setSearchTerm("");
                                     }}
-                                    className="text-gray-600 hover:text-primary"
+                                    className="min-w-[40px] min-h-[40px] inline-flex items-center justify-center text-slate-600 hover:text-emerald-700 rounded-xl hover:bg-slate-100 transition-colors"
+                                    aria-label="Close search"
                                 >
                                     <Icon
                                         icon="mingcute:left-line"
-                                        width="24"
-                                        height="24"
+                                        width="22"
+                                        height="22"
                                     />
                                 </button>
                                 <div className="flex-1 relative">
@@ -1145,13 +1145,13 @@ function Messages() {
                                         onChange={(e) =>
                                             setSearchTerm(e.target.value)
                                         }
-                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-primary focus:border-primary outline-none"
+                                        className="w-full h-10 px-3.5 pr-8 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:bg-white focus:border-emerald-600 outline-none text-slate-900"
                                         autoFocus
                                     />
                                     {searchTerm && (
                                         <button
                                             onClick={() => setSearchTerm("")}
-                                            className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                                            className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-1"
                                         >
                                             <Icon
                                                 icon="mingcute:close-line"
@@ -1166,112 +1166,81 @@ function Messages() {
                             <div className="flex justify-between items-center">
                                 <Link
                                     to="/"
-                                    className="text-gray-600 hover:text-primary"
+                                    className="min-w-[40px] min-h-[40px] inline-flex items-center justify-center text-slate-600 hover:text-emerald-700 rounded-xl hover:bg-slate-100 transition-colors"
+                                    aria-label="Back to Home"
                                 >
                                     <Icon
                                         icon="mingcute:left-line"
-                                        width="24"
-                                        height="24"
+                                        width="22"
+                                        height="22"
                                     />
                                 </Link>
-                                <h1 className="text-lg font-semibold">
+                                <h1 className="text-base font-bold text-slate-900">
                                     Messages
                                 </h1>
                                 <button
                                     onClick={() => setShowSearch(true)}
-                                    className="text-gray-600 hover:text-primary"
+                                    className="min-w-[40px] min-h-[40px] inline-flex items-center justify-center text-slate-600 hover:text-emerald-700 rounded-xl hover:bg-slate-100 transition-colors"
+                                    aria-label="Search conversations"
                                 >
                                     <Icon
                                         icon="mingcute:search-line"
-                                        width="24"
-                                        height="24"
+                                        width="20"
+                                        height="20"
                                     />
                                 </button>
                             </div>
                         )}
-                    </div>
+                    </header>
 
-                    <div className="w-full max-w-2xl mx-4 sm:mx-auto my-16">
+                    <div className="w-full max-w-2xl mx-auto px-4 mt-16">
                         {loading ? (
-                            <div className="flex flex-col items-center justify-center py-16">
-                                <Icon
-                                    icon="mingcute:loading-line"
-                                    width="40"
-                                    height="40"
-                                    className="text-primary mb-4 animate-spin"
-                                />
-                                <p className="text-gray-600">
-                                    Loading conversations...
-                                </p>
+                            <div className="py-16 text-center">
+                                <StateView type="loading" message="Loading conversations..." />
                             </div>
                         ) : error ? (
-                            <div className="flex flex-col items-center justify-center py-16">
-                                <Icon
-                                    icon="mingcute:alert-triangle-line"
-                                    width="60"
-                                    height="60"
-                                    className="text-red-500 mb-4"
+                            <div className="py-12 text-center bg-white rounded-2xl border border-slate-200/90 shadow-2xs p-6 mt-4">
+                                <StateView
+                                    type="error"
+                                    title="Error Loading Messages"
+                                    message={error}
+                                    action={{
+                                        label: "Try Again",
+                                        onClick: fetchConversations,
+                                        icon: "mingcute:refresh-1-line",
+                                    }}
                                 />
-                                <h2 className="text-xl font-bold text-gray-700 mb-2">
-                                    Error Loading Messages
-                                </h2>
-                                <p className="text-gray-500 text-center mb-6">
-                                    {error}
-                                </p>
-                                <button
-                                    onClick={fetchConversations}
-                                    className="bg-primary text-white px-6 py-3 rounded-lg hover:bg-primary-dark transition-colors font-medium"
-                                >
-                                    Try Again
-                                </button>
                             </div>
                         ) : conversations.length === 0 ? (
-                            <div className="flex flex-col items-center justify-center py-16">
-                                <Icon
-                                    icon="mingcute:message-3-line"
-                                    width="80"
-                                    height="80"
-                                    className="text-gray-300 mb-4"
+                            <div className="py-12 text-center bg-white rounded-2xl border border-slate-200/90 shadow-2xs p-6 mt-4">
+                                <StateView
+                                    type="empty"
+                                    title="No messages yet"
+                                    message="Start a conversation with local farmers about fresh harvests!"
+                                    action={{
+                                        label: "Browse Products",
+                                        onClick: () => window.location.href = "/",
+                                        icon: "mingcute:shopping-bag-1-line",
+                                    }}
                                 />
-                                <h2 className="text-xl font-bold text-gray-600 mb-2">
-                                    No messages yet
-                                </h2>
-                                <p className="text-gray-500 text-center mb-6">
-                                    Start a conversation with farmers about
-                                    their products!
-                                </p>
-                                <Link
-                                    to="/"
-                                    className="bg-primary text-white px-6 py-3 rounded-lg hover:bg-primary-dark transition-colors font-medium"
-                                >
-                                    Browse Products
-                                </Link>
                             </div>
                         ) : filteredConversations.length === 0 ? (
-                            <div className="flex flex-col items-center justify-center py-16">
-                                <Icon
-                                    icon="mingcute:search-line"
-                                    width="80"
-                                    height="80"
-                                    className="text-gray-300 mb-4"
+                            <div className="py-12 text-center bg-white rounded-2xl border border-slate-200/90 shadow-2xs p-6 mt-4">
+                                <StateView
+                                    type="empty"
+                                    title="No conversations found"
+                                    message="Try adjusting your search terms"
+                                    action={{
+                                        label: "Clear Search",
+                                        onClick: () => setSearchTerm(""),
+                                        icon: "mingcute:close-line",
+                                    }}
                                 />
-                                <h2 className="text-xl font-bold text-gray-600 mb-2">
-                                    No conversations found
-                                </h2>
-                                <p className="text-gray-500 text-center mb-6">
-                                    Try adjusting your search terms
-                                </p>
-                                <button
-                                    onClick={() => setSearchTerm("")}
-                                    className="bg-primary text-white px-6 py-3 rounded-lg hover:bg-primary-dark transition-colors font-medium"
-                                >
-                                    Clear Search
-                                </button>
                             </div>
                         ) : (
-                            <div className="space-y-2">
+                            <div className="space-y-2.5 pt-2">
                                 {searchTerm && (
-                                    <div className="px-4 py-2 text-sm text-gray-600 bg-gray-50 rounded-lg">
+                                    <div className="px-4 py-2 text-xs font-semibold text-slate-600 bg-slate-100 rounded-xl tabular-nums">
                                         Showing {filteredConversations.length}{" "}
                                         of {conversations.length} conversations
                                     </div>
@@ -1287,29 +1256,30 @@ function Messages() {
             )}
 
             {/* ===== DESKTOP LAYOUT (hidden md:flex) ===== */}
-            <div className="hidden md:flex h-[calc(100vh-80px)] w-full flex-col gap-0">
-                <div className="flex-1 flex gap-0 overflow-hidden">
+            <div className="hidden md:flex flex-1 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-4 md:mt-6 pb-6">
+                <div className="w-full h-[calc(100vh-140px)] bg-white rounded-2xl border border-slate-200/90 shadow-2xs overflow-hidden flex">
                     {/* Left Column: Conversations List */}
-                    <div className="w-1/3 border-r border-gray-200 flex flex-col bg-white overflow-hidden">
+                    <div className="w-80 lg:w-96 border-r border-slate-200 flex flex-col bg-white shrink-0">
                         {/* Header */}
-                        <div className="flex-shrink-0 bg-white px-4 py-3 border-b border-gray-200">
+                        <div className="p-4 border-b border-slate-100 bg-slate-50/50">
                             <div className="flex items-center justify-between">
-                                <h1 className="text-lg font-semibold">
+                                <h2 className="text-base font-bold text-slate-900">
                                     Messages
-                                </h1>
+                                </h2>
                                 <button
                                     onClick={() => setShowSearch(!showSearch)}
-                                    className="text-gray-600 hover:text-primary"
+                                    className="min-w-[36px] min-h-[36px] inline-flex items-center justify-center text-slate-500 hover:text-emerald-700 rounded-lg hover:bg-slate-100 transition-colors"
+                                    aria-label="Toggle search"
                                 >
                                     <Icon
                                         icon="mingcute:search-line"
-                                        width="24"
-                                        height="24"
+                                        width="18"
+                                        height="18"
                                     />
                                 </button>
                             </div>
                             {showSearch && (
-                                <div className="mt-3 relative">
+                                <div className="mt-2.5 relative">
                                     <input
                                         type="text"
                                         placeholder="Search conversations..."
@@ -1317,18 +1287,18 @@ function Messages() {
                                         onChange={(e) =>
                                             setSearchTerm(e.target.value)
                                         }
-                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-primary focus:border-primary outline-none"
+                                        className="w-full h-9 px-3 pr-8 bg-white border border-slate-200 rounded-xl text-xs outline-none focus:border-emerald-600 focus:ring-1 focus:ring-emerald-600/20 text-slate-900"
                                         autoFocus
                                     />
                                     {searchTerm && (
                                         <button
                                             onClick={() => setSearchTerm("")}
-                                            className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                                            className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5"
                                         >
                                             <Icon
                                                 icon="mingcute:close-line"
-                                                width="16"
-                                                height="16"
+                                                width="14"
+                                                height="14"
                                             />
                                         </button>
                                     )}
@@ -1337,177 +1307,77 @@ function Messages() {
                         </div>
 
                         {/* Conversations List */}
-                        <div className="flex-1 overflow-y-auto">
+                        <div className="flex-1 overflow-y-auto p-3 space-y-2">
                             {loading ? (
-                                <div className="flex flex-col items-center justify-center h-full py-16">
-                                    <Icon
-                                        icon="mingcute:loading-line"
-                                        width="40"
-                                        height="40"
-                                        className="text-primary mb-4 animate-spin"
-                                    />
-                                    <p className="text-gray-600">
-                                        Loading conversations...
-                                    </p>
+                                <div className="py-16 text-center">
+                                    <StateView type="loading" message="Loading conversations..." />
                                 </div>
                             ) : error ? (
-                                <div className="flex flex-col items-center justify-center h-full py-16 px-4">
-                                    <Icon
-                                        icon="mingcute:alert-triangle-line"
-                                        width="60"
-                                        height="60"
-                                        className="text-red-500 mb-4"
-                                    />
-                                    <p className="text-gray-500 text-center text-sm">
-                                        {error}
-                                    </p>
+                                <div className="py-8 px-4 text-center">
+                                    <p className="text-xs text-rose-600 font-medium">{error}</p>
                                 </div>
                             ) : conversations.length === 0 ? (
-                                <div className="flex flex-col items-center justify-center h-full py-16 px-4">
-                                    <Icon
-                                        icon="mingcute:message-3-line"
-                                        width="60"
-                                        height="60"
-                                        className="text-gray-300 mb-4"
-                                    />
-                                    <p className="text-gray-500 text-center text-sm">
-                                        No conversations yet
-                                    </p>
+                                <div className="py-12 px-4 text-center">
+                                    <p className="text-xs text-slate-500">No conversations yet</p>
                                 </div>
                             ) : filteredConversations.length === 0 ? (
-                                <div className="flex flex-col items-center justify-center h-full py-16 px-4">
-                                    <Icon
-                                        icon="mingcute:search-line"
-                                        width="60"
-                                        height="60"
-                                        className="text-gray-300 mb-4"
-                                    />
-                                    <p className="text-gray-500 text-center text-sm">
-                                        No conversations found
-                                    </p>
+                                <div className="py-12 px-4 text-center">
+                                    <p className="text-xs text-slate-500">No conversations found</p>
                                 </div>
                             ) : (
-                                <div className="space-y-1 p-2">
-                                    {filteredConversations.map(
-                                        (conversation) => (
-                                            <button
-                                                key={conversation.id}
-                                                onClick={() =>
-                                                    setSelectedConversation(
-                                                        conversation.id
-                                                    )
-                                                }
-                                                className={`w-full text-left px-3 py-3 rounded-lg transition-colors ${
-                                                    selectedConversation ===
-                                                    conversation.id
-                                                        ? "bg-primary bg-opacity-10 border-l-4 border-primary"
-                                                        : "hover:bg-gray-100"
-                                                }`}
-                                            >
-                                                <div className="flex items-center gap-3">
-                                                    <img
-                                                        src={
-                                                            conversation.farmerAvatar ||
-                                                            "/assets/blank-profile.jpg"
-                                                        }
-                                                        alt={
-                                                            conversation.farmerName
-                                                        }
-                                                        className="w-10 h-10 rounded-full object-cover"
-                                                        onError={(e) => {
-                                                            e.target.src =
-                                                                "/assets/blank-profile.jpg";
-                                                        }}
-                                                    />
-                                                    <div className="flex-1 min-w-0">
-                                                        <p className="font-semibold text-gray-800 text-sm truncate">
-                                                            {
-                                                                conversation.farmerName
-                                                            }
-                                                        </p>
-                                                        <p className="text-xs text-gray-600 truncate">
-                                                            {
-                                                                conversation.lastMessage
-                                                            }
-                                                        </p>
-                                                    </div>
-                                                    <div className="flex flex-col items-end gap-1">
-                                                        <span className="text-xs text-gray-500">
-                                                            {conversation?.timestamp
-                                                                ? formatTimestamp(
-                                                                      conversation.timestamp
-                                                                  )
-                                                                : "Just now"}
-                                                        </span>
-                                                        {conversation.unread >
-                                                            0 && (
-                                                            <div className="bg-primary text-white text-xs w-5 h-5 flex items-center justify-center rounded-full">
-                                                                {
-                                                                    conversation.unread
-                                                                }
-                                                            </div>
-                                                        )}
-                                                    </div>
-                                                </div>
-                                            </button>
-                                        )
-                                    )}
-                                </div>
+                                filteredConversations.map(renderConversationCard)
                             )}
                         </div>
                     </div>
 
                     {/* Right Column: Chat Panel */}
                     {selectedConversation && farmer ? (
-                        <div className="flex-1 flex flex-col overflow-hidden bg-background">
+                        <div className="flex-1 flex flex-col overflow-hidden bg-slate-50/30">
                             {/* Chat Header */}
-                            <div className="flex-shrink-0 bg-white shadow-sm px-4 py-3 flex items-center gap-3 border-b border-gray-200">
+                            <div className="px-5 py-3.5 bg-white border-b border-slate-100 flex items-center gap-3">
                                 <img
                                     src={
                                         farmer.farmerAvatar ||
                                         "/assets/adel.jpg"
                                     }
                                     alt={farmer.farmerName || "Farmer"}
-                                    className="w-10 h-10 rounded-full object-cover"
+                                    className="w-10 h-10 rounded-full object-cover border border-slate-200"
                                 />
-                                <div className="flex-1">
-                                    <h2 className="font-semibold text-gray-800">
+                                <div>
+                                    <h2 className="font-bold text-sm text-slate-900">
                                         {farmer.farmerName || "Loading..."}
                                     </h2>
+                                    <p className="text-[11px] text-emerald-700 font-medium flex items-center gap-1">
+                                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 animate-pulse"></span>
+                                        Local Producer
+                                    </p>
                                 </div>
                             </div>
 
                             {/* Messages Container */}
                             <div
                                 ref={desktopContainerRef}
-                                className="flex-1 px-4 py-4 overflow-y-auto"
+                                className="flex-1 px-5 py-5 overflow-y-auto"
                             >
                                 <div className="space-y-4">
                                     {loadingMessages ? (
-                                        <div className="text-center py-8">
-                                            <Icon
-                                                icon="mingcute:loading-line"
-                                                width="24"
-                                                height="24"
-                                                className="text-gray-400 mx-auto mb-2 animate-spin"
-                                            />
-                                            <p className="text-gray-500 text-sm">
-                                                Loading messages...
-                                            </p>
+                                        <div className="text-center py-12">
+                                            <StateView type="loading" message="Loading messages..." />
                                         </div>
                                     ) : conversationMessages.length === 0 ? (
-                                        <div className="text-center py-8">
-                                            <Icon
-                                                icon="mingcute:message-3-line"
-                                                width="48"
-                                                height="48"
-                                                className="text-gray-300 mx-auto mb-2"
-                                            />
-                                            <p className="text-gray-500 text-sm">
+                                        <div className="text-center py-16">
+                                            <div className="w-12 h-12 rounded-full mx-auto mb-3 bg-emerald-50 border border-emerald-200/70 flex items-center justify-center text-emerald-700">
+                                                <Icon
+                                                    icon="mingcute:message-3-line"
+                                                    width="24"
+                                                    height="24"
+                                                />
+                                            </div>
+                                            <p className="text-sm font-semibold text-slate-700">
                                                 No messages yet
                                             </p>
-                                            <p className="text-gray-400 text-xs">
-                                                Start the conversation!
+                                            <p className="text-xs text-slate-400 mt-0.5">
+                                                Say hello to start the conversation!
                                             </p>
                                         </div>
                                     ) : (
@@ -1520,11 +1390,11 @@ function Messages() {
                                                 <div key={dateKey}>
                                                     {/* Date Separator */}
                                                     <div className="flex items-center gap-3 my-4">
-                                                        <div className="flex-1 h-px bg-gray-200"></div>
-                                                        <span className="text-xs text-gray-400 px-2">
+                                                        <div className="flex-1 h-px bg-slate-200/70"></div>
+                                                        <span className="text-[10px] uppercase tracking-wider text-slate-400 font-bold px-2">
                                                             {group.label}
                                                         </span>
-                                                        <div className="flex-1 h-px bg-gray-200"></div>
+                                                        <div className="flex-1 h-px bg-slate-200/70"></div>
                                                     </div>
 
                                                     {/* Messages for this date */}
@@ -1540,11 +1410,11 @@ function Messages() {
                                                                 }`}
                                                             >
                                                                 <div
-                                                                    className={`max-w-xs px-4 py-2 rounded-2xl ${
+                                                                    className={`max-w-[75%] px-4 py-2.5 rounded-2xl shadow-2xs text-sm ${
                                                                         message.sender ===
                                                                         "me"
-                                                                            ? "bg-primary text-white"
-                                                                            : "bg-white shadow-sm"
+                                                                            ? "bg-emerald-700 text-white rounded-br-xs"
+                                                                            : "bg-white border border-slate-200/80 text-slate-800 rounded-bl-xs"
                                                                     }`}
                                                                 >
                                                                     {renderMessageContent(
@@ -1553,11 +1423,11 @@ function Messages() {
                                                                             "me"
                                                                     )}
                                                                     <p
-                                                                        className={`text-xs mt-1 ${
+                                                                        className={`text-[10px] mt-1 tabular-nums ${
                                                                             message.sender ===
                                                                             "me"
-                                                                                ? "text-primary-light"
-                                                                                : "text-gray-500"
+                                                                                ? "text-emerald-100 text-right"
+                                                                                : "text-slate-400"
                                                                         }`}
                                                                     >
                                                                         {
@@ -1576,13 +1446,13 @@ function Messages() {
                             </div>
 
                             {/* Message Input */}
-                            <div className="flex-shrink-0 bg-white border-t border-gray-200 px-4 py-3">
-                                <div className="flex items-center gap-3">
+                            <div className="px-5 py-3.5 bg-white border-t border-slate-100">
+                                <div className="flex items-center gap-2.5">
                                     <div className="flex-1 relative">
                                         <input
                                             type="text"
                                             placeholder="Type a message..."
-                                            className="w-full px-4 py-2 border border-gray-300 rounded-full outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                                            className="w-full h-11 px-4 bg-slate-50 border border-slate-200 rounded-full text-sm text-slate-900 placeholder:text-slate-400 outline-none focus:bg-white focus:border-emerald-600 focus:ring-2 focus:ring-emerald-600/15 transition-all"
                                             value={newMessage}
                                             onChange={(e) =>
                                                 setNewMessage(e.target.value)
@@ -1595,35 +1465,37 @@ function Messages() {
                                     </div>
                                     <button
                                         onClick={handleSendMessage}
-                                        className="bg-primary text-white p-2 rounded-full hover:bg-primary-dark transition-colors"
+                                        className="w-11 h-11 bg-emerald-700 text-white rounded-full flex items-center justify-center hover:bg-emerald-800 active:scale-95 transition-all disabled:opacity-50 disabled:pointer-events-none shadow-xs"
                                         disabled={!newMessage.trim()}
+                                        aria-label="Send message"
                                     >
                                         <Icon
                                             icon="mingcute:send-line"
-                                            width="20"
-                                            height="20"
+                                            width="18"
+                                            height="18"
                                         />
                                     </button>
                                 </div>
                             </div>
                         </div>
                     ) : (
-                        <div className="flex-1 flex items-center justify-center bg-gray-50">
-                            <div className="text-center">
-                                <Icon
-                                    icon="mingcute:message-3-line"
-                                    width="80"
-                                    height="80"
-                                    className="text-gray-300 mb-4 mx-auto"
-                                />
-                                <p className="text-gray-500">
-                                    Select a conversation to start messaging
+                        <div className="flex-1 flex items-center justify-center bg-slate-50/40">
+                            <div className="text-center p-8">
+                                <div className="w-16 h-16 rounded-2xl bg-white border border-slate-200 shadow-2xs flex items-center justify-center mx-auto mb-3 text-slate-300">
+                                    <Icon
+                                        icon="mingcute:message-3-line"
+                                        width="32"
+                                        height="32"
+                                    />
+                                </div>
+                                <h3 className="text-sm font-semibold text-slate-700">No conversation selected</h3>
+                                <p className="text-xs text-slate-400 mt-1 max-w-xs">
+                                    Select a farmer from the sidebar to start or continue your discussion
                                 </p>
                             </div>
                         </div>
                     )}
                 </div>
-                <NavigationBar />
             </div>
         </div>
     );
