@@ -975,8 +975,9 @@ function Messages() {
                                 />
                             </div>
                             <button
+                                type="button"
                                 onClick={handleSendMessage}
-                                className="w-11 h-11 bg-emerald-700 text-white rounded-full flex items-center justify-center hover:bg-emerald-800 active:scale-95 transition-all disabled:opacity-50 disabled:pointer-events-none shadow-xs"
+                                className="min-w-[44px] min-h-[44px] w-11 h-11 bg-emerald-700 text-white rounded-full flex items-center justify-center hover:bg-emerald-800 active:scale-[0.96] transition-transform duration-100 ease-out disabled:opacity-50 disabled:pointer-events-none shadow-xs"
                                 disabled={!newMessage.trim()}
                                 aria-label="Send message"
                             >
@@ -1335,8 +1336,9 @@ function Messages() {
                                         />
                                     </div>
                                     <button
+                                        type="button"
                                         onClick={handleSendMessage}
-                                        className="w-11 h-11 bg-emerald-700 text-white rounded-full flex items-center justify-center hover:bg-emerald-800 active:scale-95 transition-all disabled:opacity-50 disabled:pointer-events-none shadow-xs"
+                                        className="min-w-[44px] min-h-[44px] w-11 h-11 bg-emerald-700 text-white rounded-full flex items-center justify-center hover:bg-emerald-800 active:scale-[0.96] transition-transform duration-100 ease-out disabled:opacity-50 disabled:pointer-events-none shadow-xs"
                                         disabled={!newMessage.trim()}
                                         aria-label="Send message"
                                     >
