@@ -145,11 +145,15 @@ function Register() {
                                 required
                             />
                         </div>
-                            <div className="w-full max-w-sm rounded-md mb-4 relative">
+                        <div className="mb-4">
+                            <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
+                                Password
+                            </label>
+                            <div className="w-full relative">
                                 <input
                                     type={passwordVisible ? "text" : "password"}
-                                    className="bg-white w-full max-w-sm p-3 rounded-md text-base outline-none focus:outline-none focus:ring-0 shadow-sm"
-                                    placeholder="Password"
+                                    className="w-full h-11 px-3.5 pr-11 bg-slate-50/50 border border-slate-200 rounded-xl text-sm text-slate-900 placeholder:text-slate-400 outline-none focus:bg-white focus:border-emerald-600 focus:ring-2 focus:ring-emerald-600/15 transition-all"
+                                    placeholder="Create password"
                                     value={password}
                                     onChange={(e) =>
                                         setPassword(e.target.value)
@@ -159,10 +163,9 @@ function Register() {
                                 />
                                 <button
                                     type="button"
-                                    className="absolute right-3 top-1/2 transform -translate-y-1/2 cursor-pointer"
-                                    aria-label="Show password"
+                                    className="absolute right-1 top-1/2 -translate-y-1/2 min-w-[44px] min-h-[44px] inline-flex items-center justify-center text-slate-400 hover:text-slate-600 rounded-lg transition-colors cursor-pointer"
+                                    aria-label={passwordVisible ? "Hide password" : "Show password"}
                                     onClick={togglePasswordVisibility}
-                                    tabIndex={-1}
                                 >
                                     <Icon
                                         icon={
@@ -170,21 +173,25 @@ function Register() {
                                                 ? "mingcute:eye-line"
                                                 : "mingcute:eye-close-line"
                                         }
-                                        width="24"
-                                        height="24"
-                                        color="var(--color-text)"
+                                        width="20"
+                                        height="20"
                                     />
                                 </button>
                             </div>
-                            <div className="w-full max-w-sm rounded-md mb-4 relative">
+                        </div>
+                        <div className="mb-4">
+                            <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
+                                Confirm Password
+                            </label>
+                            <div className="w-full relative">
                                 <input
                                     type={
                                         confirmPasswordVisible
                                             ? "text"
                                             : "password"
                                     }
-                                    className="bg-white w-full max-w-sm p-3 rounded-md text-base outline-none focus:outline-none focus:ring-0 shadow-sm"
-                                    placeholder="Confirm Password"
+                                    className="w-full h-11 px-3.5 pr-11 bg-slate-50/50 border border-slate-200 rounded-xl text-sm text-slate-900 placeholder:text-slate-400 outline-none focus:bg-white focus:border-emerald-600 focus:ring-2 focus:ring-emerald-600/15 transition-all"
+                                    placeholder="Confirm your password"
                                     value={confirmPassword}
                                     onChange={(e) =>
                                         setConfirmPassword(e.target.value)
@@ -194,10 +201,9 @@ function Register() {
                                 />
                                 <button
                                     type="button"
-                                    className="absolute right-3 top-1/2 transform -translate-y-1/2 cursor-pointer"
-                                    aria-label="Show password"
+                                    className="absolute right-1 top-1/2 -translate-y-1/2 min-w-[44px] min-h-[44px] inline-flex items-center justify-center text-slate-400 hover:text-slate-600 rounded-lg transition-colors cursor-pointer"
+                                    aria-label={confirmPasswordVisible ? "Hide password" : "Show password"}
                                     onClick={toggleConfirmPasswordVisibility}
-                                    tabIndex={-1}
                                 >
                                     <Icon
                                         icon={
@@ -205,12 +211,12 @@ function Register() {
                                                 ? "mingcute:eye-line"
                                                 : "mingcute:eye-close-line"
                                         }
-                                        width="24"
-                                        height="24"
-                                        color="var(--color-text)"
+                                        width="20"
+                                        height="20"
                                     />
                                 </button>
                             </div>
+                        </div>
                             {error && (
                                 <div className="text-red-500 mb-2 text-sm">
                                     {error}
