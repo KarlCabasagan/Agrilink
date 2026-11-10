@@ -76,21 +76,23 @@ function ForgotPassword() {
                     </div>
                 </div>
 
-                {/* Password Reset Card */}
-                <div className="flex flex-col items-center w-full max-w-md">
+                {/* Form Card */}
+                <div className="w-full max-w-md bg-white rounded-2xl border border-slate-200/90 shadow-2xs p-6 sm:p-8">
                     {/* Header */}
                     <div className="mb-6 text-center">
-                        <h1 className="text-2xl font-bold mb-2">
+                        <div className="w-14 h-14 rounded-2xl bg-emerald-50 text-emerald-700 border border-emerald-100 flex items-center justify-center mx-auto mb-3 shadow-2xs">
+                            <Icon icon="mingcute:key-2-line" width="28" height="28" />
+                        </div>
+                        <h2 className="text-xl font-bold text-slate-900 tracking-tight">
                             Reset Password
-                        </h1>
-                        <p className="text-gray-600 text-sm">
-                            Enter your email address and we'll send you a link
-                            to reset your password.
+                        </h2>
+                        <p className="text-xs text-slate-500 mt-1 max-w-xs mx-auto leading-relaxed">
+                            Enter your email address and we'll send you a secure link to reset your account password.
                         </p>
                     </div>
 
                     <form
-                        className="w-full max-w-md flex flex-col items-center"
+                        className="w-full flex flex-col"
                         onSubmit={handleSubmit}
                     >
                         {/* Email Input */}
