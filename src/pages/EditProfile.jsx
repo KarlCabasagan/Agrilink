@@ -510,604 +510,594 @@ function EditProfile() {
     };
 
     return (
-        <div className="min-h-screen w-full flex flex-col relative items-center scrollbar-hide bg-background overflow-x-hidden text-text">
+        <div className="min-h-screen w-full max-w-full overflow-x-hidden flex flex-col bg-slate-50/50 text-slate-900 pb-24 md:pb-12 md:pt-16">
             {/* Modal */}
             {modalOpen && (
-                <>
-                    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black opacity-50"></div>
-                    <div className="bg-white rounded-lg shadow-xl p-6 max-w-sm w-full text-center fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-[10000]">
-                        <div className="mb-4">
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-xs animate-in fade-in duration-150">
+                    <div className="bg-white rounded-2xl shadow-xl border border-slate-200/90 p-6 max-w-sm w-full text-center scale-100 transition-all">
+                        <div className="w-12 h-12 rounded-full mx-auto mb-3 flex items-center justify-center bg-slate-50 border border-slate-200/80">
                             <Icon
                                 icon={
                                     modalMessage.includes("successfully")
                                         ? "mingcute:check-circle-fill"
                                         : "mingcute:alert-circle-fill"
                                 }
-                                width="48"
-                                height="48"
-                                className={`mx-auto mb-3 ${
+                                width="28"
+                                height="28"
+                                className={
                                     modalMessage.includes("successfully")
-                                        ? "text-green-500"
-                                        : "text-red-500"
-                                }`}
+                                        ? "text-emerald-600"
+                                        : "text-rose-600"
+                                }
                             />
-                            <p className="text-gray-700">{modalMessage}</p>
                         </div>
+                        <p className="text-sm font-medium text-slate-800 leading-relaxed mb-5">{modalMessage}</p>
                         <button
-                            className="w-full mt-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors"
+                            type="button"
+                            className="w-full min-h-[44px] px-4 py-2.5 bg-emerald-700 hover:bg-emerald-800 text-white text-sm font-semibold rounded-xl shadow-xs active:scale-[0.98] transition-all"
                             onClick={() => setModalOpen(false)}
                         >
                             OK
                         </button>
                     </div>
-                </>
+                </div>
             )}
 
-            {/* Header */}
-            <div className="fixed top-0 left-0 w-full bg-white shadow-md z-50 px-4 py-3 flex justify-between items-center">
+            {/* Mobile Top Header */}
+            <header className="md:hidden sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-slate-200/80 px-4 py-3 flex items-center justify-between">
                 <Link
                     to="/profile"
-                    className="text-gray-600 hover:text-primary"
+                    className="min-w-[44px] min-h-[44px] inline-flex items-center justify-center text-slate-600 hover:text-emerald-700 rounded-xl hover:bg-slate-100 active:scale-[0.97] transition-all"
+                    aria-label="Back to Profile"
                 >
-                    <Icon icon="mingcute:left-line" width="24" height="24" />
+                    <Icon icon="mingcute:left-line" width="22" height="22" />
                 </Link>
-                <h1 className="text-lg font-semibold">Edit Profile</h1>
-                <div className="w-6"></div> {/* Spacer for center alignment */}
-            </div>
+                <h1 className="text-base font-semibold text-slate-900">Edit Profile</h1>
+                <div className="w-11" aria-hidden="true" />
+            </header>
 
-            {/* Content */}
-            <div className="flex-1 w-full px-4 mt-16 pb-8">
-                <div className="max-w-2xl mx-auto">
-                    {/* Profile Header Card */}
-                    <div className="bg-white rounded-2xl shadow-lg overflow-hidden mb-6">
-                        <div className="relative bg-gradient-to-br from-primary via-primary-dark to-purple-600 p-8 text-white">
-                            <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -translate-y-16 translate-x-16"></div>
-                            <div className="absolute bottom-0 left-0 w-24 h-24 bg-white/5 rounded-full translate-y-12 -translate-x-12"></div>
+            {/* Main Content */}
+            <main className="flex-1 w-full max-w-2xl mx-auto px-4 sm:px-6 mt-4 md:mt-6">
+                {/* Desktop Breadcrumb */}
+                <nav className="hidden md:flex items-center gap-2 text-xs font-medium text-slate-500 mb-6" aria-label="Breadcrumb">
+                    <Link to="/" className="hover:text-emerald-700 transition-colors">Home</Link>
+                    <span>/</span>
+                    <Link to="/profile" className="hover:text-emerald-700 transition-colors">Profile</Link>
+                    <span>/</span>
+                    <span className="text-slate-900 font-semibold">Edit Profile</span>
+                </nav>
 
-                            <div className="relative z-10 text-center">
-                                <div className="w-32 h-32 mx-auto mb-4 relative">
-                                    <img
-                                        src={resolvedAvatarPreview}
-                                        alt="profile"
-                                        className="w-full h-full object-cover rounded-full border-4 border-white shadow-xl"
-                                    />
-                                    {/* Hidden file input */}
-                                    <input
-                                        type="file"
-                                        id="avatar-file-input"
-                                        accept="image/*"
-                                        onChange={handleAvatarFileSelect}
-                                        className="hidden"
-                                    />
-                                    {/* Camera button - opens file browser directly */}
-                                    <label
-                                        htmlFor="avatar-file-input"
-                                        className="absolute bottom-0 right-0 bg-white text-primary p-2.5 rounded-full shadow-lg hover:bg-gray-50 transition-colors cursor-pointer"
-                                    >
-                                        <Icon
-                                            icon="mingcute:camera-line"
-                                            width="18"
-                                            height="18"
-                                        />
-                                    </label>
-                                    {/* Remove Avatar Button - only show when avatar exists */}
-                                    {(avatarPreview || formData.avatar_url) &&
-                                        !formData.avatar_url && (
-                                            <button
-                                                type="button"
-                                                onClick={handleRemoveAvatar}
-                                                className="absolute top-0 right-0 bg-red-500 text-white p-1.5 rounded-full shadow-lg hover:bg-red-600 transition-colors"
-                                                title="Remove avatar"
-                                            >
-                                                <Icon
-                                                    icon="mingcute:close-line"
-                                                    width="14"
-                                                    height="14"
-                                                />
-                                            </button>
-                                        )}
-                                </div>
-                                <h2 className="text-2xl font-bold mb-2">
-                                    {formData.name || "Complete Your Profile"}
-                                </h2>
-                                <p className="text-white/90 text-sm">
-                                    Keep your information up to date for the
-                                    best experience
-                                </p>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Form Card */}
-                    <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
-                        <form onSubmit={handleSubmit}>
-                            {/* Form Header */}
-                            <div className="border-b border-gray-100 p-6">
-                                <h3 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
+                {/* Profile Header Card */}
+                <div className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs p-6 sm:p-7 mb-6 text-center">
+                    <div className="w-28 h-28 mx-auto mb-4 relative">
+                        <img
+                            src={resolvedAvatarPreview}
+                            alt="profile"
+                            className="w-full h-full object-cover rounded-full border-2 border-slate-100 shadow-sm"
+                        />
+                        {/* Hidden file input */}
+                        <input
+                            type="file"
+                            id="avatar-file-input"
+                            accept="image/*"
+                            onChange={handleAvatarFileSelect}
+                            className="hidden"
+                        />
+                        {/* Camera button */}
+                        <label
+                            htmlFor="avatar-file-input"
+                            className="absolute bottom-0 right-0 w-9 h-9 bg-emerald-700 text-white rounded-full shadow-md hover:bg-emerald-800 transition-colors cursor-pointer flex items-center justify-center active:scale-95"
+                            title="Change photo"
+                        >
+                            <Icon
+                                icon="mingcute:camera-line"
+                                width="18"
+                                height="18"
+                            />
+                        </label>
+                        {/* Remove Avatar Button - only show when avatar exists */}
+                        {(avatarPreview || formData.avatar_url) &&
+                            !formData.avatar_url && (
+                                <button
+                                    type="button"
+                                    onClick={handleRemoveAvatar}
+                                    className="absolute top-0 right-0 w-8 h-8 bg-rose-600 text-white rounded-full shadow-md hover:bg-rose-700 transition-colors flex items-center justify-center active:scale-95"
+                                    title="Remove avatar"
+                                >
                                     <Icon
-                                        icon="mingcute:edit-3-line"
-                                        width="20"
-                                        height="20"
-                                        className="text-primary"
+                                        icon="mingcute:close-line"
+                                        width="16"
+                                        height="16"
                                     />
-                                    Personal Information
-                                </h3>
-                                <p className="text-gray-600 text-sm mt-1">
-                                    Update your personal details below
-                                </p>
-                            </div>
+                                </button>
+                            )}
+                    </div>
+                    <h2 className="text-lg sm:text-xl font-bold text-slate-900 mb-1">
+                        {formData.name || "Complete Your Profile"}
+                    </h2>
+                    <p className="text-xs sm:text-sm text-slate-500 max-w-prose mx-auto">
+                        Keep your contact and address up to date for smooth local deliveries
+                    </p>
+                </div>
 
-                            <div className="p-6 space-y-6">
-                                {/* Full Name */}
-                                <div className="space-y-2">
-                                    <label className="flex items-center gap-2 text-sm font-semibold text-gray-700">
+                {/* Form Card */}
+                <div className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs overflow-hidden mb-6">
+                    <form onSubmit={handleSubmit}>
+                        {/* Form Header */}
+                        <div className="border-b border-slate-100 px-6 py-4.5 bg-slate-50/50">
+                            <h3 className="text-sm font-semibold text-slate-900 flex items-center gap-2">
+                                <Icon
+                                    icon="mingcute:edit-3-line"
+                                    width="18"
+                                    height="18"
+                                    className="text-emerald-700"
+                                />
+                                Personal Information
+                            </h3>
+                            <p className="text-xs text-slate-500 mt-0.5">
+                                Update your delivery details and contact number
+                            </p>
+                        </div>
+
+                        <div className="p-6 space-y-5">
+                            {/* Full Name */}
+                            <div className="space-y-1.5">
+                                <label className="flex items-center gap-1.5 text-xs font-semibold text-slate-700">
+                                    <Icon
+                                        icon="mingcute:user-3-line"
+                                        width="15"
+                                        height="15"
+                                        className="text-emerald-700"
+                                    />
+                                    Full Name
+                                </label>
+                                <div className="relative">
+                                    <input
+                                        type="text"
+                                        placeholder="Enter your full name"
+                                        className={`w-full h-11 px-3.5 pr-10 border rounded-xl text-sm outline-none transition-all duration-150 ${
+                                            nameError
+                                                ? "border-rose-300 bg-rose-50/40 focus:border-rose-500 focus:ring-2 focus:ring-rose-500/10 text-slate-900"
+                                                : "border-slate-200 bg-slate-50/60 focus:bg-white focus:border-emerald-600 focus:ring-2 focus:ring-emerald-600/15 text-slate-900"
+                                        }`}
+                                        value={formData.name}
+                                        onChange={(e) =>
+                                            handleInputChange(
+                                                "name",
+                                                e.target.value
+                                            )
+                                        }
+                                        disabled={loading}
+                                    />
+                                    <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
                                         <Icon
                                             icon="mingcute:user-3-line"
-                                            width="16"
-                                            height="16"
-                                            className="text-primary"
+                                            width="18"
+                                            height="18"
+                                            className="text-slate-400"
                                         />
-                                        Full Name
-                                    </label>
-                                    <div className="relative">
-                                        <input
-                                            type="text"
-                                            placeholder="Enter your full name"
-                                            className={`w-full px-4 py-3.5 border rounded-xl text-base outline-none transition-all duration-200 ${
-                                                nameError
-                                                    ? "border-red-300 bg-red-50 focus:border-red-500 focus:ring-4 focus:ring-red-100"
-                                                    : "border-gray-200 bg-gray-50 focus:bg-white focus:border-primary focus:ring-4 focus:ring-primary/10"
-                                            }`}
-                                            value={formData.name}
-                                            onChange={(e) =>
-                                                handleInputChange(
-                                                    "name",
-                                                    e.target.value
-                                                )
-                                            }
-                                            disabled={loading}
-                                        />
-                                        <div className="absolute right-4 top-1/2 transform -translate-y-1/2">
-                                            <Icon
-                                                icon="mingcute:user-3-line"
-                                                width="18"
-                                                height="18"
-                                                className="text-gray-400"
-                                            />
-                                        </div>
                                     </div>
-                                    {nameError && (
-                                        <div className="flex items-center gap-2 text-red-600 text-sm bg-red-50 p-3 rounded-lg">
-                                            <Icon
-                                                icon="mingcute:alert-circle-fill"
-                                                width="16"
-                                                height="16"
-                                            />
-                                            {nameError}
-                                        </div>
-                                    )}
                                 </div>
-
-                                {/* Address */}
-                                <div className="space-y-2">
-                                    <label className="flex items-center gap-2 text-sm font-semibold text-gray-700">
+                                {nameError && (
+                                    <div className="flex items-center gap-2 text-rose-600 text-xs bg-rose-50 border border-rose-200/70 p-2.5 rounded-xl">
                                         <Icon
-                                            icon="mingcute:location-line"
-                                            width="16"
-                                            height="16"
-                                            className="text-primary"
+                                            icon="mingcute:alert-circle-fill"
+                                            width="15"
+                                            height="15"
                                         />
-                                        Address
-                                    </label>
-                                    <div className="relative">
-                                        <input
-                                            type="text"
-                                            placeholder="Search for your barangay in Iligan City..."
-                                            className={`w-full px-4 py-3.5 pr-12 border rounded-xl text-base outline-none transition-all duration-200 ${
-                                                addressError
-                                                    ? "border-red-300 bg-red-50 focus:border-red-500 focus:ring-4 focus:ring-red-100"
-                                                    : "border-gray-200 bg-gray-50 focus:bg-white focus:border-primary focus:ring-4 focus:ring-primary/10"
-                                            }`}
-                                            value={addressInput}
-                                            onChange={(e) =>
-                                                handleAddressChange(
-                                                    e.target.value
-                                                )
-                                            }
-                                            onFocus={() => {
-                                                if (
-                                                    filteredBarangays.length > 0
-                                                ) {
-                                                    setShowSuggestions(true);
-                                                }
-                                            }}
-                                            onBlur={() => {
-                                                setTimeout(
-                                                    () =>
-                                                        setShowSuggestions(
-                                                            false
-                                                        ),
-                                                    200
-                                                );
-                                            }}
-                                            disabled={loading}
-                                        />
-                                        <div className="absolute right-4 top-1/2 transform -translate-y-1/2">
-                                            <Icon
-                                                icon="mingcute:search-line"
-                                                width="18"
-                                                height="18"
-                                                className="text-gray-400"
-                                            />
-                                        </div>
+                                        {nameError}
+                                    </div>
+                                )}
+                            </div>
 
-                                        {/* Autocomplete Suggestions */}
-                                        {showSuggestions &&
-                                            filteredBarangays.length > 0 && (
-                                                <div className="absolute z-20 w-full mt-2 bg-white border border-gray-200 rounded-xl shadow-xl max-h-60 overflow-y-auto">
-                                                    {filteredBarangays
-                                                        .slice(0, 8)
-                                                        .map(
-                                                            (
-                                                                barangay,
-                                                                index
-                                                            ) => (
-                                                                <div
-                                                                    key={index}
-                                                                    className="px-4 py-3 hover:bg-primary/5 cursor-pointer border-b border-gray-100 last:border-b-0 transition-colors"
-                                                                    onClick={() =>
-                                                                        handleSuggestionClick(
-                                                                            barangay
-                                                                        )
-                                                                    }
-                                                                >
-                                                                    <div className="flex items-center gap-3">
-                                                                        <div className="w-8 h-8 bg-primary/10 rounded-lg flex items-center justify-center">
-                                                                            <Icon
-                                                                                icon="mingcute:location-line"
-                                                                                width="16"
-                                                                                height="16"
-                                                                                className="text-primary"
-                                                                            />
+                            {/* Address */}
+                            <div className="space-y-1.5">
+                                <label className="flex items-center gap-1.5 text-xs font-semibold text-slate-700">
+                                    <Icon
+                                        icon="mingcute:location-line"
+                                        width="15"
+                                        height="15"
+                                        className="text-emerald-700"
+                                    />
+                                    Address
+                                </label>
+                                <div className="relative">
+                                    <input
+                                        type="text"
+                                        placeholder="Search for your barangay in Iligan City..."
+                                        className={`w-full h-11 px-3.5 pr-10 border rounded-xl text-sm outline-none transition-all duration-150 ${
+                                            addressError
+                                                ? "border-rose-300 bg-rose-50/40 focus:border-rose-500 focus:ring-2 focus:ring-rose-500/10 text-slate-900"
+                                                : "border-slate-200 bg-slate-50/60 focus:bg-white focus:border-emerald-600 focus:ring-2 focus:ring-emerald-600/15 text-slate-900"
+                                        }`}
+                                        value={addressInput}
+                                        onChange={(e) =>
+                                            handleAddressChange(
+                                                e.target.value
+                                            )
+                                        }
+                                        onFocus={() => {
+                                            if (
+                                                filteredBarangays.length > 0
+                                            ) {
+                                                setShowSuggestions(true);
+                                            }
+                                        }}
+                                        onBlur={() => {
+                                            setTimeout(
+                                                () =>
+                                                    setShowSuggestions(
+                                                        false
+                                                    ),
+                                                200
+                                            );
+                                        }}
+                                        disabled={loading}
+                                    />
+                                    <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
+                                        <Icon
+                                            icon="mingcute:search-line"
+                                            width="18"
+                                            height="18"
+                                            className="text-slate-400"
+                                        />
+                                    </div>
+
+                                    {/* Autocomplete Suggestions */}
+                                    {showSuggestions &&
+                                        filteredBarangays.length > 0 && (
+                                            <div className="absolute z-20 w-full mt-1.5 bg-white border border-slate-200 rounded-xl shadow-lg max-h-60 overflow-y-auto divide-y divide-slate-100">
+                                                {filteredBarangays
+                                                    .slice(0, 8)
+                                                    .map(
+                                                        (
+                                                            barangay,
+                                                            index
+                                                        ) => (
+                                                            <div
+                                                                key={index}
+                                                                className="px-4 py-2.5 hover:bg-emerald-50/60 cursor-pointer transition-colors"
+                                                                onClick={() =>
+                                                                    handleSuggestionClick(
+                                                                        barangay
+                                                                    )
+                                                                }
+                                                            >
+                                                                <div className="flex items-center gap-3">
+                                                                    <div className="w-7 h-7 bg-emerald-50 rounded-lg flex items-center justify-center shrink-0">
+                                                                        <Icon
+                                                                            icon="mingcute:location-line"
+                                                                            width="15"
+                                                                            height="15"
+                                                                            className="text-emerald-700"
+                                                                        />
+                                                                    </div>
+                                                                    <div>
+                                                                        <div className="font-medium text-xs sm:text-sm text-slate-800">
+                                                                            {
+                                                                                barangay
+                                                                            }
                                                                         </div>
-                                                                        <div>
-                                                                            <div className="font-medium text-gray-800">
-                                                                                {
-                                                                                    barangay
-                                                                                }
-                                                                            </div>
-                                                                            <div className="text-sm text-gray-500">
-                                                                                Iligan
-                                                                                City,
-                                                                                Lanao
-                                                                                del
-                                                                                Norte
-                                                                            </div>
+                                                                        <div className="text-[11px] text-slate-500">
+                                                                            Iligan City, Lanao del Norte
                                                                         </div>
                                                                     </div>
                                                                 </div>
-                                                            )
-                                                        )}
-                                                </div>
-                                            )}
-                                    </div>
-                                    {addressError ? (
-                                        <div className="flex items-center gap-2 text-red-600 text-sm bg-red-50 p-3 rounded-lg">
-                                            <Icon
-                                                icon="mingcute:alert-circle-fill"
-                                                width="16"
-                                                height="16"
-                                            />
-                                            {addressError}
-                                        </div>
-                                    ) : (
-                                        <div className="flex items-center gap-2 text-gray-500 text-sm bg-blue-50 p-3 rounded-lg">
-                                            <Icon
-                                                icon="mingcute:information-line"
-                                                width="16"
-                                                height="16"
-                                                className="text-blue-500"
-                                            />
-                                            Start typing to search for barangays
-                                            in Iligan City
-                                        </div>
-                                    )}
-                                </div>
-
-                                {/* Contact Number */}
-                                <div className="space-y-2">
-                                    <label className="flex items-center gap-2 text-sm font-semibold text-gray-700">
-                                        <Icon
-                                            icon="mingcute:phone-line"
-                                            width="16"
-                                            height="16"
-                                            className="text-primary"
-                                        />
-                                        Contact Number
-                                    </label>
-                                    <div className="relative">
-                                        <div className="absolute left-4 top-1/2 transform -translate-y-1/2 flex items-center gap-2">
-                                            <div className="flex items-center gap-1 text-gray-600 font-semibold bg-gray-100 px-3 py-1.5 rounded-lg text-sm">
-                                                <Icon
-                                                    icon="emojione:flag-for-philippines"
-                                                    width="16"
-                                                    height="16"
-                                                />
-                                                +63
+                                                            </div>
+                                                        )
+                                                    )}
                                             </div>
-                                        </div>
-                                        <input
-                                            type="tel"
-                                            placeholder="912 345 6789"
-                                            className="w-full pl-24 pr-4 py-3.5 border border-gray-200 bg-gray-50 rounded-xl text-base outline-none focus:bg-white focus:border-primary focus:ring-4 focus:ring-primary/10 transition-all duration-200"
-                                            value={displayPhoneNumber(
-                                                formData.contact
-                                            )}
-                                            onChange={(e) =>
-                                                handleInputChange(
-                                                    "contact",
-                                                    e.target.value
-                                                )
-                                            }
-                                            disabled={loading}
-                                            maxLength={13}
-                                        />
-                                    </div>
-                                    {contactError ? (
-                                        <div className="flex items-center gap-2 text-red-600 text-sm bg-red-50 p-3 rounded-lg">
-                                            <Icon
-                                                icon="mingcute:alert-circle-fill"
-                                                width="16"
-                                                height="16"
-                                            />
-                                            {contactError}
-                                        </div>
-                                    ) : (
-                                        <div className="flex items-center gap-2 text-gray-500 text-sm bg-gray-50 p-3 rounded-lg">
-                                            <Icon
-                                                icon="mingcute:information-line"
-                                                width="16"
-                                                height="16"
-                                                className="text-gray-400"
-                                            />
-                                            Enter your 10-digit mobile number
-                                            starting with 9 (without +63)
-                                        </div>
-                                    )}
+                                        )}
                                 </div>
+                                {addressError ? (
+                                    <div className="flex items-center gap-2 text-rose-600 text-xs bg-rose-50 border border-rose-200/70 p-2.5 rounded-xl">
+                                        <Icon
+                                            icon="mingcute:alert-circle-fill"
+                                            width="15"
+                                            height="15"
+                                        />
+                                        {addressError}
+                                    </div>
+                                ) : (
+                                    <div className="flex items-center gap-2 text-slate-500 text-xs bg-slate-50 border border-slate-200/60 p-2.5 rounded-xl">
+                                        <Icon
+                                            icon="mingcute:information-line"
+                                            width="15"
+                                            height="15"
+                                            className="text-emerald-700"
+                                        />
+                                        Start typing to search for barangays in Iligan City
+                                    </div>
+                                )}
                             </div>
 
-                            {/* Security Section */}
-                            <div className="border-t border-gray-100">
-                                <div className="p-6">
-                                    <h3 className="text-lg font-semibold text-gray-800 flex items-center gap-2 mb-6">
+                            {/* Contact Number */}
+                            <div className="space-y-1.5">
+                                <label className="flex items-center gap-1.5 text-xs font-semibold text-slate-700">
+                                    <Icon
+                                        icon="mingcute:phone-line"
+                                        width="15"
+                                        height="15"
+                                        className="text-emerald-700"
+                                    />
+                                    Contact Number
+                                </label>
+                                <div className="relative">
+                                    <div className="absolute left-3 top-1/2 -translate-y-1/2 flex items-center gap-1.5">
+                                        <div className="flex items-center gap-1.5 text-slate-700 font-semibold bg-slate-100 border border-slate-200/70 px-2.5 py-1 rounded-lg text-xs">
+                                            <Icon
+                                                icon="emojione:flag-for-philippines"
+                                                width="14"
+                                                height="14"
+                                            />
+                                            +63
+                                        </div>
+                                    </div>
+                                    <input
+                                        type="tel"
+                                        placeholder="912 345 6789"
+                                        className="w-full h-11 pl-20 pr-4 border border-slate-200 bg-slate-50/60 rounded-xl text-sm tabular-nums outline-none focus:bg-white focus:border-emerald-600 focus:ring-2 focus:ring-emerald-600/15 transition-all text-slate-900"
+                                        value={displayPhoneNumber(
+                                            formData.contact
+                                        )}
+                                        onChange={(e) =>
+                                            handleInputChange(
+                                                "contact",
+                                                e.target.value
+                                            )
+                                        }
+                                        disabled={loading}
+                                        maxLength={13}
+                                    />
+                                </div>
+                                {contactError ? (
+                                    <div className="flex items-center gap-2 text-rose-600 text-xs bg-rose-50 border border-rose-200/70 p-2.5 rounded-xl">
                                         <Icon
-                                            icon="mingcute:shield-line"
-                                            width="20"
-                                            height="20"
-                                            className="text-primary"
+                                            icon="mingcute:alert-circle-fill"
+                                            width="15"
+                                            height="15"
                                         />
-                                        Security Settings
-                                    </h3>
+                                        {contactError}
+                                    </div>
+                                ) : (
+                                    <div className="flex items-center gap-2 text-slate-500 text-xs bg-slate-50 border border-slate-200/60 p-2.5 rounded-xl">
+                                        <Icon
+                                            icon="mingcute:information-line"
+                                            width="15"
+                                            height="15"
+                                            className="text-slate-400"
+                                        />
+                                        Enter your 10-digit mobile number starting with 9 (without +63)
+                                    </div>
+                                )}
+                            </div>
+                        </div>
 
-                                    {/* Password Change Card */}
-                                    <div className="bg-gradient-to-r from-red-50 to-orange-50 border border-red-200 rounded-2xl overflow-hidden shadow-sm">
-                                        {/* Card Header */}
-                                        <div className="bg-white border-b border-red-100 px-6 py-4 flex flex-col items-center gap-3">
-                                            <div className="w-12 h-12 bg-red-100 rounded-xl flex items-center justify-center">
-                                                <Icon
-                                                    icon="mingcute:lock-line"
-                                                    width="20"
-                                                    height="20"
-                                                    className="text-red-600"
-                                                />
-                                            </div>
-                                            <div className="text-center">
-                                                <h4 className="font-semibold text-gray-800 text-base">
-                                                    Change Password
-                                                </h4>
-                                                <p className="text-gray-500 text-sm mt-1">
-                                                    Update your password to keep
-                                                    your account secure
-                                                </p>
-                                            </div>
-                                        </div>
+                        {/* Security Section */}
+                        <div className="border-t border-slate-100 p-6 bg-slate-50/30">
+                            <h3 className="text-sm font-semibold text-slate-900 flex items-center gap-2 mb-4">
+                                <Icon
+                                    icon="mingcute:shield-line"
+                                    width="18"
+                                    height="18"
+                                    className="text-emerald-700"
+                                />
+                                Security Settings
+                            </h3>
 
-                                        {/* Card Content */}
-                                        <div className="px-6 py-6 space-y-4">
-                                            {/* New Password Field */}
-                                            <div>
-                                                <label className="block text-sm font-medium text-gray-700 mb-2">
-                                                    New Password
-                                                </label>
-                                                <div className="relative">
-                                                    <input
-                                                        type={
-                                                            passwordVisible
-                                                                ? "text"
-                                                                : "password"
-                                                        }
-                                                        placeholder="Enter new password"
-                                                        value={newPassword}
-                                                        onChange={(e) =>
-                                                            setNewPassword(
-                                                                e.target.value
-                                                            )
-                                                        }
-                                                        disabled={
-                                                            passwordChangeLoading ||
-                                                            loading
-                                                        }
-                                                        className="w-full px-4 py-3 border border-red-200 bg-white rounded-lg text-sm outline-none focus:border-red-500 focus:ring-2 focus:ring-red-100 transition-all"
-                                                    />
-                                                    <button
-                                                        type="button"
-                                                        onClick={() =>
-                                                            setPasswordVisible(
-                                                                !passwordVisible
-                                                            )
-                                                        }
-                                                        className="absolute right-3.5 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
-                                                        tabIndex="-1"
-                                                    >
-                                                        <Icon
-                                                            icon={
-                                                                passwordVisible
-                                                                    ? "mingcute:eye-line"
-                                                                    : "mingcute:eye-closed-line"
-                                                            }
-                                                            width="18"
-                                                            height="18"
-                                                        />
-                                                    </button>
-                                                </div>
-                                            </div>
+                            {/* Password Change Sub-Card */}
+                            <div className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-2xs">
+                                <div className="border-b border-slate-100 px-5 py-3.5 flex items-center gap-3 bg-slate-50/50">
+                                    <div className="w-8 h-8 bg-amber-50 border border-amber-200/70 rounded-lg flex items-center justify-center shrink-0">
+                                        <Icon
+                                            icon="mingcute:lock-line"
+                                            width="16"
+                                            height="16"
+                                            className="text-amber-700"
+                                        />
+                                    </div>
+                                    <div>
+                                        <h4 className="font-semibold text-slate-900 text-xs sm:text-sm">
+                                            Change Password
+                                        </h4>
+                                        <p className="text-slate-500 text-[11px]">
+                                            Update your password to keep your account secure
+                                        </p>
+                                    </div>
+                                </div>
 
-                                            {/* Confirm Password Field */}
-                                            <div>
-                                                <label className="block text-sm font-medium text-gray-700 mb-2">
-                                                    Confirm Password
-                                                </label>
-                                                <div className="relative">
-                                                    <input
-                                                        type={
-                                                            passwordVisible
-                                                                ? "text"
-                                                                : "password"
-                                                        }
-                                                        placeholder="Confirm new password"
-                                                        value={confirmPassword}
-                                                        onChange={(e) =>
-                                                            setConfirmPassword(
-                                                                e.target.value
-                                                            )
-                                                        }
-                                                        disabled={
-                                                            passwordChangeLoading ||
-                                                            loading
-                                                        }
-                                                        className="w-full px-4 py-3 border border-red-200 bg-white rounded-lg text-sm outline-none focus:border-red-500 focus:ring-2 focus:ring-red-100 transition-all"
-                                                    />
-                                                    <button
-                                                        type="button"
-                                                        onClick={() =>
-                                                            setPasswordVisible(
-                                                                !passwordVisible
-                                                            )
-                                                        }
-                                                        className="absolute right-3.5 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
-                                                        tabIndex="-1"
-                                                    >
-                                                        <Icon
-                                                            icon={
-                                                                passwordVisible
-                                                                    ? "mingcute:eye-line"
-                                                                    : "mingcute:eye-closed-line"
-                                                            }
-                                                            width="18"
-                                                            height="18"
-                                                        />
-                                                    </button>
-                                                </div>
-                                                <p className="text-xs text-gray-500 mt-2">
-                                                    Password must be at least 6
-                                                    characters long
-                                                </p>
-                                            </div>
-                                        </div>
-
-                                        {/* Card Footer */}
-                                        <div className="bg-white border-t border-red-100 px-6 py-4 flex justify-end">
-                                            <button
-                                                type="button"
-                                                onClick={handlePasswordChange}
+                                <div className="p-5 space-y-4">
+                                    {/* New Password Field */}
+                                    <div className="space-y-1.5">
+                                        <label className="block text-xs font-medium text-slate-700">
+                                            New Password
+                                        </label>
+                                        <div className="relative">
+                                            <input
+                                                type={
+                                                    passwordVisible
+                                                        ? "text"
+                                                        : "password"
+                                                }
+                                                placeholder="Enter new password"
+                                                value={newPassword}
+                                                onChange={(e) =>
+                                                    setNewPassword(
+                                                        e.target.value
+                                                    )
+                                                }
                                                 disabled={
                                                     passwordChangeLoading ||
                                                     loading
                                                 }
-                                                className={`px-6 py-2.5 rounded-lg text-sm font-medium transition-all flex items-center justify-center gap-2 ${
-                                                    passwordChangeLoading ||
-                                                    loading
-                                                        ? "bg-gray-300 text-gray-500 cursor-not-allowed"
-                                                        : "bg-red-500 hover:bg-red-600 text-white"
-                                                }`}
+                                                className="w-full h-10 px-3.5 pr-10 border border-slate-200 bg-slate-50/50 rounded-lg text-sm outline-none focus:bg-white focus:border-emerald-600 focus:ring-2 focus:ring-emerald-600/15 transition-all text-slate-900"
+                                            />
+                                            <button
+                                                type="button"
+                                                onClick={() =>
+                                                    setPasswordVisible(
+                                                        !passwordVisible
+                                                    )
+                                                }
+                                                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-1 transition-colors"
+                                                tabIndex="-1"
+                                                aria-label={passwordVisible ? "Hide password" : "Show password"}
                                             >
-                                                {passwordChangeLoading ? (
-                                                    <>
-                                                        <Icon
-                                                            icon="mingcute:loading-line"
-                                                            width="16"
-                                                            height="16"
-                                                            className="animate-spin"
-                                                        />
-                                                        Updating...
-                                                    </>
-                                                ) : (
-                                                    <>
-                                                        <Icon
-                                                            icon="mingcute:key-line"
-                                                            width="16"
-                                                            height="16"
-                                                        />
-                                                        Update Password
-                                                    </>
-                                                )}
+                                                <Icon
+                                                    icon={
+                                                        passwordVisible
+                                                            ? "mingcute:eye-line"
+                                                            : "mingcute:eye-closed-line"
+                                                    }
+                                                    width="18"
+                                                    height="18"
+                                                />
                                             </button>
                                         </div>
                                     </div>
-                                </div>
-                            </div>
 
-                            {/* Action Buttons */}
-                            <div className="border-t border-gray-100 p-6">
-                                <div className="flex flex-col sm:flex-row gap-3">
-                                    <Link
-                                        to="/profile"
-                                        className="flex-1 text-center bg-gray-100 text-gray-700 px-6 py-3.5 rounded-xl hover:bg-gray-200 transition-colors font-medium flex items-center justify-center gap-2"
-                                    >
-                                        <Icon
-                                            icon="mingcute:left-line"
-                                            width="18"
-                                            height="18"
-                                        />
-                                        Return to Profile
-                                    </Link>
-                                    <button
-                                        type="submit"
-                                        disabled={loading || !hasUnsavedChanges}
-                                        className={`flex-1 px-6 py-3.5 rounded-xl font-medium transition-all duration-200 flex items-center justify-center gap-2 transform ${
-                                            loading || !hasUnsavedChanges
-                                                ? "bg-gray-300 text-gray-500 cursor-not-allowed"
-                                                : "bg-primary text-white hover:bg-primary-dark hover:shadow-lg hover:-translate-y-0.5"
-                                        }`}
-                                    >
-                                        {loading ? (
-                                            <>
+                                    {/* Confirm Password Field */}
+                                    <div className="space-y-1.5">
+                                        <label className="block text-xs font-medium text-slate-700">
+                                            Confirm Password
+                                        </label>
+                                        <div className="relative">
+                                            <input
+                                                type={
+                                                    passwordVisible
+                                                        ? "text"
+                                                        : "password"
+                                                }
+                                                placeholder="Confirm new password"
+                                                value={confirmPassword}
+                                                onChange={(e) =>
+                                                    setConfirmPassword(
+                                                        e.target.value
+                                                    )
+                                                }
+                                                disabled={
+                                                    passwordChangeLoading ||
+                                                    loading
+                                                }
+                                                className="w-full h-10 px-3.5 pr-10 border border-slate-200 bg-slate-50/50 rounded-lg text-sm outline-none focus:bg-white focus:border-emerald-600 focus:ring-2 focus:ring-emerald-600/15 transition-all text-slate-900"
+                                            />
+                                            <button
+                                                type="button"
+                                                onClick={() =>
+                                                    setPasswordVisible(
+                                                        !passwordVisible
+                                                    )
+                                                }
+                                                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-1 transition-colors"
+                                                tabIndex="-1"
+                                                aria-label={passwordVisible ? "Hide password" : "Show password"}
+                                            >
                                                 <Icon
-                                                    icon="mingcute:loading-line"
+                                                    icon={
+                                                        passwordVisible
+                                                            ? "mingcute:eye-line"
+                                                            : "mingcute:eye-closed-line"
+                                                    }
                                                     width="18"
                                                     height="18"
-                                                    className="animate-spin"
                                                 />
-                                                Saving Changes...
-                                            </>
-                                        ) : (
-                                            <>
-                                                <Icon
-                                                    icon="mingcute:check-line"
-                                                    width="18"
-                                                    height="18"
-                                                />
-                                                Save Changes
-                                            </>
-                                        )}
-                                    </button>
+                                            </button>
+                                        </div>
+                                        <p className="text-[11px] text-slate-500">
+                                            Password must be at least 6 characters long
+                                        </p>
+                                    </div>
+
+                                    <div className="flex justify-end pt-1">
+                                        <button
+                                            type="button"
+                                            onClick={handlePasswordChange}
+                                            disabled={
+                                                passwordChangeLoading ||
+                                                loading
+                                            }
+                                            className={`min-h-[40px] px-4 py-2 rounded-xl text-xs font-semibold transition-all flex items-center justify-center gap-1.5 active:scale-[0.98] ${
+                                                passwordChangeLoading ||
+                                                loading
+                                                    ? "bg-slate-200 text-slate-400 cursor-not-allowed"
+                                                    : "bg-slate-900 hover:bg-slate-800 text-white shadow-xs"
+                                            }`}
+                                        >
+                                            {passwordChangeLoading ? (
+                                                <>
+                                                    <Icon
+                                                        icon="mingcute:loading-line"
+                                                        width="14"
+                                                        height="14"
+                                                        className="animate-spin"
+                                                    />
+                                                    Updating...
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <Icon
+                                                        icon="mingcute:key-line"
+                                                        width="14"
+                                                        height="14"
+                                                    />
+                                                    Update Password
+                                                </>
+                                            )}
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
-                        </form>
-                    </div>
+                        </div>
+
+                        {/* Action Buttons */}
+                        <div className="border-t border-slate-100 p-6 bg-slate-50/50">
+                            <div className="flex flex-col sm:flex-row gap-3">
+                                <Link
+                                    to="/profile"
+                                    className="min-h-[44px] flex-1 text-center bg-white border border-slate-200 text-slate-700 px-5 py-2.5 rounded-xl hover:bg-slate-50 transition-colors font-medium text-sm flex items-center justify-center gap-2 active:scale-[0.98]"
+                                >
+                                    <Icon
+                                        icon="mingcute:left-line"
+                                        width="18"
+                                        height="18"
+                                    />
+                                    Return to Profile
+                                </Link>
+                                <button
+                                    type="submit"
+                                    disabled={loading || !hasUnsavedChanges}
+                                    className={`min-h-[44px] flex-1 px-5 py-2.5 rounded-xl font-semibold text-sm transition-all duration-150 flex items-center justify-center gap-2 active:scale-[0.98] ${
+                                        loading || !hasUnsavedChanges
+                                            ? "bg-slate-200 text-slate-400 cursor-not-allowed"
+                                            : "bg-emerald-700 text-white hover:bg-emerald-800 shadow-xs hover:shadow"
+                                    }`}
+                                >
+                                    {loading ? (
+                                        <>
+                                            <Icon
+                                                icon="mingcute:loading-line"
+                                                width="16"
+                                                height="16"
+                                                className="animate-spin"
+                                            />
+                                            Saving Changes...
+                                        </>
+                                    ) : (
+                                        <>
+                                            <Icon
+                                                icon="mingcute:check-line"
+                                                width="16"
+                                                height="16"
+                                            />
+                                            Save Changes
+                                        </>
+                                    )}
+                                </button>
+                            </div>
+                        </div>
+                    </form>
                 </div>
-            </div>
+            </main>
         </div>
     );
 }
