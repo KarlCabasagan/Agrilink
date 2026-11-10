@@ -1350,20 +1350,13 @@ function Messages() {
                             </div>
                         </div>
                     ) : (
-                        <div className="flex-1 flex items-center justify-center bg-slate-50/40">
-                            <div className="text-center p-8">
-                                <div className="w-16 h-16 rounded-2xl bg-white border border-slate-200 shadow-2xs flex items-center justify-center mx-auto mb-3 text-slate-300">
-                                    <Icon
-                                        icon="mingcute:message-3-line"
-                                        width="32"
-                                        height="32"
-                                    />
-                                </div>
-                                <h3 className="text-sm font-semibold text-slate-700">No conversation selected</h3>
-                                <p className="text-xs text-slate-400 mt-1 max-w-xs">
-                                    Select a farmer from the sidebar to start or continue your discussion
-                                </p>
-                            </div>
+                        <div className="flex-1 flex items-center justify-center bg-slate-50/40 p-8">
+                            <StateView
+                                type="empty"
+                                icon="mingcute:message-3-line"
+                                title="No conversation selected"
+                                message="Select a farmer from the sidebar to view your message history and chat in real time."
+                            />
                         </div>
                     )}
                 </div>
