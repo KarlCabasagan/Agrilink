@@ -839,7 +839,7 @@ function Messages() {
                     <header className="fixed top-0 left-0 w-full bg-white/95 backdrop-blur-md border-b border-slate-200/80 z-50 px-4 py-3 flex items-center gap-3">
                         <button
                             onClick={() => setSelectedConversation(null)}
-                            className="min-w-[40px] min-h-[40px] inline-flex items-center justify-center text-slate-600 hover:text-emerald-700 rounded-xl hover:bg-slate-100 active:scale-[0.97] transition-all"
+                            className="min-w-[44px] min-h-[44px] inline-flex items-center justify-center text-slate-600 hover:text-emerald-700 rounded-xl hover:bg-slate-100 active:scale-[0.97] transition-all"
                             aria-label="Back to conversations"
                         >
                             <Icon
@@ -1000,7 +1000,7 @@ function Messages() {
                                         setShowSearch(false);
                                         setSearchTerm("");
                                     }}
-                                    className="min-w-[40px] min-h-[40px] inline-flex items-center justify-center text-slate-600 hover:text-emerald-700 rounded-xl hover:bg-slate-100 transition-colors"
+                                    className="min-w-[44px] min-h-[44px] inline-flex items-center justify-center text-slate-600 hover:text-emerald-700 rounded-xl hover:bg-slate-100 transition-colors"
                                     aria-label="Close search"
                                 >
                                     <Icon
@@ -1038,7 +1038,7 @@ function Messages() {
                             <div className="flex justify-between items-center">
                                 <Link
                                     to="/"
-                                    className="min-w-[40px] min-h-[40px] inline-flex items-center justify-center text-slate-600 hover:text-emerald-700 rounded-xl hover:bg-slate-100 transition-colors"
+                                    className="min-w-[44px] min-h-[44px] inline-flex items-center justify-center text-slate-600 hover:text-emerald-700 rounded-xl hover:bg-slate-100 transition-colors"
                                     aria-label="Back to Home"
                                 >
                                     <Icon
@@ -1052,7 +1052,7 @@ function Messages() {
                                 </h1>
                                 <button
                                     onClick={() => setShowSearch(true)}
-                                    className="min-w-[40px] min-h-[40px] inline-flex items-center justify-center text-slate-600 hover:text-emerald-700 rounded-xl hover:bg-slate-100 transition-colors"
+                                    className="min-w-[44px] min-h-[44px] inline-flex items-center justify-center text-slate-600 hover:text-emerald-700 rounded-xl hover:bg-slate-100 transition-colors"
                                     aria-label="Search conversations"
                                 >
                                     <Icon
@@ -1139,7 +1139,7 @@ function Messages() {
                                 </h2>
                                 <button
                                     onClick={() => setShowSearch(!showSearch)}
-                                    className="min-w-[36px] min-h-[36px] inline-flex items-center justify-center text-slate-500 hover:text-emerald-700 rounded-lg hover:bg-slate-100 transition-colors"
+                                    className="min-w-[44px] min-h-[44px] inline-flex items-center justify-center text-slate-500 hover:text-emerald-700 rounded-xl hover:bg-slate-100 transition-colors"
                                     aria-label="Toggle search"
                                 >
                                     <Icon
