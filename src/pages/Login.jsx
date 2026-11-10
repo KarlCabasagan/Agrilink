@@ -157,62 +157,70 @@ function Login() {
                                     />
                                 </button>
                             </div>
-                            {error && (
-                                <div className="text-red-500 mb-2 text-sm">
-                                    {error}
-                                </div>
-                            )}
-                            <button
-                                type="submit"
-                                className="bg-primary text-white w-full max-w-sm p-3 rounded-md mb-4 text-base hover:bg-primary-light transition-colors cursor-pointer font-medium"
-                                disabled={loading}
-                            >
-                                {loading ? "Logging in..." : "Login"}
-                            </button>
-                        </form>
-                        <div className="flex items-center w-4/5 max-w-md my-4">
-                            <div className="flex-grow h-px bg-[#A4A4A4]"></div>
-                            <span className="mx-4 text-text translate-">
-                                OR
-                            </span>
-                            <div className="flex-grow h-px bg-[#A4A4A4]"></div>
-                        </div>
-                        <div className="flex flex-col w-full max-w-sm gap-3">
-                            <button
-                                type="button"
-                                onClick={handleGoogleLogin}
-                                disabled={loading}
-                                className="flex items-center justify-center gap-2 bg-white border border-gray-300 text-gray-700 p-3 rounded-md hover:bg-gray-100 transition-colors font-medium text-base cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-                            >
+                        {error && (
+                            <div className="mb-4 flex items-center gap-2 text-rose-700 text-xs bg-rose-50 border border-rose-200/80 p-3 rounded-xl">
                                 <Icon
-                                    icon="flat-color-icons:google"
-                                    width="24"
-                                    height="24"
+                                    icon="mingcute:alert-circle-fill"
+                                    width="16"
+                                    height="16"
+                                    className="shrink-0"
                                 />
-                                {loading
-                                    ? "Logging in..."
-                                    : "Login with Google"}
-                            </button>
-                            <div className="flex justify-center">
-                                <Link
-                                    to="/forgot-password"
-                                    className="text-primary hover:underline text-base font-medium"
-                                >
-                                    Forgot Password?
-                                </Link>
+                                <span>{error}</span>
                             </div>
-                        </div>
-                        <div className="mt-10 text-center gap-2 flex items-center">
-                            <span className="text-text font-light">
-                                Don't have an account?
-                            </span>
+                        )}
+                        <button
+                            type="submit"
+                            className="w-full min-h-[44px] h-11 bg-emerald-700 hover:bg-emerald-800 text-white font-semibold text-sm rounded-xl shadow-xs transition active:scale-[0.98] flex items-center justify-center gap-2 disabled:opacity-50 disabled:pointer-events-none"
+                            disabled={loading}
+                        >
+                            {loading ? (
+                                <>
+                                    <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent" />
+                                    <span>Signing in…</span>
+                                </>
+                            ) : (
+                                <span>Sign In</span>
+                            )}
+                        </button>
+                    </form>
+                    <div className="flex items-center my-5">
+                        <div className="flex-1 h-px bg-slate-200" />
+                        <span className="px-3 text-[11px] font-semibold uppercase tracking-wider text-slate-400">
+                            or continue with
+                        </span>
+                        <div className="flex-1 h-px bg-slate-200" />
+                    </div>
+                    <div className="flex flex-col w-full gap-3">
+                        <button
+                            type="button"
+                            onClick={handleGoogleLogin}
+                            disabled={loading}
+                            className="w-full min-h-[44px] h-11 flex items-center justify-center gap-2.5 bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 font-semibold text-sm rounded-xl shadow-2xs transition active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                            <Icon
+                                icon="flat-color-icons:google"
+                                width="20"
+                                height="20"
+                            />
+                            <span>{loading ? "Connecting…" : "Continue with Google"}</span>
+                        </button>
+                        <div className="flex justify-center mt-1">
                             <Link
-                                to="/register"
-                                className="text-primary hover:underline font-medium"
+                                to="/forgot-password"
+                                className="text-emerald-700 hover:text-emerald-800 text-xs font-semibold hover:underline"
                             >
-                                Sign up
+                                Forgot password?
                             </Link>
                         </div>
+                    </div>
+                    <div className="mt-6 pt-5 border-t border-slate-100 text-center flex items-center justify-center gap-1.5 text-xs text-slate-600">
+                        <span>Don't have an account?</span>
+                        <Link
+                            to="/register"
+                            className="text-emerald-700 hover:text-emerald-800 font-semibold hover:underline"
+                        >
+                            Sign up
+                        </Link>
                     </div>
                 </div>
             </div>
