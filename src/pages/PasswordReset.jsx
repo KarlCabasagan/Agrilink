@@ -122,27 +122,29 @@ function PasswordReset() {
                 </div>
 
                 {/* Password Reset Card */}
-                <div className="flex flex-col items-center w-full max-w-md">
-                    {/* Card */}
-                    <div className="w-full bg-white rounded-lg shadow-md overflow-hidden">
+                <div className="w-full md:w-1/2 max-w-md">
+                    <div className="w-full bg-white rounded-2xl border border-slate-200/90 shadow-2xs p-6 sm:p-8 flex flex-col">
                         {/* Card Header */}
-                        <div className="bg-primary p-6 text-white text-center">
-                            <Icon
-                                icon="mingcute:lock-line"
-                                width="48"
-                                height="48"
-                                className="mx-auto mb-3"
-                            />
-                            <h2 className="text-xl font-bold">
-                                Create New Password
-                            </h2>
-                            <p className="text-primary-light text-sm mt-1">
-                                Enter your new password below
-                            </p>
+                        <div className="flex items-center gap-3 mb-6">
+                            <div className="w-10 h-10 rounded-xl bg-emerald-50 border border-emerald-200/80 flex items-center justify-center text-emerald-700 shrink-0">
+                                <Icon
+                                    icon="mingcute:lock-line"
+                                    width="20"
+                                    height="20"
+                                />
+                            </div>
+                            <div>
+                                <h2 className="text-lg font-bold text-slate-900 tracking-tight">
+                                    Create New Password
+                                </h2>
+                                <p className="text-xs text-slate-500">
+                                    Choose a secure password for your account
+                                </p>
+                            </div>
                         </div>
 
                         {/* Card Content */}
-                        <form className="p-6" onSubmit={handleSubmit}>
+                        <form className="w-full flex flex-col" onSubmit={handleSubmit}>
                             <div className="space-y-4">
                                 {/* New Password Field */}
                                 <div>
@@ -233,29 +235,22 @@ function PasswordReset() {
                                 </div>
 
                                 {/* Password Requirements Box */}
-                                <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-                                    <div className="flex items-start gap-2">
+                                <div className="bg-slate-50/80 border border-slate-200/80 rounded-xl p-3">
+                                    <div className="flex items-start gap-2.5">
                                         <Icon
                                             icon="mingcute:information-line"
                                             width="16"
                                             height="16"
-                                            className="text-blue-600 mt-0.5"
+                                            className="text-emerald-700 shrink-0 mt-0.5"
                                         />
-                                        <div className="text-blue-800 text-xs">
-                                            <p className="font-medium mb-1">
-                                                Password Requirements:
+                                        <div className="text-slate-600 text-xs">
+                                            <p className="font-semibold text-slate-800 mb-1">
+                                                Password Recommendations
                                             </p>
-                                            <ul className="space-y-0.5">
-                                                <li>
-                                                    • At least 6 characters long
-                                                </li>
-                                                <li>
-                                                    • Use a mix of letters and
-                                                    numbers
-                                                </li>
-                                                <li>
-                                                    • Avoid common passwords
-                                                </li>
+                                            <ul className="space-y-0.5 text-slate-600">
+                                                <li>• At least 6 characters long</li>
+                                                <li>• Use a mix of letters and numbers</li>
+                                                <li>• Avoid repeating past passwords</li>
                                             </ul>
                                         </div>
                                     </div>
