@@ -142,10 +142,9 @@ function Login() {
                                 />
                                 <button
                                     type="button"
-                                    className="absolute right-3 top-1/2 transform -translate-y-1/2 cursor-pointer"
-                                    aria-label="Show password"
+                                    className="absolute right-1 top-1/2 -translate-y-1/2 min-w-[44px] min-h-[44px] inline-flex items-center justify-center text-slate-400 hover:text-slate-600 rounded-lg transition-colors cursor-pointer"
+                                    aria-label={passwordVisible ? "Hide password" : "Show password"}
                                     onClick={togglePasswordVisibility}
-                                    tabIndex={-1}
                                 >
                                     <Icon
                                         icon={
@@ -153,9 +152,8 @@ function Login() {
                                                 ? "mingcute:eye-line"
                                                 : "mingcute:eye-close-line"
                                         }
-                                        width="24"
-                                        height="24"
-                                        color="var(--color-text)"
+                                        width="20"
+                                        height="20"
                                     />
                                 </button>
                             </div>
