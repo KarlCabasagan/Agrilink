@@ -109,169 +109,141 @@ function VerifyAccount() {
     };
 
     return (
-        <div className="min-h-screen w-full flex flex-col relative items-center scrollbar-hide bg-background overflow-x-hidden text-text">
+        <div className="min-h-screen w-full max-w-full overflow-x-hidden flex flex-col bg-slate-50/50 text-slate-900 pb-16">
             {/* Header */}
-            <div className="fixed top-0 left-0 w-full bg-white shadow-md z-50 px-4 py-3 flex justify-between items-center">
-                <div className="w-6"></div> {/* Spacer for center alignment */}
-                <h1 className="text-lg font-semibold">Email Verification</h1>
+            <header className="sticky top-0 left-0 w-full bg-white/95 backdrop-blur-md border-b border-slate-200/80 z-40 px-4 py-3 flex items-center justify-between">
+                <Link
+                    to="/login"
+                    className="min-w-[44px] min-h-[44px] inline-flex items-center justify-center rounded-xl text-slate-700 hover:bg-slate-100 active:scale-95 transition"
+                    aria-label="Back to login"
+                >
+                    <Icon icon="mingcute:left-line" width="22" height="22" />
+                </Link>
+                <h1 className="text-base font-semibold text-slate-900 tracking-tight">
+                    Verify Your Account
+                </h1>
                 <button
                     onClick={handleLogout}
                     disabled={logoutLoading}
-                    className="text-gray-600 hover:text-red-600 transition-colors disabled:opacity-50"
-                    title="Logout"
+                    type="button"
+                    className="min-w-[44px] min-h-[44px] inline-flex items-center justify-center rounded-xl text-slate-500 hover:text-rose-600 hover:bg-rose-50 active:scale-95 transition disabled:opacity-50"
+                    title="Sign Out"
+                    aria-label="Sign out"
                 >
                     {logoutLoading ? (
-                        <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-current"></div>
+                        <div className="animate-spin rounded-full h-5 w-5 border-2 border-slate-400 border-t-transparent"></div>
                     ) : (
-                        <Icon
-                            icon="mingcute:exit-line"
-                            width="24"
-                            height="24"
-                        />
+                        <Icon icon="mingcute:exit-line" width="22" height="22" />
                     )}
                 </button>
-            </div>
+            </header>
 
-            {/* Content */}
-            <div className="flex-1 flex items-center justify-center px-4 mt-16">
-                <div className="w-full max-w-md bg-white rounded-lg shadow-md p-8 text-center">
-                    <div className="mb-6">
-                        <Icon
-                            icon="mingcute:mail-line"
-                            width="80"
-                            height="80"
-                            className="text-primary mx-auto mb-4"
-                        />
-                        <h2 className="text-2xl font-bold text-gray-800 mb-2">
-                            Check Your Email
-                        </h2>
-                        <p className="text-gray-600 text-sm leading-relaxed">
-                            We've sent a verification link to your email
-                            address. Please check your inbox and click the link
-                            to verify your account.
-                        </p>
+            {/* Content Card */}
+            <main className="flex-1 w-full max-w-md mx-auto px-4 flex items-center justify-center py-8">
+                <div className="w-full bg-white rounded-2xl border border-slate-200/90 shadow-2xs p-6 sm:p-8 text-center">
+                    <div className="w-16 h-16 rounded-2xl bg-emerald-50 text-emerald-700 border border-emerald-100 flex items-center justify-center mx-auto mb-4 shadow-2xs">
+                        <Icon icon="mingcute:mail-line" width="34" height="34" />
                     </div>
+                    <h2 className="text-xl font-bold text-slate-900 tracking-tight mb-2">
+                        Check Your Inbox
+                    </h2>
+                    <p className="text-sm text-slate-600 leading-relaxed mb-6 max-w-prose mx-auto">
+                        We sent a verification link to{" "}
+                        <strong className="text-slate-900 break-all">{user?.email || "your email address"}</strong>.
+                        Please tap the link to activate your account.
+                    </p>
 
-                    <div className="space-y-4">
-                        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                            <div className="flex items-center gap-2 text-blue-800">
-                                <Icon
-                                    icon="mingcute:information-line"
-                                    width="20"
-                                    height="20"
-                                />
-                                <span className="text-sm font-medium">
-                                    What's next?
-                                </span>
+                    <div className="space-y-3 mb-6 text-left">
+                        <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-100">
+                            <div className="flex items-center gap-2 text-slate-900 font-semibold text-xs mb-1">
+                                <Icon icon="mingcute:information-line" width="16" height="16" className="text-emerald-700" />
+                                <span>What happens next?</span>
                             </div>
-                            <p className="text-blue-700 text-xs mt-1">
-                                This page will automatically redirect you once
-                                your email is verified.
+                            <p className="text-xs text-slate-600 leading-relaxed">
+                                Once you click the link in your email, this screen will automatically refresh and welcome you into the Agrilink marketplace.
                             </p>
                         </div>
 
-                        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-                            <div className="flex items-center gap-2 text-yellow-800">
-                                <Icon
-                                    icon="mingcute:time-line"
-                                    width="20"
-                                    height="20"
-                                />
-                                <span className="text-sm font-medium">
-                                    Didn't receive the email?
-                                </span>
+                        <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-100">
+                            <div className="flex items-center gap-2 text-slate-900 font-semibold text-xs mb-1">
+                                <Icon icon="mingcute:time-line" width="16" height="16" className="text-amber-600" />
+                                <span>Didn't receive an email?</span>
                             </div>
-                            <p className="text-yellow-700 text-xs mt-1">
-                                Check your spam folder or contact support if you
-                                don't receive it within 10 minutes.
+                            <p className="text-xs text-slate-600 leading-relaxed">
+                                Check your spam folder or wait a moment. Verification links typically arrive within 1–2 minutes.
                             </p>
                         </div>
                     </div>
 
-                    {/* Resend message display */}
+                    {/* Resend status alert */}
                     {resendMessage && (
                         <div
-                            className={`mt-4 p-3 rounded-lg text-sm ${
+                            className={`p-3 rounded-xl text-xs font-medium mb-5 flex items-center gap-2 text-left ${
                                 resendMessage.includes("sent")
-                                    ? "bg-green-50 border border-green-200 text-green-800"
-                                    : "bg-red-50 border border-red-200 text-red-800"
+                                    ? "bg-emerald-50 border border-emerald-200 text-emerald-800"
+                                    : "bg-rose-50 border border-rose-200 text-rose-800"
                             }`}
                         >
-                            <div className="flex items-center gap-2">
-                                <Icon
-                                    icon={
-                                        resendMessage.includes("sent")
-                                            ? "mingcute:check-circle-line"
-                                            : "mingcute:alert-circle-line"
-                                    }
-                                    width="16"
-                                    height="16"
-                                />
-                                {resendMessage}
-                            </div>
+                            <Icon
+                                icon={
+                                    resendMessage.includes("sent")
+                                        ? "mingcute:check-circle-line"
+                                        : "mingcute:alert-circle-line"
+                                }
+                                width="18"
+                                height="18"
+                                className="shrink-0"
+                            />
+                            <span>{resendMessage}</span>
                         </div>
                     )}
 
-                    <div className="mt-6 pt-6 border-t border-gray-200">
-                        <p className="text-gray-500 text-xs mb-4">
-                            Having trouble with verification?
-                        </p>
-                        <div className="flex flex-col sm:flex-row gap-3">
-                            <button
-                                onClick={handleResendEmail}
-                                disabled={resendLoading || !canResend}
-                                className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 py-2 px-4 rounded-lg text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-                            >
-                                {resendLoading ? (
-                                    <>
-                                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current"></div>
-                                        Sending...
-                                    </>
-                                ) : !canResend ? (
-                                    <>
-                                        <Icon
-                                            icon="mingcute:time-line"
-                                            width="16"
-                                            height="16"
-                                        />
-                                        Resend in {resendCooldown}s
-                                    </>
-                                ) : (
-                                    <>
-                                        <Icon
-                                            icon="mingcute:mail-send-line"
-                                            width="16"
-                                            height="16"
-                                        />
-                                        Resend Email
-                                    </>
-                                )}
-                            </button>
-                            <button
-                                onClick={handleLogout}
-                                disabled={logoutLoading}
-                                className="flex-1 bg-primary hover:bg-primary-dark text-white py-2 px-4 rounded-lg text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-                            >
-                                {logoutLoading ? (
-                                    <>
-                                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current"></div>
-                                        Logging out...
-                                    </>
-                                ) : (
-                                    <>
-                                        <Icon
-                                            icon="mingcute:exit-line"
-                                            width="16"
-                                            height="16"
-                                        />
-                                        Logout
-                                    </>
-                                )}
-                            </button>
-                        </div>
+                    <div className="pt-4 border-t border-slate-100 flex flex-col sm:flex-row gap-3">
+                        <button
+                            type="button"
+                            onClick={handleResendEmail}
+                            disabled={resendLoading || !canResend}
+                            className="flex-1 min-h-[44px] py-2.5 px-4 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold transition active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                        >
+                            {resendLoading ? (
+                                <>
+                                    <div className="animate-spin rounded-full h-4 w-4 border-2 border-slate-600 border-t-transparent"></div>
+                                    <span>Sending…</span>
+                                </>
+                            ) : !canResend ? (
+                                <>
+                                    <Icon icon="mingcute:time-line" width="16" height="16" />
+                                    <span>Resend in <span className="tabular-nums font-bold">{resendCooldown}s</span></span>
+                                </>
+                            ) : (
+                                <>
+                                    <Icon icon="mingcute:mail-send-line" width="16" height="16" />
+                                    <span>Resend Email</span>
+                                </>
+                            )}
+                        </button>
+
+                        <button
+                            type="button"
+                            onClick={handleLogout}
+                            disabled={logoutLoading}
+                            className="flex-1 min-h-[44px] py-2.5 px-4 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-semibold shadow-xs transition active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                        >
+                            {logoutLoading ? (
+                                <>
+                                    <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
+                                    <span>Signing out…</span>
+                                </>
+                            ) : (
+                                <>
+                                    <Icon icon="mingcute:exit-line" width="16" height="16" />
+                                    <span>Sign Out</span>
+                                </>
+                            )}
+                        </button>
                     </div>
                 </div>
-            </div>
+            </main>
         </div>
     );
 }

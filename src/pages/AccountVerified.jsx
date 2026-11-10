@@ -69,91 +69,98 @@ function AccountVerified() {
     }, [user]);
 
     const handleStartShopping = () => {
-        // Navigate to home, which will redirect appropriately based on user authentication
         navigate("/");
     };
-    return (
-        <div className="min-h-screen w-full flex flex-col relative items-center scrollbar-hide bg-background overflow-x-hidden text-text">
-            {/* Header */}
-            <div className="fixed top-0 left-0 w-full bg-white shadow-md z-50 px-4 py-3 flex justify-between items-center">
-                <Link to="/" className="text-gray-600 hover:text-primary">
-                    <Icon icon="mingcute:left-line" width="24" height="24" />
-                </Link>
-                <h1 className="text-lg font-semibold">Account Verification</h1>
-                <div className="w-6"></div> {/* Spacer for center alignment */}
-            </div>
 
-            {/* Content */}
-            <div className="flex-1 flex items-center justify-center px-4 mt-16">
-                <div className="w-full max-w-md bg-white rounded-lg shadow-md p-8 text-center">
-                    <div className="mb-6">
+    return (
+        <div className="min-h-screen w-full max-w-full overflow-x-hidden flex flex-col bg-slate-50/50 text-slate-900 pb-16">
+            {/* Header */}
+            <header className="sticky top-0 left-0 w-full bg-white/95 backdrop-blur-md border-b border-slate-200/80 z-40 px-4 py-3 flex items-center justify-between">
+                <Link
+                    to="/"
+                    className="min-w-[44px] min-h-[44px] inline-flex items-center justify-center rounded-xl text-slate-700 hover:bg-slate-100 active:scale-95 transition"
+                    aria-label="Back to home"
+                >
+                    <Icon icon="mingcute:left-line" width="22" height="22" />
+                </Link>
+                <h1 className="text-base font-semibold text-slate-900 tracking-tight">
+                    Account Verification
+                </h1>
+                <div className="w-11"></div> {/* Spacer for center alignment */}
+            </header>
+
+            {/* Content Card */}
+            <main className="flex-1 w-full max-w-md mx-auto px-4 flex items-center justify-center py-8">
+                <div className="w-full bg-white rounded-2xl border border-slate-200/90 shadow-2xs p-6 sm:p-8 text-center">
+                    <div className="w-16 h-16 rounded-2xl bg-emerald-50 text-emerald-700 border border-emerald-100 flex items-center justify-center mx-auto mb-4 shadow-2xs">
                         <Icon
                             icon="mingcute:check-circle-fill"
-                            width="80"
-                            height="80"
-                            className="text-green-500 mx-auto mb-4"
+                            width="36"
+                            height="36"
                         />
-                        <h2 className="text-2xl font-bold text-gray-800 mb-2">
-                            Account Verified!
-                        </h2>
-                        <p className="text-gray-600 text-sm leading-relaxed">
-                            Congratulations! Your account has been successfully
-                            verified. You can now access all features of
-                            AgriLink.
-                        </p>
                     </div>
+                    <h2 className="text-xl font-bold text-slate-900 tracking-tight mb-2">
+                        Account Verified!
+                    </h2>
+                    <p className="text-sm text-slate-600 leading-relaxed mb-6 max-w-prose mx-auto">
+                        Your email has been successfully confirmed. You now have full access to browse and purchase fresh produce directly from local growers.
+                    </p>
 
-                    <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-6">
-                        <div className="flex items-center gap-2 text-green-800">
+                    <div className="bg-emerald-50/70 border border-emerald-200/60 rounded-xl p-4 mb-6 text-left">
+                        <div className="flex items-center gap-2 text-emerald-900">
                             <Icon
                                 icon="mingcute:trophy-line"
-                                width="20"
-                                height="20"
+                                width="18"
+                                height="18"
+                                className="text-emerald-700 shrink-0"
                             />
-                            <span className="text-sm font-medium">
-                                Welcome to AgriLink!
+                            <span className="text-xs font-semibold uppercase tracking-wider">
+                                Welcome to Agrilink
                             </span>
                         </div>
-                        <p className="text-green-700 text-xs mt-1">
-                            Start exploring fresh products from local farmers in
-                            your area.
+                        <p className="text-xs text-slate-600 mt-1 leading-relaxed">
+                            Support local agriculture with transparent pricing, guaranteed fresh harvest, and direct grower chat.
                         </p>
                     </div>
 
                     <div className="space-y-3">
                         <button
+                            type="button"
                             onClick={handleStartShopping}
-                            className="w-full bg-primary hover:bg-primary-dark text-white py-3 px-6 rounded-lg font-medium transition-colors flex items-center justify-center gap-2"
+                            className="w-full min-h-[44px] py-3 px-5 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-semibold text-sm shadow-xs transition active:scale-[0.98] flex items-center justify-center gap-2"
                         >
                             <Icon
-                                icon="mingcute:home-2-line"
-                                width="20"
-                                height="20"
+                                icon="mingcute:shopping-bag-1-line"
+                                width="18"
+                                height="18"
                             />
-                            Start Shopping
+                            <span>Start Shopping</span>
                         </button>
 
                         <Link
                             to="/edit-profile"
-                            className="w-full bg-gray-100 hover:bg-gray-200 text-gray-700 py-3 px-6 rounded-lg font-medium transition-colors flex items-center justify-center gap-2"
+                            className="w-full min-h-[44px] py-3 px-5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-sm transition active:scale-[0.98] flex items-center justify-center gap-2"
                         >
                             <Icon
                                 icon="mingcute:user-3-line"
-                                width="20"
-                                height="20"
+                                width="18"
+                                height="18"
                             />
-                            Complete Profile
+                            <span>Complete Profile</span>
                         </Link>
                     </div>
 
-                    <div className="mt-6 pt-6 border-t border-gray-200">
-                        <p className="text-gray-500 text-xs">
-                            Need help getting started? Check out our guide or
-                            contact support.
+                    <div className="mt-6 pt-5 border-t border-slate-100">
+                        <p className="text-slate-500 text-xs">
+                            Have questions? Visit our{" "}
+                            <Link to="/help" className="text-emerald-700 font-medium hover:underline">
+                                Help &amp; Guides
+                            </Link>{" "}
+                            to learn more.
                         </p>
                     </div>
                 </div>
-            </div>
+            </main>
         </div>
     );
 }
