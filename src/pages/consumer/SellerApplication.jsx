@@ -305,46 +305,49 @@ function SellerApplication() {
 
     if (showSuccess) {
         return (
-            <div className="min-h-screen w-full flex flex-col relative items-center scrollbar-hide bg-background overflow-x-hidden text-text pb-20">
-                <div className="fixed top-0 left-0 w-full bg-white shadow-md z-50 px-4 py-3">
-                    <h1 className="text-lg font-semibold text-primary text-center">
+            <div className="min-h-screen w-full max-w-full overflow-x-hidden flex flex-col bg-slate-50/50 text-slate-900 pb-24 md:pb-12 md:pt-16">
+                <header className="md:hidden sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-slate-200/80 px-4 py-3 text-center">
+                    <h1 className="text-base font-bold text-slate-900">
                         Application Submitted
                     </h1>
-                </div>
+                </header>
 
-                <div className="w-full max-w-2xl mx-4 sm:mx-auto my-16 flex items-center justify-center min-h-[60vh]">
-                    <div className="bg-white rounded-lg shadow-md p-8 text-center">
-                        <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <main className="flex-1 w-full max-w-2xl mx-auto px-4 sm:px-6 my-auto py-12 flex items-center justify-center">
+                    <div className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs p-8 sm:p-10 text-center w-full">
+                        <div className="w-16 h-16 bg-emerald-50 border border-emerald-200/80 rounded-full flex items-center justify-center mx-auto mb-4">
                             <Icon
                                 icon="mingcute:check-circle-fill"
-                                width="32"
-                                height="32"
-                                className="text-green-600"
+                                width="36"
+                                height="36"
+                                className="text-emerald-700"
                             />
                         </div>
-                        <h2 className="text-xl font-bold text-gray-800 mb-4">
+                        <h2 className="text-xl font-bold text-slate-900 mb-2">
                             Application Submitted Successfully!
                         </h2>
-                        <div className="text-gray-600 space-y-4">
-                            <p>
-                                Your seller application has been submitted for
-                                review. Our admin team will verify your:
-                            </p>
-                            <ul className="list-disc pl-5 text-left space-y-2">
-                                <li>Personal Information</li>
-                                <li>Valid ID</li>
-                                <li>Farming Experience</li>
-                            </ul>
-                            <p>
-                                You’ll see certain UI changes once your
-                                application is approved or verified.
-                            </p>
+                        <p className="text-sm text-slate-600 mb-6 max-w-md mx-auto">
+                            Your seller application has been submitted for review. Our team will verify your personal details, valid ID, and farming background.
+                        </p>
+                        <div className="bg-slate-50 border border-slate-200/70 rounded-xl p-4 text-xs text-slate-600 space-y-1.5 max-w-md mx-auto text-left mb-6">
+                            <p className="font-semibold text-slate-800">Verification Steps:</p>
+                            <div className="flex items-center gap-2 text-slate-700">
+                                <Icon icon="mingcute:check-line" className="text-emerald-700 shrink-0" width="16" height="16" />
+                                <span>Personal Information review</span>
+                            </div>
+                            <div className="flex items-center gap-2 text-slate-700">
+                                <Icon icon="mingcute:check-line" className="text-emerald-700 shrink-0" width="16" height="16" />
+                                <span>Government Valid ID check</span>
+                            </div>
+                            <div className="flex items-center gap-2 text-slate-700">
+                                <Icon icon="mingcute:check-line" className="text-emerald-700 shrink-0" width="16" height="16" />
+                                <span>Farming experience & crop selection</span>
+                            </div>
                         </div>
-                        <p className="text-sm text-gray-500 mt-6">
-                            Redirecting you to your profile...
+                        <p className="text-xs text-slate-400">
+                            Redirecting you to your profile shortly...
                         </p>
                     </div>
-                </div>
+                </main>
 
                 <NavigationBar />
             </div>
@@ -352,48 +355,61 @@ function SellerApplication() {
     }
 
     return (
-        <div className="min-h-screen w-full flex flex-col relative items-center scrollbar-hide bg-background overflow-x-hidden text-text pb-20">
-            {/* Header */}
-            <div className="fixed top-0 left-0 w-full bg-white shadow-md z-50 px-4 py-3">
-                <div className="flex items-center">
-                    <button
-                        onClick={() => navigate(-1)}
-                        className="text-primary hover:text-primary-dark mr-3"
-                    >
-                        <Icon
-                            icon="mingcute:left-line"
-                            width="24"
-                            height="24"
-                        />
-                    </button>
-                    <h1 className="text-lg font-semibold text-primary">
-                        Apply to be a Seller
-                    </h1>
-                </div>
-            </div>
+        <div className="min-h-screen w-full max-w-full overflow-x-hidden flex flex-col bg-slate-50/50 text-slate-900 pb-24 md:pb-12 md:pt-16">
+            {/* Mobile Top Header */}
+            <header className="md:hidden sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-slate-200/80 px-4 py-3 flex items-center justify-between">
+                <button
+                    onClick={() => navigate(-1)}
+                    className="min-w-[44px] min-h-[44px] inline-flex items-center justify-center text-slate-600 hover:text-emerald-700 rounded-xl hover:bg-slate-100 active:scale-[0.97] transition-all"
+                    aria-label="Back"
+                >
+                    <Icon
+                        icon="mingcute:left-line"
+                        width="22"
+                        height="22"
+                    />
+                </button>
+                <h1 className="text-base font-semibold text-slate-900">
+                    Apply to be a Seller
+                </h1>
+                <div className="w-11" aria-hidden="true" />
+            </header>
 
-            <div className="w-full max-w-2xl mx-4 sm:mx-auto my-16">
+            <main className="flex-1 w-full max-w-2xl mx-auto px-4 sm:px-6 mt-4 md:mt-6">
+                {/* Desktop Breadcrumbs */}
+                <nav className="hidden md:flex items-center gap-2 text-xs font-medium text-slate-500 mb-6" aria-label="Breadcrumb">
+                    <Link to="/" className="hover:text-emerald-700 transition-colors">Home</Link>
+                    <span>/</span>
+                    <Link to="/profile" className="hover:text-emerald-700 transition-colors">Profile</Link>
+                    <span>/</span>
+                    <span className="text-slate-900 font-semibold">Seller Application</span>
+                </nav>
+
+                <div className="hidden md:block mb-6">
+                    <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Apply to be a Seller</h1>
+                    <p className="text-xs text-slate-500 mt-1">Join Agrilink and sell your farm harvest directly to local buyers</p>
+                </div>
+
                 {/* Rejected Application Banner */}
                 {existingApplication &&
                     existingApplication.rejection_reason !== null && (
-                        <div className="mb-6 bg-red-50 border-l-4 border-red-500 text-red-700 p-4 rounded-lg">
+                        <div className="mb-6 bg-rose-50 border border-rose-200 text-rose-800 p-4 sm:p-5 rounded-2xl shadow-2xs">
                             <div className="flex items-start gap-3">
                                 <Icon
                                     icon="mingcute:close-circle-line"
-                                    width="24"
-                                    height="24"
-                                    className="mt-0.5"
+                                    width="22"
+                                    height="22"
+                                    className="text-rose-600 shrink-0 mt-0.5"
                                 />
                                 <div>
-                                    <h3 className="font-semibold mb-2">
+                                    <h3 className="font-bold text-sm text-rose-900 mb-1">
                                         Application Rejected
                                     </h3>
-                                    <p className="text-sm mb-3">
+                                    <p className="text-xs text-rose-700 mb-2 leading-relaxed">
                                         {existingApplication.rejection_reason}
                                     </p>
-                                    <p className="text-sm">
-                                        Please review the comments above and
-                                        update your application accordingly.
+                                    <p className="text-[11px] text-rose-600">
+                                        Please review the comments above and update your application accordingly.
                                     </p>
                                 </div>
                             </div>
@@ -403,32 +419,30 @@ function SellerApplication() {
                 {/* Under Review Banner */}
                 {existingApplication &&
                     existingApplication.rejection_reason === null && (
-                        <div className="mb-6 bg-yellow-50 border-l-4 border-yellow-500 text-yellow-700 p-4 rounded-lg">
+                        <div className="mb-6 bg-amber-50 border border-amber-200 text-amber-800 p-4 sm:p-5 rounded-2xl shadow-2xs">
                             <div className="flex items-start gap-3">
                                 <Icon
                                     icon="mingcute:time-line"
-                                    width="24"
-                                    height="24"
-                                    className="mt-0.5"
+                                    width="22"
+                                    height="22"
+                                    className="text-amber-600 shrink-0 mt-0.5"
                                 />
                                 <div>
-                                    <h3 className="font-semibold mb-1">
+                                    <h3 className="font-bold text-sm text-amber-900 mb-1">
                                         Application Under Review
                                     </h3>
-                                    <p className="text-sm">
-                                        Your seller application is currently
-                                        being reviewed by our admin team. You
-                                        will see automatic UI changes once the
-                                        review is complete.
+                                    <p className="text-xs text-amber-700 leading-relaxed mb-3">
+                                        Your seller application is currently being reviewed by our admin team. You will see automatic updates once the verification is complete.
                                     </p>
                                     <button
+                                        type="button"
                                         onClick={() => navigate("/profile")}
-                                        className="mt-3 text-sm font-medium text-yellow-800 hover:text-yellow-900 flex items-center gap-1"
+                                        className="text-xs font-semibold text-amber-900 hover:text-amber-950 flex items-center gap-1.5 active:scale-95 transition-transform"
                                     >
                                         <Icon
                                             icon="mingcute:user-4-line"
-                                            width="16"
-                                            height="16"
+                                            width="15"
+                                            height="15"
                                         />
                                         Go to Profile
                                     </button>
@@ -436,23 +450,23 @@ function SellerApplication() {
                             </div>
                         </div>
                     )}
+
                 {/* Info Banner */}
-                <div className="mb-6 bg-blue-50 border border-blue-200 rounded-lg p-4 mt-4">
+                <div className="mb-6 bg-white border border-slate-200/90 rounded-2xl p-4 sm:p-5 shadow-2xs">
                     <div className="flex items-start gap-3">
-                        <Icon
-                            icon="mingcute:information-line"
-                            width="24"
-                            height="24"
-                            className="text-blue-600 mt-0.5"
-                        />
+                        <div className="w-8 h-8 rounded-lg bg-emerald-50 border border-emerald-200/70 flex items-center justify-center shrink-0 text-emerald-700">
+                            <Icon
+                                icon="mingcute:information-line"
+                                width="18"
+                                height="18"
+                            />
+                        </div>
                         <div>
-                            <h3 className="font-semibold text-blue-800 mb-1">
+                            <h3 className="font-bold text-xs sm:text-sm text-slate-900 mb-0.5">
                                 Seller Application Requirements
                             </h3>
-                            <p className="text-blue-700 text-sm">
-                                Please fill out all required information
-                                accurately. Your application will be reviewed by
-                                our admin team within 2-3 business days.
+                            <p className="text-xs text-slate-500 leading-relaxed">
+                                Please ensure your personal information and contact details are accurate. Applications are verified within 2-3 business days.
                             </p>
                         </div>
                     </div>
@@ -476,36 +490,38 @@ function SellerApplication() {
                     }}
                 >
                     {/* Personal Information */}
-                    <div className="bg-white rounded-lg shadow-md overflow-hidden">
-                        <div className="p-6 border-b border-gray-200">
-                            <h2 className="text-lg font-semibold text-gray-800">
+                    <div className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs overflow-hidden">
+                        <div className="px-6 py-4.5 border-b border-slate-100 bg-slate-50/50">
+                            <h2 className="text-sm font-semibold text-slate-900 flex items-center gap-2">
+                                <Icon icon="mingcute:user-3-line" className="text-emerald-700" width="18" height="18" />
                                 Personal Information
                             </h2>
+                            <p className="text-xs text-slate-500 mt-0.5">Review your registered profile details below</p>
                         </div>
                         <div className="p-6 space-y-4">
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                <label className="block text-xs font-semibold text-slate-700 mb-1.5">
                                     Full Name
                                 </label>
-                                <div className="w-full px-3 py-2 border rounded-lg bg-gray-50 border-gray-300 text-gray-700">
+                                <div className="w-full h-11 px-3.5 border rounded-xl bg-slate-50/70 border-slate-200 text-slate-700 text-sm flex items-center">
                                     {userData?.name || "Loading..."}
                                 </div>
                             </div>
 
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                <label className="block text-xs font-semibold text-slate-700 mb-1.5">
                                     Email Address
                                 </label>
-                                <div className="w-full px-3 py-2 border rounded-lg bg-gray-50 border-gray-300 text-gray-700">
+                                <div className="w-full h-11 px-3.5 border rounded-xl bg-slate-50/70 border-slate-200 text-slate-700 text-sm flex items-center">
                                     {userData?.email || "Loading..."}
                                 </div>
                             </div>
 
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                <label className="block text-xs font-semibold text-slate-700 mb-1.5">
                                     Contact Number
                                 </label>
-                                <div className="w-full px-3 py-2 border rounded-lg bg-gray-50 border-gray-300 text-gray-700">
+                                <div className="w-full h-11 px-3.5 border rounded-xl bg-slate-50/70 border-slate-200 text-slate-700 text-sm flex items-center tabular-nums">
                                     {userData?.contact
                                         ? formatPhoneNumber(userData.contact)
                                         : "Loading..."}
@@ -513,28 +529,27 @@ function SellerApplication() {
                             </div>
 
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                <label className="block text-xs font-semibold text-slate-700 mb-1.5">
                                     Complete Address
                                 </label>
-                                <div className="w-full px-3 py-2 border rounded-lg bg-gray-50 border-gray-300 text-gray-700">
+                                <div className="w-full h-11 px-3.5 border rounded-xl bg-slate-50/70 border-slate-200 text-slate-700 text-sm flex items-center">
                                     {userData?.address || "Loading..."}
                                 </div>
                             </div>
 
-                            <div className="mt-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
-                                <p className="text-sm text-gray-600">
-                                    Want to update your personal information?{" "}
-                                    <Link
-                                        to="/edit-profile"
-                                        className="text-primary hover:text-primary-dark font-medium"
-                                    >
-                                        Edit Profile
-                                    </Link>
-                                </p>
+                            <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-200/60 flex items-center justify-between text-xs text-slate-600">
+                                <span>Need to change your profile information?</span>
+                                <Link
+                                    to="/edit-profile"
+                                    className="text-emerald-700 hover:text-emerald-800 font-semibold inline-flex items-center gap-1 active:scale-95 transition-transform"
+                                >
+                                    Edit Profile
+                                    <Icon icon="mingcute:right-line" width="14" height="14" />
+                                </Link>
                             </div>
 
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                <label className="block text-xs font-semibold text-slate-700 mb-1.5">
                                     Valid ID *
                                 </label>
                                 <ValidIdUpload
@@ -548,7 +563,7 @@ function SellerApplication() {
                                     disabled={loading}
                                 />
                                 {errors.validId && (
-                                    <p className="text-red-600 text-sm mt-1">
+                                    <p className="text-rose-600 text-xs mt-1.5">
                                         {errors.validId}
                                     </p>
                                 )}
@@ -557,15 +572,17 @@ function SellerApplication() {
                     </div>
 
                     {/* Farm Information */}
-                    <div className="bg-white rounded-lg shadow-md overflow-hidden">
-                        <div className="p-6 border-b border-gray-200">
-                            <h2 className="text-lg font-semibold text-gray-800">
-                                Farm Information
+                    <div className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs overflow-hidden">
+                        <div className="px-6 py-4.5 border-b border-slate-100 bg-slate-50/50">
+                            <h2 className="text-sm font-semibold text-slate-900 flex items-center gap-2">
+                                <Icon icon="mingcute:plant-line" className="text-emerald-700" width="18" height="18" />
+                                Farm & Harvest Information
                             </h2>
+                            <p className="text-xs text-slate-500 mt-0.5">Specify your farming experience and crops</p>
                         </div>
                         <div className="p-6 space-y-4">
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                <label className="block text-xs font-semibold text-slate-700 mb-1.5">
                                     Farming Experience *
                                 </label>
                                 <input
@@ -573,27 +590,26 @@ function SellerApplication() {
                                     name="experience"
                                     value={formData.experience}
                                     onChange={handleInputChange}
-                                    className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent ${
+                                    className={`w-full h-11 px-3.5 border rounded-xl text-sm outline-none transition-all duration-150 ${
                                         errors.experience
-                                            ? "border-red-300"
-                                            : "border-gray-300"
+                                            ? "border-rose-300 bg-rose-50/40 focus:border-rose-500 focus:ring-2 focus:ring-rose-500/10 text-slate-900"
+                                            : "border-slate-200 bg-slate-50/50 focus:bg-white focus:border-emerald-600 focus:ring-2 focus:ring-emerald-600/15 text-slate-900"
                                     }`}
                                     placeholder="e.g., 5 years, 10 years"
                                 />
                                 {errors.experience && (
-                                    <p className="text-red-600 text-sm mt-1">
+                                    <p className="text-rose-600 text-xs mt-1.5">
                                         {errors.experience}
                                     </p>
                                 )}
                             </div>
 
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                <label className="block text-xs font-semibold text-slate-700 mb-1">
                                     Crops You Grow *
                                 </label>
-                                <p className="text-sm text-gray-600 mb-3">
-                                    Select all crops that you currently grow or
-                                    plan to grow:
+                                <p className="text-xs text-slate-500 mb-3">
+                                    Select all crops that you currently grow or plan to sell:
                                 </p>
 
                                 {/* Search Bar */}
@@ -606,23 +622,23 @@ function SellerApplication() {
                                                 setSearchQuery(e.target.value)
                                             }
                                             placeholder="Search crops..."
-                                            className="w-full px-3 py-2 pl-10 border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent border-gray-300"
+                                            className="w-full h-10 pl-9 pr-3.5 border rounded-xl text-xs sm:text-sm focus:ring-2 focus:ring-emerald-600/15 focus:border-emerald-600 border-slate-200 bg-slate-50 outline-none text-slate-900"
                                         />
                                         <Icon
                                             icon="mingcute:search-line"
-                                            className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"
-                                            width="20"
-                                            height="20"
+                                            className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
+                                            width="18"
+                                            height="18"
                                         />
                                     </div>
                                 </div>
 
                                 {/* Crops Grid */}
-                                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
                                     {loadingCrops ? (
-                                        <div className="col-span-full text-center py-4">
-                                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
-                                            <p className="text-sm text-gray-500 mt-2">
+                                        <div className="col-span-full text-center py-6">
+                                            <div className="animate-spin rounded-full h-7 w-7 border-b-2 border-emerald-700 mx-auto"></div>
+                                            <p className="text-xs text-slate-500 mt-2">
                                                 Loading crops...
                                             </p>
                                         </div>
@@ -642,7 +658,13 @@ function SellerApplication() {
                                             .map((crop) => (
                                                 <label
                                                     key={crop.id}
-                                                    className="flex items-center p-2 border rounded-lg cursor-pointer hover:bg-gray-50 transition-colors"
+                                                    className={`flex items-center p-3 rounded-xl border cursor-pointer transition-all active:scale-[0.98] ${
+                                                        formData.crops.includes(
+                                                            crop.id
+                                                        )
+                                                            ? "border-emerald-600 bg-emerald-50/40 text-emerald-950 ring-1 ring-emerald-600/20"
+                                                            : "border-slate-200 hover:border-slate-300 hover:bg-slate-50/60 text-slate-800"
+                                                    }`}
                                                 >
                                                     <input
                                                         type="checkbox"
@@ -654,13 +676,13 @@ function SellerApplication() {
                                                                 crop.id
                                                             )
                                                         }
-                                                        className="mr-2 text-primary focus:ring-primary"
+                                                        className="mr-2.5 h-4 w-4 rounded text-emerald-700 focus:ring-emerald-600"
                                                     />
-                                                    <div className="flex flex-col">
-                                                        <span className="text-sm font-medium">
+                                                    <div className="flex flex-col min-w-0">
+                                                        <span className="text-xs sm:text-sm font-semibold truncate">
                                                             {crop.name}
                                                         </span>
-                                                        <span className="text-xs text-gray-500">
+                                                        <span className="text-[11px] text-slate-500">
                                                             Demand:{" "}
                                                             {crop.market_demand}
                                                         </span>
@@ -682,7 +704,7 @@ function SellerApplication() {
                                             onClick={() =>
                                                 setShowAllCrops(!showAllCrops)
                                             }
-                                            className="mt-4 text-primary hover:text-primary-dark text-sm font-medium flex items-center gap-1"
+                                            className="mt-3 text-emerald-700 hover:text-emerald-800 text-xs font-semibold inline-flex items-center gap-1 active:scale-95 transition-transform"
                                         >
                                             <Icon
                                                 icon={
@@ -690,17 +712,17 @@ function SellerApplication() {
                                                         ? "mingcute:up-line"
                                                         : "mingcute:down-line"
                                                 }
-                                                width="16"
-                                                height="16"
+                                                width="15"
+                                                height="15"
                                             />
                                             {showAllCrops
                                                 ? "Show Less"
-                                                : "Show More"}
+                                                : "Show More Crops"}
                                         </button>
                                     )}
 
                                 {errors.crops && (
-                                    <p className="text-red-600 text-sm mt-1">
+                                    <p className="text-rose-600 text-xs mt-1.5">
                                         {errors.crops}
                                     </p>
                                 )}
@@ -709,10 +731,10 @@ function SellerApplication() {
                     </div>
 
                     {/* Submit Button */}
-                    <div className="bg-white rounded-lg shadow-md p-6">
+                    <div className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs p-6">
                         {errors.submit && (
-                            <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-md">
-                                <p className="text-sm text-red-700">
+                            <div className="mb-4 p-3 bg-rose-50 border border-rose-200 rounded-xl">
+                                <p className="text-xs text-rose-700">
                                     {errors.submit}
                                 </p>
                             </div>
@@ -720,33 +742,30 @@ function SellerApplication() {
                         <button
                             type="submit"
                             disabled={loading}
-                            className="w-full bg-primary text-white py-3 px-6 rounded-lg hover:bg-primary-dark transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                            className="w-full min-h-[48px] bg-emerald-700 text-white py-3 px-6 rounded-xl hover:bg-emerald-800 transition-all font-semibold text-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-xs active:scale-[0.98]"
                         >
                             {loading ? (
                                 <>
-                                    <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+                                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
                                     Submitting Application...
                                 </>
                             ) : (
                                 <>
                                     <Icon
                                         icon="mingcute:paper-line"
-                                        width="20"
-                                        height="20"
+                                        width="18"
+                                        height="18"
                                     />
                                     Submit Application for Verification
                                 </>
                             )}
                         </button>
-                        <p className="text-sm text-gray-600 text-center mt-3">
-                            By submitting this application, you agree to our
-                            terms and conditions for sellers on the Agrilink
-                            platform. Your application will be reviewed by our
-                            admin team.
+                        <p className="text-[11px] text-slate-500 text-center mt-3 max-w-prose mx-auto">
+                            By submitting this application, you agree to our terms and conditions for sellers on the Agrilink platform. Your application will be reviewed by our admin team.
                         </p>
                     </div>
                 </form>
-            </div>
+            </main>
 
             <NavigationBar />
         </div>
