@@ -51,7 +51,7 @@ function PasswordReset() {
     };
 
     return (
-        <div className="min-h-screen w-full max-w-full overflow-x-hidden flex items-center justify-center flex-col bg-background text-text">
+        <div className="min-h-screen w-full max-w-full overflow-x-hidden flex items-center justify-center flex-col bg-slate-50/50 text-slate-800 p-4 md:p-8">
             {/* Modal */}
             {modalOpen && (
                 <>
@@ -89,15 +89,36 @@ function PasswordReset() {
                 </>
             )}
 
-            <div className="w-10/12 max-w-6xl h-[90vh] flex flex-col items-center md:flex-row md:justify-between p-4">
-                {/* Logo Section */}
-                <div className="">
-                    <img
-                        src={full_logo}
-                        alt="Full Logo"
-                        className="w-full mb-4 max-w-sm"
-                        draggable={false}
-                    />
+            <div className="w-full max-w-5xl flex flex-col md:flex-row items-center justify-between gap-8 md:gap-16 py-6 md:py-12">
+                {/* Brand Hero Section */}
+                <div className="w-full md:w-1/2 flex flex-col items-center md:items-start text-center md:text-left">
+                    <Link
+                        to="/home"
+                        className="inline-block transition-transform active:scale-95"
+                    >
+                        <img
+                            src={full_logo}
+                            alt="Agrilink Logo"
+                            className="w-48 sm:w-56 md:w-64 mb-6 object-contain"
+                            draggable={false}
+                        />
+                    </Link>
+                    <div className="hidden md:flex flex-col gap-3">
+                        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-50 border border-emerald-200/80 text-emerald-800 text-xs font-semibold w-fit">
+                            <Icon
+                                icon="mingcute:shield-check-fill"
+                                width="14"
+                                height="14"
+                            />
+                            <span>Secure Credentials</span>
+                        </div>
+                        <h1 className="text-2xl lg:text-3xl font-bold tracking-tight text-slate-900">
+                            Set up your new password.
+                        </h1>
+                        <p className="text-sm text-slate-600 max-w-md leading-relaxed">
+                            Ensure your Agrilink account stays protected. Enter and confirm your new password below.
+                        </p>
+                    </div>
                 </div>
 
                 {/* Password Reset Card */}
@@ -292,7 +313,7 @@ function PasswordReset() {
                     </div>
                 </div>
             </div>
-            <span className="text-gray-300">@2025 Agrilink</span>
+            <footer className="mt-8 text-center text-xs text-slate-400">© 2026 Agrilink • Farm-to-Table Marketplace</footer>
         </div>
     );
 }
