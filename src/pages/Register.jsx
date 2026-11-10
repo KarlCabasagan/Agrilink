@@ -76,18 +76,34 @@ function Register() {
     };
 
     return (
-        <>
-            <div className="min-h-screen w-full max-w-full overflow-x-hidden flex items-center justify-center flex-col bg-background text-text">
-                <div className="w-10/12 max-w-6xl h-[90vh] flex flex-col items-center md:flex-row md:justify-between p-4">
-                    <div className="">
-                        <img
-                            src={full_logo}
-                            alt="Full Logo"
-                            className="w-full mb-4 max-w-sm"
-                            draggable={false}
-                        />
+        <div className="min-h-screen w-full max-w-full overflow-x-hidden flex items-center justify-center flex-col bg-slate-50/50 text-slate-900 px-4 py-8 sm:py-12">
+            <div className="w-full max-w-5xl mx-auto flex flex-col md:flex-row items-center justify-center md:justify-between gap-8 lg:gap-14 my-auto">
+                {/* Hero / Brand Section */}
+                <div className="flex flex-col items-center md:items-start text-center md:text-left max-w-md">
+                    <img
+                        src={full_logo}
+                        alt="Agrilink"
+                        className="w-full max-w-[240px] sm:max-w-[280px] mb-3 object-contain"
+                        draggable={false}
+                    />
+                    <h1 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">
+                        Join Our Local Food Network
+                    </h1>
+                    <p className="text-xs sm:text-sm text-slate-600 mt-2 leading-relaxed">
+                        Create your account to order farm-fresh produce directly from local growers in Iligan City.
+                    </p>
+                    <div className="hidden sm:flex items-center gap-2 mt-4 text-[11px] font-medium text-emerald-800">
+                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-emerald-50 border border-emerald-200/60">
+                            <Icon icon="mingcute:check-circle-line" width="13" height="13" className="text-emerald-700" />
+                            Direct Farm Access
+                        </span>
+                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-emerald-50 border border-emerald-200/60">
+                            <Icon icon="mingcute:truck-line" width="13" height="13" className="text-emerald-700" />
+                            Fresh Local Delivery
+                        </span>
                     </div>
-                    <div className="flex flex-col items-center w-full max-w-md">
+                </div>
+                <div className="flex flex-col items-center w-full max-w-md">
                         <form
                             className="w-full max-w-md flex flex-col items-center"
                             onSubmit={handleSubmit}
@@ -202,9 +218,9 @@ function Register() {
                         </div>
                     </div>
                 </div>
-                <span className="text-gray-300">@2025 Agrilink</span>
             </div>
-        </>
+            <footer className="mt-8 text-center text-xs text-slate-400">© 2026 Agrilink • Farm-to-Table Marketplace</footer>
+        </div>
     );
 }
 
