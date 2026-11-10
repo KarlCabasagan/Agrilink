@@ -103,11 +103,20 @@ function Register() {
                         </span>
                     </div>
                 </div>
-                <div className="flex flex-col items-center w-full max-w-md">
-                        <form
-                            className="w-full max-w-md flex flex-col items-center"
-                            onSubmit={handleSubmit}
-                        >
+                {/* Form Card */}
+                <div className="w-full max-w-md bg-white rounded-2xl border border-slate-200/90 shadow-2xs p-6 sm:p-8">
+                    <div className="mb-6">
+                        <h2 className="text-xl font-bold text-slate-900 tracking-tight">
+                            Create your account
+                        </h2>
+                        <p className="text-xs text-slate-500 mt-1">
+                            Start ordering fresh produce directly from local farms
+                        </p>
+                    </div>
+                    <form
+                        className="w-full flex flex-col"
+                        onSubmit={handleSubmit}
+                    >
                             <input
                                 type="email"
                                 className="bg-white w-full max-w-sm p-3 rounded-md mb-4 text-base outline-none focus:outline-none focus:ring-0 shadow-sm"
@@ -205,17 +214,14 @@ function Register() {
                                 {loading ? "Registering..." : "Register"}
                             </button>
                         </form>
-                        <div className="mt-10 text-center gap-2 flex items-center">
-                            <span className="text-text font-light">
-                                Already have an account?
-                            </span>
-                            <Link
-                                to="/"
-                                className="text-primary hover:underline font-medium"
-                            >
-                                Sign in
-                            </Link>
-                        </div>
+                    <div className="mt-6 pt-5 border-t border-slate-100 text-center flex items-center justify-center gap-1.5 text-xs text-slate-600">
+                        <span>Already have an account?</span>
+                        <Link
+                            to="/login"
+                            className="text-emerald-700 hover:text-emerald-800 font-semibold hover:underline"
+                        >
+                            Sign in
+                        </Link>
                     </div>
                 </div>
             </div>
