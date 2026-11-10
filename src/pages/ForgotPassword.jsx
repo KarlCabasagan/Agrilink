@@ -95,43 +95,49 @@ function ForgotPassword() {
                         className="w-full flex flex-col"
                         onSubmit={handleSubmit}
                     >
-                        {/* Email Input */}
-                        <input
-                            type="email"
-                            className="bg-white w-full max-w-sm p-3 rounded-md mb-4 text-base outline-none focus:outline-none focus:ring-0 shadow-sm"
-                            placeholder="Enter your email"
-                            value={email}
-                            onChange={(e) => {
-                                setEmail(e.target.value);
-                                setError("");
-                                setSuccess("");
-                            }}
-                            autoComplete="email"
-                            required
-                            disabled={loading}
-                        />
+                        <div className="mb-4">
+                            <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
+                                Account Email
+                            </label>
+                            <input
+                                type="email"
+                                className="w-full h-11 px-3.5 bg-slate-50/50 border border-slate-200 rounded-xl text-sm text-slate-900 placeholder:text-slate-400 outline-none focus:bg-white focus:border-emerald-600 focus:ring-2 focus:ring-emerald-600/15 transition-all"
+                                placeholder="name@example.com"
+                                value={email}
+                                onChange={(e) => {
+                                    setEmail(e.target.value);
+                                    setError("");
+                                    setSuccess("");
+                                }}
+                                autoComplete="email"
+                                required
+                                disabled={loading}
+                            />
+                        </div>
 
                         {/* Error Message */}
                         {error && (
-                            <div className="w-full max-w-sm mb-4 flex items-center gap-2 text-red-600 text-sm bg-red-50 p-3 rounded-lg border border-red-200">
+                            <div className="mb-4 flex items-center gap-2 text-rose-700 text-xs bg-rose-50 border border-rose-200/80 p-3 rounded-xl">
                                 <Icon
                                     icon="mingcute:alert-circle-fill"
                                     width="16"
                                     height="16"
+                                    className="shrink-0"
                                 />
-                                {error}
+                                <span>{error}</span>
                             </div>
                         )}
 
                         {/* Success Message */}
                         {success && (
-                            <div className="w-full max-w-sm mb-4 flex items-center gap-2 text-green-600 text-sm bg-green-50 p-3 rounded-lg border border-green-200">
+                            <div className="mb-4 flex items-center gap-2 text-emerald-800 text-xs bg-emerald-50 border border-emerald-200/80 p-3 rounded-xl">
                                 <Icon
                                     icon="mingcute:check-circle-fill"
                                     width="16"
                                     height="16"
+                                    className="shrink-0 text-emerald-700"
                                 />
-                                {success}
+                                <span>{success}</span>
                             </div>
                         )}
 
