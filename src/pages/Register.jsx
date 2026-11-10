@@ -217,19 +217,32 @@ function Register() {
                                 </button>
                             </div>
                         </div>
-                            {error && (
-                                <div className="text-red-500 mb-2 text-sm">
-                                    {error}
-                                </div>
+                        {error && (
+                            <div className="mb-4 flex items-center gap-2 text-rose-700 text-xs bg-rose-50 border border-rose-200/80 p-3 rounded-xl">
+                                <Icon
+                                    icon="mingcute:alert-circle-fill"
+                                    width="16"
+                                    height="16"
+                                    className="shrink-0"
+                                />
+                                <span>{error}</span>
+                            </div>
+                        )}
+                        <button
+                            type="submit"
+                            className="w-full min-h-[44px] h-11 bg-emerald-700 hover:bg-emerald-800 text-white font-semibold text-sm rounded-xl shadow-xs transition active:scale-[0.98] flex items-center justify-center gap-2 disabled:opacity-50 disabled:pointer-events-none mt-2"
+                            disabled={loading}
+                        >
+                            {loading ? (
+                                <>
+                                    <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent" />
+                                    <span>Creating account…</span>
+                                </>
+                            ) : (
+                                <span>Create Account</span>
                             )}
-                            <button
-                                type="submit"
-                                className="bg-primary text-white w-full max-w-sm p-3 rounded-md mb-4 text-base hover:bg-primary-light transition-colors cursor-pointer font-medium"
-                                disabled={loading}
-                            >
-                                {loading ? "Registering..." : "Register"}
-                            </button>
-                        </form>
+                        </button>
+                    </form>
                     <div className="mt-6 pt-5 border-t border-slate-100 text-center flex items-center justify-center gap-1.5 text-xs text-slate-600">
                         <span>Already have an account?</span>
                         <Link
