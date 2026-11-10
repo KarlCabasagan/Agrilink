@@ -831,7 +831,7 @@ function Messages() {
     }
 
     return (
-        <div className="min-h-screen w-full max-w-full overflow-x-hidden flex flex-col bg-slate-50/50 text-slate-900">
+        <div className="min-h-screen w-full max-w-full overflow-x-hidden flex flex-col bg-slate-50/50 text-slate-900 md:pt-16">
             {/* ===== MOBILE LAYOUT (md:hidden) ===== */}
             {selectedConversation && farmer ? (
                 <div className="md:hidden h-screen w-full flex flex-col relative overflow-hidden bg-slate-50/30">
