@@ -110,20 +110,29 @@ function Login() {
                         className="w-full flex flex-col"
                         onSubmit={handleSubmit}
                     >
+                        <div className="mb-4">
+                            <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
+                                Email Address
+                            </label>
                             <input
                                 type="email"
-                                className="bg-white w-full max-w-sm p-3 rounded-md mb-4 text-base outline-none focus:outline-none focus:ring-0 shadow-sm"
-                                placeholder="Email"
+                                className="w-full h-11 px-3.5 bg-slate-50/50 border border-slate-200 rounded-xl text-sm text-slate-900 placeholder:text-slate-400 outline-none focus:bg-white focus:border-emerald-600 focus:ring-2 focus:ring-emerald-600/15 transition-all"
+                                placeholder="name@example.com"
                                 value={email}
                                 onChange={(e) => setEmail(e.target.value)}
                                 autoComplete="email"
                                 required
                             />
-                            <div className="w-full max-w-sm rounded-md mb-4 relative">
+                        </div>
+                        <div className="mb-4">
+                            <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
+                                Password
+                            </label>
+                            <div className="w-full rounded-xl relative">
                                 <input
                                     type={passwordVisible ? "text" : "password"}
-                                    className="bg-white w-full max-w-sm p-3 rounded-md text-base outline-none focus:outline-none focus:ring-0 shadow-sm"
-                                    placeholder="Password"
+                                    className="w-full h-11 px-3.5 pr-11 bg-slate-50/50 border border-slate-200 rounded-xl text-sm text-slate-900 placeholder:text-slate-400 outline-none focus:bg-white focus:border-emerald-600 focus:ring-2 focus:ring-emerald-600/15 transition-all"
+                                    placeholder="Enter your password"
                                     value={password}
                                     onChange={(e) =>
                                         setPassword(e.target.value)
