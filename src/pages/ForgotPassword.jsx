@@ -144,35 +144,47 @@ function ForgotPassword() {
                         {/* Submit Button */}
                         <button
                             type="submit"
-                            className="bg-primary text-white w-full max-w-sm p-3 rounded-md mb-4 text-base hover:bg-primary-light transition-colors cursor-pointer font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                            className="w-full h-11 bg-emerald-700 hover:bg-emerald-800 active:scale-[0.98] text-white font-medium text-sm rounded-xl transition duration-150 flex items-center justify-center gap-2 shadow-xs cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100"
                             disabled={loading}
                         >
                             {loading ? (
-                                <div className="flex items-center justify-center gap-2">
+                                <>
                                     <Icon
                                         icon="mingcute:loading-line"
                                         width="16"
                                         height="16"
                                         className="animate-spin"
                                     />
-                                    Sending...
-                                </div>
+                                    <span>Sending Link...</span>
+                                </>
                             ) : (
-                                "Send Reset Link"
+                                <>
+                                    <Icon
+                                        icon="mingcute:send-plane-fill"
+                                        width="16"
+                                        height="16"
+                                    />
+                                    <span>Send Reset Link</span>
+                                </>
                             )}
                         </button>
                     </form>
 
                     {/* Back to Login Link */}
-                    <div className="mt-6 text-center gap-2 flex items-center flex-col">
-                        <span className="text-text font-light">
+                    <div className="mt-6 pt-5 border-t border-slate-100 text-center flex flex-col items-center gap-1.5">
+                        <span className="text-xs text-slate-500">
                             Remember your password?
                         </span>
                         <Link
                             to="/login"
-                            className="text-primary hover:underline font-medium"
+                            className="inline-flex items-center gap-1.5 text-sm font-semibold text-emerald-700 hover:text-emerald-800 transition-colors min-h-[44px] px-2 py-1"
                         >
-                            Back to Login
+                            <Icon
+                                icon="mingcute:arrow-left-line"
+                                width="15"
+                                height="15"
+                            />
+                            <span>Back to Sign In</span>
                         </Link>
                     </div>
                 </div>
