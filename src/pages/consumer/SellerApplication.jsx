@@ -97,10 +97,9 @@ function SellerApplication() {
                         .from("seller_applications")
                         .select("*")
                         .eq("user_id", user.id)
-                        .single();
+                        .maybeSingle();
 
-                if (applicationError && applicationError.code !== "PGRST116") {
-                    // PGRST116 means no rows found, which is expected for new applicants
+                if (applicationError) {
                     console.error(
                         "Error checking existing application:",
                         applicationError

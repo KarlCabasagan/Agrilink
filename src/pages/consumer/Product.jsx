@@ -704,7 +704,7 @@ function Product() {
                 .from("carts")
                 .select("id")
                 .eq("user_id", user.id)
-                .single();
+                .maybeSingle();
 
             if (!cartData) {
                 setCurrentCartQty(0);
@@ -716,7 +716,7 @@ function Product() {
                 .select("quantity")
                 .eq("cart_id", cartData.id)
                 .eq("product_id", product.id)
-                .single();
+                .maybeSingle();
 
             const qty = cartItem ? Math.round(parseFloat(cartItem.quantity) * 10) / 10 : 0;
             setCurrentCartQty(isNaN(qty) ? 0 : qty);
@@ -792,7 +792,7 @@ function Product() {
                 .from("carts")
                 .select("id")
                 .eq("user_id", user.id)
-                .single();
+                .maybeSingle();
 
             let addDelta = requested;
             if (cartData) {
@@ -801,7 +801,7 @@ function Product() {
                     .select("quantity")
                     .eq("cart_id", cartData.id)
                     .eq("product_id", product.id)
-                    .single();
+                    .maybeSingle();
 
                 if (existingItem) {
                     const current = Math.round(parseFloat(existingItem.quantity) * 10) / 10;
@@ -850,7 +850,7 @@ function Product() {
                 .select("id")
                 .eq("consumer_id", user.id)
                 .eq("producer_id", product.farmerId)
-                .single();
+                .maybeSingle();
 
             if (existing) {
                 navigate(`/messages?conversation=${existing.id}`);
