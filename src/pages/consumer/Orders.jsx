@@ -3,6 +3,7 @@ import { Icon } from "@iconify/react";
 import { Link, useNavigate } from "react-router-dom";
 import NavigationBar from "../../components/NavigationBar";
 import ReviewModal from "../../components/ReviewModal";
+import StateView from "../../components/StateView.jsx";
 import supabase from "../../SupabaseClient";
 import { AuthContext } from "../../context/AuthContext.jsx";
 import { toast } from "react-hot-toast";
@@ -579,19 +580,19 @@ function Orders() {
     const getStatusColor = (status) => {
         switch (status) {
             case "pending":
-                return "text-yellow-600 bg-yellow-100";
+                return "text-amber-700 bg-amber-50 border border-amber-200/70";
             case "confirmed":
-                return "text-blue-600 bg-blue-100";
+                return "text-sky-700 bg-sky-50 border border-sky-200/70";
             case "preparing":
-                return "text-orange-600 bg-orange-100";
+                return "text-orange-700 bg-orange-50 border border-orange-200/70";
             case "ready for pickup":
-                return "text-purple-600 bg-purple-100";
+                return "text-indigo-700 bg-indigo-50 border border-indigo-200/70";
             case "completed":
-                return "text-green-600 bg-green-100";
+                return "text-emerald-700 bg-emerald-50 border border-emerald-200/70";
             case "cancelled":
-                return "text-red-600 bg-red-100";
+                return "text-rose-700 bg-rose-50 border border-rose-200/70";
             default:
-                return "text-gray-600 bg-gray-100";
+                return "text-slate-600 bg-slate-50 border border-slate-200/70";
         }
     };
 
@@ -1424,33 +1425,47 @@ function Orders() {
     };
 
     return (
-        <div className="min-h-screen w-full flex flex-col relative items-center scrollbar-hide bg-background overflow-x-hidden text-text pb-20">
+        <div className="min-h-screen w-full max-w-full overflow-x-hidden flex flex-col bg-slate-50/50 text-slate-900 pb-24 md:pb-12 md:pt-16">
             {/* Inject animation styles */}
             <style>{styles}</style>
 
-            {/* Header */}
-            <div className="fixed top-0 left-0 w-full bg-white shadow-md z-50 px-4 py-3">
-                <div className="flex items-center">
-                    <button
-                        onClick={() => navigate(-1)}
-                        className="text-primary hover:text-primary-dark mr-3"
-                    >
-                        <Icon
-                            icon="mingcute:left-line"
-                            width="24"
-                            height="24"
-                        />
-                    </button>
-                    <h1 className="text-lg font-semibold text-primary">
-                        My Orders
-                    </h1>
-                </div>
-            </div>
+            {/* Mobile Top Header */}
+            <header className="md:hidden sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-slate-200/80 px-4 py-3 flex items-center justify-between">
+                <button
+                    onClick={() => navigate(-1)}
+                    className="min-w-[44px] min-h-[44px] inline-flex items-center justify-center text-slate-600 hover:text-emerald-700 rounded-xl hover:bg-slate-100 active:scale-[0.97] transition-all"
+                    aria-label="Back"
+                >
+                    <Icon
+                        icon="mingcute:left-line"
+                        width="22"
+                        height="22"
+                    />
+                </button>
+                <h1 className="text-base font-semibold text-slate-900">
+                    My Orders
+                </h1>
+                <div className="w-11" aria-hidden="true" />
+            </header>
 
-            <div className="w-full max-w-4xl mx-4 sm:mx-auto my-16">
-                {/* Tabs */}
-                <div className="bg-white rounded-lg shadow-md overflow-hidden mb-6">
-                    <div className="flex overflow-x-auto">
+            <main className="flex-1 w-full max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 mt-4 md:mt-6">
+                {/* Desktop Breadcrumbs */}
+                <nav className="hidden md:flex items-center gap-2 text-xs font-medium text-slate-500 mb-4" aria-label="Breadcrumb">
+                    <Link to="/" className="hover:text-emerald-700 transition-colors">Home</Link>
+                    <span>/</span>
+                    <span className="text-slate-900 font-semibold">My Orders</span>
+                </nav>
+
+                <div className="hidden md:flex items-center justify-between mb-6">
+                    <div>
+                        <h1 className="text-2xl font-bold text-slate-900 tracking-tight">My Orders</h1>
+                        <p className="text-xs text-slate-500 mt-1">Track and manage your farm-fresh deliveries and pickups</p>
+                    </div>
+                </div>
+
+                {/* Status Filter Tabs */}
+                <div className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs p-1.5 mb-6">
+                    <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none py-0.5">
                         {tabs.map((tab) => {
                             const hasReadyOrders =
                                 tab.id === "ready for pickup" && tab.count > 0;
@@ -1458,30 +1473,28 @@ function Orders() {
                                 <button
                                     key={tab.id}
                                     onClick={() => setActiveTab(tab.id)}
-                                    className={`flex-1 min-w-fit px-4 py-3 text-sm font-medium transition-colors border-b-2 ${
+                                    className={`min-h-[40px] px-3.5 py-2 text-xs font-semibold rounded-xl whitespace-nowrap transition-all duration-150 flex items-center gap-1.5 active:scale-[0.98] ${
                                         activeTab === tab.id
-                                            ? "text-primary border-primary bg-primary/5"
-                                            : "text-gray-500 border-transparent hover:text-gray-700"
+                                            ? "bg-emerald-700 text-white shadow-xs"
+                                            : "text-slate-600 hover:text-slate-900 hover:bg-slate-100/70"
                                     } ${
                                         hasReadyOrders
                                             ? "animate-ready-pulse"
                                             : ""
                                     }`}
                                 >
-                                    <div className="flex items-center justify-center gap-2">
-                                        <span>{tab.label}</span>
-                                        {tab.count > 0 && (
-                                            <span
-                                                className={`px-2 py-1 text-xs rounded-full ${
-                                                    activeTab === tab.id
-                                                        ? "bg-primary text-white"
-                                                        : "bg-gray-200 text-gray-600"
-                                                }`}
-                                            >
-                                                {tab.count}
-                                            </span>
-                                        )}
-                                    </div>
+                                    <span>{tab.label}</span>
+                                    {tab.count > 0 && (
+                                        <span
+                                            className={`min-w-[20px] h-5 px-1.5 text-[11px] font-bold rounded-full inline-flex items-center justify-center tabular-nums ${
+                                                activeTab === tab.id
+                                                    ? "bg-white/20 text-white"
+                                                    : "bg-slate-200/80 text-slate-700"
+                                            }`}
+                                        >
+                                            {tab.count}
+                                        </span>
+                                    )}
                                 </button>
                             );
                         })}
@@ -1490,66 +1503,38 @@ function Orders() {
 
                 {/* Orders List */}
                 {loading ? (
-                    <div className="bg-white rounded-lg shadow-md p-8 text-center">
-                        <Icon
-                            icon="mingcute:loading-line"
-                            width="40"
-                            height="40"
-                            className="text-primary mx-auto mb-4 animate-spin"
-                        />
-                        <p className="text-gray-600">Loading your orders...</p>
+                    <div className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs p-12 text-center">
+                        <StateView type="loading" message="Loading your orders..." />
                     </div>
                 ) : error ? (
-                    <div className="bg-white rounded-lg shadow-md p-8 text-center">
-                        <Icon
-                            icon="mingcute:alert-triangle-line"
-                            width="60"
-                            height="60"
-                            className="text-red-500 mx-auto mb-4"
+                    <div className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs p-8 text-center">
+                        <StateView
+                            type="error"
+                            title="Error Loading Orders"
+                            message={error}
+                            action={{
+                                label: "Try Again",
+                                onClick: fetchOrders,
+                                icon: "mingcute:refresh-1-line",
+                            }}
                         />
-                        <h3 className="text-xl font-semibold text-gray-700 mb-2">
-                            Error Loading Orders
-                        </h3>
-                        <p className="text-gray-500 mb-4">{error}</p>
-                        <button
-                            onClick={fetchOrders}
-                            className="bg-primary text-white px-6 py-3 rounded-lg hover:bg-primary-dark transition-colors font-medium inline-flex items-center gap-2"
-                        >
-                            <Icon
-                                icon="mingcute:refresh-1-line"
-                                width="20"
-                                height="20"
-                            />
-                            Try Again
-                        </button>
                     </div>
                 ) : filteredOrders.length === 0 ? (
-                    <div className="bg-white rounded-lg shadow-md p-8 text-center">
-                        <Icon
-                            icon="mingcute:package-line"
-                            width="80"
-                            height="80"
-                            className="text-gray-300 mb-4 mx-auto"
+                    <div className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs p-8 text-center">
+                        <StateView
+                            type="empty"
+                            title="No orders found"
+                            message={
+                                activeTab === "all"
+                                    ? "You haven't placed any orders yet. Discover fresh local harvest today!"
+                                    : `No ${activeTab} orders found.`
+                            }
+                            action={{
+                                label: "Start Shopping",
+                                onClick: () => navigate("/"),
+                                icon: "mingcute:shopping-bag-1-line",
+                            }}
                         />
-                        <h3 className="text-xl font-semibold text-gray-600 mb-2">
-                            No orders found
-                        </h3>
-                        <p className="text-gray-500 mb-6">
-                            {activeTab === "all"
-                                ? "You haven't placed any orders yet."
-                                : `No ${activeTab} orders found.`}
-                        </p>
-                        <Link
-                            to="/"
-                            className="bg-primary text-white px-6 py-3 rounded-lg hover:bg-primary-dark transition-colors font-medium inline-flex items-center gap-2"
-                        >
-                            <Icon
-                                icon="mingcute:shopping-bag-1-line"
-                                width="20"
-                                height="20"
-                            />
-                            Start Shopping
-                        </Link>
                     </div>
                 ) : (
                     <div className="space-y-4">
@@ -1562,19 +1547,19 @@ function Orders() {
                             return (
                                 <div
                                     key={order.id}
-                                    className="bg-white rounded-lg shadow-md overflow-hidden"
+                                    className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs overflow-hidden transition-all duration-150"
                                 >
                                     {/* Order Header - Clickable */}
                                     <div
-                                        className="p-4 border-b border-gray-200 cursor-pointer hover:bg-gray-50 transition-colors"
+                                        className="p-4 sm:p-5 border-b border-slate-100 cursor-pointer hover:bg-slate-50/60 transition-colors"
                                         onClick={() =>
                                             toggleOrderExpansion(order.id)
                                         }
                                     >
-                                        <div className="flex justify-between items-start mb-3">
+                                        <div className="flex justify-between items-start mb-2 sm:mb-3">
                                             <div>
-                                                <h3 className="font-semibold text-gray-800 flex items-center gap-2">
-                                                    Order #{order.id}
+                                                <h3 className="text-sm sm:text-base font-bold text-slate-900 flex items-center gap-2">
+                                                    Order <span className="font-mono tabular-nums text-slate-700">#{order.id}</span>
                                                     <Icon
                                                         icon={
                                                             isExpanded
@@ -1583,64 +1568,61 @@ function Orders() {
                                                         }
                                                         width="16"
                                                         height="16"
-                                                        className="text-gray-400"
+                                                        className="text-slate-400"
                                                     />
                                                 </h3>
-                                                <p className="text-sm text-gray-500">
-                                                    Placed on{" "}
-                                                    {formatDate(order.date)}
+                                                <p className="text-xs text-slate-500 mt-0.5 tabular-nums">
+                                                    Placed on {formatDate(order.date)}
                                                 </p>
                                             </div>
-                                            <div className="flex items-center gap-2">
-                                                <span
-                                                    className={`px-3 py-1 rounded-full text-xs font-medium flex items-center gap-1 ${getStatusColor(
+                                            <span
+                                                className={`px-2.5 py-1 rounded-full text-xs font-semibold flex items-center gap-1.5 ${getStatusColor(
+                                                    order.status
+                                                )}`}
+                                            >
+                                                <Icon
+                                                    icon={getStatusIcon(
                                                         order.status
-                                                    )}`}
-                                                >
-                                                    <Icon
-                                                        icon={getStatusIcon(
-                                                            order.status
-                                                        )}
-                                                        width="14"
-                                                        height="14"
-                                                    />
-                                                    {order.status
-                                                        .charAt(0)
-                                                        .toUpperCase() +
-                                                        order.status.slice(1)}
-                                                </span>
-                                            </div>
+                                                    )}
+                                                    width="14"
+                                                    height="14"
+                                                />
+                                                {order.status
+                                                    .charAt(0)
+                                                    .toUpperCase() +
+                                                    order.status.slice(1)}
+                                            </span>
                                         </div>
-                                        <div className="flex justify-between items-center">
-                                            <p className="text-lg font-bold text-primary">
+                                        <div className="flex justify-between items-center pt-1">
+                                            <p className="text-base sm:text-lg font-bold text-emerald-800 tabular-nums">
                                                 ₱{order.total.toFixed(2)}
                                             </p>
-                                            <div className="flex items-center gap-4">
-                                                <p className="text-sm text-gray-500">
+                                            <div className="flex items-center gap-3">
+                                                <span className="text-xs text-slate-500 tabular-nums">
                                                     {order.items.length} item
                                                     {order.items.length !== 1
                                                         ? "s"
                                                         : ""}
-                                                </p>
-                                                <p className="text-xs text-primary bg-primary/10 px-2 py-1 rounded-full">
+                                                </span>
+                                                <span className="text-xs font-medium text-emerald-800 bg-emerald-50 border border-emerald-200/60 px-2.5 py-0.5 rounded-lg">
                                                     {order.deliveryMethod ||
                                                         "Unknown"}
-                                                </p>
+                                                </span>
                                             </div>
                                         </div>
                                     </div>
 
                                     {/* Expandable Order Details */}
                                     {isExpanded && (
-                                        <div className="p-4">
+                                        <div className="p-4 sm:p-5 bg-slate-50/30 space-y-4">
                                             {/* Farmer Groups */}
-                                            <div className="space-y-4 mb-2">
-                                                <h4 className="font-semibold text-gray-800 text-sm mb-3 flex items-center gap-2">
+                                            <div className="space-y-3">
+                                                <h4 className="font-semibold text-slate-900 text-xs sm:text-sm flex items-center gap-2">
                                                     <Icon
                                                         icon="mingcute:group-line"
                                                         width="16"
                                                         height="16"
-                                                        className="text-primary"
+                                                        className="text-emerald-700"
                                                     />
                                                     Order Items by Farmer
                                                 </h4>
@@ -1650,17 +1632,15 @@ function Orders() {
                                                         expandedFarmers[
                                                             farmerKey
                                                         ] !== false;
-                                                    const hasMultipleItems =
-                                                        farmer.items.length > 1;
 
                                                     return (
                                                         <div
                                                             key={farmerKey}
-                                                            className="border border-gray-200 rounded-lg overflow-hidden"
+                                                            className="border border-slate-200/80 rounded-xl bg-white overflow-hidden shadow-2xs"
                                                         >
                                                             {/* Farmer Header */}
                                                             <div
-                                                                className="bg-gray-50 p-3 flex justify-between items-center cursor-pointer hover:bg-gray-100 transition-colors"
+                                                                className="bg-slate-50/80 px-4 py-3 flex justify-between items-center cursor-pointer hover:bg-slate-100/70 transition-colors"
                                                                 onClick={() =>
                                                                     toggleFarmerExpansion(
                                                                         order.id,
@@ -1673,39 +1653,39 @@ function Orders() {
                                                                         icon="mingcute:user-4-line"
                                                                         width="16"
                                                                         height="16"
-                                                                        className="text-primary"
+                                                                        className="text-emerald-700"
                                                                     />
-                                                                    <span className="font-medium text-sm">
+                                                                    <span className="font-semibold text-xs sm:text-sm text-slate-800">
                                                                         {
                                                                             farmer.farmerName
                                                                         }
                                                                     </span>
                                                                 </div>
-                                                                <div className="flex items-center gap-3">
-                                                                    <div className="text-sm text-gray-600">
+                                                                <div className="flex items-center gap-2 text-xs text-slate-500 tabular-nums">
+                                                                    <span>
                                                                         {
                                                                             farmer
                                                                                 .items
                                                                                 .length
                                                                         }{" "}
-                                                                        items
-                                                                    </div>
+                                                                        item{farmer.items.length !== 1 ? "s" : ""}
+                                                                    </span>
                                                                     <Icon
                                                                         icon={
                                                                             isFarmerExpanded
                                                                                 ? "mingcute:up-line"
                                                                                 : "mingcute:down-line"
                                                                         }
-                                                                        width="16"
-                                                                        height="16"
-                                                                        className="text-gray-400"
+                                                                        width="15"
+                                                                        height="15"
+                                                                        className="text-slate-400"
                                                                     />
                                                                 </div>
                                                             </div>
 
                                                             {/* Product Items */}
                                                             {isFarmerExpanded && (
-                                                                <div className="divide-y divide-gray-200">
+                                                                <div className="divide-y divide-slate-100">
                                                                     {farmer.items.map(
                                                                         (
                                                                             item
@@ -1716,9 +1696,9 @@ function Orders() {
                                                                                 }
                                                                                 className="p-4"
                                                                             >
-                                                                                <div className="flex gap-4">
+                                                                                <div className="flex gap-3 sm:gap-4">
                                                                                     {/* Product Image */}
-                                                                                    <div className="flex-shrink-0 w-20 h-20 rounded-lg overflow-hidden bg-gray-100">
+                                                                                    <div className="shrink-0 w-16 h-16 sm:w-20 sm:h-20 rounded-xl overflow-hidden bg-slate-100 border border-slate-200/60">
                                                                                         <img
                                                                                             src={
                                                                                                 item.image ||
@@ -1736,44 +1716,39 @@ function Orders() {
                                                                                             }}
                                                                                         />
                                                                                     </div>
-                                                                                    <div className="flex-1">
-                                                                                        <div className="flex items-start justify-between mb-1">
+                                                                                    <div className="flex-1 min-w-0">
+                                                                                        <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-2 mb-1">
                                                                                             <div>
-                                                                                                <div className="mb-2">
-                                                                                                    <Link
-                                                                                                        to={`/product/${item.product_id}`}
-                                                                                                        className="font-medium text-green-700"
-                                                                                                    >
-                                                                                                        {
-                                                                                                            item.name
-                                                                                                        }
-                                                                                                    </Link>
+                                                                                                <Link
+                                                                                                    to={`/product/${item.product_id}`}
+                                                                                                    className="font-semibold text-sm text-slate-900 hover:text-emerald-700 transition-colors line-clamp-1"
+                                                                                                >
+                                                                                                    {
+                                                                                                        item.name
+                                                                                                    }
+                                                                                                </Link>
+                                                                                                <div className="text-xs text-slate-500 mt-0.5 tabular-nums">
+                                                                                                    {
+                                                                                                        item.quantity
+                                                                                                    }{" "}
+                                                                                                    kg
+                                                                                                    ×
+                                                                                                    ₱
+                                                                                                    {item.price.toFixed(
+                                                                                                        2
+                                                                                                    )}
                                                                                                 </div>
-                                                                                                <div>
-                                                                                                    <div className="text-sm text-gray-600">
-                                                                                                        {
-                                                                                                            item.quantity
-                                                                                                        }{" "}
-                                                                                                        kg
-                                                                                                        x
-                                                                                                        ₱
-                                                                                                        {item.price.toFixed(
-                                                                                                            2
-                                                                                                        )}
-                                                                                                    </div>
-                                                                                                    <div className="text-sm text-primary font-medium mt-1">
-                                                                                                        Total:
-                                                                                                        ₱
-                                                                                                        {(
-                                                                                                            item.quantity *
-                                                                                                            item.price
-                                                                                                        ).toFixed(
-                                                                                                            2
-                                                                                                        )}
-                                                                                                    </div>
+                                                                                                <div className="text-xs sm:text-sm text-emerald-800 font-bold mt-1 tabular-nums">
+                                                                                                    ₱
+                                                                                                    {(
+                                                                                                        item.quantity *
+                                                                                                        item.price
+                                                                                                    ).toFixed(
+                                                                                                        2
+                                                                                                    )}
                                                                                                 </div>
                                                                                             </div>
-                                                                                            <div className="flex flex-col items-end gap-2">
+                                                                                            <div className="flex flex-wrap sm:flex-col items-start sm:items-end gap-1.5">
                                                                                                 {order.status ===
                                                                                                     "completed" &&
                                                                                                     (productReviews[
@@ -1787,16 +1762,15 @@ function Orders() {
                                                                                                             ) =>
                                                                                                                 e.stopPropagation()
                                                                                                             }
-                                                                                                            className="px-3 py-1.5 text-sm text-green-500 hover:text-green-700 flex items-center gap-1.5 group transition-colors"
+                                                                                                            className="min-h-[36px] px-3 py-1.5 text-xs font-semibold text-emerald-700 hover:text-emerald-800 flex items-center gap-1.5 transition-colors"
                                                                                                         >
                                                                                                             <Icon
                                                                                                                 icon="mingcute:star-fill"
                                                                                                                 width="14"
                                                                                                                 height="14"
-                                                                                                                className="text-yellow-400 group-hover:text-yellow-500"
+                                                                                                                className="text-amber-400"
                                                                                                             />
-                                                                                                            View
-                                                                                                            Review
+                                                                                                            View Review
                                                                                                         </Link>
                                                                                                     ) : (
                                                                                                         <button
@@ -1804,22 +1778,21 @@ function Orders() {
                                                                                                             onClick={(
                                                                                                                 e
                                                                                                             ) => {
-                                                                                                                e.stopPropagation(); // prevent collapsing the row
+                                                                                                                e.stopPropagation();
                                                                                                                 handleOpenReviewModal(
                                                                                                                     item.product_id,
                                                                                                                     item.name
                                                                                                                 );
                                                                                                             }}
-                                                                                                            className="px-3 py-1.5 text-sm border border-gray-300 text-gray-600 rounded-lg hover:bg-gray-50 transition-colors flex items-center gap-1.5"
+                                                                                                            className="min-h-[36px] px-3 py-1.5 text-xs font-semibold border border-slate-200 text-slate-700 rounded-xl hover:bg-slate-50 active:scale-[0.98] transition-all flex items-center gap-1.5"
                                                                                                         >
                                                                                                             <Icon
                                                                                                                 icon="mingcute:star-line"
                                                                                                                 width="14"
                                                                                                                 height="14"
+                                                                                                                className="text-amber-500"
                                                                                                             />
-                                                                                                            Rate
-                                                                                                            &
-                                                                                                            Review
+                                                                                                            Rate & Review
                                                                                                         </button>
                                                                                                     ))}
                                                                                                 {order.status ===
@@ -1829,14 +1802,13 @@ function Orders() {
                                                                                                     ).toDateString() ===
                                                                                                         new Date().toDateString() &&
                                                                                                     (item.request_replacement_reason ? (
-                                                                                                        <div className="px-3 py-1.5 text-sm bg-orange-50 text-orange-600 rounded-lg flex items-center gap-1.5 border border-orange-200">
+                                                                                                        <div className="px-3 py-1 text-xs bg-amber-50 text-amber-800 rounded-xl flex items-center gap-1.5 border border-amber-200 font-medium">
                                                                                                             <Icon
                                                                                                                 icon="mingcute:alert-line"
                                                                                                                 width="14"
                                                                                                                 height="14"
                                                                                                             />
-                                                                                                            Replacement
-                                                                                                            Requested
+                                                                                                            Replacement Requested
                                                                                                         </div>
                                                                                                     ) : (
                                                                                                         <button
@@ -1850,15 +1822,14 @@ function Orders() {
                                                                                                                     item.id
                                                                                                                 );
                                                                                                             }}
-                                                                                                            className="px-3 py-1.5 text-sm border border-gray-300 text-gray-600 rounded-lg hover:bg-gray-50 transition-colors flex items-center gap-1.5"
+                                                                                                            className="min-h-[36px] px-3 py-1.5 text-xs font-semibold border border-amber-200 bg-amber-50/60 text-amber-800 rounded-xl hover:bg-amber-100/70 active:scale-[0.98] transition-all flex items-center gap-1.5"
                                                                                                         >
                                                                                                             <Icon
                                                                                                                 icon="mingcute:refresh-2-line"
                                                                                                                 width="14"
                                                                                                                 height="14"
                                                                                                             />
-                                                                                                            Request
-                                                                                                            Replacement
+                                                                                                            Request Replacement
                                                                                                         </button>
                                                                                                     ))}
                                                                                             </div>
@@ -1876,24 +1847,22 @@ function Orders() {
                                             </div>
 
                                             {/* Order Breakdown */}
-                                            <div className="bg-blue-50 rounded-lg p-3 mb-4">
-                                                <div className="flex items-center gap-2 mb-2">
+                                            <div className="bg-white rounded-xl border border-slate-200/80 p-4 shadow-2xs">
+                                                <div className="flex items-center gap-2 mb-2.5">
                                                     <Icon
                                                         icon="mingcute:receipt-line"
                                                         width="16"
                                                         height="16"
-                                                        className="text-blue-600"
+                                                        className="text-emerald-700"
                                                     />
-                                                    <span className="text-sm font-medium text-blue-800">
+                                                    <span className="text-xs font-semibold text-slate-900">
                                                         Order Breakdown
                                                     </span>
                                                 </div>
-                                                <div className="ml-5 space-y-1">
-                                                    <div className="flex justify-between text-sm">
-                                                        <span className="text-gray-600">
-                                                            Subtotal
-                                                        </span>
-                                                        <span className="text-gray-800">
+                                                <div className="space-y-1.5 text-xs">
+                                                    <div className="flex justify-between text-slate-600">
+                                                        <span>Subtotal</span>
+                                                        <span className="font-semibold text-slate-900 tabular-nums">
                                                             ₱
                                                             {(
                                                                 order.total -
@@ -1901,14 +1870,14 @@ function Orders() {
                                                             ).toFixed(2)}
                                                         </span>
                                                     </div>
-                                                    <div className="flex justify-between text-sm">
-                                                        <span className="text-gray-600">
+                                                    <div className="flex justify-between text-slate-600">
+                                                        <span>
                                                             {order.deliveryMethod ===
                                                             "Home Delivery"
                                                                 ? "Delivery Fee"
                                                                 : "Pickup Fee"}
                                                         </span>
-                                                        <span className="text-gray-800">
+                                                        <span className="font-semibold text-slate-900 tabular-nums">
                                                             {order.deliveryFee >
                                                             0
                                                                 ? `₱${order.deliveryFee.toFixed(
@@ -1917,11 +1886,9 @@ function Orders() {
                                                                 : "Free"}
                                                         </span>
                                                     </div>
-                                                    <div className="flex justify-between text-sm font-semibold border-t border-blue-200 pt-1">
-                                                        <span className="text-blue-800">
-                                                            Total
-                                                        </span>
-                                                        <span className="text-blue-800">
+                                                    <div className="flex justify-between text-sm font-bold border-t border-slate-100 pt-2 text-slate-900">
+                                                        <span>Total</span>
+                                                        <span className="text-emerald-800 tabular-nums">
                                                             ₱
                                                             {order.total.toFixed(
                                                                 2
@@ -1931,11 +1898,11 @@ function Orders() {
                                                 </div>
                                             </div>
 
-                                            {/* Order Details */}
-                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
+                                            {/* Order Details Grid */}
+                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                                 {/* Delivery/Pickup Method */}
-                                                <div className="bg-gray-50 rounded-lg p-3">
-                                                    <div className="flex items-center gap-2 mb-1">
+                                                <div className="bg-white rounded-xl border border-slate-200/80 p-3.5 shadow-2xs">
+                                                    <div className="flex items-center gap-2 mb-1.5">
                                                         <Icon
                                                             icon={
                                                                 order.deliveryMethod ===
@@ -1945,32 +1912,31 @@ function Orders() {
                                                             }
                                                             width="16"
                                                             height="16"
-                                                            className="text-gray-500"
+                                                            className="text-emerald-700"
                                                         />
-                                                        <span className="text-sm font-medium text-gray-700">
+                                                        <span className="text-xs font-semibold text-slate-900">
                                                             {order.deliveryMethod ===
                                                             "Home Delivery"
                                                                 ? "Home Delivery"
                                                                 : "Farm Pickup"}
                                                         </span>
                                                     </div>
-                                                    <div className="ml-5">
-                                                        <p className="text-sm text-gray-600 mb-1">
+                                                    <div className="ml-5 text-xs text-slate-600 space-y-0.5">
+                                                        <p>
                                                             {order.deliveryMethod ===
                                                             "Home Delivery"
                                                                 ? "Delivery to your address"
                                                                 : `Pickup from: ${order.sellerAddress}`}
                                                         </p>
-                                                        <p className="text-xs text-blue-600">
-                                                            Seller:{" "}
-                                                            {order.sellerName}
+                                                        <p className="text-emerald-700 font-medium">
+                                                            Seller: {order.sellerName}
                                                         </p>
                                                     </div>
                                                 </div>
 
                                                 {/* Payment Method */}
-                                                <div className="bg-gray-50 rounded-lg p-3">
-                                                    <div className="flex items-center gap-2 mb-1">
+                                                <div className="bg-white rounded-xl border border-slate-200/80 p-3.5 shadow-2xs">
+                                                    <div className="flex items-center gap-2 mb-1.5">
                                                         <Icon
                                                             icon={
                                                                 order.paymentMethod ===
@@ -1980,20 +1946,20 @@ function Orders() {
                                                             }
                                                             width="16"
                                                             height="16"
-                                                            className="text-gray-500"
+                                                            className="text-emerald-700"
                                                         />
-                                                        <span className="text-sm font-medium text-gray-700">
+                                                        <span className="text-xs font-semibold text-slate-900">
                                                             Payment Method
                                                         </span>
                                                     </div>
-                                                    <div className="ml-5">
-                                                        <p className="text-sm text-gray-600">
+                                                    <div className="ml-5 text-xs text-slate-600">
+                                                        <p>
                                                             {order.paymentMethod ===
                                                             "COD/COP"
                                                                 ? `Cash on ${
                                                                       order.deliveryMethod ===
                                                                       "Home Delivery"
-                                                                          ? "Home Delivery"
+                                                                          ? "Delivery"
                                                                           : "Pickup"
                                                                   }`
                                                                 : "Online Payment"}
@@ -2002,57 +1968,44 @@ function Orders() {
                                                             "cancelled" &&
                                                             order.paymentMethod ===
                                                                 "cod" && (
-                                                                <p className="text-xs text-orange-600">
-                                                                    Payment due:
-                                                                    ₱
-                                                                    {order.total.toFixed(
-                                                                        2
-                                                                    )}
+                                                                <p className="text-amber-700 font-semibold tabular-nums mt-0.5">
+                                                                    Payment due: ₱{order.total.toFixed(2)}
                                                                 </p>
                                                             )}
                                                     </div>
                                                 </div>
                                             </div>
 
-                                            {/* Customer Details */}
-                                            <div className="bg-gray-50 rounded-lg p-3 mb-4">
-                                                <div className="flex items-center gap-2 mb-1">
+                                            {/* Seller Information */}
+                                            <div className="bg-white rounded-xl border border-slate-200/80 p-3.5 shadow-2xs">
+                                                <div className="flex items-center gap-2 mb-1.5">
                                                     <Icon
                                                         icon="mingcute:user-line"
                                                         width="16"
                                                         height="16"
-                                                        className="text-gray-500"
+                                                        className="text-emerald-700"
                                                     />
-                                                    <span className="text-sm font-medium text-gray-700">
+                                                    <span className="text-xs font-semibold text-slate-900">
                                                         Seller Information
                                                     </span>
                                                 </div>
-                                                <div className="ml-5 space-y-1">
-                                                    <p className="text-sm text-gray-600">
-                                                        <strong>Seller:</strong>{" "}
-                                                        {order.sellerName}
+                                                <div className="ml-5 space-y-0.5 text-xs text-slate-600">
+                                                    <p>
+                                                        <span className="font-medium text-slate-800">Seller:</span> {order.sellerName}
                                                     </p>
-                                                    <p className="text-sm text-gray-600">
-                                                        <strong>
-                                                            Address:
-                                                        </strong>{" "}
-                                                        {order.sellerAddress}
+                                                    <p>
+                                                        <span className="font-medium text-slate-800">Address:</span> {order.sellerAddress}
                                                     </p>
                                                     {order.sellerContact && (
-                                                        <p className="text-sm text-gray-600">
-                                                            <strong>
-                                                                Contact:
-                                                            </strong>{" "}
-                                                            {
-                                                                order.sellerContact
-                                                            }
+                                                        <p>
+                                                            <span className="font-medium text-slate-800">Contact:</span> {order.sellerContact}
                                                         </p>
                                                     )}
                                                 </div>
                                             </div>
 
                                             {/* Order Actions */}
-                                            <div className="flex flex-wrap gap-2">
+                                            <div className="flex flex-wrap items-center gap-2.5 pt-1">
                                                 {order.status === "pending" && (
                                                     <button
                                                         onClick={(e) => {
@@ -2061,7 +2014,7 @@ function Orders() {
                                                                 order.id
                                                             );
                                                         }}
-                                                        className="px-4 py-2 text-sm border border-red-300 text-red-600 rounded-lg hover:bg-red-50 transition-colors"
+                                                        className="min-h-[40px] px-4 py-2 text-xs font-semibold border border-rose-200 bg-rose-50/50 text-rose-700 rounded-xl hover:bg-rose-100/70 active:scale-[0.98] transition-all"
                                                     >
                                                         Cancel Order
                                                     </button>
@@ -2076,31 +2029,13 @@ function Orders() {
                                                                 order
                                                             );
                                                         }}
-                                                        className="px-4 py-2 text-sm border border-primary text-primary rounded-lg hover:bg-primary/5 transition-colors"
+                                                        className="min-h-[40px] px-4 py-2 text-xs font-semibold bg-emerald-700 text-white rounded-xl hover:bg-emerald-800 active:scale-[0.98] transition-all shadow-xs"
                                                     >
                                                         Track Order
                                                     </button>
                                                 )}
 
-                                                {order.status ===
-                                                    "completed" && (
-                                                    <>
-                                                        <button
-                                                            onClick={(e) => {
-                                                                e.stopPropagation();
-                                                                handleReorder(
-                                                                    order
-                                                                );
-                                                            }}
-                                                            className="px-4 py-2 text-sm bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors"
-                                                        >
-                                                            Order Again
-                                                        </button>
-                                                    </>
-                                                )}
-
-                                                {order.status ===
-                                                    "cancelled" && (
+                                                {(order.status === "completed" || order.status === "cancelled") && (
                                                     <button
                                                         onClick={(e) => {
                                                             e.stopPropagation();
@@ -2108,7 +2043,7 @@ function Orders() {
                                                                 order
                                                             );
                                                         }}
-                                                        className="px-4 py-2 text-sm bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors"
+                                                        className="min-h-[40px] px-4 py-2 text-xs font-semibold bg-emerald-700 text-white rounded-xl hover:bg-emerald-800 active:scale-[0.98] transition-all shadow-xs"
                                                     >
                                                         Order Again
                                                     </button>
@@ -2121,7 +2056,7 @@ function Orders() {
                         })}
                     </div>
                 )}
-            </div>
+            </main>
 
             <NavigationBar />
 
@@ -2145,22 +2080,22 @@ function Orders() {
 
             {/* Reorder Modal */}
             {reorderModal.isOpen && (
-                <>
-                    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black opacity-50"></div>
-                    <div className="bg-white rounded-lg shadow-xl p-6 max-w-sm w-full text-center fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-[10000]">
-                        <div className="mb-4">
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-xs animate-in fade-in duration-150">
+                    <div className="bg-white rounded-2xl shadow-xl border border-slate-200/90 p-6 max-w-sm w-full text-center scale-100 transition-all">
+                        <div className="w-12 h-12 rounded-full mx-auto mb-3 flex items-center justify-center bg-amber-50 border border-amber-200/80">
                             <Icon
                                 icon="mingcute:alert-circle-fill"
-                                width="48"
-                                height="48"
-                                className="mx-auto mb-3 text-red-500"
+                                width="28"
+                                height="28"
+                                className="text-amber-600"
                             />
-                            <p className="text-gray-700">
-                                {reorderModal.message}
-                            </p>
                         </div>
+                        <p className="text-sm font-medium text-slate-800 leading-relaxed mb-5">
+                            {reorderModal.message}
+                        </p>
                         <button
-                            className="w-full mt-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors"
+                            type="button"
+                            className="w-full min-h-[44px] px-4 py-2.5 bg-emerald-700 hover:bg-emerald-800 text-white text-sm font-semibold rounded-xl shadow-xs active:scale-[0.98] transition-all"
                             onClick={() =>
                                 setReorderModal({
                                     isOpen: false,
@@ -2171,28 +2106,29 @@ function Orders() {
                             OK
                         </button>
                     </div>
-                </>
+                </div>
             )}
 
             {/* Replacement Request Modal */}
             {replacementModal.isOpen && (
-                <>
-                    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black opacity-50"></div>
-                    <div className="bg-white rounded-lg shadow-xl p-6 max-w-md w-full fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-[10000] max-h-[90vh] overflow-y-auto">
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-xs animate-in fade-in duration-150">
+                    <div className="bg-white rounded-2xl shadow-xl border border-slate-200/90 p-6 max-w-md w-full max-h-[90vh] overflow-y-auto">
                         {/* Header */}
                         <div className="flex items-center justify-between mb-4">
-                            <h2 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
-                                <Icon
-                                    icon="mingcute:refresh-2-line"
-                                    width="20"
-                                    height="20"
-                                    className="text-orange-600"
-                                />
+                            <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
+                                <div className="w-8 h-8 rounded-lg bg-amber-50 border border-amber-200/60 flex items-center justify-center text-amber-700">
+                                    <Icon
+                                        icon="mingcute:refresh-2-line"
+                                        width="18"
+                                        height="18"
+                                    />
+                                </div>
                                 Request Replacement
                             </h2>
                             <button
+                                type="button"
                                 onClick={handleCloseReplacementModal}
-                                className="text-gray-400 hover:text-gray-600 transition-colors"
+                                className="min-w-[36px] min-h-[36px] inline-flex items-center justify-center text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100 transition-colors"
                             >
                                 <Icon
                                     icon="mingcute:close-line"
@@ -2204,9 +2140,9 @@ function Orders() {
 
                         {/* Reason Selection */}
                         <div className="mb-4">
-                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                            <label className="block text-xs font-semibold text-slate-700 mb-1.5">
                                 Reason for Replacement{" "}
-                                <span className="text-red-500">*</span>
+                                <span className="text-rose-500">*</span>
                             </label>
                             <select
                                 value={replacementModal.reason}
@@ -2216,7 +2152,7 @@ function Orders() {
                                         reason: e.target.value,
                                     }))
                                 }
-                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 text-gray-700"
+                                className="w-full h-11 px-3.5 bg-slate-50/60 border border-slate-200 rounded-xl text-sm text-slate-900 outline-none focus:bg-white focus:border-emerald-600 focus:ring-2 focus:ring-emerald-600/15 transition-all"
                             >
                                 <option value="">-- Select a reason --</option>
                                 {replacementReasons.map((reason) => (
@@ -2230,9 +2166,9 @@ function Orders() {
                         {/* Custom Reason (if Others selected) */}
                         {replacementModal.reason === "Others" && (
                             <div className="mb-4">
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                <label className="block text-xs font-semibold text-slate-700 mb-1.5">
                                     Please specify{" "}
-                                    <span className="text-red-500">*</span>
+                                    <span className="text-rose-500">*</span>
                                 </label>
                                 <textarea
                                     value={replacementModal.customReason}
@@ -2244,27 +2180,27 @@ function Orders() {
                                     }
                                     placeholder="Enter your reason..."
                                     rows="3"
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 text-gray-700"
+                                    className="w-full p-3 bg-slate-50/60 border border-slate-200 rounded-xl text-sm text-slate-900 outline-none focus:bg-white focus:border-emerald-600 focus:ring-2 focus:ring-emerald-600/15 transition-all"
                                 />
                             </div>
                         )}
 
                         {/* Image Upload */}
                         <div className="mb-4">
-                            <label className="block text-sm font-medium text-gray-700 mb-2">
-                                Upload Image (Optional)
+                            <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                                Upload Photo (Optional)
                             </label>
                             {replacementModal.imagePreview ? (
-                                <div className="relative">
+                                <div className="relative rounded-xl overflow-hidden border border-slate-200">
                                     <img
                                         src={replacementModal.imagePreview}
                                         alt="Replacement preview"
-                                        className="w-full h-48 object-cover rounded-lg border border-gray-300"
+                                        className="w-full h-44 object-cover"
                                     />
                                     <button
                                         type="button"
                                         onClick={handleRemoveReplacementImage}
-                                        className="absolute top-2 right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600 transition-colors"
+                                        className="absolute top-2 right-2 w-8 h-8 bg-rose-600 text-white rounded-full flex items-center justify-center hover:bg-rose-700 transition-colors shadow-md active:scale-95"
                                     >
                                         <Icon
                                             icon="mingcute:close-line"
@@ -2280,18 +2216,18 @@ function Orders() {
                                         onClick={() =>
                                             replacementFileInputRef.current?.click()
                                         }
-                                        className="w-full p-6 border-2 border-dashed border-gray-300 rounded-lg hover:border-orange-400 hover:bg-orange-50 transition-colors flex flex-col items-center justify-center gap-2 cursor-pointer"
+                                        className="w-full p-5 border-2 border-dashed border-slate-200 rounded-xl hover:border-emerald-500 hover:bg-emerald-50/30 transition-all flex flex-col items-center justify-center gap-1.5 cursor-pointer text-slate-600"
                                     >
                                         <Icon
                                             icon="mingcute:image-add-line"
                                             width="24"
                                             height="24"
-                                            className="text-gray-400"
+                                            className="text-slate-400"
                                         />
-                                        <span className="text-sm text-gray-600">
+                                        <span className="text-xs font-semibold text-slate-700">
                                             Click to upload image
                                         </span>
-                                        <span className="text-xs text-gray-400">
+                                        <span className="text-[11px] text-slate-400">
                                             JPEG, PNG, WebP (max 5MB)
                                         </span>
                                     </button>
@@ -2307,12 +2243,12 @@ function Orders() {
                         </div>
 
                         {/* Buttons */}
-                        <div className="flex gap-3 pt-4">
+                        <div className="flex gap-2.5 pt-3">
                             <button
                                 type="button"
                                 onClick={handleCloseReplacementModal}
                                 disabled={replacementModal.isLoading}
-                                className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50"
+                                className="flex-1 min-h-[44px] px-4 py-2 border border-slate-200 text-slate-700 rounded-xl hover:bg-slate-50 transition-colors disabled:opacity-50 text-xs font-semibold active:scale-[0.98]"
                             >
                                 Cancel
                             </button>
@@ -2326,7 +2262,7 @@ function Orders() {
                                     (replacementModal.reason === "Others" &&
                                         !replacementModal.customReason?.trim())
                                 }
-                                className="flex-1 px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                                className="flex-1 min-h-[44px] px-4 py-2 bg-emerald-700 text-white rounded-xl hover:bg-emerald-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-xs font-semibold shadow-xs active:scale-[0.98]"
                             >
                                 {replacementModal.isLoading ? (
                                     <>
@@ -2351,24 +2287,24 @@ function Orders() {
                             </button>
                         </div>
                     </div>
-                </>
+                </div>
             )}
 
             {/* Track Order Modal */}
             {trackingModal.open && trackingModal.order && (
-                <>
-                    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black opacity-50"></div>
-                    <div className="bg-white rounded-lg shadow-xl p-6 max-w-md w-full fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-[10000] max-h-[90vh] overflow-y-auto">
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-xs animate-in fade-in duration-150">
+                    <div className="bg-white rounded-2xl shadow-xl border border-slate-200/90 p-6 max-w-md w-full max-h-[90vh] overflow-y-auto">
                         {/* Close Button */}
-                        <div className="flex justify-end mb-4">
+                        <div className="flex justify-end mb-2">
                             <button
+                                type="button"
                                 onClick={() =>
                                     setTrackingModal({
                                         open: false,
                                         order: null,
                                     })
                                 }
-                                className="text-gray-400 hover:text-gray-600 transition-colors"
+                                className="min-w-[36px] min-h-[36px] inline-flex items-center justify-center text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100 transition-colors"
                             >
                                 <Icon
                                     icon="mingcute:close-line"
@@ -2378,143 +2314,107 @@ function Orders() {
                             </button>
                         </div>
 
-                        {/* Conditional Content Based on Delivery Method */}
+                        {/* Content */}
                         {trackingModal.order.deliveryMethod ===
                         "Home Delivery" ? (
-                            <>
-                                {/* Home Delivery Content */}
-                                <div className="text-center">
-                                    <div className="inline-flex items-center justify-center w-16 h-16 bg-blue-50 rounded-full mb-4">
-                                        <Icon
-                                            icon="mingcute:time-line"
-                                            width="32"
-                                            height="32"
-                                            className="text-blue-600"
-                                        />
-                                    </div>
-                                    <h2 className="text-xl font-semibold text-gray-800 mb-3">
-                                        Delivery Promise
-                                    </h2>
-                                    <p className="text-gray-700 mb-4 leading-relaxed">
-                                        Your order is guaranteed to arrive
-                                        before 12:00 AM tonight.
-                                    </p>
-                                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
-                                        <p className="text-sm text-blue-700">
-                                            <span className="font-semibold">
-                                                Note:{" "}
-                                            </span>
-                                            To ensure freshness, orders not
-                                            completed by the end of the day are
-                                            automatically cancelled.
-                                        </p>
-                                    </div>
-                                    <div className="bg-gray-50 rounded-lg p-4 text-left mb-4">
-                                        <p className="text-sm text-gray-600 mb-2">
-                                            <span className="font-semibold">
-                                                Order ID:
-                                            </span>{" "}
-                                            #{trackingModal.order.id}
-                                        </p>
-                                        <p className="text-sm text-gray-600">
-                                            <span className="font-semibold">
-                                                Status:
-                                            </span>{" "}
-                                            {trackingModal.order.status ===
-                                            "ready for pickup"
-                                                ? "Out for Delivery"
-                                                : trackingModal.order.status}
-                                        </p>
-                                    </div>
+                            <div className="text-center">
+                                <div className="inline-flex items-center justify-center w-14 h-14 bg-sky-50 border border-sky-200/70 rounded-full mb-3">
+                                    <Icon
+                                        icon="mingcute:time-line"
+                                        width="28"
+                                        height="28"
+                                        className="text-sky-700"
+                                    />
                                 </div>
-                            </>
+                                <h2 className="text-lg font-bold text-slate-900 mb-1.5">
+                                    Delivery Promise
+                                </h2>
+                                <p className="text-sm text-slate-600 mb-4 leading-relaxed">
+                                    Your order is guaranteed to arrive before 12:00 AM tonight.
+                                </p>
+                                <div className="bg-sky-50 border border-sky-200/80 rounded-xl p-3 mb-4 text-xs text-sky-800">
+                                    <span className="font-semibold">Note:</span> To ensure freshness, orders not completed by end of day are automatically handled.
+                                </div>
+                                <div className="bg-slate-50 rounded-xl border border-slate-200/70 p-3.5 text-left mb-4 space-y-1 text-xs">
+                                    <p className="text-slate-600">
+                                        <span className="font-semibold text-slate-900">Order ID:</span> #{trackingModal.order.id}
+                                    </p>
+                                    <p className="text-slate-600">
+                                        <span className="font-semibold text-slate-900">Status:</span>{" "}
+                                        {trackingModal.order.status === "ready for pickup"
+                                            ? "Out for Delivery"
+                                            : trackingModal.order.status}
+                                    </p>
+                                </div>
+                            </div>
                         ) : (
-                            <>
-                                {/* Farm Pickup Content */}
-                                <div className="text-center">
-                                    <div className="inline-flex items-center justify-center w-16 h-16 bg-green-50 rounded-full mb-4">
-                                        <Icon
-                                            icon="mingcute:store-line"
-                                            width="32"
-                                            height="32"
-                                            className="text-green-600"
-                                        />
-                                    </div>
-                                    <h2 className="text-xl font-semibold text-gray-800 mb-3">
-                                        Pickup Promise
-                                    </h2>
-                                    <p className="text-gray-700 mb-4 leading-relaxed">
-                                        Please pick up your order at{" "}
-                                        <span className="font-semibold">
-                                            {trackingModal.order
-                                                .sellerAddress || "the farm"}
-                                        </span>{" "}
-                                        before 6:00 PM today.
-                                    </p>
-                                    <div className="bg-green-50 border border-green-200 rounded-lg p-3 mb-4">
-                                        <p className="text-sm text-green-700">
-                                            <span className="font-semibold">
-                                                Note:{" "}
-                                            </span>
-                                            Unclaimed orders are automatically
-                                            cancelled at midnight to ensure
-                                            quality.
-                                        </p>
-                                    </div>
-                                    <div className="bg-gray-50 rounded-lg p-4 text-left mb-4">
-                                        <p className="text-sm text-gray-600 mb-2">
-                                            <span className="font-semibold">
-                                                Order ID:
-                                            </span>{" "}
-                                            #{trackingModal.order.id}
-                                        </p>
-                                        <p className="text-sm text-gray-600 mb-2">
-                                            <span className="font-semibold">
-                                                Status:
-                                            </span>{" "}
-                                            {trackingModal.order.status ===
-                                            "ready for pickup"
-                                                ? "Ready for Pickup"
-                                                : trackingModal.order.status}
-                                        </p>
-                                        <p className="text-sm text-gray-600">
-                                            <span className="font-semibold">
-                                                Seller:
-                                            </span>{" "}
-                                            {trackingModal.order.sellerName ||
-                                                "N/A"}
-                                        </p>
-                                    </div>
+                            <div className="text-center">
+                                <div className="inline-flex items-center justify-center w-14 h-14 bg-emerald-50 border border-emerald-200/70 rounded-full mb-3">
+                                    <Icon
+                                        icon="mingcute:store-line"
+                                        width="28"
+                                        height="28"
+                                        className="text-emerald-700"
+                                    />
                                 </div>
-                            </>
+                                <h2 className="text-lg font-bold text-slate-900 mb-1.5">
+                                    Pickup Promise
+                                </h2>
+                                <p className="text-sm text-slate-600 mb-4 leading-relaxed">
+                                    Please pick up your order at{" "}
+                                    <span className="font-semibold text-slate-900">
+                                        {trackingModal.order.sellerAddress || "the farm"}
+                                    </span>{" "}
+                                    before 6:00 PM today.
+                                </p>
+                                <div className="bg-emerald-50 border border-emerald-200/80 rounded-xl p-3 mb-4 text-xs text-emerald-800">
+                                    <span className="font-semibold">Note:</span> Unclaimed orders are automatically cancelled at midnight to ensure quality.
+                                </div>
+                                <div className="bg-slate-50 rounded-xl border border-slate-200/70 p-3.5 text-left mb-4 space-y-1 text-xs">
+                                    <p className="text-slate-600">
+                                        <span className="font-semibold text-slate-900">Order ID:</span> #{trackingModal.order.id}
+                                    </p>
+                                    <p className="text-slate-600">
+                                        <span className="font-semibold text-slate-900">Status:</span>{" "}
+                                        {trackingModal.order.status === "ready for pickup"
+                                            ? "Ready for Pickup"
+                                            : trackingModal.order.status}
+                                    </p>
+                                    <p className="text-slate-600">
+                                        <span className="font-semibold text-slate-900">Seller:</span> {trackingModal.order.sellerName || "N/A"}
+                                    </p>
+                                </div>
+                            </div>
                         )}
 
                         {/* Buttons */}
-                        <div className="flex gap-3">
+                        <div className="flex gap-2.5">
                             <button
+                                type="button"
                                 onClick={() =>
                                     handleMessageSeller(
                                         trackingModal.order.sellerId
                                     )
                                 }
-                                className="flex-1 px-4 py-2 border border-primary text-primary rounded-lg hover:bg-primary/5 transition-colors font-medium"
+                                className="flex-1 min-h-[44px] px-4 py-2 border border-slate-200 text-slate-700 rounded-xl hover:bg-slate-50 transition-colors font-semibold text-xs active:scale-[0.98]"
                             >
                                 Message Seller
                             </button>
                             <button
+                                type="button"
                                 onClick={() =>
                                     setTrackingModal({
                                         open: false,
                                         order: null,
                                     })
                                 }
-                                className="flex-1 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors font-medium"
+                                className="flex-1 min-h-[44px] px-4 py-2 bg-emerald-700 text-white rounded-xl hover:bg-emerald-800 transition-colors font-semibold text-xs active:scale-[0.98] shadow-xs"
                             >
                                 Got it
                             </button>
                         </div>
                     </div>
-                </>
+                </div>
             )}
         </div>
     );
