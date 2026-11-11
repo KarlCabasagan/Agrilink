@@ -1138,14 +1138,14 @@ function ProducerProduct() {
 
     if (loading) {
         return (
-            <div className="min-h-screen w-full flex flex-col relative items-center scrollbar-hide bg-background overflow-x-hidden text-text pb-20">
-                <div className="fixed top-0 left-0 w-full bg-white shadow-md z-50 px-4 py-3">
-                    <h1 className="text-lg font-semibold text-primary text-center">
+            <div className="min-h-screen w-full flex flex-col relative items-center bg-slate-50/50 text-slate-800 overflow-x-hidden">
+                <header className="md:hidden fixed top-0 left-0 w-full bg-white/95 backdrop-blur-md border-b border-slate-200 z-40 px-4 h-14 flex items-center justify-center">
+                    <h1 className="text-base font-bold text-slate-900 tracking-tight">
                         Product Details
                     </h1>
-                </div>
-                <div className="flex justify-center items-center h-screen">
-                    <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-primary"></div>
+                </header>
+                <div className="flex justify-center items-center h-screen pt-14 md:pt-16">
+                    <div className="w-10 h-10 border-2 border-emerald-600 border-t-transparent rounded-full animate-spin"></div>
                 </div>
                 <ProducerNavigationBar />
             </div>
@@ -1154,26 +1154,42 @@ function ProducerProduct() {
 
     if (!product) {
         return (
-            <div className="min-h-screen w-full flex flex-col relative items-center scrollbar-hide bg-background overflow-x-hidden text-text pb-20">
-                <div className="fixed top-0 left-0 w-full bg-white shadow-md z-50 px-4 py-3">
-                    <h1 className="text-lg font-semibold text-primary text-center">
-                        Product Not Found
-                    </h1>
-                </div>
-                <div className="flex flex-col justify-center items-center h-screen">
-                    <Icon
-                        icon="mingcute:box-line"
-                        width="64"
-                        height="64"
-                        className="text-gray-300 mb-4"
-                    />
-                    <p className="text-gray-500 mb-4">Product not found</p>
+            <div className="min-h-screen w-full flex flex-col relative items-center bg-slate-50/50 text-slate-800 overflow-x-hidden">
+                <header className="md:hidden fixed top-0 left-0 w-full bg-white/95 backdrop-blur-md border-b border-slate-200 z-40 px-4 h-14 flex items-center justify-between">
                     <button
                         onClick={() => navigate("/")}
-                        className="bg-primary text-white px-6 py-2 rounded-lg hover:bg-primary-dark transition-colors"
+                        className="text-slate-600 hover:text-emerald-700 min-w-[36px] min-h-[36px] flex items-center justify-center transition-colors cursor-pointer"
+                        aria-label="Back"
                     >
-                        Back to Products
+                        <Icon icon="mingcute:left-line" width="22" height="22" />
                     </button>
+                    <h1 className="text-base font-bold text-slate-900 tracking-tight">
+                        Product Not Found
+                    </h1>
+                    <div className="w-9" />
+                </header>
+                <div className="flex flex-col justify-center items-center h-screen px-4 pt-14 md:pt-16">
+                    <div className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs p-8 flex flex-col items-center max-w-sm w-full text-center">
+                        <div className="w-14 h-14 rounded-2xl bg-slate-100 flex items-center justify-center text-slate-400 mb-4">
+                            <Icon
+                                icon="mingcute:box-line"
+                                width="32"
+                                height="32"
+                            />
+                        </div>
+                        <h2 className="text-base font-bold text-slate-900 mb-1">
+                            Product Not Found
+                        </h2>
+                        <p className="text-sm text-slate-500 mb-5">
+                            The requested product could not be located or may have been removed.
+                        </p>
+                        <button
+                            onClick={() => navigate("/")}
+                            className="min-h-[44px] px-5 py-2.5 bg-emerald-700 hover:bg-emerald-800 text-white text-sm font-semibold rounded-xl shadow-xs transition-colors cursor-pointer active:scale-[0.98]"
+                        >
+                            Back to Products
+                        </button>
+                    </div>
                 </div>
                 <ProducerNavigationBar />
             </div>
@@ -1181,129 +1197,178 @@ function ProducerProduct() {
     }
 
     return (
-        <div className="min-h-screen w-full flex flex-col relative items-center scrollbar-hide bg-background overflow-x-hidden text-text pb-20">
-            {/* Header */}
-            <div className="fixed top-0 left-0 w-full bg-white shadow-md z-50 px-4 py-3">
-                <div className="flex justify-between items-center">
-                    <button
-                        onClick={() => navigate("/")}
-                        className="text-primary hover:text-primary-dark transition-colors"
-                    >
-                        <Icon
-                            icon="mingcute:arrow-left-line"
-                            width="24"
-                            height="24"
-                        />
-                    </button>
-                    <h1 className="text-lg font-semibold text-primary">
-                        Product Details
-                    </h1>
-                    <div className="flex gap-2">
+        <div className="min-h-screen w-full flex flex-col relative items-center bg-slate-50/50 text-slate-800 overflow-x-hidden">
+            {/* Mobile Header */}
+            <header className="md:hidden fixed top-0 left-0 w-full bg-white/95 backdrop-blur-md border-b border-slate-200 z-40 px-4 h-14 flex items-center justify-between">
+                <button
+                    onClick={() => navigate("/")}
+                    className="text-slate-600 hover:text-emerald-700 min-w-[36px] min-h-[36px] flex items-center justify-center transition-colors cursor-pointer"
+                    aria-label="Back"
+                >
+                    <Icon
+                        icon="mingcute:left-line"
+                        width="22"
+                        height="22"
+                    />
+                </button>
+                <h1 className="text-base font-bold text-slate-900 tracking-tight">
+                    Product Details
+                </h1>
+                <div className="flex items-center gap-1">
+                    {!isEditing ? (
+                        <>
+                            <button
+                                onClick={() => setIsEditing(true)}
+                                className="text-slate-600 hover:text-emerald-700 min-w-[36px] min-h-[36px] flex items-center justify-center transition-colors cursor-pointer active:scale-[0.98]"
+                                aria-label="Edit product"
+                            >
+                                <Icon
+                                    icon="mingcute:edit-line"
+                                    width="20"
+                                    height="20"
+                                />
+                            </button>
+                            <button
+                                onClick={() => setShowDeleteModal(true)}
+                                className="text-rose-600 hover:text-rose-700 min-w-[36px] min-h-[36px] flex items-center justify-center transition-colors cursor-pointer active:scale-[0.98]"
+                                aria-label="Delete product"
+                            >
+                                <Icon
+                                    icon="mingcute:delete-line"
+                                    width="20"
+                                    height="20"
+                                />
+                            </button>
+                        </>
+                    ) : (
+                        <>
+                            <button
+                                onClick={handleCancel}
+                                className="text-slate-500 hover:text-slate-700 min-w-[36px] min-h-[36px] flex items-center justify-center transition-colors cursor-pointer active:scale-[0.98]"
+                                aria-label="Cancel editing"
+                            >
+                                <Icon
+                                    icon="mingcute:close-line"
+                                    width="20"
+                                    height="20"
+                                />
+                            </button>
+                            <button
+                                onClick={handleSave}
+                                disabled={
+                                    !hasFormChanges() || !isFormValid()
+                                }
+                                className={`min-w-[36px] min-h-[36px] flex items-center justify-center transition-colors cursor-pointer active:scale-[0.98] ${
+                                    !hasFormChanges() || !isFormValid()
+                                        ? "text-slate-300 cursor-not-allowed"
+                                        : "text-emerald-700 hover:text-emerald-800"
+                                }`}
+                                aria-label="Save changes"
+                            >
+                                <Icon
+                                    icon="mingcute:check-line"
+                                    width="20"
+                                    height="20"
+                                />
+                            </button>
+                        </>
+                    )}
+                </div>
+            </header>
+
+            <div className="w-full max-w-4xl mx-auto px-4 sm:px-6 pt-16 md:pt-20 pb-24 md:pb-16">
+                {/* Desktop top bar with title & actions */}
+                <div className="hidden md:flex items-center justify-between mb-6">
+                    <div className="flex items-center gap-3">
+                        <button
+                            onClick={() => navigate("/")}
+                            className="p-2 rounded-xl border border-slate-200 bg-white text-slate-600 hover:text-emerald-700 hover:bg-slate-50 shadow-2xs transition-colors cursor-pointer active:scale-[0.98]"
+                            aria-label="Back to products"
+                        >
+                            <Icon icon="mingcute:left-line" width="20" height="20" />
+                        </button>
+                        <div>
+                            <h1 className="text-xl font-bold text-slate-900 tracking-tight">
+                                {isEditing ? "Edit Product" : "Product Details"}
+                            </h1>
+                            <p className="text-xs text-slate-500">
+                                Manage pricing, stock inventory, and product specifications.
+                            </p>
+                        </div>
+                    </div>
+                    <div className="flex items-center gap-2">
                         {!isEditing ? (
                             <>
                                 <button
                                     onClick={() => setIsEditing(true)}
-                                    className="text-blue-600 hover:text-blue-800 transition-colors"
+                                    className="min-h-[40px] px-4 py-2 bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl text-xs font-semibold shadow-xs flex items-center gap-1.5 transition-colors cursor-pointer active:scale-[0.98]"
                                 >
-                                    <Icon
-                                        icon="mingcute:edit-line"
-                                        width="24"
-                                        height="24"
-                                    />
+                                    <Icon icon="mingcute:edit-line" width="16" height="16" />
+                                    Edit Product
                                 </button>
                                 <button
                                     onClick={() => setShowDeleteModal(true)}
-                                    className="text-red-600 hover:text-red-800 transition-colors"
+                                    className="min-h-[40px] px-4 py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200/80 rounded-xl text-xs font-semibold shadow-2xs flex items-center gap-1.5 transition-colors cursor-pointer active:scale-[0.98]"
                                 >
-                                    <Icon
-                                        icon="mingcute:delete-line"
-                                        width="24"
-                                        height="24"
-                                    />
+                                    <Icon icon="mingcute:delete-line" width="16" height="16" />
+                                    Delete
                                 </button>
                             </>
                         ) : (
                             <>
                                 <button
                                     onClick={handleCancel}
-                                    className="text-gray-600 hover:text-gray-800 transition-colors"
+                                    className="min-h-[40px] px-4 py-2 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 rounded-xl text-xs font-semibold shadow-2xs transition-colors cursor-pointer active:scale-[0.98]"
                                 >
-                                    <Icon
-                                        icon="mingcute:close-line"
-                                        width="24"
-                                        height="24"
-                                    />
+                                    Cancel
                                 </button>
                                 <button
                                     onClick={handleSave}
-                                    disabled={
+                                    disabled={!hasFormChanges() || !isFormValid()}
+                                    className={`min-h-[40px] px-4 py-2 rounded-xl text-xs font-semibold shadow-xs flex items-center gap-1.5 transition-colors cursor-pointer active:scale-[0.98] ${
                                         !hasFormChanges() || !isFormValid()
-                                    }
-                                    className={`transition-colors ${
-                                        !hasFormChanges() || !isFormValid()
-                                            ? "text-gray-400 cursor-not-allowed"
-                                            : "text-green-600 hover:text-green-800"
+                                            ? "bg-slate-200 text-slate-400 cursor-not-allowed"
+                                            : "bg-emerald-700 hover:bg-emerald-800 text-white"
                                     }`}
                                 >
-                                    <Icon
-                                        icon="mingcute:check-line"
-                                        width="24"
-                                        height="24"
-                                    />
+                                    <Icon icon="mingcute:check-line" width="16" height="16" />
+                                    Save Changes
                                 </button>
                             </>
                         )}
                     </div>
                 </div>
-            </div>
 
-            <div className="w-full max-w-4xl mx-4 sm:mx-auto my-16">
                 {/* Rejection/Suspension Alert */}
                 {product.rejection_reason && (
                     <div
-                        className={`mb-4 border rounded-lg p-4 ${
+                        className={`mb-6 border rounded-2xl p-4 sm:p-5 shadow-2xs ${
                             product.status_id === 2
-                                ? "bg-red-50 border-red-200"
-                                : "bg-orange-50 border-orange-200"
+                                ? "bg-rose-50/80 border-rose-200/80 text-rose-900"
+                                : "bg-amber-50/80 border-amber-200/80 text-amber-900"
                         }`}
                     >
                         <div className="flex items-start gap-3">
-                            <Icon
-                                icon="mingcute:warning-line"
-                                className={`w-5 h-5 mt-0.5 flex-shrink-0 ${
-                                    product.status_id === 2
-                                        ? "text-red-500"
-                                        : "text-orange-500"
-                                }`}
-                            />
+                            <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${
+                                product.status_id === 2
+                                    ? "bg-white/80 border border-rose-200 text-rose-600"
+                                    : "bg-white/80 border border-amber-200 text-amber-600"
+                            }`}>
+                                <Icon
+                                    icon="mingcute:warning-line"
+                                    className="w-5 h-5"
+                                />
+                            </div>
                             <div>
-                                <h4
-                                    className={`text-sm font-semibold mb-1 ${
-                                        product.status_id === 2
-                                            ? "text-red-800"
-                                            : "text-orange-800"
-                                    }`}
-                                >
+                                <h4 className="text-sm font-bold tracking-tight mb-1">
                                     {product.status_id === 2
                                         ? "Product Suspended"
                                         : "Product Rejected"}
                                 </h4>
-                                <p
-                                    className={`text-sm ${
-                                        product.status_id === 2
-                                            ? "text-red-700"
-                                            : "text-orange-700"
-                                    }`}
-                                >
+                                <p className="text-xs leading-relaxed opacity-90">
                                     {product.rejection_reason}
                                 </p>
-                                <p
-                                    className={`text-xs mt-2 ${
-                                        product.status_id === 2
-                                            ? "text-red-600"
-                                            : "text-orange-600"
-                                    }`}
-                                >
+                                <p className="text-[11px] mt-2 opacity-75">
                                     {product.status_id === 2
                                         ? "Update your product details to address the suspension reason. Product will be reviewed again after update."
                                         : "Update your product details to address the rejection reason. Product will be reviewed again after update."}
@@ -1313,7 +1378,7 @@ function ProducerProduct() {
                     </div>
                 )}
 
-                <div className="bg-white rounded-lg shadow-md overflow-hidden mt-4">
+                <div className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs overflow-hidden mt-2">
                     {/* Product Image */}
                     <div className="relative">
                         {isEditing ? (
@@ -1801,41 +1866,41 @@ function ProducerProduct() {
                             </div>
                         ) : (
                             <div>
-                                <h1 className="text-2xl font-bold text-gray-800 mb-2">
+                                <h1 className="text-2xl font-bold text-slate-900 tracking-tight mb-3">
                                     {product.name}
                                 </h1>
 
-                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
-                                    <div className="bg-gray-50 p-3 rounded-lg">
-                                        <h3 className="text-sm font-medium text-gray-600 mb-1">
+                                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
+                                    <div className="bg-slate-50/80 border border-slate-200/70 p-3.5 rounded-xl">
+                                        <h3 className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 mb-1">
                                             Price per kg
                                         </h3>
-                                        <p className="text-xl font-bold text-primary">
+                                        <p className="text-xl font-bold text-emerald-700 tabular-nums">
                                             ₱{product.price.toFixed(2)}
                                         </p>
                                     </div>
-                                    <div className="bg-gray-50 p-3 rounded-lg">
-                                        <h3 className="text-sm font-medium text-gray-600 mb-1">
+                                    <div className="bg-slate-50/80 border border-slate-200/70 p-3.5 rounded-xl">
+                                        <h3 className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 mb-1">
                                             Stock
                                         </h3>
-                                        <p className="text-lg font-semibold text-gray-800">
+                                        <p className="text-lg font-bold text-slate-900 tabular-nums">
                                             {product.stock} kg
                                         </p>
                                     </div>
-                                    <div className="bg-gray-50 p-3 rounded-lg">
-                                        <h3 className="text-sm font-medium text-gray-600 mb-1">
+                                    <div className="bg-slate-50/80 border border-slate-200/70 p-3.5 rounded-xl">
+                                        <h3 className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 mb-1">
                                             Category
                                         </h3>
-                                        <p className="text-lg font-semibold text-gray-800">
+                                        <p className="text-sm font-semibold text-slate-900">
                                             {product.category}
                                         </p>
                                     </div>
                                     {product.cropType && (
-                                        <div className="bg-gray-50 p-3 rounded-lg">
-                                            <h3 className="text-sm font-medium text-gray-600 mb-1">
+                                        <div className="bg-slate-50/80 border border-slate-200/70 p-3.5 rounded-xl">
+                                            <h3 className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 mb-1">
                                                 Crop Type
                                             </h3>
-                                            <p className="text-lg font-semibold text-gray-800">
+                                            <p className="text-sm font-semibold text-slate-900">
                                                 {product.cropType}
                                             </p>
                                         </div>
@@ -1844,25 +1909,25 @@ function ProducerProduct() {
 
                                 {product.description && (
                                     <div className="mb-6">
-                                        <h3 className="text-lg font-semibold text-gray-800 mb-2">
+                                        <h3 className="text-sm font-bold text-slate-900 mb-1.5 tracking-tight">
                                             Description
                                         </h3>
-                                        <p className="text-gray-600 leading-relaxed">
+                                        <p className="text-slate-600 text-sm leading-relaxed max-w-prose">
                                             {product.description}
                                         </p>
                                     </div>
                                 )}
 
                                 {/* Rating and Reviews Summary */}
-                                <div className="bg-white border border-gray-200 rounded-lg shadow-sm p-6 mb-6">
-                                    <h3 className="text-lg font-semibold text-gray-800 mb-6">
+                                <div className="bg-slate-50/50 border border-slate-200/80 rounded-2xl p-5 mb-6">
+                                    <h3 className="text-base font-bold text-slate-900 tracking-tight mb-4">
                                         Customer Reviews
                                     </h3>
 
                                     {/* Main Rating Display */}
-                                    <div className="flex items-center justify-center mb-6 p-4 bg-gray-50 rounded-lg">
+                                    <div className="flex items-center justify-center mb-6 p-4 bg-white border border-slate-200/80 rounded-xl shadow-2xs">
                                         <div className="text-center">
-                                            <div className="text-4xl font-bold text-gray-800 mb-2">
+                                            <div className="text-4xl font-bold text-slate-900 mb-2 tabular-nums">
                                                 {product.ratingDisplay}
                                             </div>
                                             <div className="flex items-center justify-center gap-1 mb-2">
@@ -1870,12 +1935,12 @@ function ProducerProduct() {
                                                     <Icon
                                                         key={star}
                                                         icon="mingcute:star-fill"
-                                                        className={`w-6 h-6 ${
+                                                        className={`w-5 h-5 ${
                                                             star <=
                                                             Math.floor(
                                                                 product.rating
                                                             )
-                                                                ? "text-yellow-400"
+                                                                ? "text-amber-400"
                                                                 : star ===
                                                                       Math.ceil(
                                                                           product.rating
@@ -1883,13 +1948,13 @@ function ProducerProduct() {
                                                                   product.rating %
                                                                       1 !==
                                                                       0
-                                                                ? "text-yellow-200"
-                                                                : "text-gray-300"
+                                                                ? "text-amber-200"
+                                                                : "text-slate-200"
                                                         }`}
                                                     />
                                                 ))}
                                             </div>
-                                            <div className="text-sm text-gray-600">
+                                            <div className="text-xs text-slate-500 tabular-nums">
                                                 Based on {product.reviewCount}{" "}
                                                 reviews
                                             </div>
@@ -1991,17 +2056,17 @@ function ProducerProduct() {
                                                     </select>
                                                 </div>
                                             </div>
-                                            <div className="space-y-4">
+                                            <div className="space-y-3">
                                                 {sortReviews(product.reviews)
                                                     .slice(0, 3)
                                                     .map((review, index) => {
                                                         return (
                                                             <div
                                                                 key={`${review.id}-${reviewSortBy}-${index}`}
-                                                                className="bg-white border border-gray-200 rounded-lg shadow-sm p-6"
+                                                                className="bg-white border border-slate-200/90 rounded-2xl shadow-2xs p-4 sm:p-5"
                                                             >
-                                                                <div className="flex items-start justify-between mb-4">
-                                                                    <div className="flex items-start gap-4 flex-1">
+                                                                <div className="flex items-start justify-between mb-3">
+                                                                    <div className="flex items-start gap-3 flex-1">
                                                                         <img
                                                                             src={
                                                                                 review.userImage
@@ -2009,20 +2074,20 @@ function ProducerProduct() {
                                                                             alt={
                                                                                 review.userName
                                                                             }
-                                                                            className="w-12 h-12 rounded-full object-cover"
+                                                                            className="w-10 h-10 rounded-xl object-cover border border-slate-200"
                                                                         />
                                                                         <div className="flex-1">
-                                                                            <div className="flex items-center gap-2 mb-2">
-                                                                                <h4 className="font-medium text-gray-800">
+                                                                            <div className="flex items-center gap-2 mb-1">
+                                                                                <h4 className="font-semibold text-sm text-slate-900">
                                                                                     {
                                                                                         review.userName
                                                                                     }
                                                                                 </h4>
-                                                                                <span className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded">
+                                                                                <span className="bg-emerald-50 text-emerald-800 border border-emerald-200/80 text-[11px] font-semibold px-2 py-0.5 rounded-full">
                                                                                     Purchased
                                                                                 </span>
                                                                             </div>
-                                                                            <div className="flex items-center gap-2 mb-3">
+                                                                            <div className="flex items-center gap-2 mb-2">
                                                                                 <div className="flex">
                                                                                     {[
                                                                                         1,
@@ -2039,30 +2104,30 @@ function ProducerProduct() {
                                                                                                     star
                                                                                                 }
                                                                                                 icon="mingcute:star-fill"
-                                                                                                className={`w-4 h-4 ${
+                                                                                                className={`w-3.5 h-3.5 ${
                                                                                                     star <=
                                                                                                     review.rating
-                                                                                                        ? "text-yellow-400"
-                                                                                                        : "text-gray-300"
+                                                                                                        ? "text-amber-400"
+                                                                                                        : "text-slate-200"
                                                                                                 }`}
                                                                                             />
                                                                                         )
                                                                                     )}
                                                                                 </div>
-                                                                                <span className="text-sm text-gray-500">
+                                                                                <span className="text-xs text-slate-400">
                                                                                     {new Date(
                                                                                         review.date
                                                                                     ).toLocaleDateString(
                                                                                         "en-US",
                                                                                         {
                                                                                             year: "numeric",
-                                                                                            month: "long",
+                                                                                            month: "short",
                                                                                             day: "numeric",
                                                                                         }
                                                                                     )}
                                                                                 </span>
                                                                             </div>
-                                                                            <p className="text-gray-600 leading-relaxed mb-3">
+                                                                            <p className="text-slate-600 text-sm leading-relaxed mb-3 max-w-prose">
                                                                                 {
                                                                                     review.comment
                                                                                 }
@@ -2073,13 +2138,13 @@ function ProducerProduct() {
                                                                                         review.image
                                                                                     }
                                                                                     alt="Review"
-                                                                                    className="mt-3 mb-3 max-w-xs rounded-lg h-40 w-40"
+                                                                                    className="mt-2 mb-3 max-w-xs rounded-xl h-36 w-36 object-cover border border-slate-200"
                                                                                 />
                                                                             )}
-                                                                            <div className="flex items-center justify-between gap-4 text-sm text-gray-500">
+                                                                            <div className="flex items-center justify-between gap-4 text-xs text-slate-500">
                                                                                 {review.helpfulCount >
                                                                                     0 && (
-                                                                                    <span className="flex items-center gap-1">
+                                                                                    <span className="flex items-center gap-1 tabular-nums">
                                                                                         <Icon
                                                                                             icon="mingcute:thumb-up-line"
                                                                                             width="14"
@@ -2106,14 +2171,14 @@ function ProducerProduct() {
                                                                                         )
                                                                                             ?.isUpdating
                                                                                     }
-                                                                                    className={`flex items-center gap-1 hover:text-red-600 transition-colors
+                                                                                    className={`flex items-center gap-1 hover:text-rose-600 transition-colors cursor-pointer
                                                                                         ${
                                                                                             reviewStates.get(
                                                                                                 review.id
                                                                                             )
                                                                                                 ?.reported
-                                                                                                ? "text-red-600"
-                                                                                                : ""
+                                                                                                ? "text-rose-600"
+                                                                                                : "text-slate-400"
                                                                                         }`}
                                                                                 >
                                                                                     <Icon
@@ -2145,9 +2210,9 @@ function ProducerProduct() {
                                             </div>
                                             {product.reviews.length > 3 && (
                                                 <div className="mt-6 text-center">
-                                                    <button className="bg-primary text-white px-6 py-2 rounded-lg hover:bg-primary-dark transition-colors font-medium">
+                                                    <button className="min-h-[44px] bg-emerald-700 hover:bg-emerald-800 text-white px-6 py-2.5 rounded-xl transition-colors font-semibold text-sm active:scale-[0.98] shadow-xs cursor-pointer">
                                                         View all{" "}
-                                                        {product.reviewCount}{" "}
+                                                        <span className="tabular-nums">{product.reviewCount}</span>{" "}
                                                         reviews
                                                     </button>
                                                 </div>

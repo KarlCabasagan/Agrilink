@@ -85,77 +85,77 @@ function FarmingGuides() {
     }
 
     return (
-        <div className="min-h-screen w-full flex flex-col relative items-center scrollbar-hide bg-background overflow-x-hidden text-text pb-20">
-            {/* Header */}
-            <div className="fixed top-0 left-0 w-full bg-white shadow-md z-50 px-4 py-3">
-                <div className="flex items-center">
+        <div className="min-h-screen w-full flex flex-col relative items-center bg-slate-50/50 text-slate-800 overflow-x-hidden">
+            {/* Mobile Header */}
+            <header className="md:hidden fixed top-0 left-0 w-full bg-white/95 backdrop-blur-md border-b border-slate-200 z-40 px-4 h-14 flex items-center justify-between">
+                <div className="flex items-center gap-2">
                     <button
                         onClick={() => navigate(-1)}
-                        className="text-primary hover:text-primary-dark mr-3"
+                        className="text-slate-600 hover:text-emerald-700 min-w-[36px] min-h-[36px] flex items-center justify-center transition-colors cursor-pointer"
+                        aria-label="Back"
                     >
                         <Icon
                             icon="mingcute:left-line"
-                            width="24"
-                            height="24"
+                            width="22"
+                            height="22"
                         />
                     </button>
-                    <h1 className="text-lg font-semibold text-primary">
+                    <h1 className="text-base font-bold text-slate-900 tracking-tight">
                         Farming Guides
                     </h1>
                 </div>
-            </div>
+            </header>
 
-            <div className="w-full max-w-6xl mx-4 sm:mx-auto my-16 px-4 sm:px-0">
+            <div className="w-full max-w-6xl mx-auto px-4 sm:px-6 pt-16 md:pt-20 pb-24 md:pb-16">
                 {/* Info Banner */}
-                <div className="mb-6 bg-emerald-50 border border-emerald-200 rounded-lg p-4 mt-4">
+                <div className="mb-6 bg-emerald-50/80 border border-emerald-200/80 rounded-2xl p-4 sm:p-5 text-emerald-900 shadow-2xs mt-2">
                     <div className="flex items-start gap-3">
-                        <Icon
-                            icon="mingcute:book-line"
-                            width="24"
-                            height="24"
-                            className="text-emerald-600 mt-0.5"
-                        />
+                        <div className="w-9 h-9 rounded-xl bg-white/80 border border-emerald-200/80 flex items-center justify-center text-emerald-700 shrink-0">
+                            <Icon
+                                icon="mingcute:book-line"
+                                width="18"
+                                height="18"
+                            />
+                        </div>
                         <div>
-                            <h3 className="font-semibold text-emerald-800 mb-1">
-                                Learn From Expert Farmers
+                            <h3 className="font-bold text-slate-900 text-sm mb-1 tracking-tight">
+                                Learn From Agricultural Experts
                             </h3>
-                            <p className="text-emerald-700 text-sm">
-                                Access video tutorials and guides curated by
-                                agricultural experts. Improve your farming
-                                techniques and increase your crop yields.
+                            <p className="text-slate-600 text-xs leading-relaxed">
+                                Access video tutorials and guides curated for local farming conditions. Improve cultivation methods, pest management, and post-harvest handling.
                             </p>
                         </div>
                     </div>
                 </div>
 
                 {/* Search and Filters */}
-                <div className="bg-white rounded-lg shadow-md p-4 mb-6">
-                    <div className="flex flex-col sm:flex-row gap-4">
+                <div className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs p-4 mb-6">
+                    <div className="flex flex-col sm:flex-row gap-3">
                         {/* Search */}
                         <div className="flex-1 relative">
                             <Icon
                                 icon="mingcute:search-line"
-                                width="20"
-                                height="20"
-                                className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"
+                                width="18"
+                                height="18"
+                                className="absolute left-3.5 top-1/2 transform -translate-y-1/2 text-slate-400"
                             />
                             <input
                                 type="text"
-                                placeholder="Search farming guides..."
+                                placeholder="Search farming guides by crop or technique..."
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
-                                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+                                className="w-full h-11 pl-10 pr-4 bg-slate-50/50 border border-slate-200 rounded-xl text-sm text-slate-900 placeholder:text-slate-400 outline-none focus:bg-white focus:border-emerald-600 focus:ring-2 focus:ring-emerald-600/15 transition-all"
                             />
                         </div>
 
                         {/* Category Filter */}
-                        <div className="sm:w-48">
+                        <div className="sm:w-52">
                             <select
                                 value={selectedCrop}
                                 onChange={(e) =>
                                     setSelectedCrop(e.target.value)
                                 }
-                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+                                className="w-full h-11 px-3 bg-slate-50/50 border border-slate-200 rounded-xl text-sm text-slate-900 outline-none focus:bg-white focus:border-emerald-600 focus:ring-2 focus:ring-emerald-600/15 cursor-pointer transition-all"
                             >
                                 {crops.map((crop) => (
                                     <option key={crop} value={crop}>
@@ -185,7 +185,7 @@ function FarmingGuides() {
                             return (
                                 <div
                                     key={guide.id}
-                                    className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow duration-300"
+                                    className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs hover:shadow-md transition-all duration-200 overflow-hidden"
                                 >
                                     {/* Video Player */}
                                     <div className="relative bg-gray-200 h-48">
@@ -212,7 +212,7 @@ function FarmingGuides() {
                                     {/* Guide Info */}
                                     <div className="p-4">
                                         <div className="flex items-start justify-between mb-2">
-                                            <span className="bg-primary/10 text-primary px-2 py-1 rounded text-xs font-medium">
+                                            <span className="bg-emerald-50 text-emerald-800 border border-emerald-200/80 px-2.5 py-0.5 rounded-full text-[11px] font-semibold">
                                                 {guide.crop_name}
                                             </span>
                                         </div>
@@ -277,22 +277,21 @@ function FarmingGuides() {
                 )}
 
                 {/* Help Section */}
-                <div className="mt-8 bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <div className="mt-8 bg-slate-50/80 border border-slate-200/80 rounded-2xl p-4 sm:p-5 shadow-2xs">
                     <div className="flex items-start gap-3">
-                        <Icon
-                            icon="mingcute:question-line"
-                            width="24"
-                            height="24"
-                            className="text-blue-600 mt-0.5"
-                        />
+                        <div className="w-9 h-9 rounded-xl bg-emerald-50 border border-emerald-200/80 flex items-center justify-center text-emerald-700 shrink-0">
+                            <Icon
+                                icon="mingcute:question-line"
+                                width="18"
+                                height="18"
+                            />
+                        </div>
                         <div>
-                            <h3 className="font-semibold text-blue-800 mb-1">
-                                Need Help?
+                            <h3 className="font-bold text-slate-900 text-sm mb-1 tracking-tight">
+                                Need Specialized Advice?
                             </h3>
-                            <p className="text-blue-700 text-sm">
-                                Can't find the guide you're looking for? Contact
-                                our agricultural experts for personalized
-                                farming advice and support.
+                            <p className="text-slate-600 text-xs leading-relaxed">
+                                Can't find the guide you're looking for? Reach out via our Help Center or join our local farmer community network for peer tips and crop consultation.
                             </p>
                         </div>
                     </div>
