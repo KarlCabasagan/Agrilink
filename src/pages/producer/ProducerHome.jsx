@@ -93,26 +93,41 @@ const ProductModal = memo(
         return (
             <>
                 <div
-                    className="fixed inset-0 z-[9999] bg-black opacity-50"
+                    className="fixed inset-0 z-[9999] bg-slate-900/40 backdrop-blur-xs"
                     onClick={onClose}
                 ></div>
-                <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4">
-                    <div className="bg-white rounded-lg shadow-xl w-full max-w-md sm:max-w-lg md:max-w-2xl lg:max-w-3xl xl:max-w-4xl max-h-[90vh] overflow-y-auto">
-                        <div className="p-6">
-                            <div className="flex justify-between items-center mb-4">
-                                <h3 className="text-lg font-semibold">
-                                    {isEdit
-                                        ? "Edit Product"
-                                        : "Add New Product"}
-                                </h3>
+                <div className="fixed inset-0 z-[10000] flex items-center justify-center p-3 sm:p-4">
+                    <div className="bg-white rounded-2xl border border-slate-200/90 shadow-xl w-full max-w-md sm:max-w-lg md:max-w-2xl lg:max-w-3xl xl:max-w-4xl max-h-[90vh] overflow-y-auto">
+                        <div className="p-5 sm:p-6">
+                            <div className="flex justify-between items-center mb-5 pb-3 border-b border-slate-100">
+                                <div className="flex items-center gap-2.5">
+                                    <div className="w-9 h-9 rounded-xl bg-emerald-50 border border-emerald-200/80 flex items-center justify-center text-emerald-700">
+                                        <Icon
+                                            icon={isEdit ? "mingcute:edit-line" : "mingcute:add-circle-line"}
+                                            width="18"
+                                            height="18"
+                                        />
+                                    </div>
+                                    <div>
+                                        <h3 className="text-base font-bold text-slate-900 tracking-tight">
+                                            {isEdit
+                                                ? "Edit Product"
+                                                : "Add New Product"}
+                                        </h3>
+                                        <p className="text-xs text-slate-500">
+                                            Fill in crop details, quantity, and pricing
+                                        </p>
+                                    </div>
+                                </div>
                                 <button
                                     onClick={onClose}
-                                    className="text-gray-400 hover:text-gray-600"
+                                    className="w-9 h-9 rounded-xl text-slate-400 hover:text-slate-600 hover:bg-slate-100/70 flex items-center justify-center transition-colors cursor-pointer"
+                                    aria-label="Close dialog"
                                 >
                                     <Icon
                                         icon="mingcute:close-line"
-                                        width="24"
-                                        height="24"
+                                        width="20"
+                                        height="20"
                                     />
                                 </button>
                             </div>
@@ -609,11 +624,11 @@ const ProductModal = memo(
                                 </div>
                             </div>
 
-                            <div className="flex gap-3 mt-6">
+                            <div className="flex gap-2.5 mt-6 pt-4 border-t border-slate-100">
                                 <button
                                     onClick={onClose}
                                     disabled={isSubmitting}
-                                    className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                    className="flex-1 h-11 px-4 border border-slate-200 text-slate-700 rounded-xl hover:bg-slate-50 transition-colors text-xs font-semibold active:scale-[0.98] cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                                 >
                                     Cancel
                                 </button>
@@ -643,17 +658,21 @@ const ProductModal = memo(
                                             productForm.image_url ===
                                                 selectedProduct?.image_url)
                                     }
-                                    className="flex-1 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                                    className="flex-1 h-11 px-4 bg-emerald-700 hover:bg-emerald-800 active:scale-[0.98] text-white rounded-xl transition-colors text-xs font-semibold shadow-xs cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100 flex items-center justify-center gap-2"
                                 >
                                     {isSubmitting ? (
                                         <>
                                             <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                                            {isEdit
-                                                ? "Updating..."
-                                                : "Adding..."}
+                                            <span>
+                                                {isEdit
+                                                    ? "Updating..."
+                                                    : "Adding..."}
+                                            </span>
                                         </>
                                     ) : (
-                                        <>{isEdit ? "Update" : "Add"} Product</>
+                                        <span>
+                                            {isEdit ? "Update" : "Add"} Product
+                                        </span>
                                     )}
                                 </button>
                             </div>
