@@ -1620,7 +1620,7 @@ function ProducerHome() {
     }, [resetForm]);
 
     return (
-        <div className="min-h-screen w-full flex flex-col relative items-center scrollbar-hide bg-background overflow-x-hidden text-text pb-20">
+        <div className="min-h-screen w-full flex flex-col relative items-center bg-slate-50/50 text-slate-800 overflow-x-hidden">
             {/* Modals */}
             <ProductModal
                 isOpen={showAddModal}
@@ -1668,27 +1668,30 @@ function ProducerHome() {
                 confirmButtonClass="bg-red-600 hover:bg-red-700"
             />
 
-            {/* Header */}
-            <div className="fixed top-0 left-0 w-full bg-white shadow-md z-50 px-4 py-3 flex justify-between items-center">
-                <h1 className="text-lg font-semibold text-primary">
-                    My Products
-                </h1>
-                {/* <button
+            {/* Mobile-only Header */}
+            <header className="md:hidden fixed top-0 left-0 w-full bg-white/95 backdrop-blur-md border-b border-slate-200 z-40 px-4 h-14 flex justify-between items-center">
+                <div className="flex items-center gap-2">
+                    <Icon icon="mingcute:plant-fill" width="20" height="20" className="text-emerald-700" />
+                    <h1 className="text-base font-bold text-slate-900 tracking-tight">
+                        My Products
+                    </h1>
+                </div>
+                <button
                     onClick={() => setShowAddModal(true)}
-                    className="bg-primary text-white px-4 py-2 rounded-lg hover:bg-primary-dark transition-colors flex items-center gap-2"
+                    className="h-9 px-3 bg-emerald-700 hover:bg-emerald-800 active:scale-[0.98] text-white rounded-xl text-xs font-semibold flex items-center gap-1.5 shadow-xs transition-colors cursor-pointer"
                 >
-                    <Icon icon="mingcute:add-line" width="20" height="20" />
-                    Add Product
-                </button> */}
-            </div>
+                    <Icon icon="mingcute:add-line" width="16" height="16" />
+                    <span>Add</span>
+                </button>
+            </header>
 
-            <div className="w-full max-w-6xl mx-4 sm:mx-auto my-16">
+            <div className="w-full max-w-6xl mx-auto px-4 sm:px-6 pt-16 md:pt-20 pb-24 md:pb-16">
                 {/* Delivery Settings */}
-                <div className="mb-6 mt-4">
-                    <div className="bg-white rounded-lg shadow-md">
+                <div className="mb-6 mt-2">
+                    <div className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs overflow-hidden">
                         {/* Header - Always visible */}
                         <div
-                            className="p-6 cursor-pointer hover:bg-gray-50 transition-colors"
+                            className="p-5 sm:p-6 cursor-pointer hover:bg-slate-50/80 transition-colors"
                             onClick={() =>
                                 setIsDeliverySettingsExpanded(
                                     !isDeliverySettingsExpanded
@@ -1696,40 +1699,47 @@ function ProducerHome() {
                             }
                         >
                             <div className="flex items-center justify-between">
-                                <div className="flex items-center gap-2">
-                                    <Icon
-                                        icon="mingcute:truck-line"
-                                        width="24"
-                                        height="24"
-                                        className="text-primary"
-                                    />
-                                    <h3 className="text-lg font-semibold text-gray-800">
-                                        Delivery Settings
-                                    </h3>
+                                <div className="flex items-center gap-3">
+                                    <div className="w-10 h-10 rounded-xl bg-emerald-50 border border-emerald-200/80 flex items-center justify-center text-emerald-700 shrink-0">
+                                        <Icon
+                                            icon="mingcute:truck-line"
+                                            width="20"
+                                            height="20"
+                                        />
+                                    </div>
+                                    <div>
+                                        <h3 className="text-sm sm:text-base font-bold text-slate-900 tracking-tight">
+                                            Delivery Settings
+                                        </h3>
+                                        <p className="text-xs text-slate-500">
+                                            Configure shipping fees, minimum orders, and limits
+                                        </p>
+                                    </div>
                                 </div>
-                                <Icon
-                                    icon={
-                                        isDeliverySettingsExpanded
-                                            ? "mingcute:up-line"
-                                            : "mingcute:down-line"
-                                    }
-                                    width="20"
-                                    height="20"
-                                    className="text-gray-500 transition-transform"
-                                />
+                                <div className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:text-slate-600 transition-transform">
+                                    <Icon
+                                        icon={
+                                            isDeliverySettingsExpanded
+                                                ? "mingcute:up-line"
+                                                : "mingcute:down-line"
+                                        }
+                                        width="18"
+                                        height="18"
+                                    />
+                                </div>
                             </div>
                         </div>
 
                         {/* Expandable Content */}
                         {isDeliverySettingsExpanded && (
-                            <div className="px-6 pb-6 pt-0">
-                                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 mb-4">
+                            <div className="px-5 sm:px-6 pb-6 pt-0 border-t border-slate-100">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 mb-4 mt-4">
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                                        <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
                                             Delivery Cost
                                         </label>
                                         <div className="relative">
-                                            <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">
+                                            <span className="absolute left-3.5 top-1/2 transform -translate-y-1/2 text-slate-400 text-sm font-semibold">
                                                 ₱
                                             </span>
                                             <input
@@ -1744,18 +1754,17 @@ function ProducerHome() {
                                                         ) || 0
                                                     )
                                                 }
-                                                className="w-full pl-8 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-primary focus:border-primary"
+                                                className="w-full h-11 pl-8 pr-3.5 bg-slate-50/50 border border-slate-200 rounded-xl text-sm text-slate-900 placeholder:text-slate-400 tabular-nums outline-none focus:bg-white focus:border-emerald-600 focus:ring-2 focus:ring-emerald-600/15 transition-all"
                                                 placeholder="50.00"
                                             />
                                         </div>
-                                        <p className="text-xs text-gray-500 mt-1">
-                                            This applies once per order from
-                                            your farm
+                                        <p className="text-[11px] text-slate-500 mt-1">
+                                            Charged once per order from your farm
                                         </p>
                                     </div>
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                                            Minimum Order Quantity (kg)
+                                        <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
+                                            Min Order Quantity (kg)
                                         </label>
                                         <input
                                             type="number"
@@ -1769,16 +1778,15 @@ function ProducerHome() {
                                                     ) || 1.0
                                                 )
                                             }
-                                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-primary focus:border-primary"
+                                            className="w-full h-11 px-3.5 bg-slate-50/50 border border-slate-200 rounded-xl text-sm text-slate-900 placeholder:text-slate-400 tabular-nums outline-none focus:bg-white focus:border-emerald-600 focus:ring-2 focus:ring-emerald-600/15 transition-all"
                                             placeholder="2.0"
                                         />
-                                        <p className="text-xs text-gray-500 mt-1">
-                                            Total quantity required for home
-                                            delivery
+                                        <p className="text-[11px] text-slate-500 mt-1">
+                                            Total weight required for home delivery
                                         </p>
                                     </div>
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                                        <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
                                             Daily Delivery Limit
                                         </label>
                                         <input
@@ -1792,22 +1800,22 @@ function ProducerHome() {
                                                         0
                                                 )
                                             }
-                                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-primary focus:border-primary"
+                                            className="w-full h-11 px-3.5 bg-slate-50/50 border border-slate-200 rounded-xl text-sm text-slate-900 placeholder:text-slate-400 tabular-nums outline-none focus:bg-white focus:border-emerald-600 focus:ring-2 focus:ring-emerald-600/15 transition-all"
                                             placeholder="3"
                                         />
-                                        <p className="text-xs text-gray-500 mt-1">
+                                        <p className="text-[11px] text-slate-500 mt-1">
                                             {dailyDeliveryLimit === 0
-                                                ? "Home Delivery is disabled"
-                                                : `Maximum ${dailyDeliveryLimit} orders per day`}
+                                                ? "Home delivery is disabled"
+                                                : `Max ${dailyDeliveryLimit} orders fulfilled per day`}
                                         </p>
                                     </div>
                                 </div>
 
                                 <div className="mb-4">
-                                    <div className="bg-blue-50 border border-blue-200 rounded-lg">
+                                    <div className="bg-slate-50/80 border border-slate-200/80 rounded-xl overflow-hidden">
                                         {/* How it works header */}
                                         <div
-                                            className="p-3 cursor-pointer hover:bg-blue-100 transition-colors"
+                                            className="p-3 cursor-pointer hover:bg-slate-100/70 transition-colors"
                                             onClick={() =>
                                                 setIsHowItWorksExpanded(
                                                     !isHowItWorksExpanded
@@ -1815,14 +1823,15 @@ function ProducerHome() {
                                             }
                                         >
                                             <div className="flex items-center justify-between">
-                                                <div className="flex items-center gap-2 text-blue-700">
+                                                <div className="flex items-center gap-2 text-slate-700">
                                                     <Icon
                                                         icon="mingcute:information-line"
                                                         width="16"
                                                         height="16"
+                                                        className="text-emerald-700"
                                                     />
-                                                    <span className="text-sm font-medium">
-                                                        How it works
+                                                    <span className="text-xs font-semibold text-slate-800">
+                                                        How delivery works
                                                     </span>
                                                 </div>
                                                 <Icon
@@ -1833,7 +1842,7 @@ function ProducerHome() {
                                                     }
                                                     width="16"
                                                     height="16"
-                                                    className="text-blue-700 transition-transform"
+                                                    className="text-slate-500 transition-transform"
                                                 />
                                             </div>
                                         </div>
@@ -1841,30 +1850,20 @@ function ProducerHome() {
                                         {/* How it works content */}
                                         {isHowItWorksExpanded && (
                                             <div className="px-3 pb-3">
-                                                <div className="text-xs text-blue-600 space-y-1">
+                                                <div className="text-xs text-slate-600 space-y-1">
                                                     <p>
-                                                        • Delivery cost is
-                                                        charged once per order
-                                                        from your farm
+                                                        • Delivery cost is charged once per order from your farm
                                                     </p>
                                                     <p>
-                                                        • Customers must order
-                                                        at least{" "}
-                                                        {minimumOrderQuantity}kg
-                                                        total from your farm for
-                                                        delivery
+                                                        • Customers must order at least{" "}
+                                                        <span className="font-semibold text-slate-900 tabular-nums">{minimumOrderQuantity}kg</span>{" "}
+                                                        total from your farm for delivery
                                                     </p>
                                                     <p>
-                                                        • Multiple products can
-                                                        be combined to meet the
-                                                        minimum quantity
+                                                        • Multiple products can be combined to meet the minimum quantity
                                                     </p>
                                                     <p>
-                                                        • Setting the Daily
-                                                        Delivery Limit to 0 will
-                                                        disable the Home
-                                                        Delivery option for
-                                                        customers
+                                                        • Setting the Daily Delivery Limit to 0 disables home delivery for buyers
                                                     </p>
                                                 </div>
                                             </div>
@@ -1878,7 +1877,7 @@ function ProducerHome() {
                                         originalMinimumOrderQuantity ||
                                     dailyDeliveryLimit !==
                                         originalDailyDeliveryLimit) && (
-                                    <div className="flex justify-end gap-3 pt-4 border-t border-gray-200">
+                                    <div className="flex justify-end gap-2.5 pt-4 border-t border-slate-100">
                                         <button
                                             onClick={() => {
                                                 setDeliveryCost(
@@ -1891,7 +1890,7 @@ function ProducerHome() {
                                                     originalDailyDeliveryLimit
                                                 );
                                             }}
-                                            className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+                                            className="h-10 px-4 border border-slate-200 text-slate-700 rounded-xl hover:bg-slate-50 transition-colors text-xs font-semibold active:scale-[0.98] cursor-pointer"
                                         >
                                             Cancel
                                         </button>
@@ -1930,9 +1929,6 @@ function ProducerHome() {
                                                         setOriginalDailyDeliveryLimit(
                                                             dailyDeliveryLimit
                                                         );
-                                                        // alert(
-                                                        //     "Delivery settings saved successfully!"
-                                                        // );
                                                     }
                                                 } catch (error) {
                                                     console.error(
@@ -1944,7 +1940,7 @@ function ProducerHome() {
                                                     );
                                                 }
                                             }}
-                                            className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors"
+                                            className="h-10 px-4 bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl transition-colors text-xs font-semibold active:scale-[0.98] shadow-xs cursor-pointer"
                                         >
                                             Save Settings
                                         </button>
@@ -1960,16 +1956,16 @@ function ProducerHome() {
                     <div className="relative">
                         <Icon
                             icon="mingcute:search-line"
-                            width="20"
-                            height="20"
-                            className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"
+                            width="18"
+                            height="18"
+                            className="absolute left-3.5 top-1/2 transform -translate-y-1/2 text-slate-400"
                         />
                         <input
                             type="text"
-                            placeholder="Search your products..."
+                            placeholder="Search your products by title or category..."
                             value={search}
                             onChange={(e) => setSearch(e.target.value)}
-                            className="w-full pl-10 pr-4 py-3 bg-white border border-gray-300 rounded-lg focus:ring-primary focus:border-primary"
+                            className="w-full h-12 pl-10 pr-4 bg-white border border-slate-200 rounded-2xl text-sm text-slate-900 placeholder:text-slate-400 shadow-2xs outline-none focus:border-emerald-600 focus:ring-2 focus:ring-emerald-600/15 transition-all"
                         />
                     </div>
                 </div>
