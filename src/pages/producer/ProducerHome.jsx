@@ -1972,85 +1972,89 @@ function ProducerHome() {
 
                 {/* Category Filter */}
                 <div className="mb-6">
-                    <div className="flex overflow-x-auto gap-4 px-2 py-2 scrollbar-hide">
-                        {categories.map((category) => (
-                            <button
-                                key={category.name}
-                                className={`flex flex-col items-center justify-center min-w-[70px] py-3 px-2 rounded-lg transition-all ${
-                                    selectedCategory === category.name
-                                        ? "bg-primary text-white shadow-md"
-                                        : "bg-white hover:bg-gray-50 shadow-sm"
-                                }`}
-                                onClick={() =>
-                                    setSelectedCategory(category.name)
-                                }
-                            >
-                                <Icon
-                                    icon={category.icon}
-                                    width="32"
-                                    height="32"
-                                    className={
-                                        selectedCategory === category.name
-                                            ? "text-white"
-                                            : "text-gray-600"
-                                    }
-                                />
-                                <span
-                                    className={`mt-1 text-xs font-medium truncate max-w-[70px] ${
-                                        selectedCategory === category.name
-                                            ? "text-white"
-                                            : "text-gray-700"
+                    <div className="flex overflow-x-auto gap-2.5 pb-2 scrollbar-hide">
+                        {categories.map((category) => {
+                            const isSelected = selectedCategory === category.name;
+                            return (
+                                <button
+                                    key={category.name}
+                                    className={`flex flex-col items-center justify-center min-w-[76px] py-2.5 px-3 rounded-xl border transition-all duration-150 active:scale-95 cursor-pointer ${
+                                        isSelected
+                                            ? "bg-emerald-700 border-emerald-700 text-white shadow-xs"
+                                            : "bg-white border-slate-200/90 text-slate-700 hover:bg-slate-50 shadow-2xs"
                                     }`}
+                                    onClick={() =>
+                                        setSelectedCategory(category.name)
+                                    }
                                 >
-                                    {category.name}
-                                </span>
-                            </button>
-                        ))}
+                                    <Icon
+                                        icon={category.icon}
+                                        width="24"
+                                        height="24"
+                                        className={
+                                            isSelected
+                                                ? "text-white"
+                                                : "text-slate-600"
+                                        }
+                                    />
+                                    <span
+                                        className={`mt-1 text-[11px] font-semibold truncate max-w-[70px] ${
+                                            isSelected
+                                                ? "text-white"
+                                                : "text-slate-700"
+                                        }`}
+                                    >
+                                        {category.name}
+                                    </span>
+                                </button>
+                            );
+                        })}
                     </div>
                 </div>
 
                 {/* Section Header */}
-                <div className="mb-4 px-2 flex items-center justify-between">
+                <div className="mb-4 flex items-center justify-between">
                     <div>
-                        <h2 className="text-xl font-bold text-gray-800">
+                        <h2 className="text-base sm:text-lg font-bold text-slate-900 tracking-tight">
                             {selectedCategory} Products
                         </h2>
-                        <p className="text-gray-600 text-sm">
-                            {filteredProducts.length} products found
+                        <p className="text-slate-500 text-xs tabular-nums">
+                            {filteredProducts.length} {filteredProducts.length === 1 ? "product" : "products"} listed
                         </p>
                     </div>
                     <button
                         onClick={() => setShowAddModal(true)}
-                        className="bg-primary text-white px-4 py-2 rounded-lg hover:bg-primary-dark transition-colors flex items-center gap-2"
+                        className="h-10 px-4 bg-emerald-700 hover:bg-emerald-800 active:scale-[0.98] text-white rounded-xl text-xs font-semibold shadow-xs flex items-center gap-1.5 cursor-pointer transition-all"
                     >
-                        <Icon icon="mingcute:add-line" width="20" height="20" />
-                        Add Product
+                        <Icon icon="mingcute:add-line" width="16" height="16" />
+                        <span>Add Product</span>
                     </button>
                 </div>
 
                 {/* Products Grid */}
                 {loading ? (
                     <div className="flex justify-center py-16">
-                        <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-primary"></div>
+                        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-emerald-700"></div>
                     </div>
                 ) : (
-                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 px-2">
+                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 sm:gap-4">
                         {filteredProducts.length === 0 ? (
-                            <div className="col-span-full flex flex-col items-center justify-center py-16">
-                                <Icon
-                                    icon="mingcute:box-line"
-                                    width="64"
-                                    height="64"
-                                    className="text-gray-300 mb-4"
-                                />
-                                <p className="text-gray-400 text-lg">
+                            <div className="col-span-full flex flex-col items-center justify-center py-16 bg-white rounded-2xl border border-slate-200/90 shadow-2xs p-8 text-center">
+                                <div className="w-16 h-16 rounded-2xl bg-slate-50 border border-slate-200/80 flex items-center justify-center text-slate-400 mb-4">
+                                    <Icon
+                                        icon="mingcute:box-line"
+                                        width="32"
+                                        height="32"
+                                    />
+                                </div>
+                                <h3 className="text-base font-bold text-slate-800 mb-1">
                                     No products found
-                                </p>
-                                <p className="text-gray-400 text-sm mb-4">
+                                </h3>
+                                <p className="text-slate-500 text-xs mb-4 max-w-sm">
                                     {selectedCategory === "All" &&
                                     products.length === 0
-                                        ? "Start by adding your first product"
-                                        : "Try adjusting your search or filters"}
+                                        ? "Start by listing your first farm-fresh product for consumers."
+                                        : "Try adjusting your search query or choosing another category."}
                                 </p>
                                 {selectedCategory === "All" &&
                                     products.length === 0 && (
@@ -2058,9 +2062,9 @@ function ProducerHome() {
                                             onClick={() =>
                                                 setShowAddModal(true)
                                             }
-                                            className="bg-primary text-white px-6 py-2 rounded-lg hover:bg-primary-dark transition-colors"
+                                            className="h-10 px-5 bg-emerald-700 hover:bg-emerald-800 active:scale-[0.98] text-white text-xs font-semibold rounded-xl shadow-xs transition-colors cursor-pointer"
                                         >
-                                            Add Product
+                                            Add Your First Product
                                         </button>
                                     )}
                             </div>
@@ -2068,117 +2072,114 @@ function ProducerHome() {
                             filteredProducts.map((product) => (
                                 <div
                                     key={product.id}
-                                    className="bg-white rounded-lg shadow-md hover:shadow-lg transition-shadow duration-300 overflow-hidden relative group"
+                                    className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs hover:shadow-md transition-all duration-200 overflow-hidden relative group flex flex-col"
                                 >
                                     <Link
                                         to={`/producer/product/${product.id}`}
-                                        className="block"
+                                        className="block flex-1"
                                     >
                                         <div className="relative">
-                                            <div className="relative">
-                                                <img
-                                                    src={
-                                                        product.image ||
-                                                        "/assets/gray-apple.png"
-                                                    }
-                                                    alt={product.name}
-                                                    className="w-full h-40 sm:h-48 object-cover"
-                                                    loading="lazy"
-                                                    onError={(e) => {
-                                                        e.target.src =
-                                                            "/assets/gray-apple.png";
-                                                    }}
-                                                />
-                                                {/* Status Label */}
-                                                {(() => {
-                                                    if (
-                                                        product.status_id === 2
-                                                    ) {
-                                                        // Suspended
-                                                        return (
-                                                            <div className="absolute top-2 left-2 bg-red-500 text-white text-xs px-2 py-1 rounded-lg font-medium">
-                                                                Suspended
-                                                            </div>
-                                                        );
-                                                    } else if (
-                                                        product.approval_date ===
-                                                        null
-                                                    ) {
-                                                        // New product or modified with non-price/stock changes
-                                                        return (
-                                                            <div className="absolute top-2 left-2 bg-yellow-500 text-white text-xs px-2 py-1 rounded-lg font-medium">
-                                                                Pending Approval
-                                                            </div>
-                                                        );
-                                                    } else if (
-                                                        new Date(
-                                                            product.approval_date
-                                                        ).getTime() ===
-                                                        new Date(
-                                                            "1970-01-01"
-                                                        ).getTime()
-                                                    ) {
-                                                        // Needs editing
-                                                        return (
-                                                            <div className="absolute top-2 left-2 bg-orange-500 text-white text-xs px-2 py-1 rounded-lg font-medium">
-                                                                Needs Editing
-                                                            </div>
-                                                        );
-                                                    } else if (
-                                                        product.status_id === 1
-                                                    ) {
-                                                        // Active
-                                                        return (
-                                                            <div className="absolute top-2 left-2 bg-green-500 text-white text-xs px-2 py-1 rounded-lg font-medium">
-                                                                Active
-                                                            </div>
-                                                        );
-                                                    }
-                                                })()}
-                                            </div>
+                                            <img
+                                                src={
+                                                    product.image ||
+                                                    "/assets/gray-apple.png"
+                                                }
+                                                alt={product.name}
+                                                className="w-full h-36 sm:h-44 object-cover bg-slate-100"
+                                                loading="lazy"
+                                                onError={(e) => {
+                                                    e.target.src =
+                                                        "/assets/gray-apple.png";
+                                                }}
+                                            />
+                                            {/* Status Badge */}
+                                            {(() => {
+                                                if (product.status_id === 2) {
+                                                    return (
+                                                        <span className="absolute top-2 left-2 bg-rose-600 text-white text-[10px] font-semibold px-2 py-0.5 rounded-full shadow-2xs">
+                                                            Suspended
+                                                        </span>
+                                                    );
+                                                } else if (
+                                                    product.approval_date === null
+                                                ) {
+                                                    return (
+                                                        <span className="absolute top-2 left-2 bg-amber-500 text-white text-[10px] font-semibold px-2 py-0.5 rounded-full shadow-2xs">
+                                                            Pending Approval
+                                                        </span>
+                                                    );
+                                                } else if (
+                                                    new Date(
+                                                        product.approval_date
+                                                    ).getTime() ===
+                                                    new Date("1970-01-01").getTime()
+                                                ) {
+                                                    return (
+                                                        <span className="absolute top-2 left-2 bg-orange-500 text-white text-[10px] font-semibold px-2 py-0.5 rounded-full shadow-2xs">
+                                                            Needs Editing
+                                                        </span>
+                                                    );
+                                                } else if (
+                                                    product.status_id === 1
+                                                ) {
+                                                    return (
+                                                        <span className="absolute top-2 left-2 bg-emerald-600 text-white text-[10px] font-semibold px-2 py-0.5 rounded-full shadow-2xs">
+                                                            Active
+                                                        </span>
+                                                    );
+                                                }
+                                                return null;
+                                            })()}
                                         </div>
 
-                                        <div className="p-3">
-                                            <h3 className="font-semibold text-gray-800 line-clamp-2 mb-1 text-sm">
+                                        <div className="p-3 sm:p-3.5 flex flex-col flex-1">
+                                            <h3 className="font-semibold text-slate-800 line-clamp-2 mb-1.5 text-xs sm:text-sm">
                                                 {product.name}
                                             </h3>
 
-                                            <div className="flex items-center justify-between mb-2">
-                                                <p className="text-primary font-bold text-lg">
-                                                    ₱{product.price?.toFixed(2)}
-                                                    /kg
-                                                </p>
-                                                <span className="text-xs text-gray-500">
+                                            <div className="flex items-center justify-between mb-1.5 mt-auto">
+                                                <div>
+                                                    <span className="text-emerald-700 font-bold text-sm sm:text-base tabular-nums">
+                                                        ₱{product.price?.toFixed(2)}
+                                                    </span>
+                                                    <span className="text-[11px] text-slate-500 font-normal">
+                                                        /kg
+                                                    </span>
+                                                </div>
+                                                <span className="text-[11px] text-slate-500 tabular-nums font-medium">
                                                     {product.stock || 0} kg left
                                                 </span>
                                             </div>
 
-                                            <div className="flex items-center gap-1 text-xs text-gray-500">
+                                            <div className="flex items-center gap-1 text-[11px] text-slate-500">
                                                 <Icon
                                                     icon="mingcute:tag-line"
                                                     width="12"
                                                     height="12"
+                                                    className="text-emerald-700 shrink-0"
                                                 />
-                                                {product.category}
+                                                <span className="truncate">
+                                                    {product.category}
+                                                </span>
                                             </div>
                                         </div>
                                     </Link>
 
                                     {/* Action buttons overlay */}
-                                    <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                                    <div className="absolute top-2 right-2 flex gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity duration-150">
                                         <button
                                             onClick={(e) => {
                                                 e.preventDefault();
                                                 e.stopPropagation();
                                                 openEditModal(product);
                                             }}
-                                            className="bg-white rounded-full p-2 shadow-md hover:bg-gray-50 z-10"
+                                            className="w-8 h-8 rounded-lg bg-white/95 backdrop-blur-xs border border-slate-200/90 shadow-sm hover:bg-slate-50 text-slate-700 hover:text-emerald-700 flex items-center justify-center transition-all active:scale-95 cursor-pointer z-10"
+                                            aria-label="Edit product"
                                         >
                                             <Icon
                                                 icon="mingcute:edit-line"
-                                                width="16"
-                                                height="16"
-                                                className="text-blue-600"
+                                                width="15"
+                                                height="15"
                                             />
                                         </button>
                                         <button
@@ -2187,13 +2188,13 @@ function ProducerHome() {
                                                 e.stopPropagation();
                                                 openDeleteModal(product);
                                             }}
-                                            className="bg-white rounded-full p-2 shadow-md hover:bg-gray-50 z-10"
+                                            className="w-8 h-8 rounded-lg bg-white/95 backdrop-blur-xs border border-slate-200/90 shadow-sm hover:bg-slate-50 text-slate-700 hover:text-rose-600 flex items-center justify-center transition-all active:scale-95 cursor-pointer z-10"
+                                            aria-label="Delete product"
                                         >
                                             <Icon
                                                 icon="mingcute:delete-line"
-                                                width="16"
-                                                height="16"
-                                                className="text-red-600"
+                                                width="15"
+                                                height="15"
                                             />
                                         </button>
                                     </div>
