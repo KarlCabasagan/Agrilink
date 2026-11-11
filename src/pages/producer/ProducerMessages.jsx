@@ -929,13 +929,14 @@ function ProducerMessages() {
                             </div>
                             <button
                                 onClick={handleSendMessage}
-                                className="bg-primary text-white p-2 rounded-full hover:bg-primary-dark transition-colors"
+                                className="w-10 h-10 bg-emerald-700 hover:bg-emerald-800 active:scale-[0.95] text-white rounded-full flex items-center justify-center transition-all shadow-xs cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed disabled:active:scale-100 shrink-0"
                                 disabled={!newMessage.trim()}
+                                aria-label="Send message"
                             >
                                 <Icon
                                     icon="mingcute:send-line"
-                                    width="20"
-                                    height="20"
+                                    width="18"
+                                    height="18"
                                 />
                             </button>
                         </div>
@@ -986,86 +987,83 @@ function ProducerMessages() {
                                 </div>
                             </div>
                         ) : (
-                            <div className="flex justify-between items-center">
+                            <div className="flex justify-between items-center h-full">
                                 <Link
-                                    to="/producer"
-                                    className="text-gray-600 hover:text-primary"
+                                    to="/"
+                                    className="text-slate-600 hover:text-emerald-700 min-w-[44px] min-h-[44px] flex items-center justify-center transition-colors"
+                                    aria-label="Back to home"
                                 >
                                     <Icon
                                         icon="mingcute:left-line"
-                                        width="24"
-                                        height="24"
+                                        width="22"
+                                        height="22"
                                     />
                                 </Link>
-                                <h1 className="text-lg font-semibold">
+                                <h1 className="text-base font-bold text-slate-900 tracking-tight">
                                     Messages
                                 </h1>
                                 <button
                                     onClick={() => setShowSearch(true)}
-                                    className="text-gray-600 hover:text-primary"
+                                    className="text-slate-600 hover:text-emerald-700 min-w-[44px] min-h-[44px] flex items-center justify-center transition-colors"
+                                    aria-label="Search conversations"
                                 >
                                     <Icon
                                         icon="mingcute:search-line"
-                                        width="24"
-                                        height="24"
+                                        width="20"
+                                        height="20"
                                     />
                                 </button>
                             </div>
                         )}
                     </div>
 
-                    <div className="w-full max-w-2xl mx-4 sm:mx-auto my-16">
+                    <div className="w-full max-w-2xl mx-auto px-4 pt-16 pb-24">
                         {loading ? (
                             <div className="flex flex-col items-center justify-center py-16">
-                                <Icon
-                                    icon="mingcute:loading-line"
-                                    width="40"
-                                    height="40"
-                                    className="text-primary mb-4 animate-spin"
-                                />
-                                <p className="text-gray-600">
+                                <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-emerald-700 mb-4"></div>
+                                <p className="text-xs text-slate-500">
                                     Loading conversations...
                                 </p>
                             </div>
                         ) : error ? (
-                            <div className="flex flex-col items-center justify-center py-16">
+                            <div className="flex flex-col items-center justify-center py-16 text-center">
                                 <Icon
                                     icon="mingcute:alert-triangle-line"
-                                    width="60"
-                                    height="60"
-                                    className="text-red-500 mb-4"
+                                    width="48"
+                                    height="48"
+                                    className="text-rose-500 mb-3"
                                 />
-                                <h2 className="text-xl font-bold text-gray-700 mb-2">
+                                <h2 className="text-base font-bold text-slate-800 mb-1">
                                     Error Loading Messages
                                 </h2>
-                                <p className="text-gray-500 text-center mb-6">
+                                <p className="text-xs text-slate-500 mb-4">
                                     {error}
                                 </p>
                                 <button
                                     onClick={fetchConversations}
-                                    className="bg-primary text-white px-6 py-3 rounded-lg hover:bg-primary-dark transition-colors font-medium"
+                                    className="h-10 px-4 bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-semibold rounded-xl shadow-xs transition-colors cursor-pointer"
                                 >
                                     Try Again
                                 </button>
                             </div>
                         ) : conversations.length === 0 ? (
-                            <div className="flex flex-col items-center justify-center py-16">
-                                <Icon
-                                    icon="mingcute:message-3-line"
-                                    width="80"
-                                    height="80"
-                                    className="text-gray-300 mb-4"
-                                />
-                                <h2 className="text-xl font-bold text-gray-600 mb-2">
+                            <div className="flex flex-col items-center justify-center py-16 bg-white rounded-2xl border border-slate-200/90 shadow-2xs p-8 text-center">
+                                <div className="w-16 h-16 rounded-2xl bg-slate-50 border border-slate-200/80 flex items-center justify-center text-slate-400 mb-4">
+                                    <Icon
+                                        icon="mingcute:message-3-line"
+                                        width="32"
+                                        height="32"
+                                    />
+                                </div>
+                                <h2 className="text-base font-bold text-slate-800 mb-1">
                                     No messages yet
                                 </h2>
-                                <p className="text-gray-500 text-center mb-6">
-                                    Customers will reach out to you about your
-                                    products here!
+                                <p className="text-slate-500 text-xs mb-4 max-w-sm">
+                                    Customers will reach out to you about your products here!
                                 </p>
                                 <Link
-                                    to="/producer"
-                                    className="bg-primary text-white px-6 py-3 rounded-lg hover:bg-primary-dark transition-colors font-medium"
+                                    to="/"
+                                    className="h-10 px-5 bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-semibold rounded-xl shadow-xs transition-colors inline-flex items-center justify-center"
                                 >
                                     Manage Products
                                 </Link>
@@ -1157,12 +1155,11 @@ function ProducerMessages() {
                             </div>
                         )}
                     </div>
-                    <ProducerNavigationBar />
                 </div>
             )}
 
             {/* ===== DESKTOP LAYOUT (hidden md:flex) ===== */}
-            <div className="hidden md:flex h-[calc(100vh-80px)] w-full flex-col gap-0">
+            <div className="hidden md:flex h-screen md:pt-16 w-full flex-col gap-0">
                 <div className="flex-1 flex gap-0 overflow-hidden">
                     {/* Left Column: Conversations List */}
                     <div className="w-1/3 border-r border-gray-200 flex flex-col bg-white overflow-hidden">
@@ -1475,13 +1472,14 @@ function ProducerMessages() {
                                     </div>
                                     <button
                                         onClick={handleSendMessage}
-                                        className="bg-primary text-white p-2 rounded-full hover:bg-primary-dark transition-colors"
+                                        className="w-10 h-10 bg-emerald-700 hover:bg-emerald-800 active:scale-[0.95] text-white rounded-full flex items-center justify-center transition-all shadow-xs cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed disabled:active:scale-100 shrink-0"
                                         disabled={!newMessage.trim()}
+                                        aria-label="Send message"
                                     >
                                         <Icon
                                             icon="mingcute:send-line"
-                                            width="20"
-                                            height="20"
+                                            width="18"
+                                            height="18"
                                         />
                                     </button>
                                 </div>
@@ -1503,6 +1501,10 @@ function ProducerMessages() {
                         </div>
                     )}
                 </div>
+            </div>
+
+            {/* Root-mounted Navigation Bar */}
+            <div className={selectedConversation ? "hidden md:block" : "block"}>
                 <ProducerNavigationBar />
             </div>
         </div>
