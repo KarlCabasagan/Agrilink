@@ -781,24 +781,32 @@ function CropRecommendation() {
     ).length;
 
     return (
-        <div className="min-h-screen w-full flex flex-col relative items-center scrollbar-hide bg-background overflow-x-hidden text-text pb-20">
-            {/* Header */}
-            <div className="fixed top-0 left-0 w-full bg-white shadow-md z-50 px-4 py-3">
-                <h1 className="text-lg font-semibold text-primary text-center">
-                    Crop Management
-                </h1>
-            </div>
+        <div className="min-h-screen w-full flex flex-col relative items-center bg-slate-50/50 text-slate-800 overflow-x-hidden">
+            {/* Mobile Header */}
+            <header className="md:hidden fixed top-0 left-0 w-full bg-white/95 backdrop-blur-md border-b border-slate-200 z-40 px-4 h-14 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                    <Icon
+                        icon="mingcute:chart-line-fill"
+                        width="20"
+                        height="20"
+                        className="text-emerald-700"
+                    />
+                    <h1 className="text-base font-bold text-slate-900 tracking-tight">
+                        Crop Recommendations
+                    </h1>
+                </div>
+            </header>
 
-            <div className="w-full max-w-6xl mx-4 sm:mx-auto my-16 px-4 sm:px-0">
+            <div className="w-full max-w-6xl mx-auto px-4 sm:px-6 pt-16 md:pt-20 pb-24 md:pb-16">
                 {/* Tab Navigation */}
-                <div className="mb-6 mt-4">
-                    <div className="bg-white rounded-lg border border-gray-200 p-1 flex">
+                <div className="mb-6 mt-2">
+                    <div className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs p-1.5 flex gap-1">
                         <button
                             onClick={() => setActiveTab("recommendations")}
-                            className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors flex items-center justify-center gap-2 ${
+                            className={`flex-1 py-2.5 px-4 rounded-xl text-xs font-semibold transition-all duration-150 active:scale-95 flex items-center justify-center gap-2 cursor-pointer ${
                                 activeTab === "recommendations"
-                                    ? "bg-primary text-white shadow-sm"
-                                    : "text-gray-600 hover:text-gray-800 hover:bg-gray-50"
+                                    ? "bg-emerald-700 text-white shadow-xs"
+                                    : "text-slate-600 hover:text-slate-900 hover:bg-slate-50"
                             }`}
                         >
                             <Icon
@@ -806,14 +814,14 @@ function CropRecommendation() {
                                 width="16"
                                 height="16"
                             />
-                            Recommendations
+                            <span>Market Recommendations</span>
                         </button>
                         <button
                             onClick={() => setActiveTab("my-crops")}
-                            className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors flex items-center justify-center gap-2 relative ${
+                            className={`flex-1 py-2.5 px-4 rounded-xl text-xs font-semibold transition-all duration-150 active:scale-95 flex items-center justify-center gap-2 cursor-pointer ${
                                 activeTab === "my-crops"
-                                    ? "bg-primary text-white shadow-sm"
-                                    : "text-gray-600 hover:text-gray-800 hover:bg-gray-50"
+                                    ? "bg-emerald-700 text-white shadow-xs"
+                                    : "text-slate-600 hover:text-slate-900 hover:bg-slate-50"
                             }`}
                         >
                             <Icon
@@ -821,13 +829,13 @@ function CropRecommendation() {
                                 width="16"
                                 height="16"
                             />
-                            My Crops
+                            <span>My Planted Crops</span>
                             {activePlantedCropsCount > 0 && (
                                 <span
-                                    className={`ml-2 px-2 py-0.5 rounded-full text-xs font-bold ${
+                                    className={`ml-1 px-2 py-0.5 rounded-full text-[10px] font-bold tabular-nums ${
                                         activeTab === "my-crops"
-                                            ? "bg-white text-primary"
-                                            : "bg-primary text-white"
+                                            ? "bg-white text-emerald-800"
+                                            : "bg-emerald-50 text-emerald-800 border border-emerald-200/80"
                                     }`}
                                 >
                                     {activePlantedCropsCount}
@@ -836,27 +844,26 @@ function CropRecommendation() {
                         </button>
                     </div>
                 </div>
+
                 {/* Tab Content */}
                 {activeTab === "recommendations" && (
                     <>
                         {/* Info Banner */}
-                        <div className="mb-6 bg-blue-50 border border-blue-200 rounded-lg p-4">
+                        <div className="mb-6 bg-emerald-50/80 border border-emerald-200/80 rounded-2xl p-4 sm:p-5 text-emerald-900 shadow-2xs">
                             <div className="flex items-start gap-3">
-                                <Icon
-                                    icon="mingcute:lightbulb-line"
-                                    width="24"
-                                    height="24"
-                                    className="text-blue-600 mt-0.5"
-                                />
+                                <div className="w-9 h-9 rounded-xl bg-white/80 border border-emerald-200/80 flex items-center justify-center text-emerald-700 shrink-0">
+                                    <Icon
+                                        icon="mingcute:lightbulb-line"
+                                        width="18"
+                                        height="18"
+                                    />
+                                </div>
                                 <div>
-                                    <h3 className="font-semibold text-blue-800 mb-1">
+                                    <h3 className="font-bold text-slate-900 text-sm mb-1 tracking-tight">
                                         Smart Crop Selection
                                     </h3>
-                                    <p className="text-blue-700 text-sm">
-                                        Based on current market data and
-                                        planting patterns from local farmers.
-                                        Choose crops with low competition and
-                                        high demand for better profitability.
+                                    <p className="text-slate-600 text-xs leading-relaxed">
+                                        Data-driven planting patterns aggregated from local registered farms. Prioritize high-demand, low-competition crops to optimize market return.
                                     </p>
                                 </div>
                             </div>
@@ -866,15 +873,15 @@ function CropRecommendation() {
                         <div className="mb-6 space-y-4">
                             {/* Search */}
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
                                     Search Crops
                                 </label>
                                 <div className="relative">
                                     <Icon
                                         icon="mingcute:search-line"
-                                        width="20"
-                                        height="20"
-                                        className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"
+                                        width="18"
+                                        height="18"
+                                        className="absolute left-3.5 top-1/2 transform -translate-y-1/2 text-slate-400"
                                     />
                                     <input
                                         type="text"
@@ -883,16 +890,16 @@ function CropRecommendation() {
                                         onChange={(e) =>
                                             setSearchTerm(e.target.value)
                                         }
-                                        className="w-full pl-10 pr-4 py-2 bg-white border border-gray-300 rounded-lg focus:ring-primary focus:border-primary"
+                                        className="w-full h-11 pl-10 pr-4 bg-white border border-slate-200 rounded-xl text-sm text-slate-900 placeholder:text-slate-400 outline-none focus:border-emerald-600 focus:ring-2 focus:ring-emerald-600/15 shadow-2xs transition-all"
                                     />
                                 </div>
                             </div>
 
                             {/* Filters */}
-                            <div className="flex flex-col sm:flex-row gap-4">
+                            <div className="flex flex-col sm:flex-row gap-3">
                                 {/* Category Filter */}
                                 <div className="flex-1">
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
                                         Category
                                     </label>
                                     <select
@@ -900,7 +907,7 @@ function CropRecommendation() {
                                         onChange={(e) =>
                                             setSelectedCategory(e.target.value)
                                         }
-                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-primary focus:border-primary"
+                                        className="w-full h-11 px-3 bg-white border border-slate-200 rounded-xl text-sm text-slate-900 focus:border-emerald-600 focus:ring-2 focus:ring-emerald-600/15 shadow-2xs outline-none cursor-pointer transition-all"
                                     >
                                         {categories.map((category) => (
                                             <option
@@ -915,7 +922,7 @@ function CropRecommendation() {
 
                                 {/* Sort By */}
                                 <div className="flex-1">
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
                                         Sort By
                                     </label>
                                     <select
@@ -1042,7 +1049,7 @@ function CropRecommendation() {
                                 filteredCrops.map((crop) => (
                                     <div
                                         key={crop.id}
-                                        className="bg-white rounded-lg shadow-md p-4"
+                                        className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs hover:shadow-md transition-all duration-200 overflow-hidden"
                                     >
                                         {/* Header */}
                                         <div className="p-4 border-b border-gray-200">
