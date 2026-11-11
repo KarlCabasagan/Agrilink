@@ -845,97 +845,104 @@ function Orders() {
     };
 
     return (
-        <div className="min-h-screen w-full flex flex-col relative items-center scrollbar-hide bg-background overflow-x-hidden text-text pb-20">
+        <div className="min-h-screen w-full flex flex-col relative items-center bg-slate-50/50 text-slate-800 overflow-x-hidden">
             {/* Inject animation styles */}
             <style>{styles}</style>
 
-            {/* Header */}
-            <div className="fixed top-0 left-0 w-full bg-white shadow-md z-50 px-4 py-3">
-                <h1 className="text-lg font-semibold text-primary text-center">
-                    Orders
-                </h1>
-            </div>
+            {/* Mobile Header */}
+            <header className="md:hidden fixed top-0 left-0 w-full bg-white/95 backdrop-blur-md border-b border-slate-200 z-40 px-4 h-14 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                    <Icon
+                        icon="mingcute:box-2-fill"
+                        width="20"
+                        height="20"
+                        className="text-emerald-700"
+                    />
+                    <h1 className="text-base font-bold text-slate-900 tracking-tight">
+                        Orders
+                    </h1>
+                </div>
+                <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200/80 tabular-nums">
+                    {orders.length} Total
+                </span>
+            </header>
 
-            <div className="w-full max-w-4xl mx-4 sm:mx-auto my-16">
+            <div className="w-full max-w-4xl mx-auto px-4 sm:px-6 pt-16 md:pt-20 pb-24 md:pb-16">
                 {/* Policy Notice Banner */}
-                <div className="bg-yellow-50 border border-yellow-200 text-yellow-800 px-4 py-3 rounded-lg mb-4 text-sm flex items-center gap-2">
-                    <span className="text-base mb-0.5">⚠️</span>
+                <div className="bg-amber-50/90 border border-amber-200/80 text-amber-900 px-4 py-3 rounded-2xl mb-5 text-xs flex items-center gap-2.5 shadow-2xs">
+                    <Icon
+                        icon="mingcute:time-fill"
+                        width="18"
+                        height="18"
+                        className="text-amber-700 shrink-0"
+                    />
                     <span>
-                        To guarantee freshness for the customer, All orders
-                        expire at midnight. Please complete delivery today to
-                        avoid auto-cancellation.
+                        <strong>Freshness Guarantee:</strong> All orders expire at midnight. Please complete fulfillment today to avoid auto-cancellation.
                     </span>
                 </div>
 
                 {/* Tabs */}
-                <div className="bg-white rounded-lg shadow-md overflow-hidden mb-6">
-                    <div className="flex overflow-x-auto">
-                        {tabs.map((tab) => {
-                            const hasReadyOrders =
-                                tab.id === "ready for pickup" && tab.count > 0;
-                            return (
-                                <button
-                                    key={tab.id}
-                                    onClick={() => setActiveTab(tab.id)}
-                                    className={`flex-1 min-w-fit px-4 py-3 text-sm font-medium transition-colors border-b-2 ${
-                                        activeTab === tab.id
-                                            ? "text-primary border-primary bg-primary/5"
-                                            : "text-gray-500 border-transparent hover:text-gray-700"
-                                    } ${
-                                        hasReadyOrders
-                                            ? "animate-ready-pulse"
-                                            : ""
-                                    }`}
-                                >
-                                    <div className="flex items-center justify-center gap-2">
-                                        <span>{tab.label}</span>
-                                        {tab.count > 0 && (
-                                            <span
-                                                className={`px-2 py-1 text-xs rounded-full ${
-                                                    activeTab === tab.id
-                                                        ? "bg-primary text-white"
-                                                        : "bg-gray-200 text-gray-600"
-                                                }`}
-                                            >
-                                                {tab.count}
-                                            </span>
-                                        )}
-                                    </div>
-                                </button>
-                            );
-                        })}
-                    </div>
+                <div className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs p-1.5 flex overflow-x-auto gap-1 mb-6 scrollbar-hide">
+                    {tabs.map((tab) => {
+                        const hasReadyOrders =
+                            tab.id === "ready for pickup" && tab.count > 0;
+                        const isSelected = activeTab === tab.id;
+                        return (
+                            <button
+                                key={tab.id}
+                                onClick={() => setActiveTab(tab.id)}
+                                className={`flex-1 min-w-fit px-3.5 py-2 rounded-xl text-xs font-semibold transition-all duration-150 active:scale-95 cursor-pointer flex items-center justify-center gap-1.5 ${
+                                    isSelected
+                                        ? "bg-emerald-700 text-white shadow-xs"
+                                        : "text-slate-600 hover:text-slate-900 hover:bg-slate-100/70"
+                                } ${hasReadyOrders ? "animate-ready-pulse" : ""}`}
+                            >
+                                <span>{tab.label}</span>
+                                {tab.count > 0 && (
+                                    <span
+                                        className={`px-1.5 py-0.5 text-[10px] font-bold rounded-full tabular-nums ${
+                                            isSelected
+                                                ? "bg-white text-emerald-800"
+                                                : "bg-slate-100 text-slate-700"
+                                        }`}
+                                    >
+                                        {tab.count}
+                                    </span>
+                                )}
+                            </button>
+                        );
+                    })}
                 </div>
 
                 {/* Search and Sort */}
                 <div className="mb-6">
-                    <div className="flex flex-col px-2 sm:flex-row gap-4">
+                    <div className="flex flex-col sm:flex-row gap-3">
                         {/* Search */}
                         <div className="flex-1 relative">
                             <Icon
                                 icon="mingcute:search-line"
-                                width="20"
-                                height="20"
-                                className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"
+                                width="18"
+                                height="18"
+                                className="absolute left-3.5 top-1/2 transform -translate-y-1/2 text-slate-400"
                             />
                             <input
                                 type="text"
                                 placeholder="Search by customer, order ID, product, or address..."
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
-                                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary bg-white"
+                                className="w-full h-11 pl-10 pr-4 bg-white border border-slate-200 rounded-xl text-xs sm:text-sm text-slate-900 placeholder:text-slate-400 outline-none focus:border-emerald-600 focus:ring-2 focus:ring-emerald-600/15 shadow-2xs transition-all"
                             />
                         </div>
 
                         {/* Sort */}
                         <div className="flex items-center gap-2">
-                            <span className="text-sm text-gray-600 whitespace-nowrap">
-                                Sort by:
+                            <span className="text-xs text-slate-500 whitespace-nowrap font-medium">
+                                Sort:
                             </span>
                             <select
                                 value={sortBy}
                                 onChange={(e) => setSortBy(e.target.value)}
-                                className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary bg-white"
+                                className="h-11 px-3 bg-white border border-slate-200 rounded-xl text-xs sm:text-sm text-slate-900 focus:border-emerald-600 focus:ring-2 focus:ring-emerald-600/15 shadow-2xs outline-none cursor-pointer transition-all"
                             >
                                 <option value="newest">Newest First</option>
                                 <option value="oldest">Oldest First</option>
@@ -950,25 +957,28 @@ function Orders() {
                 {/* Orders List */}
                 {loading ? (
                     <div className="flex justify-center py-16">
-                        <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-primary"></div>
+                        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-emerald-700"></div>
                     </div>
                 ) : filteredOrders.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center py-16">
-                        <Icon
-                            icon="mingcute:shopping-bag-line"
-                            width="64"
-                            height="64"
-                            className="text-gray-300 mb-4"
-                        />
-                        <p className="text-gray-400 text-lg">No orders found</p>
-                        <p className="text-gray-400 text-sm">
+                    <div className="flex flex-col items-center justify-center py-16 bg-white rounded-2xl border border-slate-200/90 shadow-2xs p-8 text-center">
+                        <div className="w-16 h-16 rounded-2xl bg-slate-50 border border-slate-200/80 flex items-center justify-center text-slate-400 mb-4">
+                            <Icon
+                                icon="mingcute:shopping-bag-line"
+                                width="32"
+                                height="32"
+                            />
+                        </div>
+                        <h3 className="text-base font-bold text-slate-800 mb-1">
+                            No orders found
+                        </h3>
+                        <p className="text-slate-500 text-xs">
                             {activeTab === "all"
-                                ? "You haven't received any orders yet"
-                                : `No ${activeTab} orders at the moment`}
+                                ? "You haven't received any orders yet."
+                                : `No ${activeTab} orders at the moment.`}
                         </p>
                     </div>
                 ) : (
-                    <div className="space-y-4 px-2">
+                    <div className="space-y-4">
                         {filteredOrders.map((order) => {
                             const statusConfig = getStatusConfig(order.status);
                             const isExpanded = expandedOrder === order.id;
@@ -977,18 +987,18 @@ function Orders() {
                                 <div
                                     key={order.id}
                                     id={`order-${order.id}`}
-                                    className="bg-white rounded-lg shadow-md overflow-hidden"
+                                    className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs hover:shadow-md transition-all duration-200 overflow-hidden"
                                 >
                                     {/* Order Header */}
                                     <div
-                                        className="p-4 cursor-pointer hover:bg-gray-50"
+                                        className="p-4 sm:p-5 cursor-pointer hover:bg-slate-50/80 transition-colors"
                                         onClick={() =>
                                             setExpandedOrder(
                                                 isExpanded ? null : order.id
                                             )
                                         }
                                     >
-                                        <div className="flex justify-between items-start mb-2">
+                                        <div className="flex justify-between items-start mb-3">
                                             <div className="flex items-center gap-3 flex-1">
                                                 {order.customer_avatar ? (
                                                     <img
@@ -998,7 +1008,7 @@ function Orders() {
                                                         alt={
                                                             order.customer_name
                                                         }
-                                                        className="w-12 h-12 rounded-full object-cover flex-shrink-0"
+                                                        className="w-11 h-11 rounded-full object-cover shrink-0 border border-slate-200"
                                                     />
                                                 ) : (
                                                     <img
@@ -1008,24 +1018,24 @@ function Orders() {
                                                         alt={
                                                             order.customer_name
                                                         }
-                                                        className="w-12 h-12 rounded-full object-cover flex-shrink-0"
+                                                        className="w-11 h-11 rounded-full object-cover shrink-0 border border-slate-200"
                                                     />
                                                 )}
                                                 <div>
-                                                    <h3 className="font-semibold text-gray-800">
+                                                    <h3 className="font-bold text-slate-900 text-sm sm:text-base tracking-tight">
                                                         Order #{order.id}
                                                     </h3>
-                                                    <p className="text-sm text-gray-600">
+                                                    <p className="text-xs text-slate-600 font-medium">
                                                         {order.customer_name}
                                                     </p>
-                                                    <p className="text-xs text-gray-500">
+                                                    <p className="text-[11px] text-slate-400">
                                                         {order.customer_contact}
                                                     </p>
                                                 </div>
                                             </div>
                                             <div className="text-right">
                                                 <span
-                                                    className={`px-2 py-1 rounded-full text-xs font-medium ${statusConfig.color}`}
+                                                    className={`px-2.5 py-0.5 rounded-full text-xs font-semibold ${statusConfig.color}`}
                                                 >
                                                     <Icon
                                                         icon={statusConfig.icon}
@@ -1041,7 +1051,7 @@ function Orders() {
                                                             : "Ready for Delivery")) ||
                                                         statusConfig.label}
                                                 </span>
-                                                <p className="text-sm text-gray-500 mt-2">
+                                                <p className="text-xs text-slate-400 mt-1.5 tabular-nums">
                                                     {formatDate(
                                                         order.created_at
                                                     )}
@@ -1049,15 +1059,15 @@ function Orders() {
                                             </div>
                                         </div>
 
-                                        <div className="flex justify-between items-center">
+                                        <div className="flex justify-between items-center pt-2 border-t border-slate-100">
                                             <div>
-                                                <p className="text-lg font-bold text-primary">
+                                                <p className="text-base sm:text-lg font-bold text-emerald-700 tabular-nums">
                                                     ₱
                                                     {(
                                                         order.total_amount || 0
                                                     ).toFixed(2)}
                                                 </p>
-                                                <p className="text-xs text-gray-500 mt-1">
+                                                <p className="text-[11px] text-slate-500 mt-0.5">
                                                     · {order.itemCount || 0}{" "}
                                                     {order.itemCount === 1
                                                         ? "item"
@@ -1067,7 +1077,7 @@ function Orders() {
                                             <div className="flex flex-col items-end gap-2">
                                                 <div className="flex items-center gap-3">
                                                     <div className="text-right">
-                                                        <p className="text-xs text-primary bg-primary/10 px-2 py-1 rounded-full flex items-center gap-1 whitespace-nowrap">
+                                                        <p className="text-xs text-emerald-800 bg-emerald-50 border border-emerald-200/80 px-2.5 py-1 rounded-full flex items-center gap-1 font-semibold whitespace-nowrap">
                                                             <Icon
                                                                 icon={
                                                                     order.deliveryMethod ===
@@ -1080,41 +1090,22 @@ function Orders() {
                                                             />
                                                             {order.deliveryMethod ===
                                                             "Farm Pickup"
-                                                                ? " Farm Pickup"
+                                                                ? "Farm Pickup"
                                                                 : "Home Delivery"}
                                                         </p>
-                                                        {/* {order.status ===
-                                                            "ready for pickup" && (
-                                                            <p className="text-xs text-green-600 mt-1 font-medium">
-                                                                {order.deliveryMethod ===
-                                                                "Farm Pickup"
-                                                                    ? "Ready for Pickup"
-                                                                    : "Ready for Delivery"}
-                                                            </p>
-                                                        )} */}
                                                     </div>
-                                                    <Icon
-                                                        icon={
-                                                            isExpanded
-                                                                ? "mingcute:up-line"
-                                                                : "mingcute:down-line"
-                                                        }
-                                                        width="20"
-                                                        height="20"
-                                                        className="text-gray-400"
-                                                    />
+                                                    <div className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:text-slate-600">
+                                                        <Icon
+                                                            icon={
+                                                                isExpanded
+                                                                    ? "mingcute:up-line"
+                                                                    : "mingcute:down-line"
+                                                            }
+                                                            width="18"
+                                                            height="18"
+                                                        />
+                                                    </div>
                                                 </div>
-                                                {/* {order.status === "ready for pickup" && (
-                                                    <button
-                                                        onClick={(e) => {
-                                                            e.stopPropagation();
-                                                            updateOrderStatus(order.id, "cancelled");
-                                                        }}
-                                                        className="text-xs px-3 py-1 bg-red-50 text-red-600 rounded-full hover:bg-red-100 transition-colors font-medium"
-                                                    >
-                                                        Cancel Order
-                                                    </button>
-                                                )} */}
                                             </div>
                                         </div>
                                     </div>
