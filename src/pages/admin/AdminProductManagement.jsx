@@ -1520,13 +1520,13 @@ function AdminProductManagement() {
                             </div>
                         </div>
 
-                        <div className="bg-white rounded-lg shadow-md overflow-hidden">
+                        <div className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs overflow-hidden">
                             <div className="overflow-x-auto">
-                                <table className="w-full">
-                                    <thead className="bg-gray-50">
+                                <table className="w-full text-left">
+                                    <thead className="bg-slate-50/80 border-b border-slate-200/80">
                                         <tr>
                                             <th
-                                                className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                                                className="px-5 py-3 text-[11px] font-semibold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100/60 transition-colors"
                                                 onClick={() =>
                                                     handleSort("name")
                                                 }
@@ -1540,12 +1540,12 @@ function AdminProductManagement() {
                                                                 ? "mingcute:up-line"
                                                                 : "mingcute:down-line"
                                                         }
-                                                        className="inline ml-1"
+                                                        className="inline ml-1 text-slate-700"
                                                     />
                                                 )}
                                             </th>
                                             <th
-                                                className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                                                className="px-5 py-3 text-[11px] font-semibold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100/60 transition-colors"
                                                 onClick={() =>
                                                     handleSort("producer")
                                                 }
@@ -1560,12 +1560,12 @@ function AdminProductManagement() {
                                                                 ? "mingcute:up-line"
                                                                 : "mingcute:down-line"
                                                         }
-                                                        className="inline ml-1"
+                                                        className="inline ml-1 text-slate-700"
                                                     />
                                                 )}
                                             </th>
                                             <th
-                                                className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                                                className="px-5 py-3 text-[11px] font-semibold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100/60 transition-colors"
                                                 onClick={() =>
                                                     handleSort("cropType")
                                                 }
@@ -1580,12 +1580,12 @@ function AdminProductManagement() {
                                                                 ? "mingcute:up-line"
                                                                 : "mingcute:down-line"
                                                         }
-                                                        className="inline ml-1"
+                                                        className="inline ml-1 text-slate-700"
                                                     />
                                                 )}
                                             </th>
                                             <th
-                                                className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                                                className="px-5 py-3 text-[11px] font-semibold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100/60 transition-colors"
                                                 onClick={() =>
                                                     handleSort("price")
                                                 }
@@ -1599,12 +1599,12 @@ function AdminProductManagement() {
                                                                 ? "mingcute:up-line"
                                                                 : "mingcute:down-line"
                                                         }
-                                                        className="inline ml-1"
+                                                        className="inline ml-1 text-slate-700"
                                                     />
                                                 )}
                                             </th>
                                             <th
-                                                className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                                                className="px-5 py-3 text-[11px] font-semibold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100/60 transition-colors"
                                                 onClick={() =>
                                                     handleSort("stock")
                                                 }
@@ -1618,12 +1618,12 @@ function AdminProductManagement() {
                                                                 ? "mingcute:up-line"
                                                                 : "mingcute:down-line"
                                                         }
-                                                        className="inline ml-1"
+                                                        className="inline ml-1 text-slate-700"
                                                     />
                                                 )}
                                             </th>
                                             <th
-                                                className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                                                className="px-5 py-3 text-[11px] font-semibold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100/60 transition-colors"
                                                 onClick={() =>
                                                     handleSort("sales")
                                                 }
@@ -1637,63 +1637,61 @@ function AdminProductManagement() {
                                                                 ? "mingcute:up-line"
                                                                 : "mingcute:down-line"
                                                         }
-                                                        className="inline ml-1"
+                                                        className="inline ml-1 text-slate-700"
                                                     />
                                                 )}
                                             </th>
-                                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                            <th className="px-5 py-3 text-right text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
                                                 Actions
                                             </th>
                                         </tr>
                                     </thead>
-                                    <tbody className="bg-white divide-y divide-gray-200">
+                                    <tbody className="bg-white divide-y divide-slate-100">
                                         {filterData(
                                             sortData(approvedProducts)
                                         ).map((product) => (
                                             <tr
                                                 key={product.id}
-                                                className="hover:bg-gray-50"
+                                                className="hover:bg-slate-50/70 transition-colors"
                                             >
-                                                <td className="px-6 py-4 whitespace-nowrap">
-                                                    <div className="flex items-center">
+                                                <td className="px-5 py-3.5 whitespace-nowrap">
+                                                    <div className="flex items-center gap-3">
                                                         <img
                                                             src={product.image}
                                                             alt={product.name}
-                                                            className="w-16 h-16 object-cover rounded-lg"
+                                                            className="w-12 h-12 object-cover rounded-xl border border-slate-200 shadow-2xs shrink-0"
                                                         />
-                                                        <div className="ml-4">
+                                                        <div>
                                                             <Link
                                                                 to={`/admin/product/${product.id}`}
-                                                                className="text-sm font-medium text-primary hover:text-primary-dark"
+                                                                className="text-xs font-bold text-slate-900 hover:text-emerald-700 tracking-tight transition-colors"
                                                             >
                                                                 {product.name}
                                                             </Link>
-                                                            <div className="text-sm text-gray-500">
-                                                                {product.description.substring(
-                                                                    0,
-                                                                    50
-                                                                )}
-                                                                ...
+                                                            <div className="text-[11px] text-slate-500 max-w-[220px] truncate mt-0.5">
+                                                                {product.description}
                                                             </div>
                                                         </div>
                                                     </div>
                                                 </td>
-                                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                                <td className="px-5 py-3.5 whitespace-nowrap text-xs text-slate-800 font-medium">
                                                     {product.producer}
                                                 </td>
-                                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                                    {product.cropType}
+                                                <td className="px-5 py-3.5 whitespace-nowrap">
+                                                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200/80">
+                                                        {product.cropType}
+                                                    </span>
                                                 </td>
-                                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                                    ₱{product.price}/kg
+                                                <td className="px-5 py-3.5 whitespace-nowrap text-xs font-bold text-emerald-700 tabular-nums">
+                                                    ₱{Number(product.price).toFixed(2)}/kg
                                                 </td>
-                                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                                <td className="px-5 py-3.5 whitespace-nowrap text-xs font-semibold text-slate-800 tabular-nums">
                                                     {product.stock} kg
                                                 </td>
-                                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                                <td className="px-5 py-3.5 whitespace-nowrap text-xs text-slate-600 tabular-nums">
                                                     {product.sales} kg sold
                                                 </td>
-                                                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                                <td className="px-5 py-3.5 whitespace-nowrap text-right">
                                                     <button
                                                         onClick={() =>
                                                             handleProductStatusAction(
@@ -1716,15 +1714,15 @@ function AdminProductManagement() {
                                                                 ? `Product owner suspended: ${product.ownerSuspensionReason}`
                                                                 : ""
                                                         }
-                                                        className={`inline-flex items-center px-3 py-1 border border-transparent text-sm leading-4 font-medium rounded-md text-white ${
+                                                        className={`inline-flex items-center px-3 py-1.5 rounded-xl text-xs font-semibold shadow-2xs transition-all duration-150 cursor-pointer active:scale-95 ${
                                                             product.status ===
                                                             "Active"
-                                                                ? "bg-red-600 hover:bg-red-700"
+                                                                ? "bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200/80"
                                                                 : product.ownerStatus ===
                                                                   "suspended"
-                                                                ? "bg-gray-400 cursor-not-allowed"
-                                                                : "bg-green-600 hover:bg-green-700"
-                                                        } focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500`}
+                                                                ? "bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed"
+                                                                : "bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200/80"
+                                                        }`}
                                                     >
                                                         {product.status ===
                                                         "Active"
