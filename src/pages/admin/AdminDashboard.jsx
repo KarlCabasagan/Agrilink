@@ -482,67 +482,71 @@ function AdminDashboard() {
                 </div>
 
                 {/* Quick Actions */}
-                <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-                    <h2 className="text-lg font-semibold text-gray-800 mb-4">
-                        Quick Actions
+                <div className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs p-5 sm:p-6 mb-6">
+                    <h2 className="text-sm font-bold text-slate-900 tracking-tight mb-3.5">
+                        Quick Management Actions
                     </h2>
-                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
                         <Link
                             to="/admin/users"
-                            className="flex flex-col items-center p-4 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors"
+                            className="group flex flex-col items-center text-center p-4 rounded-xl bg-slate-50/70 hover:bg-emerald-50/50 border border-slate-200/70 hover:border-emerald-200/80 transition-all duration-150 cursor-pointer active:scale-[0.98]"
                         >
-                            <Icon
-                                icon="mingcute:user-add-line"
-                                width="24"
-                                height="24"
-                                className="text-blue-600 mb-2"
-                            />
-                            <span className="text-sm font-medium text-blue-700">
+                            <div className="w-10 h-10 rounded-xl bg-blue-50 border border-blue-200/60 flex items-center justify-center text-blue-700 mb-2 group-hover:scale-105 transition-transform">
+                                <Icon
+                                    icon="mingcute:user-add-line"
+                                    width="20"
+                                    height="20"
+                                />
+                            </div>
+                            <span className="text-xs font-semibold text-slate-800 group-hover:text-emerald-800">
                                 Review Applications
                             </span>
                         </Link>
 
                         <Link
                             to="/admin/products"
-                            className="flex flex-col items-center p-4 bg-green-50 rounded-lg hover:bg-green-100 transition-colors"
+                            className="group flex flex-col items-center text-center p-4 rounded-xl bg-slate-50/70 hover:bg-emerald-50/50 border border-slate-200/70 hover:border-emerald-200/80 transition-all duration-150 cursor-pointer active:scale-[0.98]"
                         >
-                            <Icon
-                                icon="mingcute:check-circle-line"
-                                width="24"
-                                height="24"
-                                className="text-green-600 mb-2"
-                            />
-                            <span className="text-sm font-medium text-green-700">
+                            <div className="w-10 h-10 rounded-xl bg-emerald-50 border border-emerald-200/60 flex items-center justify-center text-emerald-700 mb-2 group-hover:scale-105 transition-transform">
+                                <Icon
+                                    icon="mingcute:check-circle-line"
+                                    width="20"
+                                    height="20"
+                                />
+                            </div>
+                            <span className="text-xs font-semibold text-slate-800 group-hover:text-emerald-800">
                                 Approve Products
                             </span>
                         </Link>
 
                         <Link
                             to="/admin/crops"
-                            className="flex flex-col items-center p-4 bg-emerald-50 rounded-lg hover:bg-emerald-100 transition-colors"
+                            className="group flex flex-col items-center text-center p-4 rounded-xl bg-slate-50/70 hover:bg-emerald-50/50 border border-slate-200/70 hover:border-emerald-200/80 transition-all duration-150 cursor-pointer active:scale-[0.98]"
                         >
-                            <Icon
-                                icon="mingcute:leaf-line"
-                                width="24"
-                                height="24"
-                                className="text-emerald-600 mb-2"
-                            />
-                            <span className="text-sm font-medium text-emerald-700">
+                            <div className="w-10 h-10 rounded-xl bg-teal-50 border border-teal-200/60 flex items-center justify-center text-teal-700 mb-2 group-hover:scale-105 transition-transform">
+                                <Icon
+                                    icon="mingcute:leaf-line"
+                                    width="20"
+                                    height="20"
+                                />
+                            </div>
+                            <span className="text-xs font-semibold text-slate-800 group-hover:text-emerald-800">
                                 Manage Crops
                             </span>
                         </Link>
 
                         <Link
                             to="/admin/transactions"
-                            className="flex flex-col items-center p-4 bg-purple-50 rounded-lg hover:bg-purple-100 transition-colors"
+                            className="group flex flex-col items-center text-center p-4 rounded-xl bg-slate-50/70 hover:bg-emerald-50/50 border border-slate-200/70 hover:border-emerald-200/80 transition-all duration-150 cursor-pointer active:scale-[0.98]"
                         >
-                            <Icon
-                                icon="mingcute:history-anticlockwise-line"
-                                width="24"
-                                height="24"
-                                className="text-purple-600 mb-2"
-                            />
-                            <span className="text-sm font-medium text-purple-700">
+                            <div className="w-10 h-10 rounded-xl bg-purple-50 border border-purple-200/60 flex items-center justify-center text-purple-700 mb-2 group-hover:scale-105 transition-transform">
+                                <Icon
+                                    icon="mingcute:history-anticlockwise-line"
+                                    width="20"
+                                    height="20"
+                                />
+                            </div>
+                            <span className="text-xs font-semibold text-slate-800 group-hover:text-emerald-800">
                                 View Transactions
                             </span>
                         </Link>
