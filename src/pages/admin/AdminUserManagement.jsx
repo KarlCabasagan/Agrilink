@@ -793,39 +793,40 @@ function AdminUserManagement() {
                         </div>
 
                         {loadingApplications ? (
-                            <div className="bg-white rounded-lg shadow-md p-8 text-center">
-                                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
-                                <p className="text-gray-500 mt-2">
-                                    Loading applications...
+                            <div className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs p-8 text-center">
+                                <div className="w-8 h-8 border-2 border-emerald-600 border-t-transparent rounded-full animate-spin mx-auto"></div>
+                                <p className="text-slate-500 text-xs mt-3">
+                                    Loading applications…
                                 </p>
                             </div>
                         ) : error ? (
-                            <div className="bg-white rounded-lg shadow-md p-8 text-center">
-                                <Icon
-                                    icon="mingcute:error-fill"
-                                    width="64"
-                                    height="64"
-                                    className="mx-auto text-red-500 mb-4"
-                                />
-                                <h3 className="text-lg font-semibold text-gray-800 mb-2">
+                            <div className="bg-white rounded-2xl border border-rose-200/90 shadow-2xs p-8 text-center">
+                                <div className="w-12 h-12 rounded-xl bg-rose-50 flex items-center justify-center text-rose-600 mx-auto mb-3">
+                                    <Icon
+                                        icon="mingcute:warning-line"
+                                        width="24"
+                                        height="24"
+                                    />
+                                </div>
+                                <h3 className="text-base font-bold text-slate-900 mb-1">
                                     Error Loading Data
                                 </h3>
-                                <p className="text-gray-600">{error}</p>
+                                <p className="text-xs text-slate-600">{error}</p>
                             </div>
                         ) : filterData(producerApplications).length === 0 ? (
-                            <div className="bg-white rounded-lg shadow-md p-8 text-center">
-                                <Icon
-                                    icon="mingcute:user-add-line"
-                                    width="64"
-                                    height="64"
-                                    className="mx-auto text-gray-300 mb-4"
-                                />
-                                <h3 className="text-lg font-semibold text-gray-600 mb-2">
+                            <div className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs p-10 text-center flex flex-col items-center">
+                                <div className="w-14 h-14 rounded-2xl bg-slate-50 border border-slate-200 flex items-center justify-center text-slate-400 mb-3">
+                                    <Icon
+                                        icon="mingcute:user-add-line"
+                                        width="28"
+                                        height="28"
+                                    />
+                                </div>
+                                <h3 className="text-base font-bold text-slate-900 mb-1">
                                     No Applications Found
                                 </h3>
-                                <p className="text-gray-500">
-                                    There are no producer applications to
-                                    review.
+                                <p className="text-xs text-slate-500 max-w-sm">
+                                    There are currently no producer seller applications pending review.
                                 </p>
                             </div>
                         ) : (
@@ -833,16 +834,16 @@ function AdminUserManagement() {
                                 (application) => (
                                     <div
                                         key={application.id}
-                                        className="bg-white rounded-lg shadow-md p-6"
+                                        className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs p-5 sm:p-6 transition-all duration-150"
                                     >
-                                        <div className="flex items-start justify-between mb-4">
-                                            <div className="flex items-center gap-4">
+                                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
+                                            <div className="flex items-center gap-3.5">
                                                 <img
                                                     src={
                                                         application.profileImage
                                                     }
                                                     alt={application.name}
-                                                    className="w-16 h-16 object-cover rounded-full cursor-pointer hover:opacity-80 transition-opacity"
+                                                    className="w-14 h-14 object-cover rounded-xl border border-slate-200 shadow-2xs cursor-pointer hover:opacity-85 transition-opacity"
                                                     onClick={() =>
                                                         handleImageClick(
                                                             application.profileImage
@@ -850,58 +851,81 @@ function AdminUserManagement() {
                                                     }
                                                 />
                                                 <div>
-                                                    <h3 className="text-lg font-semibold text-gray-800">
+                                                    <h3 className="text-base font-bold text-slate-900 tracking-tight">
                                                         {application.name}
                                                     </h3>
-                                                    <p className="text-sm text-gray-600">
+                                                    <p className="text-xs text-slate-500 tabular-nums">
                                                         Applied on{" "}
                                                         {new Date(
                                                             application.applicationDate
-                                                        ).toLocaleDateString()}
+                                                        ).toLocaleDateString("en-US", {
+                                                            year: "numeric",
+                                                            month: "short",
+                                                            day: "numeric",
+                                                        })}
                                                     </p>
                                                 </div>
                                             </div>
+
+                                            {/* Valid ID preview button */}
+                                            <button
+                                                onClick={() =>
+                                                    handleImageClick(
+                                                        application.validIdUrl
+                                                    )
+                                                }
+                                                className="self-start sm:self-auto min-h-[38px] px-3.5 py-1.5 bg-slate-50 hover:bg-emerald-50 text-slate-700 hover:text-emerald-800 border border-slate-200 hover:border-emerald-200 rounded-xl text-xs font-semibold shadow-2xs flex items-center gap-1.5 transition-all cursor-pointer active:scale-95"
+                                            >
+                                                <Icon
+                                                    icon="mingcute:idcard-line"
+                                                    className="w-4 h-4 text-emerald-700"
+                                                />
+                                                <span>View Valid ID Document</span>
+                                            </button>
                                         </div>
 
-                                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 bg-slate-50/70 border border-slate-200/70 rounded-xl p-4 mb-4">
                                             <div>
-                                                <h4 className="font-medium text-gray-700 mb-1">
-                                                    Contact Information
+                                                <h4 className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 mb-1">
+                                                    Email & Contact
                                                 </h4>
-                                                <p className="text-sm text-gray-600">
+                                                <p className="text-xs font-semibold text-slate-800 break-all">
                                                     {application.email}
                                                 </p>
-                                                <p className="text-sm text-gray-600">
+                                                <p className="text-xs text-slate-600 tabular-nums">
                                                     {application.contact}
                                                 </p>
                                             </div>
                                             <div>
-                                                <h4 className="font-medium text-gray-700 mb-1">
+                                                <h4 className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 mb-1">
                                                     Farming Experience
                                                 </h4>
-                                                <p className="text-sm text-gray-600">
-                                                    {application.experience}
+                                                <p className="text-xs font-semibold text-slate-800">
+                                                    {application.experience || "Not specified"}
                                                 </p>
                                             </div>
                                             <div>
-                                                <h4 className="font-medium text-gray-700 mb-1">
-                                                    Crops{" "}
-                                                    <span className="text-gray-400 text-xs">
-                                                        (
-                                                        {
-                                                            application.crops
-                                                                .length
-                                                        }
-                                                        )
+                                                <h4 className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 mb-1">
+                                                    Farm Address
+                                                </h4>
+                                                <p className="text-xs text-slate-700 leading-relaxed">
+                                                    {application.address || "No address provided"}
+                                                </p>
+                                            </div>
+                                            <div>
+                                                <h4 className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 mb-1">
+                                                    Target Crops{" "}
+                                                    <span className="tabular-nums">
+                                                        ({application.crops.length})
                                                     </span>
                                                 </h4>
-                                                <div className="max-h-[4.5rem] overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-transparent hover:scrollbar-thumb-gray-400 pr-2">
+                                                <div className="max-h-[4rem] overflow-y-auto scrollbar-thin scrollbar-thumb-slate-300 pr-1">
                                                     <div className="flex flex-wrap gap-1">
                                                         {application.crops.map(
                                                             (crop, index) => (
                                                                 <span
                                                                     key={index}
-                                                                    className="bg-green-100 text-green-800 px-2 py-1 rounded text-xs whitespace-nowrap"
+                                                                    className="bg-emerald-50 text-emerald-800 border border-emerald-200/80 px-2 py-0.5 rounded-full text-[11px] font-semibold tabular-nums"
                                                                 >
                                                                     {crop}
                                                                 </span>
@@ -912,64 +936,7 @@ function AdminUserManagement() {
                                             </div>
                                         </div>
 
-                                        <div className="mb-4 flex w-1/2 justify-between">
-                                            <div>
-                                                <h4 className="font-medium text-gray-700 mb-1">
-                                                    Address
-                                                </h4>
-                                                <p className="text-sm text-gray-600">
-                                                    {application.address}
-                                                </p>
-                                            </div>
-
-                                            <button
-                                                onClick={() =>
-                                                    handleImageClick(
-                                                        application.validIdUrl
-                                                    )
-                                                }
-                                                className="mt-2 text-primary hover:text-primary-dark flex items-center gap-1 text-sm font-semibold"
-                                            >
-                                                <Icon
-                                                    icon="mingcute:idcard-line"
-                                                    className="w-4 h-4"
-                                                />
-                                                Click to view Valid ID
-                                            </button>
-                                        </div>
-
-                                        <div className="flex justify-end gap-3">
-                                            <button
-                                                onClick={() =>
-                                                    handleApplicationAction(
-                                                        application.id,
-                                                        "approved"
-                                                    )
-                                                }
-                                                disabled={
-                                                    processingId ===
-                                                    application.id
-                                                }
-                                                className="flex items-center gap-2 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                                            >
-                                                {processingId ===
-                                                    application.id &&
-                                                confirmAction?.type ===
-                                                    "approved" ? (
-                                                    <>
-                                                        <Icon
-                                                            icon="mingcute:loading-line"
-                                                            className="animate-spin"
-                                                        />
-                                                        Approving...
-                                                    </>
-                                                ) : (
-                                                    <>
-                                                        <Icon icon="mingcute:check-line" />
-                                                        Approve
-                                                    </>
-                                                )}
-                                            </button>
+                                        <div className="flex items-center justify-end gap-2.5 pt-2 border-t border-slate-100">
                                             <button
                                                 onClick={() =>
                                                     handleApplicationAction(
@@ -981,7 +948,7 @@ function AdminUserManagement() {
                                                     processingId ===
                                                     application.id
                                                 }
-                                                className="flex items-center gap-2 bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                                className="min-h-[40px] px-4 py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200/80 rounded-xl text-xs font-semibold shadow-2xs flex items-center gap-1.5 transition-all cursor-pointer active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
                                             >
                                                 {processingId ===
                                                     application.id &&
@@ -990,14 +957,45 @@ function AdminUserManagement() {
                                                     <>
                                                         <Icon
                                                             icon="mingcute:loading-line"
-                                                            className="animate-spin"
+                                                            className="animate-spin w-3.5 h-3.5"
                                                         />
-                                                        Rejecting...
+                                                        <span>Rejecting…</span>
                                                     </>
                                                 ) : (
                                                     <>
-                                                        <Icon icon="mingcute:close-line" />
-                                                        Reject
+                                                        <Icon icon="mingcute:close-line" className="w-3.5 h-3.5" />
+                                                        <span>Reject</span>
+                                                    </>
+                                                )}
+                                            </button>
+                                            <button
+                                                onClick={() =>
+                                                    handleApplicationAction(
+                                                        application.id,
+                                                        "approved"
+                                                    )
+                                                }
+                                                disabled={
+                                                    processingId ===
+                                                    application.id
+                                                }
+                                                className="min-h-[40px] px-4 py-2 bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl text-xs font-semibold shadow-xs flex items-center gap-1.5 transition-all cursor-pointer active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
+                                            >
+                                                {processingId ===
+                                                    application.id &&
+                                                confirmAction?.type ===
+                                                    "approved" ? (
+                                                    <>
+                                                        <Icon
+                                                            icon="mingcute:loading-line"
+                                                            className="animate-spin w-3.5 h-3.5"
+                                                        />
+                                                        <span>Approving…</span>
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        <Icon icon="mingcute:check-line" className="w-3.5 h-3.5" />
+                                                        <span>Approve Producer</span>
                                                     </>
                                                 )}
                                             </button>
