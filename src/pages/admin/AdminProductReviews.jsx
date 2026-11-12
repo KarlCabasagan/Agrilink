@@ -516,22 +516,20 @@ function AdminProductReviews() {
                 </div>
 
                 {/* Filters and Search */}
-                <div className="bg-white rounded-xl shadow-lg p-6 mb-8 border border-gray-100">
-                    <div className="flex flex-col sm:flex-row gap-6">
+                <div className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs p-4 sm:p-5 mb-6">
+                    <div className="flex flex-col sm:flex-row gap-3">
                         {/* Search */}
                         <div className="flex-1 relative">
                             <Icon
                                 icon="mingcute:search-line"
-                                width="20"
-                                height="20"
-                                className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400"
+                                className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none"
                             />
                             <input
                                 type="text"
-                                placeholder="Search reviews by keyword or customer name..."
+                                placeholder="Search reviews by customer name or keywords…"
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
-                                className="w-full pl-12 pr-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary focus:border-primary text-gray-700 bg-gray-50 placeholder-gray-400"
+                                className="w-full h-11 pl-10 pr-4 bg-slate-50/50 border border-slate-200 rounded-xl text-xs sm:text-sm text-slate-900 placeholder:text-slate-400 outline-none focus:bg-white focus:border-emerald-600 focus:ring-2 focus:ring-emerald-600/15 transition-all"
                             />
                         </div>
 
@@ -539,7 +537,7 @@ function AdminProductReviews() {
                         <select
                             value={filterRating}
                             onChange={(e) => setFilterRating(e.target.value)}
-                            className="px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary focus:border-primary bg-gray-50 text-gray-700 cursor-pointer"
+                            className="h-11 px-3.5 bg-slate-50/50 border border-slate-200 rounded-xl text-xs sm:text-sm font-medium text-slate-700 outline-none focus:bg-white focus:border-emerald-600 focus:ring-2 focus:ring-emerald-600/15 cursor-pointer transition-all"
                         >
                             <option value="all">All Ratings</option>
                             <option value="5">5 Stars Only</option>
@@ -557,7 +555,7 @@ function AdminProductReviews() {
                                     e.target.value.split("-");
                                 setSortConfig({ key, direction });
                             }}
-                            className="px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary focus:border-primary bg-gray-50 text-gray-700 cursor-pointer"
+                            className="h-11 px-3.5 bg-slate-50/50 border border-slate-200 rounded-xl text-xs sm:text-sm font-medium text-slate-700 outline-none focus:bg-white focus:border-emerald-600 focus:ring-2 focus:ring-emerald-600/15 cursor-pointer transition-all"
                         >
                             <option value="date-desc">Newest Reviews</option>
                             <option value="date-asc">Oldest Reviews</option>
