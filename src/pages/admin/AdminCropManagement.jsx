@@ -881,39 +881,86 @@ function AdminCropManagement() {
     );
 
     return (
-        <div className="min-h-screen w-full flex flex-col relative items-center scrollbar-hide bg-background overflow-x-hidden text-text pb-20">
-            {/* Header */}
-            <div className="fixed top-0 left-0 w-full bg-white shadow-md z-50 px-4 py-3">
-                <h1 className="text-lg font-semibold text-primary text-center">
-                    Crop Management
-                </h1>
+        <div className="min-h-screen w-full flex flex-col relative items-center scrollbar-hide bg-slate-50/50 overflow-x-hidden text-slate-800 pb-24 md:pb-16">
+            {/* Mobile Header */}
+            <div className="md:hidden fixed top-0 left-0 right-0 h-14 bg-white/95 backdrop-blur-md border-b border-slate-200/80 z-30 flex items-center justify-between px-4">
+                <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-700 flex items-center justify-center">
+                        <Icon icon="mingcute:plant-line" className="w-4 h-4" />
+                    </div>
+                    <h1 className="text-sm font-bold text-slate-900 tracking-tight">
+                        Crop Management
+                    </h1>
+                </div>
+                <span className="text-[11px] font-semibold text-slate-500 tabular-nums">
+                    {crops.length} crops
+                </span>
             </div>
 
-            <div className="w-full max-w-6xl mx-4 sm:mx-auto my-16">
-                {/* Tabs */}
-                <div className="bg-white rounded-lg shadow-md mb-6 mt-4">
-                    <div className="flex border-b border-gray-200">
-                        <button
-                            onClick={() => setActiveTab("crops")}
-                            className={`flex-1 py-3 px-4 text-center font-medium transition-colors ${
-                                activeTab === "crops"
-                                    ? "text-primary border-b-2 border-primary"
-                                    : "text-gray-600 hover:text-gray-800"
-                            }`}
-                        >
-                            Crop Management
-                        </button>
-                        <button
-                            onClick={() => setActiveTab("guides")}
-                            className={`flex-1 py-3 px-4 text-center font-medium transition-colors ${
-                                activeTab === "guides"
-                                    ? "text-primary border-b-2 border-primary"
-                                    : "text-gray-600 hover:text-gray-800"
-                            }`}
-                        >
-                            Farming Guides
-                        </button>
+            <div className="w-full max-w-6xl mx-auto px-4 sm:px-6 pt-16 md:pt-20">
+                {/* Desktop Header */}
+                <div className="hidden md:flex items-center justify-between mb-6">
+                    <div>
+                        <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wider text-slate-500 mb-1">
+                            <span>Admin Portal</span>
+                            <Icon icon="mingcute:right-line" className="w-3.5 h-3.5 text-slate-400" />
+                            <span className="text-emerald-700">Agricultural Catalog</span>
+                        </div>
+                        <h1 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">
+                            Crop Management & Guides
+                        </h1>
+                        <p className="text-xs text-slate-500 mt-1 max-w-prose">
+                            Manage crop varieties, recommended market prices, demand thresholds, and educational guides.
+                        </p>
                     </div>
+                    <div className="flex items-center gap-2">
+                        <div className="px-3.5 py-2 bg-white rounded-xl border border-slate-200/90 shadow-2xs text-right">
+                            <div className="text-[10px] uppercase font-semibold text-slate-400">
+                                Total Crops
+                            </div>
+                            <div className="text-base font-bold text-slate-900 tabular-nums">
+                                {crops.length}
+                            </div>
+                        </div>
+                        <div className="px-3.5 py-2 bg-white rounded-xl border border-slate-200/90 shadow-2xs text-right">
+                            <div className="text-[10px] uppercase font-semibold text-slate-400">
+                                Total Guides
+                            </div>
+                            <div className="text-base font-bold text-slate-900 tabular-nums">
+                                {farmingGuides.length}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Tabs */}
+                <div className="inline-flex bg-slate-200/60 p-1 rounded-xl mb-6 gap-1 w-full sm:w-auto">
+                    <button
+                        onClick={() => setActiveTab("crops")}
+                        className={`flex-1 sm:flex-none px-4 py-2 rounded-lg text-xs font-semibold transition-all cursor-pointer active:scale-95 ${
+                            activeTab === "crops"
+                                ? "bg-white text-emerald-800 shadow-2xs"
+                                : "text-slate-600 hover:text-slate-900 hover:bg-white/50"
+                        }`}
+                    >
+                        <span className="inline-flex items-center gap-1.5">
+                            <Icon icon="mingcute:plant-line" className="w-3.5 h-3.5" />
+                            <span>Crops Directory ({crops.length})</span>
+                        </span>
+                    </button>
+                    <button
+                        onClick={() => setActiveTab("guides")}
+                        className={`flex-1 sm:flex-none px-4 py-2 rounded-lg text-xs font-semibold transition-all cursor-pointer active:scale-95 ${
+                            activeTab === "guides"
+                                ? "bg-white text-emerald-800 shadow-2xs"
+                                : "text-slate-600 hover:text-slate-900 hover:bg-white/50"
+                        }`}
+                    >
+                        <span className="inline-flex items-center gap-1.5">
+                            <Icon icon="mingcute:book-2-line" className="w-3.5 h-3.5" />
+                            <span>Farming Guides ({farmingGuides.length})</span>
+                        </span>
+                    </button>
                 </div>
 
                 {/* Crops Tab */}
