@@ -411,66 +411,80 @@ function AdminProductReviews() {
                     </div>
                 </div>
                 {/* Product Info */}
-                <div className="bg-white rounded-xl shadow-lg p-6 mb-8 mt-4 border border-gray-100">
-                    <div className="flex flex-col sm:flex-row items-start sm:items-center gap-6">
-                        <div className="relative">
+                <div className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs p-5 sm:p-6 mb-6">
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center gap-5">
+                        <div className="relative shrink-0">
                             <img
                                 src={
                                     product?.image ||
                                     "/assets/blank-profile.jpg"
                                 }
                                 alt={product?.name}
-                                className="w-24 h-24 sm:w-32 sm:h-32 object-cover rounded-xl shadow-md"
+                                className="w-24 h-24 sm:w-28 sm:h-28 object-cover rounded-2xl border border-slate-200/80 shadow-2xs"
                             />
-                            <div className="absolute -bottom-2 -right-2 bg-primary text-white text-sm px-3 py-1 rounded-full shadow-md">
+                            <div className="absolute -bottom-2 -right-2 bg-emerald-600 text-white text-xs font-bold px-2.5 py-0.5 rounded-full shadow-xs flex items-center gap-1 tabular-nums">
+                                <Icon icon="mingcute:star-fill" className="w-3 h-3 text-amber-300" />
                                 {reviewStats.averageRating.toFixed(1)}
                             </div>
                         </div>
-                        <div className="flex-1">
-                            <h2 className="text-2xl font-bold text-gray-800 mb-2">
+                        <div className="flex-1 min-w-0">
+                            <h2 className="text-lg sm:text-xl font-bold text-slate-900 tracking-tight mb-1 truncate">
                                 {product?.name}
                             </h2>
-                            <div className="flex flex-wrap gap-2 mb-3">
-                                <p className="text-primary font-medium text-lg">
-                                    by {product?.producer}
-                                </p>
+                            <div className="flex flex-wrap items-center gap-2 mb-3">
+                                <span className="text-xs font-medium text-slate-500">
+                                    Producer:{" "}
+                                    <span className="font-semibold text-emerald-800">
+                                        {product?.producer || "Agrilink Farmer"}
+                                    </span>
+                                </span>
                                 {product?.category?.name && (
-                                    <span className="text-sm bg-gray-100 text-gray-600 px-3 py-1 rounded-full">
+                                    <span className="text-xs bg-slate-100 text-slate-700 px-2.5 py-0.5 rounded-full font-medium">
                                         {product.category.name}
                                     </span>
                                 )}
                                 {product?.stock > 0 && (
-                                    <span className="text-sm bg-green-50 text-green-700 px-3 py-1 rounded-full">
+                                    <span className="text-xs bg-emerald-50 text-emerald-800 border border-emerald-200/80 px-2.5 py-0.5 rounded-full font-semibold tabular-nums">
                                         {product.stock} kg in stock
                                     </span>
                                 )}
                             </div>
                             <div className="flex items-center gap-3">
-                                <div className="flex">
+                                <div className="flex items-center gap-0.5">
                                     {renderStars(
                                         Math.floor(reviewStats.averageRating)
                                     )}
                                 </div>
-                                <span className="text-gray-500 font-medium">
-                                    {reviewStats.totalReviews} reviews
+                                <span className="text-xs font-semibold text-slate-500 tabular-nums">
+                                    {reviewStats.totalReviews} total reviews
                                 </span>
                             </div>
                         </div>
                     </div>
 
                     {/* Rating Distribution */}
-                    <div className="mt-8 border-t border-gray-100 pt-6">
-                        <h3 className="text-lg font-semibold text-gray-800 mb-4">
-                            Rating Distribution
-                        </h3>
-                        <div className="grid grid-cols-5 gap-4">
+                    <div className="mt-5 border-t border-slate-100 pt-5">
+                        <div className="flex items-center justify-between mb-3">
+                            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-700">
+                                Rating Breakdown
+                            </h3>
+                            {filterRating !== "all" && (
+                                <button
+                                    onClick={() => setFilterRating("all")}
+                                    className="text-[11px] font-semibold text-emerald-700 hover:underline cursor-pointer"
+                                >
+                                    Reset filter
+                                </button>
+                            )}
+                        </div>
+                        <div className="grid grid-cols-5 gap-2 sm:gap-3">
                             {[5, 4, 3, 2, 1].map((rating) => (
                                 <div
                                     key={rating}
-                                    className={`bg-gray-50 rounded-lg p-3 text-center transition-colors cursor-pointer ${
+                                    className={`rounded-xl p-2.5 text-center transition-all cursor-pointer border ${
                                         filterRating === rating.toString()
-                                            ? "ring-2 ring-primary bg-primary-50"
-                                            : "hover:bg-gray-100"
+                                            ? "bg-emerald-50 border-emerald-300 ring-2 ring-emerald-500/20"
+                                            : "bg-slate-50/70 border-slate-200/70 hover:bg-slate-100/70 active:scale-95"
                                     }`}
                                     onClick={() =>
                                         setFilterRating(
@@ -480,21 +494,19 @@ function AdminProductReviews() {
                                         )
                                     }
                                 >
-                                    <div className="flex items-center justify-center gap-1 mb-2">
-                                        <span className="font-medium">
+                                    <div className="flex items-center justify-center gap-1 mb-1">
+                                        <span className="text-xs font-bold text-slate-700 tabular-nums">
                                             {rating}
                                         </span>
                                         <Icon
                                             icon="mingcute:star-fill"
-                                            className="text-yellow-400"
-                                            width="16"
-                                            height="16"
+                                            className="text-amber-400 w-3.5 h-3.5"
                                         />
                                     </div>
-                                    <div className="text-xl font-bold text-primary">
+                                    <div className="text-base sm:text-lg font-bold text-slate-900 tabular-nums">
                                         {reviewStats.ratingDistribution[rating]}
                                     </div>
-                                    <div className="text-xs text-gray-500 mt-1">
+                                    <div className="text-[10px] uppercase font-semibold text-slate-400">
                                         reviews
                                     </div>
                                 </div>
