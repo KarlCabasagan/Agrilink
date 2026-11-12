@@ -852,7 +852,6 @@ function AdminCropManagement() {
             </div>
         </div>
     );
-    );
 
     return (
         <div className="min-h-screen w-full flex flex-col relative items-center scrollbar-hide bg-slate-50/50 overflow-x-hidden text-slate-800 pb-24 md:pb-16">
