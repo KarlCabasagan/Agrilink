@@ -356,102 +356,125 @@ function AdminDashboard() {
                         </span>
                     </div>
                 </div>
-                {/* Quick Stats */}
-                <div className="grid grid-cols-3 lg:grid-cols-3 gap-4 mb-6 mt-4 px-4 sm:px-0">
-                    <div className="bg-white rounded-lg shadow-md p-4 text-center">
-                        <Icon
-                            icon="mingcute:group-line"
-                            width="32"
-                            height="32"
-                            className="mx-auto mb-2 text-blue-600"
-                        />
+                {/* Quick Stats Grid */}
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6">
+                    <div className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs p-4 sm:p-5 text-center">
+                        <div className="w-10 h-10 rounded-xl bg-blue-50 border border-blue-200/60 flex items-center justify-center mx-auto mb-2.5 text-blue-700">
+                            <Icon
+                                icon="mingcute:group-line"
+                                width="22"
+                                height="22"
+                            />
+                        </div>
                         {isStatsLoading ? (
                             <div className="animate-pulse">
-                                <div className="h-8 bg-gray-200 rounded w-24 mx-auto mb-2"></div>
-                                <div className="h-4 bg-gray-200 rounded w-20 mx-auto"></div>
+                                <div className="h-7 bg-slate-100 rounded-lg w-20 mx-auto mb-1.5"></div>
+                                <div className="h-3.5 bg-slate-100 rounded-md w-16 mx-auto"></div>
                             </div>
                         ) : (
                             <>
-                                <p className="text-2xl font-bold text-gray-800">
+                                <p className="text-2xl font-bold text-slate-900 tabular-nums tracking-tight">
                                     {stats.totalUsers.toLocaleString()}
                                 </p>
-                                <p className="text-sm text-gray-600">
+                                <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 mt-0.5">
                                     Total Users
                                 </p>
                                 {stats.pendingApplications > 0 && (
-                                    <div className="flex items-center justify-center gap-1 mt-1">
+                                    <div className="inline-flex items-center gap-1 mt-2 px-2 py-0.5 rounded-full bg-amber-50 border border-amber-200/80 text-[11px] font-semibold text-amber-800 tabular-nums">
                                         <Icon
                                             icon="mingcute:time-line"
-                                            className="w-3 h-3 text-orange-500"
+                                            className="w-3 h-3 text-amber-600 shrink-0"
                                         />
-                                        <p className="text-xs text-orange-600">
-                                            {stats.pendingApplications} seller{" "}
-                                            {stats.pendingApplications === 1
-                                                ? "application"
-                                                : "applications"}{" "}
-                                            pending
-                                        </p>
+                                        <span>
+                                            {stats.pendingApplications} pending
+                                        </span>
                                     </div>
                                 )}
                             </>
                         )}
                     </div>
 
-                    <div className="bg-white rounded-lg shadow-md p-4 text-center">
-                        <Icon
-                            icon="mingcute:box-2-line"
-                            width="32"
-                            height="32"
-                            className="mx-auto mb-2 text-green-600"
-                        />
+                    <div className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs p-4 sm:p-5 text-center">
+                        <div className="w-10 h-10 rounded-xl bg-emerald-50 border border-emerald-200/60 flex items-center justify-center mx-auto mb-2.5 text-emerald-700">
+                            <Icon
+                                icon="mingcute:box-2-line"
+                                width="22"
+                                height="22"
+                            />
+                        </div>
                         {isStatsLoading ? (
                             <div className="animate-pulse">
-                                <div className="h-8 bg-gray-200 rounded w-24 mx-auto mb-2"></div>
-                                <div className="h-4 bg-gray-200 rounded w-20 mx-auto"></div>
+                                <div className="h-7 bg-slate-100 rounded-lg w-20 mx-auto mb-1.5"></div>
+                                <div className="h-3.5 bg-slate-100 rounded-md w-16 mx-auto"></div>
                             </div>
                         ) : (
                             <>
-                                <p className="text-2xl font-bold text-gray-800">
+                                <p className="text-2xl font-bold text-slate-900 tabular-nums tracking-tight">
                                     {stats.totalProducts.toLocaleString()}
                                 </p>
-                                <p className="text-sm text-gray-600">
+                                <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 mt-0.5">
                                     Products
                                 </p>
                                 {stats.pendingProducts > 0 && (
-                                    <div className="flex items-center justify-center gap-1 mt-1">
+                                    <div className="inline-flex items-center gap-1 mt-2 px-2 py-0.5 rounded-full bg-amber-50 border border-amber-200/80 text-[11px] font-semibold text-amber-800 tabular-nums">
                                         <Icon
                                             icon="mingcute:time-line"
-                                            className="w-3 h-3 text-orange-500"
+                                            className="w-3 h-3 text-amber-600 shrink-0"
                                         />
-                                        <p className="text-xs text-orange-600">
+                                        <span>
                                             {stats.pendingProducts} pending
-                                            approval
-                                        </p>
+                                        </span>
                                     </div>
                                 )}
                             </>
                         )}
                     </div>
 
-                    <div className="bg-white rounded-lg shadow-md p-4 text-center">
-                        <Icon
-                            icon="mingcute:leaf-line"
-                            width="32"
-                            height="32"
-                            className="mx-auto mb-2 text-emerald-600"
-                        />
+                    <div className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs p-4 sm:p-5 text-center">
+                        <div className="w-10 h-10 rounded-xl bg-teal-50 border border-teal-200/60 flex items-center justify-center mx-auto mb-2.5 text-teal-700">
+                            <Icon
+                                icon="mingcute:leaf-line"
+                                width="22"
+                                height="22"
+                            />
+                        </div>
                         {isStatsLoading ? (
                             <div className="animate-pulse">
-                                <div className="h-8 bg-gray-200 rounded w-24 mx-auto mb-2"></div>
-                                <div className="h-4 bg-gray-200 rounded w-20 mx-auto"></div>
+                                <div className="h-7 bg-slate-100 rounded-lg w-20 mx-auto mb-1.5"></div>
+                                <div className="h-3.5 bg-slate-100 rounded-md w-16 mx-auto"></div>
                             </div>
                         ) : (
                             <>
-                                <p className="text-2xl font-bold text-gray-800">
+                                <p className="text-2xl font-bold text-slate-900 tabular-nums tracking-tight">
                                     {stats.activeCrops.toLocaleString()}
                                 </p>
-                                <p className="text-sm text-gray-600">
+                                <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 mt-0.5">
                                     Active Crops
+                                </p>
+                            </>
+                        )}
+                    </div>
+
+                    <div className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs p-4 sm:p-5 text-center">
+                        <div className="w-10 h-10 rounded-xl bg-amber-50 border border-amber-200/60 flex items-center justify-center mx-auto mb-2.5 text-amber-700">
+                            <Icon
+                                icon="mingcute:star-line"
+                                width="22"
+                                height="22"
+                            />
+                        </div>
+                        {isStatsLoading ? (
+                            <div className="animate-pulse">
+                                <div className="h-7 bg-slate-100 rounded-lg w-20 mx-auto mb-1.5"></div>
+                                <div className="h-3.5 bg-slate-100 rounded-md w-16 mx-auto"></div>
+                            </div>
+                        ) : (
+                            <>
+                                <p className="text-2xl font-bold text-slate-900 tabular-nums tracking-tight">
+                                    {stats.totalReviews.toLocaleString()}
+                                </p>
+                                <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 mt-0.5">
+                                    Total Reviews
                                 </p>
                             </>
                         )}
