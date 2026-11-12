@@ -595,69 +595,84 @@ function AdminDashboard() {
                             ))}
                         </div>
                     </div>
-                    <div className="space-y-4">
+                    <div className="space-y-3">
                         {isLoading ? (
                             // Loading skeleton
-                            Array.from({ length: 2 }).map((_, index) => (
+                            Array.from({ length: 3 }).map((_, index) => (
                                 <div
                                     key={index}
-                                    className="animate-pulse flex items-center gap-4 p-4 bg-gray-50 rounded-lg"
+                                    className="animate-pulse flex items-center gap-3.5 p-3.5 sm:p-4 bg-slate-50/60 border border-slate-200/70 rounded-xl"
                                 >
-                                    <div className="w-16 h-16 bg-gray-200 rounded-lg"></div>
+                                    <div className="w-14 h-14 bg-slate-200 rounded-xl"></div>
                                     <div className="flex-1">
-                                        <div className="h-4 bg-gray-200 rounded w-2/3 mb-2"></div>
-                                        <div className="h-3 bg-gray-200 rounded w-1/2 mb-2"></div>
-                                        <div className="h-3 bg-gray-200 rounded w-1/4"></div>
+                                        <div className="h-4 bg-slate-200 rounded w-2/5 mb-2"></div>
+                                        <div className="h-3 bg-slate-200 rounded w-1/4 mb-2"></div>
+                                        <div className="h-3 bg-slate-200 rounded w-1/5"></div>
                                     </div>
                                     <div className="text-right">
-                                        <div className="h-4 bg-gray-200 rounded w-16 mb-2"></div>
-                                        <div className="h-3 bg-gray-200 rounded w-20"></div>
+                                        <div className="h-4 bg-slate-200 rounded w-12 mb-2 ml-auto"></div>
+                                        <div className="h-3 bg-slate-200 rounded w-16 ml-auto"></div>
                                     </div>
                                 </div>
                             ))
                         ) : topProducts.length === 0 ? (
-                            <div className="text-center py-8 text-gray-500">
-                                No products found for the selected time period
+                            <div className="flex flex-col items-center justify-center py-10 bg-slate-50/50 rounded-xl border border-dashed border-slate-200 text-center p-6">
+                                <div className="w-12 h-12 rounded-xl bg-slate-100 flex items-center justify-center text-slate-400 mb-2">
+                                    <Icon
+                                        icon="mingcute:box-line"
+                                        width="24"
+                                        height="24"
+                                    />
+                                </div>
+                                <p className="text-sm font-semibold text-slate-800">
+                                    No products found
+                                </p>
+                                <p className="text-xs text-slate-500 mt-0.5">
+                                    No completed orders recorded for the selected time period.
+                                </p>
                             </div>
                         ) : (
                             topProducts.map((product) => (
                                 <div
                                     key={product.id}
-                                    className="flex items-center gap-4 p-4 bg-gray-50 rounded-lg"
+                                    className="flex items-center gap-3.5 p-3 sm:p-4 bg-slate-50/60 hover:bg-slate-50 border border-slate-200/70 rounded-xl transition-all duration-150"
                                 >
                                     <img
                                         src={product.image}
                                         alt={product.name}
-                                        className="w-16 h-16 object-cover rounded-lg"
+                                        className="w-14 h-14 sm:w-16 sm:h-16 object-cover rounded-xl border border-slate-200 shadow-2xs shrink-0"
                                     />
-                                    <div className="flex-1">
-                                        <h3 className="font-medium text-gray-800">
+                                    <div className="flex-1 min-w-0">
+                                        <h3 className="font-bold text-slate-900 text-sm tracking-tight truncate">
                                             {product.name}
                                         </h3>
-                                        <p className="text-sm text-gray-600">
+                                        <p className="text-xs text-slate-500 truncate">
                                             by {product.producer}
                                         </p>
-                                        <p className="text-sm text-gray-500">
-                                            {product.sales} kg sold
-                                        </p>
+                                        <span className="inline-block mt-1 text-[11px] font-semibold text-emerald-800 bg-emerald-50 border border-emerald-200/60 px-2 py-0.5 rounded-md tabular-nums">
+                                            {product.sales.toLocaleString()} kg sold
+                                        </span>
                                     </div>
-                                    <div className="text-right">
-                                        <div className="flex items-center gap-1 mb-1">
+                                    <div className="text-right shrink-0">
+                                        <div className="flex items-center justify-end gap-1 mb-1">
                                             <Icon
                                                 icon="mingcute:star-fill"
-                                                className="text-yellow-400"
-                                                width="16"
-                                                height="16"
+                                                className="text-amber-400"
+                                                width="15"
+                                                height="15"
                                             />
-                                            <span className="text-sm font-medium">
+                                            <span className="text-xs font-bold text-slate-900 tabular-nums">
                                                 {product.rating.toFixed(1)}
                                             </span>
                                         </div>
                                         <Link
                                             to={`/admin/product/${product.id}`}
-                                            className="text-blue-600 hover:text-blue-800 text-sm font-medium"
+                                            className="text-emerald-700 hover:text-emerald-800 text-xs font-semibold inline-flex items-center gap-1 active:scale-95 transition-transform"
                                         >
-                                            {product.reviews} review
+                                            <span className="tabular-nums">
+                                                {product.reviews}
+                                            </span>{" "}
+                                            review
                                             {product.reviews !== 1 ? "s" : ""} →
                                         </Link>
                                     </div>
