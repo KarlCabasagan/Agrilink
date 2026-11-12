@@ -275,164 +275,160 @@ function AdminMessages() {
                 </div>
 
                 {/* Search and Filter Section */}
-                <div className="bg-white rounded-lg shadow-md overflow-hidden mb-6">
-                    <div className="p-6">
-                        <h2 className="text-lg font-semibold text-gray-800 mb-4">
-                            Search & Filter Messages
-                        </h2>
+                <div className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs p-4 sm:p-5 mb-6">
+                    {/* Search Bar */}
+                    <div className="relative mb-3.5">
+                        <Icon
+                            icon="mingcute:search-line"
+                            className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none"
+                        />
+                        <input
+                            type="text"
+                            placeholder="Search messages by sender, subject, or content…"
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            className="w-full h-11 pl-10 pr-4 bg-slate-50/50 border border-slate-200 rounded-xl text-xs sm:text-sm text-slate-900 placeholder:text-slate-400 outline-none focus:bg-white focus:border-emerald-600 focus:ring-2 focus:ring-emerald-600/15 transition-all"
+                        />
+                    </div>
 
-                        {/* Search Bar */}
-                        <div className="relative mb-4">
-                            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                <Icon
-                                    icon="mingcute:search-line"
-                                    className="h-5 w-5 text-gray-400"
-                                />
-                            </div>
-                            <input
-                                type="text"
-                                placeholder="Search messages by sender, subject, or content..."
-                                value={searchTerm}
-                                onChange={(e) => setSearchTerm(e.target.value)}
-                                className="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-2 focus:ring-primary focus:border-primary"
-                            />
-                        </div>
-
-                        {/* Filter Buttons */}
-                        <div className="flex flex-wrap gap-2">
-                            {[
-                                {
-                                    key: "all",
-                                    label: "All Messages",
-                                    count: messages.length,
-                                },
-                                {
-                                    key: "unread",
-                                    label: "Unread",
-                                    count: messages.filter(
-                                        (m) => m.status === "unread"
-                                    ).length,
-                                },
-                                {
-                                    key: "high",
-                                    label: "High Priority",
-                                    count: messages.filter(
-                                        (m) => m.priority === "high"
-                                    ).length,
-                                },
-                                {
-                                    key: "producer",
-                                    label: "Producers",
-                                    count: messages.filter(
-                                        (m) => m.senderType === "producer"
-                                    ).length,
-                                },
-                                {
-                                    key: "consumer",
-                                    label: "Consumers",
-                                    count: messages.filter(
-                                        (m) => m.senderType === "consumer"
-                                    ).length,
-                                },
-                            ].map((filter) => (
-                                <button
-                                    key={filter.key}
-                                    onClick={() =>
-                                        setSelectedFilter(filter.key)
-                                    }
-                                    className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                                        selectedFilter === filter.key
-                                            ? "bg-primary text-white"
-                                            : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                                    }`}
-                                >
-                                    {filter.label} ({filter.count})
-                                </button>
-                            ))}
-                        </div>
+                    {/* Filter Buttons */}
+                    <div className="flex flex-wrap gap-2">
+                        {[
+                            {
+                                key: "all",
+                                label: "All Messages",
+                                count: messages.length,
+                            },
+                            {
+                                key: "unread",
+                                label: "Unread",
+                                count: messages.filter(
+                                    (m) => m.status === "unread"
+                                ).length,
+                            },
+                            {
+                                key: "high",
+                                label: "High Priority",
+                                count: messages.filter(
+                                    (m) => m.priority === "high"
+                                ).length,
+                            },
+                            {
+                                key: "producer",
+                                label: "Producers",
+                                count: messages.filter(
+                                    (m) => m.senderType === "producer"
+                                ).length,
+                            },
+                            {
+                                key: "consumer",
+                                label: "Consumers",
+                                count: messages.filter(
+                                    (m) => m.senderType === "consumer"
+                                ).length,
+                            },
+                        ].map((filter) => (
+                            <button
+                                key={filter.key}
+                                onClick={() =>
+                                    setSelectedFilter(filter.key)
+                                }
+                                className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all active:scale-95 cursor-pointer ${
+                                    selectedFilter === filter.key
+                                        ? "bg-emerald-600 text-white shadow-xs"
+                                        : "bg-slate-100 text-slate-600 hover:bg-slate-200/80"
+                                }`}
+                            >
+                                {filter.label} <span className="tabular-nums opacity-90">({filter.count})</span>
+                            </button>
+                        ))}
                     </div>
                 </div>
 
                 {/* Messages List */}
-                <div className="bg-white rounded-lg shadow-md overflow-hidden">
-                    <div className="p-6 border-b border-gray-200">
-                        <h2 className="text-lg font-semibold text-gray-800">
-                            Messages
-                        </h2>
-                        <p className="text-sm text-gray-600 mt-1">
-                            Manage user inquiries and support requests
-                        </p>
+                <div className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs overflow-hidden mb-6">
+                    <div className="p-4 sm:p-5 border-b border-slate-100 flex items-center justify-between">
+                        <div>
+                            <h2 className="text-sm font-bold text-slate-900 tracking-tight">
+                                User Inquiries ({filteredMessages.length})
+                            </h2>
+                            <p className="text-xs text-slate-500 mt-0.5">
+                                Select any inquiry to inspect details or formulate responses
+                            </p>
+                        </div>
                     </div>
                     {filteredMessages.length === 0 ? (
                         <div className="p-8 text-center">
-                            <Icon
-                                icon="mingcute:mail-line"
-                                className="mx-auto h-12 w-12 text-gray-400 mb-4"
-                            />
-                            <h3 className="text-lg font-medium text-gray-900 mb-2">
+                            <div className="w-12 h-12 rounded-2xl bg-slate-100 text-slate-400 flex items-center justify-center mx-auto mb-3">
+                                <Icon
+                                    icon="mingcute:mail-line"
+                                    className="w-6 h-6"
+                                />
+                            </div>
+                            <h3 className="text-sm font-bold text-slate-800 mb-1">
                                 No messages found
                             </h3>
-                            <p className="text-gray-500">
+                            <p className="text-xs text-slate-500">
                                 {searchTerm
                                     ? "Try adjusting your search terms"
-                                    : "No messages match the selected filter"}
+                                    : "No inquiries match the selected filter category"}
                             </p>
                         </div>
                     ) : (
-                        <div className="divide-y divide-gray-200">
+                        <div className="divide-y divide-slate-100">
                             {filteredMessages.map((message) => (
                                 <div
                                     key={message.id}
                                     onClick={() => handleMessageClick(message)}
-                                    className={`p-4 hover:bg-gray-50 cursor-pointer transition-colors ${
+                                    className={`p-4 sm:p-4.5 hover:bg-slate-50/80 cursor-pointer transition-colors active:scale-[0.99] ${
                                         message.status === "unread"
-                                            ? "bg-blue-50/50"
+                                            ? "bg-emerald-50/30"
                                             : ""
                                     }`}
                                 >
-                                    <div className="flex items-start space-x-3">
+                                    <div className="flex items-start gap-3.5">
                                         <img
-                                            className="h-10 w-10 rounded-full"
+                                            className="h-10 w-10 rounded-full object-cover ring-2 ring-slate-100 shrink-0"
                                             src={message.avatar}
                                             alt={message.sender}
                                         />
                                         <div className="flex-1 min-w-0">
-                                            <div className="flex items-center justify-between">
-                                                <div className="flex items-center space-x-2">
+                                            <div className="flex items-center justify-between gap-2 mb-1">
+                                                <div className="flex flex-wrap items-center gap-2">
                                                     <p
-                                                        className={`text-sm font-medium ${
+                                                        className={`text-xs font-bold ${
                                                             message.status ===
                                                             "unread"
-                                                                ? "text-gray-900"
-                                                                : "text-gray-600"
+                                                                ? "text-slate-900"
+                                                                : "text-slate-700"
                                                         }`}
                                                     >
                                                         {message.sender}
                                                     </p>
                                                     <span
-                                                        className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
+                                                        className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wider ${
                                                             message.senderType ===
                                                             "producer"
-                                                                ? "bg-green-100 text-green-800"
-                                                                : "bg-blue-100 text-blue-800"
+                                                                ? "bg-emerald-50 text-emerald-800 border border-emerald-200/60"
+                                                                : "bg-sky-50 text-sky-800 border border-sky-200/60"
                                                         }`}
                                                     >
                                                         {message.senderType}
                                                     </span>
                                                     <span
-                                                        className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${getPriorityColor(
+                                                        className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wider ${getPriorityColor(
                                                             message.priority
                                                         )}`}
                                                     >
                                                         {message.priority}
                                                     </span>
                                                 </div>
-                                                <div className="flex items-center space-x-2 text-xs text-gray-500">
+                                                <div className="flex items-center gap-1.5 text-[11px] text-slate-400 tabular-nums shrink-0">
                                                     <Icon
                                                         icon={getCategoryIcon(
                                                             message.category
                                                         )}
-                                                        className="h-4 w-4"
+                                                        className="w-3.5 h-3.5"
                                                     />
                                                     <span>
                                                         {formatTimestamp(
@@ -441,20 +437,20 @@ function AdminMessages() {
                                                     </span>
                                                     {message.status ===
                                                         "unread" && (
-                                                        <div className="h-2 w-2 bg-blue-600 rounded-full"></div>
+                                                        <div className="w-2 h-2 bg-emerald-600 rounded-full" />
                                                     )}
                                                 </div>
                                             </div>
                                             <p
-                                                className={`text-sm mt-1 ${
+                                                className={`text-xs sm:text-sm mb-0.5 ${
                                                     message.status === "unread"
-                                                        ? "font-medium text-gray-900"
-                                                        : "text-gray-600"
+                                                        ? "font-bold text-slate-900"
+                                                        : "font-semibold text-slate-700"
                                                 }`}
                                             >
                                                 {message.subject}
                                             </p>
-                                            <p className="text-sm text-gray-500 mt-1 truncate">
+                                            <p className="text-xs text-slate-500 truncate max-w-prose">
                                                 {message.message}
                                             </p>
                                         </div>
@@ -467,70 +463,75 @@ function AdminMessages() {
 
                 {/* Message Details Modal */}
                 {showMessageDetails && selectedMessage && (
-                    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-[9999]">
-                        <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-                            <div className="p-6">
-                                <div className="flex items-center justify-between mb-4">
-                                    <h3 className="text-lg font-semibold text-gray-900">
-                                        Message Details
+                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 overflow-y-auto">
+                        <div
+                            className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs transition-opacity"
+                            onClick={() => setShowMessageDetails(false)}
+                        />
+                        <div className="relative bg-white rounded-2xl shadow-xl border border-slate-200/90 max-w-2xl w-full p-5 sm:p-6 z-10 animate-in fade-in zoom-in-95 duration-150">
+                            <div>
+                                <div className="flex items-center justify-between pb-3.5 mb-4 border-b border-slate-100">
+                                    <h3 className="text-sm font-bold text-slate-900 tracking-tight">
+                                        Inquiry Details
                                     </h3>
                                     <button
                                         onClick={() =>
                                             setShowMessageDetails(false)
                                         }
-                                        className="text-gray-400 hover:text-gray-600"
+                                        className="w-8 h-8 rounded-xl text-slate-400 hover:text-slate-600 hover:bg-slate-100 active:scale-95 transition-all inline-flex items-center justify-center cursor-pointer"
+                                        aria-label="Close"
                                     >
                                         <Icon
                                             icon="mingcute:close-line"
-                                            className="h-6 w-6"
+                                            className="w-4 h-4"
                                         />
                                     </button>
                                 </div>
 
                                 <div className="space-y-4">
-                                    <div className="flex items-center space-x-3">
+                                    <div className="flex items-center gap-3">
                                         <img
-                                            className="h-12 w-12 rounded-full"
+                                            className="h-11 w-11 rounded-full object-cover ring-2 ring-slate-100"
                                             src={selectedMessage.avatar}
                                             alt={selectedMessage.sender}
                                         />
                                         <div>
-                                            <p className="text-sm font-medium text-gray-900">
+                                            <p className="text-xs font-bold text-slate-900">
                                                 {selectedMessage.sender}
                                             </p>
-                                            <p className="text-sm text-gray-500">
+                                            <p className="text-[11px] font-semibold text-emerald-700 uppercase tracking-wider">
                                                 {selectedMessage.senderType}
                                             </p>
                                         </div>
                                     </div>
 
-                                    <div>
-                                        <h4 className="text-lg font-medium text-gray-900">
+                                    <div className="p-3.5 bg-slate-50/70 rounded-xl border border-slate-100">
+                                        <h4 className="text-sm font-bold text-slate-900 mb-1">
                                             {selectedMessage.subject}
                                         </h4>
-                                        <p className="text-sm text-gray-500 mt-1">
-                                            {formatTimestamp(
+                                        <p className="text-[11px] text-slate-400 tabular-nums">
+                                            Received {formatTimestamp(
                                                 selectedMessage.timestamp
                                             )}
                                         </p>
                                     </div>
 
-                                    <div className="prose max-w-none">
-                                        <p className="text-gray-700 leading-relaxed">
+                                    <div className="prose max-w-none text-xs sm:text-sm text-slate-700 leading-relaxed max-w-prose">
+                                        <p>
                                             {selectedMessage.message}
                                         </p>
                                     </div>
 
-                                    <div className="flex items-center justify-between pt-4 border-t border-gray-200">
-                                        <div className="flex space-x-2">
-                                            <button className="bg-primary text-white px-4 py-2 rounded-lg hover:bg-primary/90 transition-colors">
+                                    <div className="flex items-center justify-between pt-4 border-t border-slate-100">
+                                        <div className="flex items-center gap-2">
+                                            <button className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-xl text-xs font-semibold shadow-xs active:scale-95 transition-all cursor-pointer">
                                                 Reply
                                             </button>
-                                            <button className="bg-gray-100 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-200 transition-colors">
+                                            <button className="bg-slate-100 hover:bg-slate-200 text-slate-700 px-4 py-2 rounded-xl text-xs font-semibold active:scale-95 transition-all cursor-pointer">
                                                 Mark as Read
                                             </button>
                                         </div>
-                                        <button className="text-red-600 hover:text-red-700 px-3 py-2 rounded-lg hover:bg-red-50 transition-colors">
+                                        <button className="text-rose-700 hover:text-rose-800 bg-rose-50 hover:bg-rose-100 border border-rose-200/80 px-3.5 py-2 rounded-xl text-xs font-semibold active:scale-95 transition-all cursor-pointer">
                                             Delete
                                         </button>
                                     </div>
