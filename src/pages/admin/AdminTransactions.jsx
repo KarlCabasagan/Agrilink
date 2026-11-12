@@ -695,25 +695,32 @@ function AdminTransactions() {
                                                     transaction.id && (
                                                     <tr>
                                                         <td
-                                                            colSpan="7"
-                                                            className="px-6 py-4 bg-gray-50"
+                                                            colSpan="6"
+                                                            className="px-4 sm:px-6 py-5 bg-slate-50/70 border-t border-b border-slate-200/80"
                                                         >
-                                                            <div className="space-y-6">
+                                                            <div className="space-y-4 max-w-4xl mx-auto">
                                                                 {/* Order Summary Header */}
-                                                                <div className="flex items-center justify-between bg-gray-50 p-4 rounded-lg">
-                                                                    <div className="flex items-center gap-3">
-                                                                        <Icon
-                                                                            icon="mingcute:document-line"
-                                                                            className="w-5 h-5 text-primary"
-                                                                        />
-                                                                        <span className="text-sm font-semibold text-gray-900">
-                                                                            {
-                                                                                transaction.orderId
-                                                                            }
-                                                                        </span>
+                                                                <div className="flex items-center justify-between bg-white p-3.5 sm:p-4 rounded-xl border border-slate-200/90 shadow-2xs">
+                                                                    <div className="flex items-center gap-2.5">
+                                                                        <div className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-700 flex items-center justify-center">
+                                                                            <Icon
+                                                                                icon="mingcute:bill-line"
+                                                                                className="w-4 h-4"
+                                                                            />
+                                                                        </div>
+                                                                        <div>
+                                                                            <div className="text-[10px] uppercase font-semibold text-slate-400">
+                                                                                Transaction Receipt
+                                                                            </div>
+                                                                            <span className="text-xs font-bold text-slate-900">
+                                                                                {
+                                                                                    transaction.orderId
+                                                                                }
+                                                                            </span>
+                                                                        </div>
                                                                     </div>
                                                                     <span
-                                                                        className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-semibold rounded-full ${
+                                                                        className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 text-[11px] font-semibold rounded-full ${
                                                                             getStatusConfig(
                                                                                 transaction.status,
                                                                                 transaction.deliveryMethod
@@ -742,14 +749,13 @@ function AdminTransactions() {
                                                                 </div>
 
                                                                 {/* Products Grid */}
-                                                                <div className="bg-white rounded-lg border border-gray-200">
-                                                                    <div className="px-4 py-3 border-b border-gray-200">
-                                                                        <h3 className="text-sm font-semibold text-gray-900">
-                                                                            Order
-                                                                            Items
+                                                                <div className="bg-white rounded-xl border border-slate-200/90 shadow-2xs overflow-hidden">
+                                                                    <div className="px-4 py-2.5 bg-slate-50/60 border-b border-slate-100 flex items-center justify-between">
+                                                                        <h3 className="text-[11px] font-bold uppercase tracking-wider text-slate-600">
+                                                                            Purchased Products ({transaction.items.length})
                                                                         </h3>
                                                                     </div>
-                                                                    <div className="divide-y divide-gray-200">
+                                                                    <div className="divide-y divide-slate-100">
                                                                         {transaction.items.map(
                                                                             (
                                                                                 item
@@ -761,7 +767,7 @@ function AdminTransactions() {
                                                                                         item.id ||
                                                                                         item.name
                                                                                     }`}
-                                                                                    className="p-4 flex flex-col sm:flex-row sm:items-center gap-4"
+                                                                                    className="p-3.5 sm:p-4 flex flex-col sm:flex-row sm:items-center gap-3.5 hover:bg-slate-50/50 transition-colors"
                                                                                 >
                                                                                     <div className="flex-shrink-0">
                                                                                         <img
@@ -771,25 +777,27 @@ function AdminTransactions() {
                                                                                             alt={
                                                                                                 item.name
                                                                                             }
-                                                                                            className="w-20 h-20 object-cover rounded-lg"
+                                                                                            className="w-14 h-14 object-cover rounded-xl border border-slate-200/80"
                                                                                         />
                                                                                     </div>
-                                                                                    <div className="flex-1">
-                                                                                        <h4 className="text-sm font-medium text-gray-900">
+                                                                                    <div className="flex-1 min-w-0">
+                                                                                        <h4 className="text-xs font-bold text-slate-900 truncate">
                                                                                             {
                                                                                                 item.name
                                                                                             }
                                                                                         </h4>
-                                                                                        <p className="text-sm text-gray-500 mt-1">
-                                                                                            Quantity:{" "}
-                                                                                            {
-                                                                                                item.quantity
-                                                                                            }{" "}
-                                                                                            kg
+                                                                                        <p className="text-[11px] text-slate-500 mt-0.5 tabular-nums">
+                                                                                            Qty:{" "}
+                                                                                            <span className="font-semibold text-slate-700">
+                                                                                                {
+                                                                                                    item.quantity
+                                                                                                }{" "}
+                                                                                                kg
+                                                                                            </span>
                                                                                         </p>
                                                                                     </div>
-                                                                                    <div className="flex flex-col sm:items-end gap-1">
-                                                                                        <span className="text-sm text-gray-500">
+                                                                                    <div className="flex sm:flex-col items-center sm:items-end justify-between sm:justify-center gap-1">
+                                                                                        <span className="text-[11px] text-slate-500 tabular-nums">
                                                                                             ₱
                                                                                             {(
                                                                                                 item.price ??
@@ -797,10 +805,9 @@ function AdminTransactions() {
                                                                                             ).toFixed(
                                                                                                 2
                                                                                             )}{" "}
-                                                                                            /
-                                                                                            kg
+                                                                                            / kg
                                                                                         </span>
-                                                                                        <span className="text-sm font-medium text-gray-900">
+                                                                                        <span className="text-xs font-bold text-slate-900 tabular-nums">
                                                                                             ₱
                                                                                             {(
                                                                                                 item.total ??
@@ -817,46 +824,41 @@ function AdminTransactions() {
                                                                 </div>
 
                                                                 {/* Order Details Grid */}
-                                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                                                     {/* Delivery and Payment Info */}
-                                                                    <div className="bg-white rounded-lg border border-gray-200">
-                                                                        <div className="px-4 py-3 border-b border-gray-200">
-                                                                            <h3 className="text-sm font-semibold text-gray-900">
-                                                                                Delivery
-                                                                                &
-                                                                                Payment
+                                                                    <div className="bg-white rounded-xl border border-slate-200/90 shadow-2xs p-4 space-y-2.5">
+                                                                        <div className="pb-2 border-b border-slate-100">
+                                                                            <h3 className="text-[11px] font-bold uppercase tracking-wider text-slate-600">
+                                                                                Fulfillment & Payment
                                                                             </h3>
                                                                         </div>
-                                                                        <div className="p-4 space-y-3">
+                                                                        <div className="space-y-2 text-xs">
                                                                             <div className="flex justify-between items-center">
-                                                                                <span className="text-sm text-gray-500">
-                                                                                    Delivery
-                                                                                    Method
+                                                                                <span className="text-slate-500">
+                                                                                    Delivery Method
                                                                                 </span>
-                                                                                <span className="text-sm font-medium text-gray-900">
+                                                                                <span className="font-semibold text-slate-900">
                                                                                     {
                                                                                         transaction.deliveryMethod
                                                                                     }
                                                                                 </span>
                                                                             </div>
                                                                             <div className="flex justify-between items-center">
-                                                                                <span className="text-sm text-gray-500">
-                                                                                    Payment
-                                                                                    Method
+                                                                                <span className="text-slate-500">
+                                                                                    Payment Method
                                                                                 </span>
-                                                                                <span className="text-sm font-medium text-gray-900">
+                                                                                <span className="font-semibold text-slate-900">
                                                                                     {
                                                                                         transaction.paymentMethod
                                                                                     }
                                                                                 </span>
                                                                             </div>
                                                                             {transaction.orderNotes && (
-                                                                                <div className="pt-3 border-t border-gray-200">
-                                                                                    <span className="text-sm text-gray-500 block mb-1">
-                                                                                        Order
-                                                                                        Notes
+                                                                                <div className="pt-2 border-t border-slate-100">
+                                                                                    <span className="text-[11px] text-slate-500 block mb-0.5">
+                                                                                        Customer Notes:
                                                                                     </span>
-                                                                                    <p className="text-sm text-gray-900">
+                                                                                    <p className="text-xs text-slate-700 bg-slate-50 p-2 rounded-lg border border-slate-100">
                                                                                         {
                                                                                             transaction.orderNotes
                                                                                         }
@@ -867,19 +869,18 @@ function AdminTransactions() {
                                                                     </div>
 
                                                                     {/* Order Summary */}
-                                                                    <div className="bg-white rounded-lg border border-gray-200">
-                                                                        <div className="px-4 py-3 border-b border-gray-200">
-                                                                            <h3 className="text-sm font-semibold text-gray-900">
-                                                                                Order
-                                                                                Summary
+                                                                    <div className="bg-white rounded-xl border border-slate-200/90 shadow-2xs p-4 space-y-2.5">
+                                                                        <div className="pb-2 border-b border-slate-100">
+                                                                            <h3 className="text-[11px] font-bold uppercase tracking-wider text-slate-600">
+                                                                                Financial Summary
                                                                             </h3>
                                                                         </div>
-                                                                        <div className="p-4 space-y-3">
+                                                                        <div className="space-y-2 text-xs">
                                                                             <div className="flex justify-between items-center">
-                                                                                <span className="text-sm text-gray-500">
-                                                                                    Subtotal
+                                                                                <span className="text-slate-500">
+                                                                                    Items Subtotal
                                                                                 </span>
-                                                                                <span className="text-sm text-gray-900">
+                                                                                <span className="text-slate-900 font-semibold tabular-nums">
                                                                                     ₱
                                                                                     {(
                                                                                         transaction.amount -
@@ -890,11 +891,10 @@ function AdminTransactions() {
                                                                                 </span>
                                                                             </div>
                                                                             <div className="flex justify-between items-center">
-                                                                                <span className="text-sm text-gray-500">
-                                                                                    Delivery
-                                                                                    Fee
+                                                                                <span className="text-slate-500">
+                                                                                    Delivery Fee
                                                                                 </span>
-                                                                                <span className="text-sm text-gray-900">
+                                                                                <span className="text-slate-900 font-semibold tabular-nums">
                                                                                     ₱
                                                                                     {(
                                                                                         transaction.deliveryFee ??
@@ -904,18 +904,16 @@ function AdminTransactions() {
                                                                                     )}
                                                                                 </span>
                                                                             </div>
-                                                                            <div className="pt-3 border-t border-gray-200">
-                                                                                <div className="flex justify-between items-center">
-                                                                                    <span className="text-sm font-medium text-gray-900">
-                                                                                        Total
-                                                                                    </span>
-                                                                                    <span className="text-base font-semibold text-primary">
-                                                                                        ₱
-                                                                                        {transaction.amount.toFixed(
-                                                                                            2
-                                                                                        )}
-                                                                                    </span>
-                                                                                </div>
+                                                                            <div className="pt-2.5 border-t border-slate-100 flex justify-between items-center">
+                                                                                <span className="text-xs font-bold text-slate-900">
+                                                                                    Total Amount
+                                                                                </span>
+                                                                                <span className="text-sm font-bold text-emerald-800 tabular-nums">
+                                                                                    ₱
+                                                                                    {transaction.amount.toFixed(
+                                                                                        2
+                                                                                    )}
+                                                                                </span>
                                                                             </div>
                                                                         </div>
                                                                     </div>
