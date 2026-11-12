@@ -1742,16 +1742,16 @@ function AdminProductManagement() {
                 {/* Categories Tab */}
                 {activeTab === "categories" && (
                     <div className="space-y-4">
-                        {/* Add Category Form */}
-                        <div className="bg-white rounded-lg shadow-md p-6">
-                            <h3 className="text-lg font-semibold mb-4">
+                        {/* Add/Edit Category Form */}
+                        <div className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs p-5 sm:p-6">
+                            <h3 className="text-sm font-bold text-slate-900 tracking-tight mb-4">
                                 {selectedCategory
                                     ? "Edit Category"
                                     : "Add New Category"}
                             </h3>
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    <label className="block text-[11px] font-semibold uppercase tracking-wider text-slate-600 mb-1.5">
                                         Category Name
                                     </label>
                                     <input
@@ -1763,12 +1763,12 @@ function AdminProductManagement() {
                                                 name: e.target.value,
                                             })
                                         }
-                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary"
-                                        placeholder="Enter category name"
+                                        className="w-full h-11 px-3.5 bg-slate-50/50 border border-slate-200 rounded-xl text-sm text-slate-900 placeholder:text-slate-400 outline-none focus:bg-white focus:border-emerald-600 focus:ring-2 focus:ring-emerald-600/15 transition-all"
+                                        placeholder="Enter category name…"
                                     />
                                 </div>
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    <label className="block text-[11px] font-semibold uppercase tracking-wider text-slate-600 mb-1.5">
                                         Description
                                     </label>
                                     <input
@@ -1780,20 +1780,20 @@ function AdminProductManagement() {
                                                 description: e.target.value,
                                             })
                                         }
-                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary"
-                                        placeholder="Enter description"
+                                        className="w-full h-11 px-3.5 bg-slate-50/50 border border-slate-200 rounded-xl text-sm text-slate-900 placeholder:text-slate-400 outline-none focus:bg-white focus:border-emerald-600 focus:ring-2 focus:ring-emerald-600/15 transition-all"
+                                        placeholder="Enter brief description…"
                                     />
                                 </div>
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                                        Icon{" "}
+                                    <label className="block text-[11px] font-semibold uppercase tracking-wider text-slate-600 mb-1.5">
+                                        Icon Identifier{" "}
                                         <a
                                             href="https://icon-sets.iconify.design/twemoji/"
                                             target="_blank"
                                             rel="noopener noreferrer"
-                                            className="text-primary text-xs hover:underline ml-1"
+                                            className="text-emerald-700 text-xs hover:underline ml-1"
                                         >
-                                            FAQ
+                                            Icon Guide
                                         </a>
                                     </label>
                                     <input
@@ -1805,7 +1805,7 @@ function AdminProductManagement() {
                                                 icon: e.target.value,
                                             })
                                         }
-                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary"
+                                        className="w-full h-11 px-3.5 bg-slate-50/50 border border-slate-200 rounded-xl text-sm text-slate-900 placeholder:text-slate-400 outline-none focus:bg-white focus:border-emerald-600 focus:ring-2 focus:ring-emerald-600/15 transition-all"
                                         placeholder="e.g., twemoji:carrot"
                                     />
                                     {newCategory.icon && (
@@ -1814,25 +1814,25 @@ function AdminProductManagement() {
                                                 icon={newCategory.icon}
                                                 className="text-2xl"
                                             />
-                                            <span className="text-sm text-gray-500">
-                                                Preview
+                                            <span className="text-xs text-slate-500 font-medium">
+                                                Preview Icon
                                             </span>
                                         </div>
                                     )}
                                 </div>
                             </div>
-                            <div className="flex gap-2 mt-4">
+                            <div className="flex items-center gap-2.5 mt-5">
                                 <button
                                     onClick={
                                         selectedCategory
                                             ? handleUpdateCategory
                                             : handleAddCategory
                                     }
-                                    className="bg-primary text-white px-4 py-2 rounded-lg hover:bg-primary-dark transition-colors"
+                                    className="min-h-[40px] px-5 py-2 bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl text-xs font-semibold shadow-xs transition-all active:scale-[0.98] cursor-pointer"
                                 >
                                     {selectedCategory
                                         ? "Update Category"
-                                        : "Add Category"}
+                                        : "Save Category"}
                                 </button>
                                 {selectedCategory && (
                                     <button
@@ -1841,9 +1841,10 @@ function AdminProductManagement() {
                                             setNewCategory({
                                                 name: "",
                                                 description: "",
+                                                icon: "",
                                             });
                                         }}
-                                        className="bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600 transition-colors"
+                                        className="min-h-[40px] px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-semibold transition-all active:scale-[0.98] cursor-pointer"
                                     >
                                         Cancel
                                     </button>
@@ -1852,16 +1853,16 @@ function AdminProductManagement() {
                         </div>
 
                         {/* Categories Table */}
-                        <div className="bg-white rounded-lg shadow-md overflow-hidden">
+                        <div className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs overflow-hidden">
                             <div className="overflow-x-auto">
-                                <table className="w-full">
-                                    <thead className="bg-gray-50">
+                                <table className="w-full text-left">
+                                    <thead className="bg-slate-50/80 border-b border-slate-200/80">
                                         <tr>
-                                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                            <th className="px-5 py-3 text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
                                                 Icon
                                             </th>
                                             <th
-                                                className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                                                className="px-5 py-3 text-[11px] font-semibold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100/60 transition-colors"
                                                 onClick={() =>
                                                     handleSort("name")
                                                 }
@@ -1875,26 +1876,26 @@ function AdminProductManagement() {
                                                                 ? "mingcute:up-line"
                                                                 : "mingcute:down-line"
                                                         }
-                                                        className="inline ml-1"
+                                                        className="inline ml-1 text-slate-700"
                                                     />
                                                 )}
                                             </th>
-                                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                            <th className="px-5 py-3 text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
                                                 Description
                                             </th>
-                                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                            <th className="px-5 py-3 text-right text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
                                                 Actions
                                             </th>
                                         </tr>
                                     </thead>
-                                    <tbody className="bg-white divide-y divide-gray-200">
+                                    <tbody className="bg-white divide-y divide-slate-100">
                                         {sortData(categories).map(
                                             (category) => (
                                                 <tr
                                                     key={category.id}
-                                                    className="hover:bg-gray-50"
+                                                    className="hover:bg-slate-50/70 transition-colors"
                                                 >
-                                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                                    <td className="px-5 py-3.5 whitespace-nowrap text-slate-900">
                                                         {category.icon && (
                                                             <Icon
                                                                 icon={
@@ -1904,24 +1905,24 @@ function AdminProductManagement() {
                                                             />
                                                         )}
                                                     </td>
-                                                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                                                    <td className="px-5 py-3.5 whitespace-nowrap text-xs font-bold text-slate-900">
                                                         {category.name}
                                                     </td>
-                                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                                    <td className="px-5 py-3.5 text-xs text-slate-500 max-w-sm truncate">
                                                         {category.description}
                                                     </td>
-                                                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
+                                                    <td className="px-5 py-3.5 whitespace-nowrap text-right space-x-2">
                                                         <button
                                                             onClick={() =>
                                                                 handleEditCategory(
                                                                     category
                                                                 )
                                                             }
-                                                            className="inline-flex items-center px-3 py-1 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                                                            className="inline-flex items-center px-3 py-1.5 rounded-xl text-xs font-semibold bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200/80 active:scale-95 transition-all cursor-pointer"
                                                         >
                                                             <Icon
                                                                 icon="mingcute:edit-line"
-                                                                className="mr-1"
+                                                                className="mr-1 w-3.5 h-3.5"
                                                             />
                                                             Edit
                                                         </button>
@@ -1931,11 +1932,11 @@ function AdminProductManagement() {
                                                                     category
                                                                 )
                                                             }
-                                                            className="inline-flex items-center px-3 py-1 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+                                                            className="inline-flex items-center px-3 py-1.5 rounded-xl text-xs font-semibold bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200/80 active:scale-95 transition-all cursor-pointer"
                                                         >
                                                             <Icon
                                                                 icon="mingcute:delete-line"
-                                                                className="mr-1"
+                                                                className="mr-1 w-3.5 h-3.5"
                                                             />
                                                             Delete
                                                         </button>
@@ -1953,34 +1954,36 @@ function AdminProductManagement() {
 
             {/* Image Modal */}
             {showImageModal && (
-                <>
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 overflow-y-auto">
                     <div
-                        className="fixed inset-0 bg-black opacity-50 flex items-center justify-center z-[9999]"
+                        className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs transition-opacity"
                         onClick={() => setShowImageModal(false)}
-                    ></div>
-                    <div className="bg-white p-4 rounded-lg max-w-2xl max-h-[80vh] overflow-auto z-[10000] fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-11/12 md:w-3/4 lg:w-1/2">
-                        <div className="flex justify-between items-center mb-4">
-                            <h3 className="text-lg font-semibold">
-                                Product Image
+                    />
+                    <div className="relative bg-white rounded-2xl shadow-xl border border-slate-200/90 max-w-2xl w-full p-4 sm:p-5 z-10 animate-in fade-in zoom-in-95 duration-150">
+                        <div className="flex justify-between items-center pb-3 mb-3 border-b border-slate-100">
+                            <h3 className="text-sm font-bold text-slate-900 tracking-tight">
+                                Product Image Preview
                             </h3>
                             <button
                                 onClick={() => setShowImageModal(false)}
-                                className="text-gray-500 hover:text-gray-700"
+                                className="w-9 h-9 inline-flex items-center justify-center rounded-xl text-slate-400 hover:text-slate-600 hover:bg-slate-100 active:scale-95 transition-all cursor-pointer"
+                                aria-label="Close modal"
                             >
                                 <Icon
                                     icon="mingcute:close-line"
-                                    width="24"
-                                    height="24"
+                                    className="w-5 h-5"
                                 />
                             </button>
                         </div>
-                        <img
-                            src={selectedImage}
-                            alt="Product"
-                            className="w-full h-auto rounded-lg"
-                        />
+                        <div className="rounded-xl overflow-hidden bg-slate-50 border border-slate-100 flex items-center justify-center max-h-[70vh]">
+                            <img
+                                src={selectedImage}
+                                alt="Product"
+                                className="w-full h-auto max-h-[70vh] object-contain"
+                            />
+                        </div>
                     </div>
-                </>
+                </div>
             )}
 
             {/* Confirm Modal */}
