@@ -330,15 +330,32 @@ function AdminDashboard() {
     }, [selectedTimeRange]);
 
     return (
-        <div className="min-h-screen w-full flex flex-col relative items-center scrollbar-hide bg-background overflow-x-hidden text-text pb-20">
-            {/* Header */}
-            <div className="fixed top-0 left-0 w-full bg-white shadow-md z-50 px-4 py-3">
-                <h1 className="text-lg font-semibold text-primary text-center">
+        <div className="min-h-screen w-full flex flex-col relative items-center bg-slate-50/50 text-slate-800 overflow-x-hidden">
+            {/* Mobile Header */}
+            <header className="md:hidden fixed top-0 left-0 w-full bg-white/95 backdrop-blur-md border-b border-slate-200 z-40 px-4 h-14 flex items-center justify-center">
+                <h1 className="text-base font-bold text-slate-900 tracking-tight">
                     Admin Dashboard
                 </h1>
-            </div>
+            </header>
 
-            <div className="w-full max-w-4xl mx-4 sm:mx-auto my-16">
+            <div className="w-full max-w-6xl mx-auto px-4 sm:px-6 pt-16 md:pt-20 pb-24 md:pb-16">
+                {/* Desktop Header Banner */}
+                <div className="hidden md:flex items-center justify-between mb-6">
+                    <div>
+                        <h1 className="text-2xl font-bold text-slate-900 tracking-tight">
+                            Admin Dashboard
+                        </h1>
+                        <p className="text-xs text-slate-500 mt-0.5">
+                            Platform overview, user verification metrics, and product management.
+                        </p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 border border-emerald-200/80 text-xs font-semibold text-emerald-800">
+                            <span className="w-2 h-2 rounded-full bg-emerald-600 animate-pulse"></span>
+                            System Active
+                        </span>
+                    </div>
+                </div>
                 {/* Quick Stats */}
                 <div className="grid grid-cols-3 lg:grid-cols-3 gap-4 mb-6 mt-4 px-4 sm:px-0">
                     <div className="bg-white rounded-lg shadow-md p-4 text-center">
