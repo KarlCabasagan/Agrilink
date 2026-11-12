@@ -509,94 +509,98 @@ function AdminTransactions() {
                         </div>
                     </div>
 
-                    <div className="bg-white rounded-lg shadow-md overflow-hidden">
+                    <div className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs overflow-hidden">
                         <div className="overflow-x-auto">
-                            <table className="w-full">
-                                <thead className="bg-gray-50">
+                            <table className="w-full text-left">
+                                <thead className="bg-slate-50/80 border-b border-slate-200/80">
                                     <tr>
-                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                        <th className="px-5 py-3 text-left text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
                                             Transaction
                                         </th>
                                         <th
-                                            className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                                            className="px-5 py-3 text-left text-[11px] font-semibold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100/70 select-none transition-colors"
                                             onClick={() => handleSort("amount")}
                                         >
-                                            Amount{" "}
-                                            {sortConfig.key === "amount" && (
-                                                <Icon
-                                                    icon={
-                                                        sortConfig.direction ===
-                                                        "asc"
-                                                            ? "mingcute:up-line"
-                                                            : "mingcute:down-line"
-                                                    }
-                                                    className="inline ml-1"
-                                                />
-                                            )}
+                                            <div className="inline-flex items-center gap-1">
+                                                <span>Amount</span>
+                                                {sortConfig.key === "amount" && (
+                                                    <Icon
+                                                        icon={
+                                                            sortConfig.direction === "asc"
+                                                                ? "mingcute:up-line"
+                                                                : "mingcute:down-line"
+                                                        }
+                                                        className="w-3.5 h-3.5 text-emerald-700"
+                                                    />
+                                                )}
+                                            </div>
                                         </th>
                                         <th
-                                            className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                                            className="px-5 py-3 text-left text-[11px] font-semibold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100/70 select-none transition-colors"
                                             onClick={() =>
                                                 handleSort("customer")
                                             }
                                         >
-                                            Customer{" "}
-                                            {sortConfig.key === "customer" && (
-                                                <Icon
-                                                    icon={
-                                                        sortConfig.direction ===
-                                                        "asc"
-                                                            ? "mingcute:up-line"
-                                                            : "mingcute:down-line"
-                                                    }
-                                                    className="inline ml-1"
-                                                />
-                                            )}
+                                            <div className="inline-flex items-center gap-1">
+                                                <span>Customer</span>
+                                                {sortConfig.key === "customer" && (
+                                                    <Icon
+                                                        icon={
+                                                            sortConfig.direction === "asc"
+                                                                ? "mingcute:up-line"
+                                                                : "mingcute:down-line"
+                                                        }
+                                                        className="w-3.5 h-3.5 text-emerald-700"
+                                                    />
+                                                )}
+                                            </div>
                                         </th>
                                         <th
-                                            className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                                            className="px-5 py-3 text-left text-[11px] font-semibold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100/70 select-none transition-colors"
                                             onClick={() =>
                                                 handleSort("producer")
                                             }
                                         >
-                                            Producer{" "}
-                                            {sortConfig.key === "producer" && (
-                                                <Icon
-                                                    icon={
-                                                        sortConfig.direction ===
-                                                        "asc"
-                                                            ? "mingcute:up-line"
-                                                            : "mingcute:down-line"
-                                                    }
-                                                    className="inline ml-1"
-                                                />
-                                            )}
+                                            <div className="inline-flex items-center gap-1">
+                                                <span>Producer</span>
+                                                {sortConfig.key === "producer" && (
+                                                    <Icon
+                                                        icon={
+                                                            sortConfig.direction === "asc"
+                                                                ? "mingcute:up-line"
+                                                                : "mingcute:down-line"
+                                                        }
+                                                        className="w-3.5 h-3.5 text-emerald-700"
+                                                    />
+                                                )}
+                                            </div>
                                         </th>
-                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                        <th className="px-5 py-3 text-left text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
                                             Status
                                         </th>
                                         <th
-                                            className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                                            className="px-5 py-3 text-left text-[11px] font-semibold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100/70 select-none transition-colors"
                                             onClick={() =>
                                                 handleSort("timestamp")
                                             }
                                         >
-                                            Date{" "}
-                                            {sortConfig.key === "timestamp" && (
-                                                <Icon
-                                                    icon={
-                                                        sortConfig.direction ===
-                                                        "asc"
-                                                            ? "mingcute:up-line"
-                                                            : "mingcute:down-line"
-                                                    }
-                                                    className="inline ml-1"
-                                                />
-                                            )}
+                                            <div className="inline-flex items-center gap-1">
+                                                <span>Date</span>
+                                                {sortConfig.key === "timestamp" && (
+                                                    <Icon
+                                                        icon={
+                                                            sortConfig.direction === "asc"
+                                                                ? "mingcute:up-line"
+                                                                : "mingcute:down-line"
+                                                        }
+                                                        className="w-3.5 h-3.5 text-emerald-700"
+                                                    />
+                                                )}
+                                            </div>
                                         </th>
                                     </tr>
                                 </thead>
-                                <tbody className="bg-white divide-y divide-gray-200">
+                                <tbody className="bg-white divide-y divide-slate-100">
                                     {filterData(sortData(transactions))
                                         .filter(
                                             (transaction) => transaction != null
@@ -606,14 +610,18 @@ function AdminTransactions() {
                                                 key={transaction.id}
                                             >
                                                 <tr
-                                                    className="hover:bg-gray-50 cursor-pointer"
+                                                    className={`hover:bg-slate-50/80 cursor-pointer transition-colors group ${
+                                                        expandedTransaction === transaction.id
+                                                            ? "bg-emerald-50/30"
+                                                            : ""
+                                                    }`}
                                                     onClick={() =>
                                                         toggleExpanded(
                                                             transaction.id
                                                         )
                                                     }
                                                 >
-                                                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-primary">
+                                                    <td className="px-5 py-3.5 whitespace-nowrap text-xs font-bold text-emerald-800">
                                                         <div className="flex items-center">
                                                             <Icon
                                                                 icon={
@@ -622,59 +630,64 @@ function AdminTransactions() {
                                                                         ? "mingcute:down-line"
                                                                         : "mingcute:right-line"
                                                                 }
-                                                                className="mr-2"
+                                                                className="mr-2 w-4 h-4 text-slate-400 group-hover:text-emerald-700 transition-colors"
                                                             />
                                                             {
                                                                 transaction.orderId
                                                             }
                                                         </div>
                                                     </td>
-                                                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                                                    <td className="px-5 py-3.5 whitespace-nowrap text-xs font-bold text-slate-900 tabular-nums">
                                                         ₱
                                                         {(
                                                             transaction.amount ??
                                                             0
-                                                        ).toLocaleString()}
+                                                        ).toLocaleString(undefined, {
+                                                            minimumFractionDigits: 2,
+                                                            maximumFractionDigits: 2,
+                                                        })}
                                                     </td>
-                                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                                    <td className="px-5 py-3.5 whitespace-nowrap text-xs font-semibold text-slate-800">
                                                         {transaction.customer}
                                                     </td>
-                                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                                    <td className="px-5 py-3.5 whitespace-nowrap text-xs font-medium text-slate-600">
                                                         {transaction.producer}
                                                     </td>
-                                                    <td className="px-6 py-4 whitespace-nowrap">
-                                                        <div className="flex items-center">
-                                                            <span
-                                                                className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-semibold rounded-full ${
+                                                    <td className="px-5 py-3.5 whitespace-nowrap">
+                                                        <span
+                                                            className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 text-[11px] font-semibold rounded-full ${
+                                                                getStatusConfig(
+                                                                    transaction.status,
+                                                                    transaction.deliveryMethod
+                                                                ).color
+                                                            }`}
+                                                        >
+                                                            <Icon
+                                                                icon={
                                                                     getStatusConfig(
                                                                         transaction.status,
                                                                         transaction.deliveryMethod
-                                                                    ).color
-                                                                }`}
-                                                            >
-                                                                <Icon
-                                                                    icon={
-                                                                        getStatusConfig(
-                                                                            transaction.status,
-                                                                            transaction.deliveryMethod
-                                                                        ).icon
-                                                                    }
-                                                                    className="w-3.5 h-3.5"
-                                                                />
-                                                                {
-                                                                    getStatusConfig(
-                                                                        transaction.status,
-                                                                        transaction.deliveryMethod
-                                                                    ).label
+                                                                    ).icon
                                                                 }
-                                                            </span>
-                                                        </div>
+                                                                className="w-3.5 h-3.5"
+                                                            />
+                                                            {
+                                                                getStatusConfig(
+                                                                    transaction.status,
+                                                                    transaction.deliveryMethod
+                                                                ).label
+                                                            }
+                                                        </span>
                                                     </td>
-                                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                                    <td className="px-5 py-3.5 whitespace-nowrap text-xs text-slate-500 tabular-nums">
                                                         {transaction.timestamp
                                                             ? new Date(
                                                                   transaction.timestamp
-                                                              ).toLocaleString()
+                                                              ).toLocaleDateString("en-US", {
+                                                                  year: "numeric",
+                                                                  month: "short",
+                                                                  day: "numeric",
+                                                              })
                                                             : "N/A"}
                                                     </td>
                                                 </tr>
