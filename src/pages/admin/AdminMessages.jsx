@@ -162,74 +162,115 @@ function AdminMessages() {
     const unreadCount = messages.filter((m) => m.status === "unread").length;
 
     return (
-        <div className="min-h-screen w-full flex flex-col relative items-center scrollbar-hide bg-background overflow-x-hidden text-text pb-20">
-            {/* Header */}
-            <div className="fixed top-0 left-0 w-full bg-white shadow-md z-50 px-4 py-3">
-                <h1 className="text-lg font-semibold text-primary text-center">
-                    Messages
-                </h1>
+        <div className="min-h-screen w-full flex flex-col relative items-center scrollbar-hide bg-slate-50/50 overflow-x-hidden text-slate-800 pb-24 md:pb-16">
+            {/* Mobile Header */}
+            <div className="md:hidden fixed top-0 left-0 right-0 h-14 bg-white/95 backdrop-blur-md border-b border-slate-200/80 z-30 flex items-center justify-between px-4">
+                <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-700 flex items-center justify-center">
+                        <Icon icon="mingcute:mail-line" className="w-4 h-4" />
+                    </div>
+                    <h1 className="text-sm font-bold text-slate-900 tracking-tight">
+                        Support Messages
+                    </h1>
+                </div>
+                <span className="text-[11px] font-semibold text-slate-500 tabular-nums">
+                    {unreadCount} unread
+                </span>
             </div>
 
-            <div className="w-full max-w-4xl mx-4 sm:mx-auto my-16">
+            <div className="w-full max-w-5xl mx-auto px-4 sm:px-6 pt-16 md:pt-20">
+                {/* Desktop Header */}
+                <div className="hidden md:flex items-center justify-between mb-6">
+                    <div>
+                        <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wider text-slate-500 mb-1">
+                            <span>Admin Portal</span>
+                            <Icon icon="mingcute:right-line" className="w-3.5 h-3.5 text-slate-400" />
+                            <span className="text-emerald-700">Support Desk</span>
+                        </div>
+                        <h1 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">
+                            Messages & Inquiries
+                        </h1>
+                        <p className="text-xs text-slate-500 mt-1 max-w-prose">
+                            Manage user support inquiries, product review appeals, and platform communications.
+                        </p>
+                    </div>
+                </div>
+
                 {/* Stats Overview */}
-                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6 mt-4 px-4 sm:px-0">
-                    <div className="bg-white rounded-lg shadow-md p-4 text-center">
-                        <Icon
-                            icon="mingcute:mail-line"
-                            width="32"
-                            height="32"
-                            className="mx-auto mb-2 text-blue-600"
-                        />
-                        <p className="text-2xl font-bold text-gray-800">
-                            {messages.length}
-                        </p>
-                        <p className="text-sm text-gray-600">Total Messages</p>
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6">
+                    <div className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs p-4 flex items-center gap-3.5">
+                        <div className="w-10 h-10 rounded-xl bg-slate-100 text-slate-700 flex items-center justify-center shrink-0">
+                            <Icon
+                                icon="mingcute:mail-line"
+                                className="w-5 h-5"
+                            />
+                        </div>
+                        <div>
+                            <p className="text-lg sm:text-xl font-bold text-slate-900 tabular-nums">
+                                {messages.length}
+                            </p>
+                            <p className="text-[11px] font-medium text-slate-500 uppercase tracking-wider">
+                                Total Messages
+                            </p>
+                        </div>
                     </div>
 
-                    <div className="bg-white rounded-lg shadow-md p-4 text-center">
-                        <Icon
-                            icon="mingcute:notification-line"
-                            width="32"
-                            height="32"
-                            className="mx-auto mb-2 text-red-600"
-                        />
-                        <p className="text-2xl font-bold text-gray-800">
-                            {unreadCount}
-                        </p>
-                        <p className="text-sm text-gray-600">Unread</p>
+                    <div className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs p-4 flex items-center gap-3.5">
+                        <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-700 flex items-center justify-center shrink-0">
+                            <Icon
+                                icon="mingcute:notification-line"
+                                className="w-5 h-5"
+                            />
+                        </div>
+                        <div>
+                            <p className="text-lg sm:text-xl font-bold text-emerald-800 tabular-nums">
+                                {unreadCount}
+                            </p>
+                            <p className="text-[11px] font-medium text-slate-500 uppercase tracking-wider">
+                                Unread Inquiries
+                            </p>
+                        </div>
                     </div>
 
-                    <div className="bg-white rounded-lg shadow-md p-4 text-center">
-                        <Icon
-                            icon="mingcute:alert-line"
-                            width="32"
-                            height="32"
-                            className="mx-auto mb-2 text-yellow-600"
-                        />
-                        <p className="text-2xl font-bold text-gray-800">
-                            {
-                                messages.filter((m) => m.priority === "high")
-                                    .length
-                            }
-                        </p>
-                        <p className="text-sm text-gray-600">High Priority</p>
+                    <div className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs p-4 flex items-center gap-3.5">
+                        <div className="w-10 h-10 rounded-xl bg-rose-50 text-rose-700 flex items-center justify-center shrink-0">
+                            <Icon
+                                icon="mingcute:alert-line"
+                                className="w-5 h-5"
+                            />
+                        </div>
+                        <div>
+                            <p className="text-lg sm:text-xl font-bold text-rose-800 tabular-nums">
+                                {
+                                    messages.filter((m) => m.priority === "high")
+                                        .length
+                                }
+                            </p>
+                            <p className="text-[11px] font-medium text-slate-500 uppercase tracking-wider">
+                                High Priority
+                            </p>
+                        </div>
                     </div>
 
-                    <div className="bg-white rounded-lg shadow-md p-4 text-center">
-                        <Icon
-                            icon="mingcute:group-line"
-                            width="32"
-                            height="32"
-                            className="mx-auto mb-2 text-green-600"
-                        />
-                        <p className="text-2xl font-bold text-gray-800">
-                            {
-                                messages.filter(
-                                    (m) => m.senderType === "producer"
-                                ).length
-                            }
-                        </p>
-                        <p className="text-sm text-gray-600">From Producers</p>
+                    <div className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs p-4 flex items-center gap-3.5">
+                        <div className="w-10 h-10 rounded-xl bg-sky-50 text-sky-700 flex items-center justify-center shrink-0">
+                            <Icon
+                                icon="mingcute:user-star-line"
+                                className="w-5 h-5"
+                            />
+                        </div>
+                        <div>
+                            <p className="text-lg sm:text-xl font-bold text-sky-800 tabular-nums">
+                                {
+                                    messages.filter(
+                                        (m) => m.senderType === "producer"
+                                    ).length
+                                }
+                            </p>
+                            <p className="text-[11px] font-medium text-slate-500 uppercase tracking-wider">
+                                Producers
+                            </p>
+                        </div>
                     </div>
                 </div>
 
