@@ -423,26 +423,24 @@ function AdminTransactions() {
                 {/* Transaction Logs */}
                 <div className="space-y-4">
                     {/* Search and Filters */}
-                    <div className="bg-white rounded-lg shadow-md p-4">
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                            <div className="relative">
+                    <div className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs p-4 sm:p-5">
+                        <div className="grid grid-cols-1 md:grid-cols-12 gap-3">
+                            <div className="md:col-span-5 relative">
                                 <Icon
                                     icon="mingcute:search-line"
-                                    width="20"
-                                    height="20"
-                                    className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"
+                                    className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none"
                                 />
                                 <input
                                     type="text"
-                                    placeholder="Search transactions..."
+                                    placeholder="Search by order ID, customer, producer, or crop…"
                                     value={searchTerm}
                                     onChange={(e) =>
                                         setSearchTerm(e.target.value)
                                     }
-                                    className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary"
+                                    className="w-full h-11 pl-10 pr-4 bg-slate-50/50 border border-slate-200 rounded-xl text-xs sm:text-sm text-slate-900 placeholder:text-slate-400 outline-none focus:bg-white focus:border-emerald-600 focus:ring-2 focus:ring-emerald-600/15 transition-all"
                                 />
                             </div>
-                            <div className="flex gap-2">
+                            <div className="md:col-span-4 flex items-center gap-2">
                                 <input
                                     type="number"
                                     min="1"
@@ -452,7 +450,7 @@ function AdminTransactions() {
                                     onChange={(e) =>
                                         setFilterDay(e.target.value)
                                     }
-                                    className="w-1/3 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary"
+                                    className="w-1/3 h-11 px-2.5 bg-slate-50/50 border border-slate-200 rounded-xl text-xs sm:text-sm text-center text-slate-900 placeholder:text-slate-400 outline-none focus:bg-white focus:border-emerald-600 focus:ring-2 focus:ring-emerald-600/15 tabular-nums transition-all"
                                 />
                                 <input
                                     type="number"
@@ -463,7 +461,7 @@ function AdminTransactions() {
                                     onChange={(e) =>
                                         setFilterMonth(e.target.value)
                                     }
-                                    className="w-1/3 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary"
+                                    className="w-1/3 h-11 px-2.5 bg-slate-50/50 border border-slate-200 rounded-xl text-xs sm:text-sm text-center text-slate-900 placeholder:text-slate-400 outline-none focus:bg-white focus:border-emerald-600 focus:ring-2 focus:ring-emerald-600/15 tabular-nums transition-all"
                                 />
                                 <input
                                     type="number"
@@ -473,24 +471,41 @@ function AdminTransactions() {
                                     onChange={(e) =>
                                         setFilterYear(e.target.value)
                                     }
-                                    className="w-1/3 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary"
+                                    className="w-1/3 h-11 px-2.5 bg-slate-50/50 border border-slate-200 rounded-xl text-xs sm:text-sm text-center text-slate-900 placeholder:text-slate-400 outline-none focus:bg-white focus:border-emerald-600 focus:ring-2 focus:ring-emerald-600/15 tabular-nums transition-all"
                                 />
                             </div>
-                            <select
-                                value={filterType}
-                                onChange={(e) => setFilterType(e.target.value)}
-                                className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary"
-                            >
-                                <option value="">All Types</option>
-                                <option value="pending">Pending</option>
-                                <option value="confirmed">Confirmed</option>
-                                <option value="preparing">Preparing</option>
-                                <option value="ready for pickup">
-                                    Ready for Pickup or Delivery
-                                </option>
-                                <option value="completed">Completed</option>
-                                <option value="cancelled">Cancelled</option>
-                            </select>
+                            <div className="md:col-span-3 flex items-center gap-2">
+                                <select
+                                    value={filterType}
+                                    onChange={(e) => setFilterType(e.target.value)}
+                                    className="w-full h-11 px-3 bg-slate-50/50 border border-slate-200 rounded-xl text-xs sm:text-sm font-medium text-slate-700 outline-none focus:bg-white focus:border-emerald-600 focus:ring-2 focus:ring-emerald-600/15 cursor-pointer transition-all"
+                                >
+                                    <option value="">All Statuses</option>
+                                    <option value="pending">Pending</option>
+                                    <option value="confirmed">Confirmed</option>
+                                    <option value="preparing">Preparing</option>
+                                    <option value="ready for pickup">
+                                        Ready for Pickup / Delivery
+                                    </option>
+                                    <option value="completed">Completed</option>
+                                    <option value="cancelled">Cancelled</option>
+                                </select>
+                                {(searchTerm || filterDay || filterMonth || filterYear || filterType) && (
+                                    <button
+                                        onClick={() => {
+                                            setSearchTerm("");
+                                            setFilterDay("");
+                                            setFilterMonth("");
+                                            setFilterYear("");
+                                            setFilterType("");
+                                        }}
+                                        className="h-11 px-3 inline-flex items-center justify-center rounded-xl text-xs font-semibold text-slate-500 hover:text-rose-600 hover:bg-rose-50 border border-slate-200 active:scale-95 transition-all cursor-pointer"
+                                        title="Clear filters"
+                                    >
+                                        <Icon icon="mingcute:close-line" className="w-4 h-4" />
+                                    </button>
+                                )}
+                            </div>
                         </div>
                     </div>
 
