@@ -7,43 +7,43 @@ const orderStatuses = [
     {
         value: "pending",
         label: "Pending",
-        color: "bg-yellow-100 text-yellow-800",
+        color: "bg-amber-50 text-amber-800 border border-amber-200/80",
         icon: "mingcute:time-line",
     },
     {
         value: "confirmed",
         label: "Confirmed",
-        color: "bg-blue-100 text-blue-800",
+        color: "bg-sky-50 text-sky-800 border border-sky-200/80",
         icon: "mingcute:check-circle-line",
     },
     {
         value: "preparing",
         label: "Preparing",
-        color: "bg-orange-100 text-orange-800",
+        color: "bg-orange-50 text-orange-800 border border-orange-200/80",
         icon: "mingcute:box-line",
     },
     {
         value: "ready for pickup",
         label: "Ready for Pickup",
-        color: "bg-purple-100 text-purple-800",
+        color: "bg-purple-50 text-purple-800 border border-purple-200/80",
         icon: "mingcute:truck-line",
     },
     {
         value: "in delivery",
         label: "In Delivery",
-        color: "bg-purple-100 text-purple-800",
+        color: "bg-purple-50 text-purple-800 border border-purple-200/80",
         icon: "mingcute:truck-line",
     },
     {
         value: "completed",
         label: "Completed",
-        color: "bg-green-100 text-green-800",
+        color: "bg-emerald-50 text-emerald-800 border border-emerald-200/80",
         icon: "mingcute:check-circle-fill",
     },
     {
         value: "cancelled",
         label: "Cancelled",
-        color: "bg-red-100 text-red-800",
+        color: "bg-rose-50 text-rose-800 border border-rose-200/80",
         icon: "mingcute:close-circle-line",
     },
 ];
@@ -376,15 +376,50 @@ function AdminTransactions() {
     };
 
     return (
-        <div className="min-h-screen w-full flex flex-col relative items-center scrollbar-hide bg-background overflow-x-hidden text-text pb-20">
-            {/* Header */}
-            <div className="fixed top-0 left-0 w-full bg-white shadow-md z-50 px-4 py-3">
-                <h1 className="text-lg font-semibold text-primary text-center">
-                    Transaction Logs
-                </h1>
+        <div className="min-h-screen w-full flex flex-col relative items-center scrollbar-hide bg-slate-50/50 overflow-x-hidden text-slate-800 pb-24 md:pb-16">
+            {/* Mobile Header */}
+            <div className="md:hidden fixed top-0 left-0 right-0 h-14 bg-white/95 backdrop-blur-md border-b border-slate-200/80 z-30 flex items-center justify-between px-4">
+                <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-700 flex items-center justify-center">
+                        <Icon icon="mingcute:bill-line" className="w-4 h-4" />
+                    </div>
+                    <h1 className="text-sm font-bold text-slate-900 tracking-tight">
+                        Transaction Logs
+                    </h1>
+                </div>
+                <span className="text-[11px] font-semibold text-slate-500 tabular-nums">
+                    {transactions.length} records
+                </span>
             </div>
 
-            <div className="w-full max-w-6xl mx-4 sm:mx-auto my-16">
+            <div className="w-full max-w-6xl mx-auto px-4 sm:px-6 pt-16 md:pt-20">
+                {/* Desktop Header */}
+                <div className="hidden md:flex items-center justify-between mb-6">
+                    <div>
+                        <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wider text-slate-500 mb-1">
+                            <span>Admin Portal</span>
+                            <Icon icon="mingcute:right-line" className="w-3.5 h-3.5 text-slate-400" />
+                            <span className="text-emerald-700">Financial Audit</span>
+                        </div>
+                        <h1 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">
+                            Transaction Logs
+                        </h1>
+                        <p className="text-xs text-slate-500 mt-1 max-w-prose">
+                            Audit platform orders, payments, delivery statuses, and buyer-seller receipts.
+                        </p>
+                    </div>
+                    <div className="flex items-center gap-3">
+                        <div className="px-3.5 py-2 bg-white rounded-xl border border-slate-200/90 shadow-2xs text-right">
+                            <div className="text-[10px] uppercase font-semibold text-slate-400">
+                                Total Orders
+                            </div>
+                            <div className="text-base font-bold text-slate-900 tabular-nums">
+                                {transactions.length}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 {/* Transaction Logs */}
                 <div className="space-y-4">
                     {/* Search and Filters */}
