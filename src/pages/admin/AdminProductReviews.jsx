@@ -317,15 +317,17 @@ function AdminProductReviews() {
 
     if (isLoading) {
         return (
-            <div className="min-h-screen w-full flex items-center justify-center bg-gray-50">
-                <div className="text-center">
+            <div className="min-h-screen w-full flex items-center justify-center bg-slate-50/50">
+                <div className="text-center p-6">
                     <Icon
                         icon="mingcute:loading-fill"
-                        className="animate-spin text-primary mx-auto mb-4"
-                        width="48"
-                        height="48"
+                        className="animate-spin text-emerald-600 mx-auto mb-3"
+                        width="40"
+                        height="40"
                     />
-                    <p className="text-gray-600">Loading reviews...</p>
+                    <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+                        Loading product reviews…
+                    </p>
                 </div>
             </div>
         );
@@ -333,22 +335,26 @@ function AdminProductReviews() {
 
     if (error) {
         return (
-            <div className="min-h-screen w-full flex items-center justify-center bg-gray-50">
-                <div className="text-center max-w-md mx-4">
-                    <Icon
-                        icon="mingcute:error-fill"
-                        className="text-red-500 mx-auto mb-4"
-                        width="48"
-                        height="48"
-                    />
-                    <h2 className="text-lg font-semibold text-gray-800 mb-2">
+            <div className="min-h-screen w-full flex items-center justify-center bg-slate-50/50 p-4">
+                <div className="text-center max-w-md w-full bg-white rounded-2xl border border-slate-200/90 shadow-2xs p-6 sm:p-8">
+                    <div className="w-12 h-12 rounded-2xl bg-rose-50 text-rose-600 flex items-center justify-center mx-auto mb-4">
+                        <Icon
+                            icon="mingcute:alert-line"
+                            width="26"
+                            height="26"
+                        />
+                    </div>
+                    <h2 className="text-base font-bold text-slate-900 mb-1.5">
                         Error Loading Reviews
                     </h2>
-                    <p className="text-gray-600 mb-4">{error}</p>
+                    <p className="text-xs text-slate-500 mb-5 leading-relaxed max-w-prose">
+                        {error}
+                    </p>
                     <button
                         onClick={() => window.location.reload()}
-                        className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors"
+                        className="inline-flex items-center justify-center px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-semibold shadow-xs active:scale-95 transition-all cursor-pointer"
                     >
+                        <Icon icon="mingcute:refresh-line" className="w-4 h-4 mr-1.5" />
                         Try Again
                     </button>
                 </div>
@@ -357,30 +363,53 @@ function AdminProductReviews() {
     }
 
     return (
-        <div className="min-h-screen w-full flex flex-col relative items-center scrollbar-hide bg-gray-50 overflow-x-hidden text-text pb-20">
-            {/* Header */}
-            <div className="fixed top-0 left-0 w-full bg-white shadow-sm z-50">
-                <div className="max-w-4xl mx-auto px-4">
-                    <div className="flex items-center justify-between h-16">
+        <div className="min-h-screen w-full flex flex-col relative items-center scrollbar-hide bg-slate-50/50 overflow-x-hidden text-slate-800 pb-24 md:pb-16">
+            {/* Mobile Header */}
+            <div className="md:hidden fixed top-0 left-0 right-0 h-14 bg-white/95 backdrop-blur-md border-b border-slate-200/80 z-30 flex items-center justify-between px-4">
+                <button
+                    onClick={() => navigate(-1)}
+                    className="inline-flex items-center justify-center w-9 h-9 rounded-xl text-slate-500 hover:text-emerald-700 hover:bg-slate-100 active:scale-95 transition-all cursor-pointer"
+                    aria-label="Back"
+                >
+                    <Icon
+                        icon="mingcute:arrow-left-line"
+                        width="20"
+                        height="20"
+                    />
+                </button>
+                <h1 className="text-sm font-bold text-slate-900 tracking-tight">
+                    Product Reviews
+                </h1>
+                <div className="w-9" />
+            </div>
+
+            <div className="w-full max-w-4xl mx-auto px-4 sm:px-6 pt-16 md:pt-20">
+                {/* Desktop Header */}
+                <div className="hidden md:flex items-center justify-between mb-6">
+                    <div className="flex items-center gap-3">
                         <button
                             onClick={() => navigate(-1)}
-                            className="inline-flex items-center justify-center w-10 h-10 rounded-lg text-gray-500 hover:text-primary hover:bg-gray-50 transition-colors"
+                            className="inline-flex items-center justify-center w-10 h-10 rounded-xl bg-white border border-slate-200/90 text-slate-600 hover:text-emerald-700 hover:border-emerald-300 shadow-2xs active:scale-95 transition-all cursor-pointer"
+                            aria-label="Back to Product Management"
                         >
                             <Icon
                                 icon="mingcute:arrow-left-line"
-                                width="24"
-                                height="24"
+                                width="20"
+                                height="20"
                             />
                         </button>
-                        <h1 className="text-xl font-bold text-gray-800">
-                            Product Reviews
-                        </h1>
-                        <div className="w-10"></div>
+                        <div>
+                            <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wider text-slate-500">
+                                <span>Catalog</span>
+                                <Icon icon="mingcute:right-line" className="w-3.5 h-3.5 text-slate-400" />
+                                <span className="text-emerald-700">Reviews Moderation</span>
+                            </div>
+                            <h1 className="text-xl font-bold text-slate-900 tracking-tight">
+                                Product Reviews
+                            </h1>
+                        </div>
                     </div>
                 </div>
-            </div>
-
-            <div className="w-full max-w-4xl mx-4 sm:mx-auto my-16">
                 {/* Product Info */}
                 <div className="bg-white rounded-xl shadow-lg p-6 mb-8 mt-4 border border-gray-100">
                     <div className="flex flex-col sm:flex-row items-start sm:items-center gap-6">
