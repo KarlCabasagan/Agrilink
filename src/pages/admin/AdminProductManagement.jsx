@@ -1301,18 +1301,19 @@ function AdminProductManagement() {
                         </div>
 
                         {filterData(sortData(pendingProducts)).length === 0 ? (
-                            <div className="bg-white rounded-lg shadow-md p-8 text-center">
-                                <Icon
-                                    icon="mingcute:box-2-line"
-                                    width="64"
-                                    height="64"
-                                    className="mx-auto text-gray-300 mb-4"
-                                />
-                                <h3 className="text-lg font-semibold text-gray-600 mb-2">
+                            <div className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs p-10 text-center flex flex-col items-center">
+                                <div className="w-14 h-14 rounded-2xl bg-slate-50 border border-slate-200 flex items-center justify-center text-slate-400 mb-3">
+                                    <Icon
+                                        icon="mingcute:box-2-line"
+                                        width="28"
+                                        height="28"
+                                    />
+                                </div>
+                                <h3 className="text-base font-bold text-slate-900 mb-1">
                                     No Pending Products
                                 </h3>
-                                <p className="text-gray-500">
-                                    All products have been reviewed.
+                                <p className="text-xs text-slate-500 max-w-sm">
+                                    All submitted products have been reviewed and processed.
                                 </p>
                             </div>
                         ) : (
@@ -1321,15 +1322,15 @@ function AdminProductManagement() {
                                     (product) => (
                                         <div
                                             key={product.id}
-                                            className="bg-white rounded-lg shadow-md p-6"
+                                            className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs p-5 sm:p-6 transition-all duration-150"
                                         >
-                                            <div className="flex flex-col lg:flex-row gap-6">
+                                            <div className="flex flex-col lg:flex-row gap-5 sm:gap-6">
                                                 {/* Product Image */}
-                                                <div className="lg:w-48 flex-shrink-0">
+                                                <div className="lg:w-48 shrink-0">
                                                     <img
                                                         src={product.image}
                                                         alt={product.name}
-                                                        className="w-full h-48 object-cover rounded-lg cursor-pointer hover:opacity-80 transition-opacity"
+                                                        className="w-full h-44 sm:h-48 object-cover rounded-xl border border-slate-200 shadow-2xs cursor-pointer hover:opacity-85 transition-opacity"
                                                         onClick={() =>
                                                             handleImageClick(
                                                                 product.image
@@ -1340,32 +1341,33 @@ function AdminProductManagement() {
 
                                                 {/* Product Details */}
                                                 <div className="flex-1">
-                                                    <div className="flex items-start justify-between mb-4">
+                                                    <div className="flex items-start justify-between gap-3 mb-3">
                                                         <div>
-                                                            <h3 className="text-xl font-semibold text-gray-800">
+                                                            <h3 className="text-lg font-bold text-slate-900 tracking-tight">
                                                                 {product.name}
                                                             </h3>
-                                                            <p className="text-sm text-gray-600">
-                                                                by{" "}
-                                                                {
-                                                                    product.producer
-                                                                }
+                                                            <p className="text-xs text-slate-500">
+                                                                by {product.producer}
                                                             </p>
-                                                            <p className="text-xs text-gray-500 mt-1">
+                                                            <p className="text-[11px] text-slate-400 mt-0.5 tabular-nums">
                                                                 Submitted on{" "}
                                                                 {new Date(
                                                                     product.submittedDate
-                                                                ).toLocaleDateString()}
+                                                                ).toLocaleDateString("en-US", {
+                                                                    year: "numeric",
+                                                                    month: "short",
+                                                                    day: "numeric",
+                                                                })}
                                                             </p>
                                                         </div>
-                                                        <span className="bg-yellow-100 text-yellow-800 px-3 py-1 rounded-full text-sm">
+                                                        <span className="bg-amber-50 text-amber-800 border border-amber-200/80 px-2.5 py-0.5 rounded-full text-[11px] font-semibold shrink-0">
                                                             Pending Review
                                                         </span>
                                                     </div>
 
-                                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
+                                                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-slate-50/70 border border-slate-200/70 rounded-xl p-3.5 mb-3.5">
                                                         <div>
-                                                            <h4 className="font-medium text-gray-700 mb-1">
+                                                            <h4 className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 mb-1">
                                                                 Category
                                                             </h4>
                                                             <select
@@ -1396,7 +1398,7 @@ function AdminProductManagement() {
                                                                             )
                                                                     );
                                                                 }}
-                                                                className="text-sm border-gray-300 rounded-md focus:ring-primary focus:border-primary w-full"
+                                                                className="text-xs font-semibold bg-white border border-slate-200 rounded-lg p-1.5 focus:ring-2 focus:ring-emerald-600/15 focus:border-emerald-600 outline-none w-full"
                                                             >
                                                                 {categories.map(
                                                                     (cat) => (
@@ -1417,59 +1419,48 @@ function AdminProductManagement() {
                                                             </select>
                                                         </div>
                                                         <div>
-                                                            <h4 className="font-medium text-gray-700 mb-1">
+                                                            <h4 className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 mb-1">
                                                                 Crop Type
                                                             </h4>
-                                                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200/80">
                                                                 {
                                                                     product.cropType
                                                                 }
                                                             </span>
                                                         </div>
                                                         <div>
-                                                            <h4 className="font-medium text-gray-700 mb-1">
+                                                            <h4 className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 mb-1">
                                                                 Price
                                                             </h4>
-                                                            <p className="text-lg font-semibold text-green-600">
-                                                                ₱{product.price}{" "}
-                                                                / kg
+                                                            <p className="text-base font-bold text-emerald-700 tabular-nums">
+                                                                ₱{Number(product.price).toFixed(2)}{" "}
+                                                                <span className="text-xs text-slate-500 font-normal">/ kg</span>
                                                             </p>
                                                         </div>
                                                         <div>
-                                                            <h4 className="font-medium text-gray-700 mb-1">
+                                                            <h4 className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 mb-1">
                                                                 Stock
                                                             </h4>
-                                                            <p className="text-sm text-gray-600">
-                                                                {product.stock}{" "}
-                                                                kg available
+                                                            <p className="text-xs font-bold text-slate-800 tabular-nums">
+                                                                {product.stock} kg available
                                                             </p>
                                                         </div>
                                                     </div>
 
-                                                    <div className="mb-4">
-                                                        <h4 className="font-medium text-gray-700 mb-2">
-                                                            Description
-                                                        </h4>
-                                                        <p className="text-sm text-gray-600 leading-relaxed">
-                                                            {
-                                                                product.description
-                                                            }
-                                                        </p>
-                                                    </div>
+                                                    {product.description && (
+                                                        <div className="mb-3.5">
+                                                            <h4 className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 mb-1">
+                                                                Description
+                                                            </h4>
+                                                            <p className="text-xs text-slate-600 leading-relaxed max-w-prose">
+                                                                {
+                                                                    product.description
+                                                                }
+                                                            </p>
+                                                        </div>
+                                                    )}
 
-                                                    <div className="flex justify-end gap-3">
-                                                        <button
-                                                            onClick={() =>
-                                                                handleProductAction(
-                                                                    product.id,
-                                                                    "approved"
-                                                                )
-                                                            }
-                                                            className="flex items-center gap-2 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors"
-                                                        >
-                                                            <Icon icon="mingcute:check-line" />
-                                                            Approve
-                                                        </button>
+                                                    <div className="flex items-center justify-end gap-2.5 pt-2 border-t border-slate-100">
                                                         <button
                                                             onClick={() =>
                                                                 handleProductAction(
@@ -1477,10 +1468,22 @@ function AdminProductManagement() {
                                                                     "rejected"
                                                                 )
                                                             }
-                                                            className="flex items-center gap-2 bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors"
+                                                            className="min-h-[38px] px-4 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200/80 rounded-xl text-xs font-semibold shadow-2xs flex items-center gap-1.5 transition-all cursor-pointer active:scale-[0.98]"
                                                         >
-                                                            <Icon icon="mingcute:close-line" />
-                                                            Reject
+                                                            <Icon icon="mingcute:close-line" className="w-3.5 h-3.5" />
+                                                            <span>Reject</span>
+                                                        </button>
+                                                        <button
+                                                            onClick={() =>
+                                                                handleProductAction(
+                                                                    product.id,
+                                                                    "approved"
+                                                                )
+                                                            }
+                                                            className="min-h-[38px] px-4 py-1.5 bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl text-xs font-semibold shadow-xs flex items-center gap-1.5 transition-all cursor-pointer active:scale-[0.98]"
+                                                        >
+                                                            <Icon icon="mingcute:check-line" className="w-3.5 h-3.5" />
+                                                            <span>Approve Product</span>
                                                         </button>
                                                     </div>
                                                 </div>
