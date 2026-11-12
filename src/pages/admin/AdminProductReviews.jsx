@@ -568,19 +568,20 @@ function AdminProductReviews() {
                 </div>
 
                 {/* Reviews List */}
-                <div className="space-y-6">
+                <div className="space-y-4">
                     {filteredAndSortedReviews.length === 0 ? (
-                        <div className="bg-white rounded-lg shadow-md p-8 text-center">
-                            <Icon
-                                icon="mingcute:comment-line"
-                                width="64"
-                                height="64"
-                                className="mx-auto text-gray-300 mb-4"
-                            />
-                            <h3 className="text-lg font-semibold text-gray-600 mb-2">
+                        <div className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs p-8 text-center">
+                            <div className="w-12 h-12 rounded-2xl bg-slate-100 text-slate-400 flex items-center justify-center mx-auto mb-3">
+                                <Icon
+                                    icon="mingcute:comment-line"
+                                    width="24"
+                                    height="24"
+                                />
+                            </div>
+                            <h3 className="text-sm font-bold text-slate-800 mb-1">
                                 No Reviews Found
                             </h3>
-                            <p className="text-gray-500">
+                            <p className="text-xs text-slate-500">
                                 No reviews match your current filters.
                             </p>
                         </div>
@@ -588,90 +589,88 @@ function AdminProductReviews() {
                         filteredAndSortedReviews.map((review) => (
                             <div
                                 key={review.id}
-                                className={`bg-white rounded-xl shadow-lg p-6 border border-gray-100 hover:border-primary transition-all transform ${
+                                className={`bg-white rounded-2xl border border-slate-200/90 shadow-2xs p-5 sm:p-6 hover:border-slate-300 transition-all ${
                                     deletingReviews.has(review.id)
                                         ? "opacity-0 scale-95 -translate-y-2"
                                         : "opacity-100 scale-100 translate-y-0"
                                 }`}
                             >
-                                <div className="flex items-start justify-between mb-6">
-                                    <div className="flex-1">
-                                        <div className="flex flex-wrap items-center gap-3 mb-4">
-                                            <div className="flex items-center gap-3">
+                                <div className="flex items-start justify-between mb-4">
+                                    <div className="flex-1 min-w-0">
+                                        <div className="flex flex-wrap items-center gap-2.5 mb-2.5">
+                                            <div className="flex items-center gap-2.5">
                                                 <img
                                                     src={review.customerAvatar}
                                                     alt={review.customerName}
-                                                    className="w-8 h-8 rounded-full object-cover"
+                                                    className="w-8 h-8 rounded-full object-cover ring-2 ring-slate-100"
                                                 />
-                                                <h3 className="text-lg font-semibold text-gray-800">
+                                                <h3 className="text-sm font-bold text-slate-900 tracking-tight">
                                                     {review.customerName}
                                                 </h3>
                                             </div>
                                             {review.verified && (
-                                                <span className="bg-blue-50 text-blue-700 text-sm px-3 py-1 rounded-full border border-blue-100 font-medium">
+                                                <span className="inline-flex items-center gap-1 bg-emerald-50 text-emerald-800 text-[11px] font-semibold px-2 py-0.5 rounded-full border border-emerald-200/70">
                                                     <Icon
                                                         icon="mingcute:check-fill"
-                                                        className="inline-block mr-1"
-                                                        width="14"
+                                                        className="w-3 h-3 text-emerald-600"
                                                     />
-                                                    Verified
+                                                    Verified Customer
                                                 </span>
                                             )}
                                         </div>
-                                        <div className="flex items-center gap-4 mb-4">
-                                            <div className="flex bg-gray-50 px-3 py-1.5 rounded-lg">
+                                        <div className="flex items-center gap-3 mb-3">
+                                            <div className="flex items-center gap-0.5 bg-slate-50 px-2 py-1 rounded-lg border border-slate-200/60">
                                                 {renderStars(review.rating)}
                                             </div>
-                                            <span className="text-sm text-gray-500 font-medium">
+                                            <span className="text-xs font-medium text-slate-500 tabular-nums">
                                                 {new Date(
                                                     review.date
                                                 ).toLocaleDateString("en-US", {
                                                     year: "numeric",
-                                                    month: "long",
+                                                    month: "short",
                                                     day: "numeric",
                                                 })}
                                             </span>
                                         </div>
-                                        <p className="text-gray-600 mb-4 leading-relaxed">
+                                        <p className="text-xs sm:text-sm text-slate-600 mb-3.5 leading-relaxed max-w-prose">
                                             {review.comment ?? ""}
                                         </p>
                                         {review.reviewImage && (
                                             <ReviewImage
                                                 src={review.reviewImage}
                                                 alt="Review"
-                                                className="mb-4 max-w-xs rounded-lg h-40 w-40"
+                                                className="mb-3 max-w-xs rounded-xl border border-slate-200/80 h-36 w-36"
                                             />
                                         )}
                                     </div>
                                 </div>
 
                                 {/* Delete action */}
-                                <div className="flex justify-between pt-4 border-t border-gray-100">
-                                    <div className="flex items-center gap-6 text-sm">
-                                        <span className="flex items-center gap-2 text-gray-600 font-medium">
+                                <div className="flex items-center justify-between pt-3.5 border-t border-slate-100">
+                                    <div className="flex items-center gap-4 text-xs">
+                                        <span className="flex items-center gap-1.5 text-slate-600 font-medium">
                                             <Icon
-                                                icon="mingcute:thumb-up-fill"
-                                                width="18"
-                                                className={`${
+                                                icon="mingcute:thumb-up-line"
+                                                className={`w-4 h-4 ${
                                                     review.helpful > 0
-                                                        ? "text-primary"
-                                                        : "text-gray-400"
+                                                        ? "text-emerald-600"
+                                                        : "text-slate-400"
                                                 }`}
                                             />
-                                            {review.helpful} helpful
+                                            <span className="tabular-nums font-semibold">{review.helpful}</span> helpful
                                         </span>
                                         <span
-                                            className={`flex items-center gap-2 font-medium ${
+                                            className={`flex items-center gap-1.5 font-medium ${
                                                 review.reported > 0
-                                                    ? "text-red-600"
-                                                    : "text-gray-400"
+                                                    ? "text-rose-600"
+                                                    : "text-slate-400"
                                             }`}
                                         >
                                             <Icon
-                                                icon="mingcute:flag-2-fill"
-                                                width="18"
+                                                icon="mingcute:flag-2-line"
+                                                className="w-4 h-4"
                                             />
-                                            {review.reported} reported
+                                            <span className="tabular-nums font-semibold">{review.reported}</span> reported
                                         </span>
                                     </div>
                                     <button
@@ -681,16 +680,15 @@ function AdminProductReviews() {
                                         disabled={deletingReviews.has(
                                             review.id
                                         )}
-                                        className={`inline-flex items-center px-4 py-2 text-sm font-medium rounded-lg border transition-all ${
+                                        className={`inline-flex items-center px-3 py-1.5 text-xs font-semibold rounded-xl border transition-all active:scale-95 cursor-pointer ${
                                             deletingReviews.has(review.id)
-                                                ? "bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed"
-                                                : "bg-red-50 text-red-700 border-red-200 hover:bg-red-100"
+                                                ? "bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed"
+                                                : "bg-rose-50 text-rose-700 border-rose-200/80 hover:bg-rose-100"
                                         }`}
                                     >
                                         <Icon
                                             icon="mingcute:delete-line"
-                                            className="mr-2"
-                                            width="18"
+                                            className="mr-1.5 w-3.5 h-3.5"
                                         />
                                         Delete Review
                                     </button>
