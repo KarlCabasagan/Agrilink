@@ -1280,22 +1280,22 @@ function AdminProductManagement() {
                 {activeTab === "pending" && (
                     <div className="space-y-4">
                         {/* Search Bar */}
-                        <div className="bg-white rounded-lg shadow-md p-4">
+                        <div className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs p-3.5 sm:p-4">
                             <div className="relative">
                                 <Icon
                                     icon="mingcute:search-line"
                                     width="20"
                                     height="20"
-                                    className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"
+                                    className="absolute left-3.5 top-1/2 transform -translate-y-1/2 text-slate-400"
                                 />
                                 <input
                                     type="text"
-                                    placeholder="Search products..."
+                                    placeholder="Search pending products by title, producer, or crop type…"
                                     value={searchTerm}
                                     onChange={(e) =>
                                         setSearchTerm(e.target.value)
                                     }
-                                    className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary"
+                                    className="w-full h-11 pl-10 pr-4 bg-slate-50/50 border border-slate-200 rounded-xl text-sm text-slate-900 placeholder:text-slate-400 outline-none focus:bg-white focus:border-emerald-600 focus:ring-2 focus:ring-emerald-600/15 transition-all"
                                 />
                             </div>
                         </div>
@@ -1497,22 +1497,22 @@ function AdminProductManagement() {
                 {activeTab === "approved" && (
                     <div className="space-y-4">
                         {/* Search Bar */}
-                        <div className="bg-white rounded-lg shadow-md p-4">
+                        <div className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs p-3.5 sm:p-4">
                             <div className="relative">
                                 <Icon
                                     icon="mingcute:search-line"
                                     width="20"
                                     height="20"
-                                    className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"
+                                    className="absolute left-3.5 top-1/2 transform -translate-y-1/2 text-slate-400"
                                 />
                                 <input
                                     type="text"
-                                    placeholder="Search approved products..."
+                                    placeholder="Search approved products by title, producer, crop type, or category…"
                                     value={searchTerm}
                                     onChange={(e) =>
                                         setSearchTerm(e.target.value)
                                     }
-                                    className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary"
+                                    className="w-full h-11 pl-10 pr-4 bg-slate-50/50 border border-slate-200 rounded-xl text-sm text-slate-900 placeholder:text-slate-400 outline-none focus:bg-white focus:border-emerald-600 focus:ring-2 focus:ring-emerald-600/15 transition-all"
                                 />
                             </div>
                         </div>
