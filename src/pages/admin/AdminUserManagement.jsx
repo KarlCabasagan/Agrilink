@@ -1313,27 +1313,28 @@ function AdminUserManagement() {
             {showImageModal && (
                 <>
                     <div
-                        className="fixed inset-0 bg-black opacity-70 flex items-center justify-center z-[9999]"
+                        className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center z-[9999] transition-opacity duration-150"
                         onClick={() => setShowImageModal(false)}
-                    ></div>
+                    />
                     <div
-                        className="bg-white p-4 rounded-lg max-w-3xl max-h-[90vh] overflow-auto transform transition-all duration-300 ease-in-out z-[10000] fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-11/12"
+                        className="bg-white p-5 sm:p-6 rounded-2xl max-w-3xl max-h-[90vh] overflow-auto border border-slate-200/90 shadow-2xl z-[10000] fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-11/12 origin-center transition-all duration-180 ease-[cubic-bezier(0.16,1,0.3,1)]"
                         onClick={(e) => e.stopPropagation()}
                     >
                         <div className="flex justify-between items-center mb-4">
-                            <h3 className="text-lg font-semibold text-gray-900">
+                            <h3 className="text-base font-bold text-slate-900 tracking-tight">
                                 {selectedImage?.includes("valid-ids")
-                                    ? "Valid ID"
-                                    : "Profile Image"}
+                                    ? "Valid ID Document"
+                                    : "Profile Photo"}
                             </h3>
                             <button
                                 onClick={() => setShowImageModal(false)}
-                                className="text-gray-500 hover:text-gray-700 transition-colors"
+                                className="min-w-[36px] min-h-[36px] flex items-center justify-center rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer active:scale-95"
+                                aria-label="Close image preview"
                             >
                                 <Icon
                                     icon="mingcute:close-line"
-                                    width="24"
-                                    height="24"
+                                    width="20"
+                                    height="20"
                                 />
                             </button>
                         </div>
@@ -1341,10 +1342,10 @@ function AdminUserManagement() {
                             src={selectedImage}
                             alt={
                                 selectedImage?.includes("valid-ids")
-                                    ? "Valid ID"
-                                    : "Profile"
+                                    ? "Valid ID Document"
+                                    : "Profile Photo"
                             }
-                            className="w-full h-auto rounded-lg shadow-lg object-contain"
+                            className="w-full h-auto rounded-xl border border-slate-200 shadow-sm object-contain"
                             style={{ maxHeight: "70vh" }}
                         />
                     </div>
