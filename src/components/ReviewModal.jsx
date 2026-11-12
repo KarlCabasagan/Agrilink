@@ -166,50 +166,50 @@ export default function ReviewModal({
             onClick={handleBackdropClick}
         >
             {/* Backdrop with improved transition */}
-            <div className="fixed inset-0 bg-black/40 backdrop-blur-sm transition-all duration-300 ease-out" />
+            <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs transition-opacity duration-150 ease-out" />
 
             {/* Modal Panel */}
             <div className="flex min-h-screen items-center justify-center p-4">
                 <div
                     ref={modalRef}
-                    className="relative w-full max-w-lg rounded-xl bg-white p-8 shadow-2xl ring-1 ring-black/5 transform transition-all duration-200 ease-out opacity-100 scale-100"
+                    className="relative w-full max-w-lg rounded-2xl bg-white p-6 sm:p-8 shadow-2xl border border-slate-200/90 transform transition-all duration-180 ease-[cubic-bezier(0.16,1,0.3,1)] opacity-100 scale-100"
                     role="document"
                 >
                     {/* Header */}
-                    <div className="flex items-center justify-between mb-6">
+                    <div className="flex items-center justify-between mb-5">
                         <h2
                             id="review-modal-title"
-                            className="text-2xl font-semibold text-gray-900"
+                            className="text-xl font-bold text-slate-900 tracking-tight"
                         >
                             Rate & Review
                         </h2>
                         <button
                             ref={closeButtonRef}
                             onClick={onClose}
-                            className="text-gray-400 hover:text-gray-600 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 rounded-lg p-2 transition-colors"
+                            className="text-slate-400 hover:text-slate-600 focus:outline-none focus:ring-2 focus:ring-emerald-600/20 rounded-xl p-2 transition-colors cursor-pointer active:scale-95"
                             aria-label="Close"
                         >
                             <Icon
                                 icon="mingcute:close-line"
-                                width="24"
-                                height="24"
+                                width="22"
+                                height="22"
                             />
                         </button>
                     </div>
 
-                    <div className="space-y-6">
+                    <div className="space-y-5">
                         <div>
                             <h3
                                 id="review-modal-product"
-                                className="text-base font-medium text-gray-800 mb-3"
+                                className="text-sm font-semibold text-slate-800 mb-2.5"
                             >
                                 {productName}
                             </h3>
                             <div className="space-y-3">
                                 <div
-                                    className={`inline-flex items-center gap-2 p-3 rounded-lg transition-colors ${
+                                    className={`inline-flex items-center gap-2 p-3 rounded-xl transition-colors ${
                                         !rating
-                                            ? "bg-primary/5 ring-2 ring-primary/10"
+                                            ? "bg-emerald-50/50 border border-emerald-200/60"
                                             : ""
                                     }`}
                                     onMouseLeave={() => handleRatingHover(0)}
@@ -226,7 +226,7 @@ export default function ReviewModal({
                                             onMouseEnter={() =>
                                                 handleRatingHover(value)
                                             }
-                                            className={`p-1.5 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 rounded-lg ${
+                                            className={`p-1.5 transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-emerald-600/20 rounded-xl cursor-pointer ${
                                                 !rating
                                                     ? "hover:scale-110 active:scale-95"
                                                     : ""
@@ -244,25 +244,25 @@ export default function ReviewModal({
                                                         ? "mingcute:star-fill"
                                                         : "mingcute:star-line"
                                                 }
-                                                width="32"
-                                                height="32"
-                                                className={`transition-colors duration-200 ${
+                                                width="30"
+                                                height="30"
+                                                className={`transition-colors duration-150 ${
                                                     (hoveredRating || rating) >=
                                                     value
-                                                        ? "text-yellow-400"
+                                                        ? "text-amber-400"
                                                         : rating === 0
-                                                        ? "text-primary/40"
-                                                        : "text-gray-300"
+                                                        ? "text-emerald-700/30"
+                                                        : "text-slate-200"
                                                 }`}
                                             />
                                         </button>
                                     ))}
                                 </div>
                                 <div
-                                    className={`text-sm transition-colors duration-200 ${
+                                    className={`text-xs font-semibold uppercase tracking-wider transition-colors duration-150 ${
                                         rating
-                                            ? "text-gray-600"
-                                            : "text-primary/80 font-medium"
+                                            ? "text-slate-600 tabular-nums"
+                                            : "text-emerald-700 font-medium"
                                     }`}
                                 >
                                     {rating
@@ -275,11 +275,11 @@ export default function ReviewModal({
                         </div>
                     </div>
 
-                    <form onSubmit={handleSubmit} className="space-y-6">
+                    <form onSubmit={handleSubmit} className="space-y-4 mt-4">
                         <div>
                             <label
                                 htmlFor="review"
-                                className="block text-sm font-medium text-gray-700 mb-2"
+                                className="block text-[11px] font-semibold uppercase tracking-wider text-slate-700 mb-1.5"
                             >
                                 Your Review (Optional)
                             </label>
@@ -287,17 +287,17 @@ export default function ReviewModal({
                                 id="review"
                                 name="review"
                                 rows="4"
-                                placeholder="Share your experience with this product..."
+                                placeholder="Share your experience with this product…"
                                 value={review}
                                 onChange={(e) => setReview(e.target.value)}
-                                className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors resize-none placeholder:text-gray-400"
+                                className="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-600/15 focus:border-emerald-600 bg-slate-50/50 focus:bg-white transition-all resize-none placeholder:text-slate-400 text-sm"
                                 disabled={isSubmitting}
                             />
                         </div>
 
                         {/* Image Upload Section */}
                         <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                            <label className="block text-[11px] font-semibold uppercase tracking-wider text-slate-700 mb-1.5">
                                 Add Photo (Optional)
                             </label>
                             <input
@@ -315,15 +315,15 @@ export default function ReviewModal({
                                         fileInputRef.current?.click()
                                     }
                                     disabled={isSubmitting}
-                                    className="w-full px-4 py-3 border-2 border-dashed border-gray-300 rounded-lg hover:border-primary hover:bg-primary/5 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-gray-600 hover:text-primary"
+                                    className="w-full px-4 py-3 border-2 border-dashed border-slate-200 rounded-xl hover:border-emerald-600 hover:bg-emerald-50/30 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-slate-500 hover:text-emerald-700 cursor-pointer"
                                 >
                                     <Icon
                                         icon="mingcute:camera-line"
-                                        width="20"
-                                        height="20"
+                                        width="18"
+                                        height="18"
                                     />
-                                    <span className="text-sm font-medium">
-                                        Click to upload or drag and drop
+                                    <span className="text-xs font-semibold">
+                                        Click to upload image (JPG, PNG, WebP)
                                     </span>
                                 </button>
                             ) : (
@@ -331,30 +331,30 @@ export default function ReviewModal({
                                     <img
                                         src={imagePreview}
                                         alt="Review preview"
-                                        className="h-32 w-32 object-cover rounded-lg border border-gray-200"
+                                        className="h-28 w-28 object-cover rounded-xl border border-slate-200 shadow-2xs"
                                     />
                                     <button
                                         type="button"
                                         onClick={handleRemoveImage}
                                         disabled={isSubmitting}
-                                        className="absolute -top-2 -right-2 bg-red-500 hover:bg-red-600 text-white rounded-full p-1 transition-colors disabled:opacity-50"
+                                        className="absolute -top-2 -right-2 bg-rose-600 hover:bg-rose-700 text-white rounded-full p-1 shadow-xs transition-colors cursor-pointer disabled:opacity-50 active:scale-95"
                                         aria-label="Remove image"
                                     >
                                         <Icon
                                             icon="mingcute:close-line"
-                                            width="16"
-                                            height="16"
+                                            width="14"
+                                            height="14"
                                         />
                                     </button>
                                 </div>
                             )}
                         </div>
 
-                        <div className="flex justify-end gap-3 pt-2">
+                        <div className="flex justify-end gap-3 pt-3">
                             <button
                                 type="button"
                                 onClick={onClose}
-                                className="min-w-[100px] px-5 py-2.5 text-sm font-medium text-gray-600 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 disabled:opacity-50"
+                                className="min-h-[44px] min-w-[90px] px-4 py-2.5 text-xs font-semibold text-slate-700 bg-slate-100 rounded-xl hover:bg-slate-200 border border-slate-200/80 transition-all focus:outline-none focus:ring-2 focus:ring-slate-300 disabled:opacity-50 cursor-pointer active:scale-[0.98]"
                                 disabled={isSubmitting}
                             >
                                 Cancel
@@ -362,7 +362,7 @@ export default function ReviewModal({
                             <button
                                 ref={submitButtonRef}
                                 type="submit"
-                                className="min-w-[100px] px-5 py-2.5 text-sm font-medium text-white bg-primary rounded-lg hover:bg-primary-dark transition-colors focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-primary flex items-center justify-center gap-2"
+                                className="min-h-[44px] min-w-[120px] px-5 py-2.5 text-xs font-semibold text-white bg-emerald-700 rounded-xl hover:bg-emerald-800 transition-all shadow-xs focus:outline-none focus:ring-2 focus:ring-emerald-600/20 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-1.5 cursor-pointer active:scale-[0.98]"
                                 disabled={isSubmitting || rating === 0}
                             >
                                 {isSubmitting ? (
@@ -370,10 +370,10 @@ export default function ReviewModal({
                                         <Icon
                                             icon="mingcute:loading-line"
                                             className="animate-spin"
-                                            width="20"
-                                            height="20"
+                                            width="16"
+                                            height="16"
                                         />
-                                        <span>Submitting...</span>
+                                        <span>Submitting…</span>
                                     </>
                                 ) : (
                                     "Submit Review"
