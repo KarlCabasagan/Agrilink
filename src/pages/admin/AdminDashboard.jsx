@@ -554,12 +554,17 @@ function AdminDashboard() {
                 </div>
 
                 {/* Top Approved Products */}
-                <div className="bg-white rounded-lg shadow-md p-6">
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
-                        <h2 className="text-lg font-semibold text-gray-800">
-                            Top Approved Products
-                        </h2>
-                        <div className="flex items-center bg-gray-50 rounded-lg p-1 border border-gray-200">
+                <div className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs p-5 sm:p-6">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5">
+                        <div>
+                            <h2 className="text-sm font-bold text-slate-900 tracking-tight">
+                                Top Approved Products
+                            </h2>
+                            <p className="text-[11px] text-slate-500 mt-0.5">
+                                Volume leaders based on verified completed customer transactions.
+                            </p>
+                        </div>
+                        <div className="flex items-center gap-1 bg-slate-100/80 rounded-xl p-1 border border-slate-200/60 overflow-x-auto scrollbar-hide">
                             {[
                                 { value: "all", label: "All Time" },
                                 { value: "today", label: "Today" },
@@ -574,14 +579,14 @@ function AdminDashboard() {
                                             setSelectedTimeRange(range.value);
                                         }
                                     }}
-                                    className={`px-3 py-1.5 text-sm font-medium rounded-md transition-all ${
+                                    className={`min-h-[34px] px-3 py-1 text-xs font-semibold rounded-lg transition-all cursor-pointer whitespace-nowrap active:scale-95 ${
                                         selectedTimeRange === range.value
-                                            ? "bg-white text-primary shadow-sm"
-                                            : "text-gray-600 hover:text-primary"
+                                            ? "bg-white text-emerald-800 shadow-2xs"
+                                            : "text-slate-600 hover:text-slate-900"
                                     } ${
                                         isLoading
                                             ? "opacity-50 cursor-not-allowed"
-                                            : "hover:bg-gray-100"
+                                            : ""
                                     }`}
                                     disabled={isLoading}
                                 >
