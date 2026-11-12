@@ -716,40 +716,51 @@ function AdminUserManagement() {
     };
 
     return (
-        <div className="min-h-screen w-full flex flex-col relative items-center scrollbar-hide bg-background overflow-x-hidden text-text pb-20">
-            {/* Header */}
-            <div className="fixed top-0 left-0 w-full bg-white shadow-md z-50 px-4 py-3">
-                <h1 className="text-lg font-semibold text-primary text-center">
+        <div className="min-h-screen w-full flex flex-col relative items-center bg-slate-50/50 text-slate-800 overflow-x-hidden">
+            {/* Mobile Header */}
+            <header className="md:hidden fixed top-0 left-0 w-full bg-white/95 backdrop-blur-md border-b border-slate-200 z-40 px-4 h-14 flex items-center justify-center">
+                <h1 className="text-base font-bold text-slate-900 tracking-tight">
                     User Management
                 </h1>
-            </div>
+            </header>
 
-            <div className="w-full max-w-6xl mx-4 sm:mx-auto my-16">
+            <div className="w-full max-w-6xl mx-auto px-4 sm:px-6 pt-16 md:pt-20 pb-24 md:pb-16">
+                {/* Desktop Header Banner */}
+                <div className="hidden md:flex items-center justify-between mb-6">
+                    <div>
+                        <h1 className="text-2xl font-bold text-slate-900 tracking-tight">
+                            User Management
+                        </h1>
+                        <p className="text-xs text-slate-500 mt-0.5">
+                            Verify producer seller applications and manage platform user credentials.
+                        </p>
+                    </div>
+                </div>
+
                 {/* Tabs */}
-                <div className="bg-white rounded-lg shadow-md mb-6 mt-4">
-                    <div className="flex border-b border-gray-200">
+                <div className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs p-1.5 mb-6">
+                    <div className="flex gap-2">
                         <button
                             onClick={() => setActiveTab("applications")}
-                            className={
-                                "flex-1 py-3 px-4 text-center font-medium transition-colors " +
-                                (activeTab === "applications"
-                                    ? "text-primary border-b-2 border-primary"
-                                    : "text-gray-600 hover:text-gray-800")
-                            }
+                            className={`flex-1 min-h-[42px] py-2 px-4 text-center text-xs font-semibold rounded-xl transition-all duration-150 cursor-pointer active:scale-[0.98] flex items-center justify-center gap-2 ${
+                                activeTab === "applications"
+                                    ? "bg-emerald-50 text-emerald-800 border border-emerald-200/80 shadow-2xs"
+                                    : "text-slate-600 hover:text-slate-900 hover:bg-slate-50"
+                            }`}
                         >
-                            Producer Applications
+                            <span>Producer Applications</span>
                             {producerApplications.length > 0 && (
-                                <span className="ml-2 bg-red-500 text-white text-xs px-2 py-1 rounded-full">
+                                <span className="bg-emerald-800 text-white text-[10px] font-bold tabular-nums min-w-[18px] h-[18px] px-1 flex items-center justify-center rounded-full shadow-2xs">
                                     {producerApplications.length}
                                 </span>
                             )}
                         </button>
                         <button
                             onClick={() => setActiveTab("users")}
-                            className={`flex-1 py-3 px-4 text-center font-medium transition-colors ${
+                            className={`flex-1 min-h-[42px] py-2 px-4 text-center text-xs font-semibold rounded-xl transition-all duration-150 cursor-pointer active:scale-[0.98] ${
                                 activeTab === "users"
-                                    ? "text-primary border-b-2 border-primary"
-                                    : "text-gray-600 hover:text-gray-800"
+                                    ? "bg-emerald-50 text-emerald-800 border border-emerald-200/80 shadow-2xs"
+                                    : "text-slate-600 hover:text-slate-900 hover:bg-slate-50"
                             }`}
                         >
                             All Users
