@@ -12,6 +12,7 @@ function Modal({
     cancelText = "Cancel",
     showCancel = false,
     icon,
+    confirmButtonClass,
     children,
 }) {
     const dialogRef = useRef(null);
@@ -130,7 +131,7 @@ function Modal({
                     {showCancel && (
                         <button
                             type="button"
-                            className="min-h-[44px] min-w-[44px] px-5 py-2.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium text-sm transition-colors duration-150 border border-slate-300/80 focus-visible:ring-2 focus-visible:ring-slate-400 focus:outline-none"
+                            className="min-h-[44px] min-w-[44px] px-5 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-sm transition-all duration-150 border border-slate-300/80 focus-visible:ring-2 focus-visible:ring-slate-400 focus:outline-none cursor-pointer active:scale-[0.98]"
                             onClick={onClose}
                         >
                             {cancelText}
@@ -138,7 +139,7 @@ function Modal({
                     )}
                     <button
                         type="button"
-                        className={`min-h-[44px] min-w-[44px] px-6 py-2.5 rounded-lg font-medium text-sm transition-colors duration-150 shadow-xs focus-visible:ring-2 focus:outline-none ${styles.buttonColor}`}
+                        className={`min-h-[44px] min-w-[44px] px-6 py-2.5 rounded-xl font-semibold text-sm transition-all duration-150 shadow-xs focus-visible:ring-2 focus:outline-none cursor-pointer active:scale-[0.98] ${confirmButtonClass || styles.buttonColor}`}
                         onClick={onConfirm || onClose}
                     >
                         {confirmText}

@@ -9,6 +9,9 @@ function ConfirmModal({
     message,
     confirmText = "Confirm",
     cancelText = "Cancel",
+    confirmButtonClass,
+    type = "confirm",
+    icon,
 }) {
     return (
         <Modal
@@ -17,10 +20,12 @@ function ConfirmModal({
             onConfirm={onConfirm}
             title={title}
             message={message}
-            type="confirm"
+            type={type}
             showCancel={true}
             confirmText={confirmText}
             cancelText={cancelText}
+            confirmButtonClass={confirmButtonClass}
+            icon={icon}
         />
     );
 }
