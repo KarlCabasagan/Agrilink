@@ -1031,13 +1031,13 @@ function AdminUserManagement() {
                             </div>
                         </div>
 
-                        <div className="bg-white rounded-lg shadow-md overflow-hidden">
+                        <div className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs overflow-hidden">
                             <div className="overflow-x-auto">
-                                <table className="w-full">
-                                    <thead className="bg-gray-50">
+                                <table className="w-full text-left">
+                                    <thead className="bg-slate-50/80 border-b border-slate-200/80">
                                         <tr>
                                             <th
-                                                className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                                                className="px-5 py-3 text-[11px] font-semibold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100/60 transition-colors"
                                                 onClick={() =>
                                                     handleSort("name")
                                                 }
@@ -1051,12 +1051,12 @@ function AdminUserManagement() {
                                                                 ? "mingcute:up-line"
                                                                 : "mingcute:down-line"
                                                         }
-                                                        className="inline ml-1"
+                                                        className="inline ml-1 text-slate-700"
                                                     />
                                                 )}
                                             </th>
                                             <th
-                                                className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                                                className="px-5 py-3 text-[11px] font-semibold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100/60 transition-colors"
                                                 onClick={() =>
                                                     handleSort("role")
                                                 }
@@ -1070,12 +1070,12 @@ function AdminUserManagement() {
                                                                 ? "mingcute:up-line"
                                                                 : "mingcute:down-line"
                                                         }
-                                                        className="inline ml-1"
+                                                        className="inline ml-1 text-slate-700"
                                                     />
                                                 )}
                                             </th>
                                             <th
-                                                className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                                                className="px-5 py-3 text-[11px] font-semibold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100/60 transition-colors"
                                                 onClick={() =>
                                                     handleSort("status")
                                                 }
@@ -1090,12 +1090,12 @@ function AdminUserManagement() {
                                                                 ? "mingcute:up-line"
                                                                 : "mingcute:down-line"
                                                         }
-                                                        className="inline ml-1"
+                                                        className="inline ml-1 text-slate-700"
                                                     />
                                                 )}
                                             </th>
                                             <th
-                                                className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                                                className="px-5 py-3 text-[11px] font-semibold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100/60 transition-colors"
                                                 onClick={() =>
                                                     handleSort("joinDate")
                                                 }
@@ -1110,12 +1110,12 @@ function AdminUserManagement() {
                                                                 ? "mingcute:up-line"
                                                                 : "mingcute:down-line"
                                                         }
-                                                        className="inline ml-1"
+                                                        className="inline ml-1 text-slate-700"
                                                     />
                                                 )}
                                             </th>
                                             <th
-                                                className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                                                className="px-5 py-3 text-[11px] font-semibold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100/60 transition-colors"
                                                 onClick={() =>
                                                     handleSort("lastLogin")
                                                 }
@@ -1130,73 +1130,73 @@ function AdminUserManagement() {
                                                                 ? "mingcute:up-line"
                                                                 : "mingcute:down-line"
                                                         }
-                                                        className="inline ml-1"
+                                                        className="inline ml-1 text-slate-700"
                                                     />
                                                 )}
                                             </th>
-                                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                            <th className="px-5 py-3 text-right text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
                                                 Actions
                                             </th>
                                         </tr>
                                     </thead>
-                                    <tbody className="bg-white divide-y divide-gray-200">
+                                    <tbody className="bg-white divide-y divide-slate-100">
                                         {filterData(sortData(allUsers)).map(
                                             (user) => (
                                                 <tr
                                                     key={user.id}
-                                                    className="hover:bg-gray-50"
+                                                    className="hover:bg-slate-50/70 transition-colors"
                                                 >
-                                                    <td className="px-6 py-4 whitespace-nowrap">
+                                                    <td className="px-5 py-3.5 whitespace-nowrap">
                                                         <div className="flex items-center gap-3">
                                                             <img
                                                                 src={
                                                                     user.profileImage
                                                                 }
                                                                 alt={user.name}
-                                                                className="w-10 h-10 object-cover rounded-full"
+                                                                className="w-10 h-10 object-cover rounded-xl border border-slate-200 shadow-2xs"
                                                             />
                                                             <div>
-                                                                <div className="text-sm font-medium text-gray-900">
+                                                                <div className="text-xs font-bold text-slate-900 tracking-tight">
                                                                     {user.name}
                                                                 </div>
-                                                                <div className="text-sm text-gray-500">
+                                                                <div className="text-[11px] text-slate-500">
                                                                     {user.email}
                                                                 </div>
                                                             </div>
                                                         </div>
                                                     </td>
-                                                    <td className="px-6 py-4 whitespace-nowrap">
+                                                    <td className="px-5 py-3.5 whitespace-nowrap">
                                                         <span
                                                             onClick={() =>
                                                                 handleRoleToggle(
                                                                     user.id
                                                                 )
                                                             }
-                                                            className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full cursor-pointer transition-all duration-200 hover:scale-105 hover:shadow-md ${
+                                                            className={`inline-flex px-2.5 py-0.5 text-[11px] font-semibold rounded-full cursor-pointer transition-all duration-150 active:scale-95 shadow-2xs ${
                                                                 user.role ===
                                                                 "Admin"
-                                                                    ? "bg-purple-100 text-purple-800 hover:bg-purple-200"
+                                                                    ? "bg-purple-50 text-purple-700 border border-purple-200/80 hover:bg-purple-100"
                                                                     : user.role ===
                                                                       "Producer"
-                                                                    ? "bg-green-100 text-green-800 hover:bg-green-200"
-                                                                    : "bg-blue-100 text-blue-800 hover:bg-blue-200"
+                                                                    ? "bg-emerald-50 text-emerald-800 border border-emerald-200/80 hover:bg-emerald-100"
+                                                                    : "bg-sky-50 text-sky-800 border border-sky-200/80 hover:bg-sky-100"
                                                             }`}
                                                             title="Click to toggle between Consumer and Producer"
                                                         >
                                                             {user.role}
                                                         </span>
                                                     </td>
-                                                    <td className="px-6 py-4 whitespace-nowrap">
+                                                    <td className="px-5 py-3.5 whitespace-nowrap">
                                                         <div className="flex items-center gap-2">
                                                             <span
-                                                                className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium rounded-full cursor-help transition-all duration-200 ${
+                                                                className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 text-[11px] font-semibold rounded-full cursor-help shadow-2xs transition-all duration-150 ${
                                                                     user.statusId ===
                                                                     1
-                                                                        ? "bg-green-100 text-green-800"
+                                                                        ? "bg-emerald-50 text-emerald-800 border border-emerald-200/80"
                                                                         : user.statusId ===
                                                                           2
-                                                                        ? "bg-red-100 text-red-800"
-                                                                        : "bg-gray-100 text-gray-800"
+                                                                        ? "bg-rose-50 text-rose-700 border border-rose-200/80"
+                                                                        : "bg-slate-100 text-slate-700 border border-slate-200"
                                                                 }`}
                                                                 title={
                                                                     user.suspensionReason
@@ -1226,17 +1226,25 @@ function AdminUserManagement() {
                                                             </span>
                                                         </div>
                                                     </td>
-                                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                                    <td className="px-5 py-3.5 whitespace-nowrap text-xs text-slate-600 tabular-nums">
                                                         {new Date(
                                                             user.joinDate
-                                                        ).toLocaleDateString()}
+                                                        ).toLocaleDateString("en-US", {
+                                                            year: "numeric",
+                                                            month: "short",
+                                                            day: "numeric",
+                                                        })}
                                                     </td>
-                                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                                    <td className="px-5 py-3.5 whitespace-nowrap text-xs text-slate-600 tabular-nums">
                                                         {new Date(
                                                             user.lastLogin
-                                                        ).toLocaleDateString()}
+                                                        ).toLocaleDateString("en-US", {
+                                                            year: "numeric",
+                                                            month: "short",
+                                                            day: "numeric",
+                                                        })}
                                                     </td>
-                                                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                                    <td className="px-5 py-3.5 whitespace-nowrap text-right">
                                                         {user.role !==
                                                             "Admin" && (
                                                             <button
@@ -1249,12 +1257,12 @@ function AdminUserManagement() {
                                                                             : "activate"
                                                                     )
                                                                 }
-                                                                className={`inline-flex items-center px-3 py-1 border border-transparent text-sm leading-4 font-medium rounded-md text-white transition-all duration-200 ${
+                                                                className={`inline-flex items-center px-3 py-1.5 rounded-xl text-xs font-semibold shadow-2xs transition-all duration-150 cursor-pointer active:scale-95 ${
                                                                     user.statusId ===
                                                                     1
-                                                                        ? "bg-red-600 hover:bg-red-700"
-                                                                        : "bg-green-600 hover:bg-green-700"
-                                                                } focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500`}
+                                                                        ? "bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200/80"
+                                                                        : "bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200/80"
+                                                                }`}
                                                             >
                                                                 {user.statusId ===
                                                                 1
