@@ -369,19 +369,6 @@ function AdminProductReviews() {
             </div>
         );
     }
-                        {error}
-                    </p>
-                    <button
-                        onClick={() => window.location.reload()}
-                        className="inline-flex items-center justify-center px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-semibold shadow-xs active:scale-95 transition-all cursor-pointer"
-                    >
-                        <Icon icon="mingcute:refresh-line" className="w-4 h-4 mr-1.5" />
-                        Try Again
-                    </button>
-                </div>
-            </div>
-        );
-    }
 
     return (
         <div className="min-h-screen w-full flex flex-col relative items-center scrollbar-hide bg-slate-50/50 overflow-x-hidden text-slate-800 pb-24 md:pb-16">
