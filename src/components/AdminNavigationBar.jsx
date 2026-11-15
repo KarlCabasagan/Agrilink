@@ -3,10 +3,18 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useContext } from "react";
 import { AuthContext } from "../context/AuthContext.jsx";
 import { AdminPendingCountsContext } from "../context/AdminPendingCountsContext.jsx";
+import { NavigationLayoutContext } from "../context/NavigationLayoutContext.jsx";
 import supabase from "../SupabaseClient.jsx";
 import full_logo from "../assets/full_logo.png";
 
-function AdminNavigationBar() {
+function AdminNavigationBar({ isRootPersistent = false }) {
+    const { isPersistentLayoutActive } = useContext(NavigationLayoutContext);
+
+    // If persistent layout already manages this navigation bar, skip rendering inside child page
+    if (isPersistentLayoutActive && !isRootPersistent) {
+        return null;
+    }
+
     const location = useLocation();
     const navigate = useNavigate();
     const { setUser } = useContext(AuthContext);
