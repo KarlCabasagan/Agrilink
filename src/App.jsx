@@ -86,7 +86,14 @@ function EmailVerificationHandler() {
 
 function App() {
     const [user, setUser] = useState(null);
-    const [userRole, setUserRole] = useState(null);
+    const [userRole, setUserRole] = useState(() => {
+        try {
+            const cached = localStorage.getItem("agrilink_role");
+            return cached ? Number(cached) : null;
+        } catch {
+            return null;
+        }
+    });
     const [loading, setLoading] = useState(true);
     const [authInitialized, setAuthInitialized] = useState(false);
 
@@ -105,14 +112,48 @@ function App() {
                 .eq("id", userId)
                 .single();
 
+            if (error) {
+                console.error("Error fetching user role:", error);
+                // Handle expired JWT or unauthenticated token cleanly
+                if (error.code === "PGRST301" || error.message?.includes("JWT")) {
+                    console.log("Authentication token expired, logging out...");
+                    try {
+                        localStorage.removeItem("agrilink_role");
+                    } catch {}
+                    await supabase.auth.signOut();
+                    setUser(null);
+                    setUserRole(null);
+                    return null;
+                }
+                if (error.code === "PGRST116") {
+                    console.log(
+                        "User profile not found in database, logging out..."
+                    );
+                    try {
+                        localStorage.removeItem("agrilink_role");
+                    } catch {}
+                    await supabase.auth.signOut();
+                    setUser(null);
+                    setUserRole(null);
+                    return null;
+                }
+                // Fallback to cached role or Consumer role (1) so app never hangs
+                const fallbackRole = Number(localStorage.getItem("agrilink_role")) || 1;
+                setUserRole(fallbackRole);
+                return fallbackRole;
+            }
+
             if (data) {
                 // Check if user is active using the new status structure
                 if (data.statuses?.name === "suspended") {
                     console.log("User account is suspended, logging out...");
+                    try {
+                        localStorage.removeItem("agrilink_role");
+                    } catch {}
                     await supabase.auth.signOut();
                     setUser(null);
                     setUserRole(null);
-                    return;
+                    return null;
                 }
 
                 // Check if name is missing but exists in user metadata
@@ -146,30 +187,18 @@ function App() {
                     }
                 }
 
-                if (data.role_id !== userRole) {
-                    setUserRole(data.role_id);
-                }
-            } else if (error && error.code === "PGRST116") {
-                // No profile found - user might be deleted from database
-                console.log(
-                    "User profile not found in database, logging out..."
-                );
-                await supabase.auth.signOut();
-                setUser(null);
-                setUserRole(null);
-                return;
+                const resolvedRole = data.role_id ?? 1;
+                try {
+                    localStorage.setItem("agrilink_role", String(resolvedRole));
+                } catch {}
+                setUserRole(resolvedRole);
+                return resolvedRole;
             }
         } catch (error) {
-            console.error("Error fetching user role:", error);
-            // If there's a persistent error, logout the user
-            if (error.code === "PGRST301" || error.message.includes("JWT")) {
-                console.log("Authentication error, logging out...");
-                await supabase.auth.signOut();
-                setUser(null);
-                setUserRole(null);
-                return;
-            }
-            setUserRole(1); // Default to Consumer role for other errors
+            console.error("Unexpected error fetching user role:", error);
+            const fallbackRole = Number(localStorage.getItem("agrilink_role")) || 1;
+            setUserRole(fallbackRole);
+            return fallbackRole;
         }
     }, []);
 
@@ -233,6 +262,9 @@ function App() {
                     setAuthInitialized(true);
                 }
             } else {
+                try {
+                    localStorage.removeItem("agrilink_role");
+                } catch {}
                 setUserRole(null);
                 setLoading(false);
                 setAuthInitialized(true);
@@ -340,12 +372,10 @@ function App() {
         }
 
         if (userRole === null) {
-            // Still loading role -> show a loader instead of redirecting
-            return (
-                <div className="fixed inset-0 flex items-center justify-center bg-background">
-                    <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-primary"></div>
-                </div>
-            );
+            // Still resolving role -> resolve instantly from cache or default so protected pages never lock up
+            const cachedRole = Number(localStorage.getItem("agrilink_role")) || 1;
+            setUserRole(cachedRole);
+            return null;
         }
 
         const access = resolveRouteAccess({ user, userRole, allowedRoles });

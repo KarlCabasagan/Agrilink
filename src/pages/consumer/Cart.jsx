@@ -33,7 +33,10 @@ function Cart() {
 
     // Fetch cart items
     const fetchCartItems = useCallback(async () => {
-        if (!user) return;
+        if (!user) {
+            setLoading(false);
+            return;
+        }
         setLoading(true);
 
         try {

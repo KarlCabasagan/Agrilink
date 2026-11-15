@@ -121,6 +121,7 @@ function Orders() {
 
     useEffect(() => {
         if (!user) {
+            setLoading(false);
             navigate("/login");
             return;
         }

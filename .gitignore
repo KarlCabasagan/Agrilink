@@ -38,5 +38,6 @@ graphify-out/
 live_database_types.ts
 live_schema.sql
 storage_policies_manual.txt
+supabase/.temp/
 
 

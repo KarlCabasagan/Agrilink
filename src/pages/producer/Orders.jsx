@@ -113,7 +113,10 @@ function Orders() {
     }, [user]);
 
     const fetchOrders = async () => {
-        if (!user) return;
+        if (!user) {
+            setLoading(false);
+            return;
+        }
 
         setLoading(true);
         try {

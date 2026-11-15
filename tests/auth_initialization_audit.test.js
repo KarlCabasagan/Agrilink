@@ -28,3 +28,20 @@ test("audit(auth): App.jsx implements authInitialized gate to eliminate login fl
     assert.match(content, /icon_logo\.png/, "Cold start splash loader must render AgriLink brand logo");
     assert.match(content, /Loading your workspace…/, "Splash screen must show informative workspace loader");
 });
+
+test("audit(refresh): App.jsx caches role and prevents infinite loading lockup on cold reload", () => {
+    const content = fs.readFileSync(APP_PATH, "utf-8");
+
+    // Must initialize userRole from localStorage cache to prevent tab refresh freeze
+    assert.match(content, /localStorage\.getItem\("agrilink_role"\)/, "App.jsx must check cached role for cold starts");
+
+    // Must handle Supabase query error directly in fetchUserRole without dead catch blocks
+    assert.match(content, /if\s*\(error\)\s*\{[\s\S]*?fallbackRole/, "fetchUserRole must safely resolve fallback role on query errors");
+
+    // RoleGuard must not trap user in infinite loader
+    assert.equal(
+        content.includes('<div className="animate-spin rounded-full h-16 w-16 border-b-2 border-primary"></div>'),
+        false,
+        "RoleGuard must not render infinite unstyled spinner when userRole is resolving"
+    );
+});
