@@ -26,6 +26,9 @@ function AdminNavigationBar({ isRootPersistent = false }) {
         if (path === "/") {
             return location.pathname === "/" || location.pathname === "/admin" || location.pathname === "/admin/dashboard";
         }
+        if (path === "/admin/products") {
+            return location.pathname === "/admin/products" || location.pathname.startsWith("/admin/product/");
+        }
         return location.pathname.startsWith(path);
     };
 

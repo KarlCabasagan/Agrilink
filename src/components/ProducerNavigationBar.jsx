@@ -20,7 +20,10 @@ function ProducerNavigationBar({ isRootPersistent = false }) {
 
     const isActive = (path) => {
         if (path === "/") {
-            return location.pathname === "/";
+            return location.pathname === "/" || location.pathname.startsWith("/producer/product/");
+        }
+        if (path === "/profile") {
+            return location.pathname === "/profile" || location.pathname.startsWith("/edit-profile");
         }
         return location.pathname.startsWith(path);
     };
