@@ -265,14 +265,6 @@ function App() {
         };
     }, []);
 
-    // Set loading to false after role is fetched
-    useEffect(() => {
-        if (user && userRole !== null) {
-            setLoading(false);
-        } else if (!user) {
-            setLoading(false);
-        }
-    }, [user, userRole]);
 
     // Memoize auth context value to prevent unnecessary re-renders
     const authContextValue = useMemo(
