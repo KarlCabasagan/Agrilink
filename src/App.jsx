@@ -580,105 +580,105 @@ function App() {
                                             }
                                         />
 
-                                    {/* Admin-only routes */}
-                                    <Route
-                                        path="/admin"
-                                        element={
-                                            <RoleGuard allowedRoles={[3]}>
-                                                <AdminDashboard />
-                                            </RoleGuard>
-                                        }
-                                    />
-                                    <Route
-                                        path="/admin/dashboard"
-                                        element={
-                                            <RoleGuard allowedRoles={[3]}>
-                                                <AdminDashboard />
-                                            </RoleGuard>
-                                        }
-                                    />
-                                    <Route
-                                        path="/admin/users"
-                                        element={
-                                            <RoleGuard allowedRoles={[3]}>
-                                                <AdminUserManagement />
-                                            </RoleGuard>
-                                        }
-                                    />
-                                    <Route
-                                        path="/admin/products"
-                                        element={
-                                            <RoleGuard allowedRoles={[3]}>
-                                                <AdminProductManagement />
-                                            </RoleGuard>
-                                        }
-                                    />
-                                    <Route
-                                        path="/admin/product/:productId"
-                                        element={
-                                            <RoleGuard allowedRoles={[3]}>
-                                                <AdminProductReviews />
-                                            </RoleGuard>
-                                        }
-                                    />
-                                    <Route
-                                        path="/admin/messages"
-                                        element={
-                                            <RoleGuard allowedRoles={[3]}>
-                                                <AdminMessages />
-                                            </RoleGuard>
-                                        }
-                                    />
-                                    <Route
-                                        path="/admin/transactions"
-                                        element={
-                                            <RoleGuard allowedRoles={[3]}>
-                                                <AdminTransactions />
-                                            </RoleGuard>
-                                        }
-                                    />
-                                    <Route
-                                        path="/admin/crops"
-                                        element={
-                                            <RoleGuard allowedRoles={[3]}>
-                                                <AdminCropManagement />
-                                            </RoleGuard>
-                                        }
-                                    />
+                                        {/* Admin-only routes */}
+                                        <Route
+                                            path="/admin"
+                                            element={
+                                                <RoleGuard allowedRoles={[3]}>
+                                                    <AdminDashboard />
+                                                </RoleGuard>
+                                            }
+                                        />
+                                        <Route
+                                            path="/admin/dashboard"
+                                            element={
+                                                <RoleGuard allowedRoles={[3]}>
+                                                    <AdminDashboard />
+                                                </RoleGuard>
+                                            }
+                                        />
+                                        <Route
+                                            path="/admin/users"
+                                            element={
+                                                <RoleGuard allowedRoles={[3]}>
+                                                    <AdminUserManagement />
+                                                </RoleGuard>
+                                            }
+                                        />
+                                        <Route
+                                            path="/admin/products"
+                                            element={
+                                                <RoleGuard allowedRoles={[3]}>
+                                                    <AdminProductManagement />
+                                                </RoleGuard>
+                                            }
+                                        />
+                                        <Route
+                                            path="/admin/product/:productId"
+                                            element={
+                                                <RoleGuard allowedRoles={[3]}>
+                                                    <AdminProductReviews />
+                                                </RoleGuard>
+                                            }
+                                        />
+                                        <Route
+                                            path="/admin/messages"
+                                            element={
+                                                <RoleGuard allowedRoles={[3]}>
+                                                    <AdminMessages />
+                                                </RoleGuard>
+                                            }
+                                        />
+                                        <Route
+                                            path="/admin/transactions"
+                                            element={
+                                                <RoleGuard allowedRoles={[3]}>
+                                                    <AdminTransactions />
+                                                </RoleGuard>
+                                            }
+                                        />
+                                        <Route
+                                            path="/admin/crops"
+                                            element={
+                                                <RoleGuard allowedRoles={[3]}>
+                                                    <AdminCropManagement />
+                                                </RoleGuard>
+                                            }
+                                        />
 
-                                    {/* Shared routes */}
-                                    <Route
-                                        path="/edit-profile"
-                                        element={
-                                            <PrivateRoute>
-                                                <EditProfile />
-                                            </PrivateRoute>
-                                        }
-                                    />
-                                    <Route
-                                        path="/business-settings"
-                                        element={
-                                            <PrivateRoute>
-                                                <ThesisOnlyPage />
-                                            </PrivateRoute>
-                                        }
-                                    />
-                                    <Route
-                                        path="/sales-analytics"
-                                        element={
-                                            <PrivateRoute>
-                                                <ThesisOnlyPage />
-                                            </PrivateRoute>
-                                        }
-                                    />
-                                    <Route
-                                        path="/help"
-                                        element={
-                                            <PrivateRoute>
-                                                <Help />
-                                            </PrivateRoute>
-                                        }
-                                    />
+                                        {/* Shared routes */}
+                                        <Route
+                                            path="/edit-profile"
+                                            element={
+                                                <PrivateRoute>
+                                                    <EditProfile />
+                                                </PrivateRoute>
+                                            }
+                                        />
+                                        <Route
+                                            path="/business-settings"
+                                            element={
+                                                <PrivateRoute>
+                                                    <ThesisOnlyPage />
+                                                </PrivateRoute>
+                                            }
+                                        />
+                                        <Route
+                                            path="/sales-analytics"
+                                            element={
+                                                <PrivateRoute>
+                                                    <ThesisOnlyPage />
+                                                </PrivateRoute>
+                                            }
+                                        />
+                                        <Route
+                                            path="/help"
+                                            element={
+                                                <PrivateRoute>
+                                                    <Help />
+                                                </PrivateRoute>
+                                            }
+                                        />
                                     </Route>
                                 </Routes>
                             </Router>
