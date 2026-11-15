@@ -45,3 +45,21 @@ test("audit(refresh): App.jsx caches role and prevents infinite loading lockup o
         "RoleGuard must not render infinite unstyled spinner when userRole is resolving"
     );
 });
+
+test("audit(deadlock-prevention): onAuthStateChange does not contain async DB calls and initAuth has timeout race", () => {
+    const content = fs.readFileSync(APP_PATH, "utf-8");
+
+    // onAuthStateChange must be synchronous to avoid Supabase SDK internal lock deadlock
+    assert.match(
+        content,
+        /supabase\.auth\.onAuthStateChange\(\s*\((?:event,\s*session)\)\s*=>/,
+        "onAuthStateChange must NOT be an async callback that deadlocks client initialization"
+    );
+
+    // initAuth must use Promise.race with a timeout
+    assert.match(
+        content,
+        /Promise\.race\(\[\s*supabase\.auth\.getSession\(\),\s*sessionTimeout,?\s*\]\)/,
+        "initAuth must race getSession against a timeout to guarantee loading terminates"
+    );
+});

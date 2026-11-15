@@ -205,13 +205,23 @@ function App() {
     useEffect(() => {
         let mounted = true;
 
-        // Get initial session
+        // Get initial session with a safety timeout to prevent infinite splash screen lockup
         const initAuth = async () => {
             try {
-                const { data: { session } } = await supabase.auth.getSession();
+                const sessionTimeout = new Promise((_, reject) =>
+                    setTimeout(
+                        () => reject(new Error("Auth session timeout")),
+                        3500
+                    )
+                );
+                const sessionResult = await Promise.race([
+                    supabase.auth.getSession(),
+                    sessionTimeout,
+                ]);
+
                 if (!mounted) return;
 
-                const sessionUser = session?.user || null;
+                const sessionUser = sessionResult?.data?.session?.user || null;
                 setUser(sessionUser);
 
                 if (sessionUser) {
@@ -220,10 +230,17 @@ function App() {
                     setUserRole(null);
                 }
             } catch (error) {
-                console.error("Error during initial auth check:", error);
+                console.error(
+                    "Error or timeout during initial auth check:",
+                    error
+                );
                 if (mounted) {
-                    setUser(null);
-                    setUserRole(null);
+                    // Safe fallback so the user is never stuck on the loading screen
+                    const cachedRole =
+                        Number(localStorage.getItem("agrilink_role")) || null;
+                    if (cachedRole) {
+                        setUserRole(cachedRole);
+                    }
                 }
             } finally {
                 if (mounted) {
@@ -235,15 +252,25 @@ function App() {
 
         initAuth();
 
-        // Listen for auth changes
+        // Listen for auth changes (synchronous handler: NEVER call async Supabase DB queries inside to prevent deadlock)
         const {
             data: { subscription },
-        } = supabase.auth.onAuthStateChange(async (event, session) => {
+        } = supabase.auth.onAuthStateChange((event, session) => {
             if (!mounted) return;
             const sessionUser = session?.user || null;
 
-            // Skip unnecessary re-renders on USER_UPDATED (password change, etc.)
-            // Only update user state on SIGN_IN, SIGN_UP, TOKEN_REFRESHED, etc.
+            if (event === "SIGNED_OUT" || !sessionUser) {
+                try {
+                    localStorage.removeItem("agrilink_role");
+                } catch {}
+                setUser(null);
+                setUserRole(null);
+                setLoading(false);
+                setAuthInitialized(true);
+                return;
+            }
+
+            // Update user state if changed
             if (event !== "USER_UPDATED") {
                 setUser((prevUser) => {
                     if (
@@ -251,23 +278,17 @@ function App() {
                     ) {
                         return sessionUser;
                     }
-                    return prevUser; // no change, no re-render
+                    return prevUser;
                 });
             }
 
-            if (sessionUser) {
-                await fetchUserRole(sessionUser.id, sessionUser);
-                if (mounted) {
-                    setLoading(false);
-                    setAuthInitialized(true);
-                }
-            } else {
-                try {
-                    localStorage.removeItem("agrilink_role");
-                } catch {}
-                setUserRole(null);
-                setLoading(false);
-                setAuthInitialized(true);
+            // On sign in, defer fetchUserRole to the next tick so it never blocks the auth lock
+            if (event === "SIGNED_IN") {
+                setTimeout(() => {
+                    if (mounted && sessionUser) {
+                        fetchUserRole(sessionUser.id, sessionUser);
+                    }
+                }, 0);
             }
         });
 
