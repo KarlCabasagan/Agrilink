@@ -155,7 +155,7 @@ function NavigationBar({ isRootPersistent = false }) {
                             <Link
                                 key={item.path}
                                 to={item.path}
-                                className={`relative flex items-center gap-2 px-3.5 py-2 rounded-lg text-sm font-medium transition-all duration-150 ${
+                                className={`relative flex items-center gap-2 px-3.5 py-2 rounded-lg text-sm font-medium active:scale-[0.98] transition-transform duration-100 ${
                                     isActive(item.path)
                                         ? "bg-emerald-50 text-emerald-800 shadow-xs"
                                         : "text-slate-600 hover:text-emerald-800 hover:bg-slate-50"
@@ -183,7 +183,7 @@ function NavigationBar({ isRootPersistent = false }) {
                     <div className="flex items-center gap-2">
                         <Link
                             to="/cart"
-                            className={`relative min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg transition-all duration-150 ${
+                            className={`relative min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg active:scale-95 transition-transform duration-100 ${
                                 isActive("/cart")
                                     ? "bg-emerald-50 text-emerald-800"
                                     : "text-slate-700 hover:text-emerald-800 hover:bg-slate-50"
@@ -204,7 +204,7 @@ function NavigationBar({ isRootPersistent = false }) {
 
                         <Link
                             to="/profile"
-                            className={`relative min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg transition-all duration-150 ${
+                            className={`relative min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg active:scale-95 transition-transform duration-100 ${
                                 isActive("/profile")
                                     ? "bg-emerald-50 text-emerald-800"
                                     : "text-slate-700 hover:text-emerald-800 hover:bg-slate-50"
@@ -232,7 +232,7 @@ function NavigationBar({ isRootPersistent = false }) {
                 <div className="flex justify-around items-center py-2 px-3 max-w-lg mx-auto">
                     <Link
                         to="/"
-                        className={`flex flex-col items-center min-w-[54px] min-h-[44px] py-1.5 px-3 rounded-xl transition-colors duration-150 ${
+                        className={`flex flex-col items-center min-w-[54px] min-h-[44px] py-1.5 px-3 rounded-xl active:scale-95 transition-transform duration-100 ${
                             isActive("/")
                                 ? "bg-emerald-700 text-white shadow-xs"
                                 : "text-slate-600 hover:text-emerald-800 hover:bg-slate-100/70"
@@ -248,7 +248,7 @@ function NavigationBar({ isRootPersistent = false }) {
 
                     <Link
                         to="/favorites"
-                        className={`flex flex-col items-center min-w-[54px] min-h-[44px] py-1.5 px-3 rounded-xl transition-colors duration-150 ${
+                        className={`flex flex-col items-center min-w-[54px] min-h-[44px] py-1.5 px-3 rounded-xl active:scale-95 transition-transform duration-100 ${
                             isActive("/favorites")
                                 ? "bg-emerald-700 text-white shadow-xs"
                                 : "text-slate-600 hover:text-emerald-800 hover:bg-slate-100/70"
@@ -264,7 +264,7 @@ function NavigationBar({ isRootPersistent = false }) {
 
                     <Link
                         to="/cart"
-                        className={`flex flex-col items-center min-w-[54px] min-h-[44px] py-1.5 px-3 rounded-xl transition-colors duration-150 relative ${
+                        className={`flex flex-col items-center min-w-[54px] min-h-[44px] py-1.5 px-3 rounded-xl active:scale-95 transition-transform duration-100 relative ${
                             isActive("/cart")
                                 ? "bg-emerald-700 text-white shadow-xs"
                                 : "text-slate-600 hover:text-emerald-800 hover:bg-slate-100/70"
@@ -285,7 +285,7 @@ function NavigationBar({ isRootPersistent = false }) {
 
                     <Link
                         to="/messages"
-                        className={`flex flex-col items-center min-w-[54px] min-h-[44px] py-1.5 px-3 rounded-xl transition-colors duration-150 relative ${
+                        className={`flex flex-col items-center min-w-[54px] min-h-[44px] py-1.5 px-3 rounded-xl active:scale-95 transition-transform duration-100 relative ${
                             isActive("/messages")
                                 ? "bg-emerald-700 text-white shadow-xs"
                                 : "text-slate-600 hover:text-emerald-800 hover:bg-slate-100/70"
@@ -306,7 +306,7 @@ function NavigationBar({ isRootPersistent = false }) {
 
                     <Link
                         to="/profile"
-                        className={`flex flex-col items-center min-w-[54px] min-h-[44px] py-1.5 px-3 rounded-xl transition-colors duration-150 relative ${
+                        className={`flex flex-col items-center min-w-[54px] min-h-[44px] py-1.5 px-3 rounded-xl active:scale-95 transition-transform duration-100 relative ${
                             isActive("/profile")
                                 ? "bg-emerald-700 text-white shadow-xs"
                                 : "text-slate-600 hover:text-emerald-800 hover:bg-slate-100/70"
