@@ -1138,14 +1138,17 @@ function ProducerProduct() {
 
     if (loading) {
         return (
-            <div className="min-h-screen w-full flex flex-col relative items-center bg-slate-50/50 text-slate-800 overflow-x-hidden">
+            <div className="min-h-screen w-full flex flex-col justify-between bg-slate-50/50 text-slate-800 pt-16 md:pt-20 pb-24 md:pb-16">
                 <header className="md:hidden fixed top-0 left-0 w-full bg-white/95 backdrop-blur-md border-b border-slate-200 z-40 px-4 h-14 flex items-center justify-center">
                     <h1 className="text-base font-bold text-slate-900 tracking-tight">
                         Product Details
                     </h1>
                 </header>
-                <div className="flex justify-center items-center h-screen pt-14 md:pt-16">
-                    <div className="w-10 h-10 border-2 border-emerald-600 border-t-transparent rounded-full animate-spin"></div>
+                <div className="flex-1 flex flex-col justify-center items-center p-8">
+                    <div className="w-10 h-10 border-2 border-emerald-600 border-t-transparent rounded-full animate-spin mb-3"></div>
+                    <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+                        Loading product…
+                    </p>
                 </div>
                 <ProducerNavigationBar />
             </div>
