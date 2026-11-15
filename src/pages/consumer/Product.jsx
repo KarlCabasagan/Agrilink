@@ -892,22 +892,29 @@ function Product() {
 
     if (loading) {
         return (
-            <div className="min-h-screen w-full flex items-center justify-center bg-slate-50">
-                <div className="w-12 h-12 rounded-full border-3 border-emerald-800 border-t-transparent animate-spin" />
+            <div className="min-h-screen w-full flex flex-col justify-between bg-slate-50 pt-16 md:pt-20 pb-24 md:pb-16">
+                <div className="flex-1 flex flex-col items-center justify-center p-8">
+                    <div className="w-10 h-10 rounded-full border-2 border-emerald-800 border-t-transparent animate-spin mb-3" />
+                    <span className="text-xs font-medium text-slate-500 uppercase tracking-wider">Loading product details…</span>
+                </div>
+                <NavigationBar />
             </div>
         );
     }
 
     if (!product) {
         return (
-            <div className="min-h-screen w-full flex flex-col items-center justify-center bg-slate-50 px-4">
-                <StateView
-                    type="empty"
-                    title="Product Not Found"
-                    description="This crop listing might have been removed or is temporarily unavailable."
-                    actionText="Back to Marketplace"
-                    onAction={() => navigate("/")}
-                />
+            <div className="min-h-screen w-full flex flex-col justify-between bg-slate-50 pt-16 md:pt-20 pb-24 md:pb-16 px-4">
+                <div className="flex-1 flex items-center justify-center">
+                    <StateView
+                        type="empty"
+                        title="Product Not Found"
+                        description="This crop listing might have been removed or is temporarily unavailable."
+                        actionText="Back to Marketplace"
+                        onAction={() => navigate("/")}
+                    />
+                </div>
+                <NavigationBar />
             </div>
         );
     }
