@@ -317,37 +317,58 @@ function AdminProductReviews() {
 
     if (isLoading) {
         return (
-            <div className="min-h-screen w-full flex items-center justify-center bg-slate-50/50">
-                <div className="text-center p-6">
+            <div className="min-h-screen w-full flex flex-col justify-between bg-slate-50/50 pt-16 md:pt-20 pb-24 md:pb-16">
+                <header className="md:hidden fixed top-0 left-0 w-full bg-white/95 backdrop-blur-md border-b border-slate-200 z-40 px-4 h-14 flex items-center justify-center">
+                    <h1 className="text-base font-bold text-slate-900 tracking-tight">
+                        Product Reviews
+                    </h1>
+                </header>
+                <div className="flex-1 flex flex-col items-center justify-center p-6 text-center">
                     <Icon
                         icon="mingcute:loading-fill"
                         className="animate-spin text-emerald-600 mx-auto mb-3"
-                        width="40"
-                        height="40"
+                        width="36"
+                        height="36"
                     />
                     <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">
                         Loading product reviews…
                     </p>
                 </div>
+                <AdminNavigationBar />
             </div>
         );
     }
 
     if (error) {
         return (
-            <div className="min-h-screen w-full flex items-center justify-center bg-slate-50/50 p-4">
-                <div className="text-center max-w-md w-full bg-white rounded-2xl border border-slate-200/90 shadow-2xs p-6 sm:p-8">
-                    <div className="w-12 h-12 rounded-2xl bg-rose-50 text-rose-600 flex items-center justify-center mx-auto mb-4">
-                        <Icon
-                            icon="mingcute:alert-line"
-                            width="26"
-                            height="26"
-                        />
+            <div className="min-h-screen w-full flex flex-col justify-between bg-slate-50/50 pt-16 md:pt-20 pb-24 md:pb-16 p-4">
+                <div className="flex-1 flex items-center justify-center">
+                    <div className="text-center max-w-md w-full bg-white rounded-2xl border border-slate-200/90 shadow-2xs p-6 sm:p-8">
+                        <div className="w-12 h-12 rounded-2xl bg-rose-50 text-rose-600 flex items-center justify-center mx-auto mb-4">
+                            <Icon
+                                icon="mingcute:alert-line"
+                                width="26"
+                                height="26"
+                            />
+                        </div>
+                        <h2 className="text-base font-bold text-slate-900 mb-1.5">
+                            Error Loading Reviews
+                        </h2>
+                        <p className="text-xs text-slate-500 mb-5 leading-relaxed max-w-prose">
+                            {error}
+                        </p>
+                        <button
+                            onClick={() => window.location.reload()}
+                            className="min-h-[44px] px-6 py-2.5 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-semibold active:scale-95 transition-all duration-150"
+                        >
+                            Retry
+                        </button>
                     </div>
-                    <h2 className="text-base font-bold text-slate-900 mb-1.5">
-                        Error Loading Reviews
-                    </h2>
-                    <p className="text-xs text-slate-500 mb-5 leading-relaxed max-w-prose">
+                </div>
+                <AdminNavigationBar />
+            </div>
+        );
+    }
                         {error}
                     </p>
                     <button
