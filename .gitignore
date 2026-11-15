@@ -33,3 +33,10 @@ graphify/
 graphify-out/
 *.graphify*
 
+# Local MCP and test fixtures
+.playwright-mcp/
+live_database_types.ts
+live_schema.sql
+storage_policies_manual.txt
+
+
