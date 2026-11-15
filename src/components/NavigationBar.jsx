@@ -127,7 +127,17 @@ function NavigationBar({ isRootPersistent = false }) {
         const current = location.pathname.replace(/\/+$/, "") || "/";
         const target = path.replace(/\/+$/, "") || "/";
         if (target === "/") {
-            return current === "/";
+            return current === "/" || current.startsWith("/product/");
+        }
+        if (target === "/cart") {
+            return current === "/cart" || current.startsWith("/checkout");
+        }
+        if (target === "/profile") {
+            return (
+                current === "/profile" ||
+                current.startsWith("/edit-profile") ||
+                current.startsWith("/seller-application")
+            );
         }
         return current === target || current.startsWith(`${target}/`);
     };
