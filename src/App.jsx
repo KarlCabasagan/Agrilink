@@ -308,16 +308,23 @@ function App() {
 
     const isVerified = user && (user.email_confirmed_at || user.confirmed_at);
 
-    const PrivateRoute = ({ children }) =>
-        user && isVerified ? (
+    const PrivateRoute = ({ children }) => {
+        if (!authInitialized || loading) {
+            return null;
+        }
+        return user && isVerified ? (
             children
         ) : user && !isVerified ? (
             <Navigate to="/verify-account" replace />
         ) : (
             <Navigate to="/login" replace />
         );
+    };
 
     const AuthRoute = ({ children, allowUnverified = false }) => {
+        if (!authInitialized || loading) {
+            return null;
+        }
         if (!user) return children;
         if (allowUnverified && !isVerified) return children;
         return <Navigate to="/" replace />;
