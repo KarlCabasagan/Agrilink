@@ -75,11 +75,19 @@ function FarmingGuides() {
 
     if (loading) {
         return (
-            <div className="min-h-screen w-full flex items-center justify-center bg-background">
-                <div className="text-center">
-                    <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-primary mx-auto mb-4"></div>
-                    <p className="text-gray-600">Loading farming guides...</p>
+            <div className="min-h-screen w-full flex flex-col justify-between bg-slate-50/50 text-slate-800 pt-16 md:pt-20 pb-24 md:pb-16">
+                <header className="md:hidden fixed top-0 left-0 w-full bg-white/95 backdrop-blur-md border-b border-slate-200 z-40 px-4 h-14 flex items-center justify-center">
+                    <h1 className="text-base font-bold text-slate-900 tracking-tight">
+                        Farming Guides
+                    </h1>
+                </header>
+                <div className="flex-1 flex flex-col items-center justify-center p-8">
+                    <div className="w-10 h-10 rounded-full border-2 border-emerald-700 border-t-transparent animate-spin mb-3" />
+                    <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+                        Loading farming guides…
+                    </p>
                 </div>
+                <ProducerNavigationBar />
             </div>
         );
     }
