@@ -25,6 +25,7 @@ function NavigationBar({ isRootPersistent = false }) {
     // Check for orders with status_id 6 and subscribe to real-time changes
     useEffect(() => {
         if (!user?.id) return;
+        let mounted = true;
 
         const checkOrderStatus = async () => {
             try {
@@ -35,10 +36,12 @@ function NavigationBar({ isRootPersistent = false }) {
                     .eq("status_id", 6)
                     .limit(1);
 
-                if (!error && data && data.length > 0) {
-                    setHasOrdersWithStatus6(true);
-                } else {
-                    setHasOrdersWithStatus6(false);
+                if (mounted) {
+                    if (!error && data && data.length > 0) {
+                        setHasOrdersWithStatus6(true);
+                    } else {
+                        setHasOrdersWithStatus6(false);
+                    }
                 }
             } catch (error) {
                 console.error("Error checking order status:", error);
@@ -57,11 +60,14 @@ function NavigationBar({ isRootPersistent = false }) {
                     table: "orders",
                     filter: `user_id=eq.${user.id}`,
                 },
-                () => checkOrderStatus()
+                () => {
+                    if (mounted) checkOrderStatus();
+                }
             )
             .subscribe();
 
         return () => {
+            mounted = false;
             channel.unsubscribe();
         };
     }, [user?.id]);
@@ -69,6 +75,7 @@ function NavigationBar({ isRootPersistent = false }) {
     // Check for seller application rejection and subscribe to real-time changes
     useEffect(() => {
         if (!user?.id) return;
+        let mounted = true;
 
         const checkSellerRejection = async () => {
             try {
@@ -79,10 +86,12 @@ function NavigationBar({ isRootPersistent = false }) {
                     .not("rejection_reason", "is", null)
                     .limit(1);
 
-                if (!error && data && data.length > 0) {
-                    setHasSellerRejection(true);
-                } else {
-                    setHasSellerRejection(false);
+                if (mounted) {
+                    if (!error && data && data.length > 0) {
+                        setHasSellerRejection(true);
+                    } else {
+                        setHasSellerRejection(false);
+                    }
                 }
             } catch (error) {
                 console.error("Error checking seller rejection:", error);
@@ -101,11 +110,14 @@ function NavigationBar({ isRootPersistent = false }) {
                     table: "seller_applications",
                     filter: `user_id=eq.${user.id}`,
                 },
-                () => checkSellerRejection()
+                () => {
+                    if (mounted) checkSellerRejection();
+                }
             )
             .subscribe();
 
         return () => {
+            mounted = false;
             channel.unsubscribe();
         };
     }, [user?.id]);
