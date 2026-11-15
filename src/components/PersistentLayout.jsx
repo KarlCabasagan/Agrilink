@@ -1,5 +1,5 @@
-import { useContext } from "react";
-import { Outlet } from "react-router-dom";
+import { useContext, useEffect } from "react";
+import { Outlet, useLocation } from "react-router-dom";
 import { AuthContext } from "../context/AuthContext.jsx";
 import { NavigationLayoutContext } from "../context/NavigationLayoutContext.jsx";
 import NavigationBar from "./NavigationBar.jsx";
@@ -9,6 +9,12 @@ import AdminNavigationBar from "./AdminNavigationBar.jsx";
 function PersistentLayout({ children, roleOverride }) {
     const { userRole } = useContext(AuthContext);
     const activeRole = roleOverride ?? userRole;
+    const location = useLocation();
+
+    // Scroll to top instantly on page navigation for consistent viewport clearance
+    useEffect(() => {
+        window.scrollTo(0, 0);
+    }, [location.pathname]);
 
     return (
         <NavigationLayoutContext.Provider value={{ isPersistentLayoutActive: true }}>
