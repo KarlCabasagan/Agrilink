@@ -3,9 +3,17 @@ import { Link, useLocation } from "react-router-dom";
 import { useContext } from "react";
 import { UnreadConversationsContext } from "../context/UnreadConversationsContext.jsx";
 import { ProducerOrderCountContext } from "../context/ProducerOrderCountContext.jsx";
+import { NavigationLayoutContext } from "../context/NavigationLayoutContext.jsx";
 import full_logo from "../assets/full_logo.png";
 
-function ProducerNavigationBar() {
+function ProducerNavigationBar({ isRootPersistent = false }) {
+    const { isPersistentLayoutActive } = useContext(NavigationLayoutContext);
+
+    // If persistent layout already manages this navigation bar, skip rendering inside child page
+    if (isPersistentLayoutActive && !isRootPersistent) {
+        return null;
+    }
+
     const location = useLocation();
     const { unreadConversationCount } = useContext(UnreadConversationsContext);
     const { pendingOrdersCount } = useContext(ProducerOrderCountContext);
