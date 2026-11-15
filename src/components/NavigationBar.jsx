@@ -111,7 +111,14 @@ function NavigationBar({ isRootPersistent = false }) {
     }, [user?.id]);
 
     const showProfileBadge = hasOrdersWithStatus6 || hasSellerRejection;
-    const isActive = (path) => location.pathname === path;
+    const isActive = (path) => {
+        const current = location.pathname.replace(/\/+$/, "") || "/";
+        const target = path.replace(/\/+$/, "") || "/";
+        if (target === "/") {
+            return current === "/";
+        }
+        return current === target || current.startsWith(`${target}/`);
+    };
 
     const navLinks = [
         { path: "/", label: "Home", icon: "mingcute:home-2-line", activeIcon: "mingcute:home-2-fill" },
