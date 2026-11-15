@@ -95,7 +95,7 @@ function ProducerNavigationBar({ isRootPersistent = false }) {
                                 <Link
                                     key={item.path}
                                     to={item.path}
-                                    className={`relative inline-flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold transition-all duration-150 min-h-[40px] ${
+                                    className={`relative inline-flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold active:scale-[0.98] transition-transform duration-100 min-h-[40px] ${
                                         active
                                             ? "bg-emerald-50 text-emerald-800"
                                             : "text-slate-600 hover:text-slate-900 hover:bg-slate-100/70"
@@ -127,7 +127,7 @@ function ProducerNavigationBar({ isRootPersistent = false }) {
                     <div className="flex items-center gap-2">
                         <Link
                             to="/profile"
-                            className={`relative min-w-[44px] min-h-[44px] flex items-center justify-center rounded-xl transition-all duration-150 ${
+                            className={`relative min-w-[44px] min-h-[44px] flex items-center justify-center rounded-xl active:scale-95 transition-transform duration-100 ${
                                 isActive("/profile")
                                     ? "bg-emerald-50 text-emerald-800"
                                     : "text-slate-700 hover:text-emerald-800 hover:bg-slate-100/70"
@@ -168,7 +168,7 @@ function ProducerNavigationBar({ isRootPersistent = false }) {
                             <Link
                                 key={item.path}
                                 to={item.path}
-                                className={`relative flex flex-col items-center justify-center min-w-[50px] min-h-[44px] py-1 px-2 rounded-xl transition-all duration-150 active:scale-95 ${
+                                className={`relative flex flex-col items-center justify-center min-w-[50px] min-h-[44px] py-1 px-2 rounded-xl transition-transform duration-100 active:scale-95 ${
                                     active
                                         ? "bg-emerald-700 text-white shadow-xs"
                                         : "text-slate-600 hover:text-emerald-800 hover:bg-slate-100/70"
