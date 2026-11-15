@@ -87,6 +87,7 @@ function App() {
     const [user, setUser] = useState(null);
     const [userRole, setUserRole] = useState(null);
     const [loading, setLoading] = useState(true);
+    const [authInitialized, setAuthInitialized] = useState(false);
 
     // Fetch user role from profiles table and handle deleted users
     const fetchUserRole = useCallback(async (userId, currentUser = null) => {
@@ -258,8 +259,9 @@ function App() {
             setUser,
             userRole,
             setUserRole,
+            authInitialized,
         }),
-        [user, userRole]
+        [user, userRole, authInitialized]
     );
 
     if (loading) {
