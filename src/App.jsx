@@ -546,39 +546,39 @@ function App() {
                                             }
                                         />
 
-                                    {/* Producer-only routes */}
-                                    <Route
-                                        path="/producer/product/:id"
-                                        element={
-                                            <RoleGuard allowedRoles={[2]}>
-                                                <ProducerProduct />
-                                            </RoleGuard>
-                                        }
-                                    />
-                                    <Route
-                                        path="/producer/orders"
-                                        element={
-                                            <RoleGuard allowedRoles={[2]}>
-                                                <ProducerOrders />
-                                            </RoleGuard>
-                                        }
-                                    />
-                                    <Route
-                                        path="/crop-recommendation"
-                                        element={
-                                            <RoleGuard allowedRoles={[2]}>
-                                                <CropRecommendation />
-                                            </RoleGuard>
-                                        }
-                                    />
-                                    <Route
-                                        path="/farming-guides"
-                                        element={
-                                            <RoleGuard allowedRoles={[2]}>
-                                                <FarmingGuides />
-                                            </RoleGuard>
-                                        }
-                                    />
+                                        {/* Producer-only routes */}
+                                        <Route
+                                            path="/producer/product/:id"
+                                            element={
+                                                <RoleGuard allowedRoles={[2]}>
+                                                    <ProducerProduct />
+                                                </RoleGuard>
+                                            }
+                                        />
+                                        <Route
+                                            path="/producer/orders"
+                                            element={
+                                                <RoleGuard allowedRoles={[2]}>
+                                                    <ProducerOrders />
+                                                </RoleGuard>
+                                            }
+                                        />
+                                        <Route
+                                            path="/crop-recommendation"
+                                            element={
+                                                <RoleGuard allowedRoles={[2]}>
+                                                    <CropRecommendation />
+                                                </RoleGuard>
+                                            }
+                                        />
+                                        <Route
+                                            path="/farming-guides"
+                                            element={
+                                                <RoleGuard allowedRoles={[2]}>
+                                                    <FarmingGuides />
+                                                </RoleGuard>
+                                            }
+                                        />
 
                                     {/* Admin-only routes */}
                                     <Route
