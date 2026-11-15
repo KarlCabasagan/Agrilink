@@ -176,23 +176,40 @@ function App() {
         let mounted = true;
 
         // Get initial session
-        supabase.auth.getSession().then(({ data: { session } }) => {
-            if (!mounted) return;
+        const initAuth = async () => {
+            try {
+                const { data: { session } } = await supabase.auth.getSession();
+                if (!mounted) return;
 
-            const sessionUser = session?.user || null;
-            setUser(sessionUser);
+                const sessionUser = session?.user || null;
+                setUser(sessionUser);
 
-            if (sessionUser) {
-                fetchUserRole(sessionUser.id, sessionUser);
-            } else {
-                setLoading(false);
+                if (sessionUser) {
+                    await fetchUserRole(sessionUser.id, sessionUser);
+                } else {
+                    setUserRole(null);
+                }
+            } catch (error) {
+                console.error("Error during initial auth check:", error);
+                if (mounted) {
+                    setUser(null);
+                    setUserRole(null);
+                }
+            } finally {
+                if (mounted) {
+                    setLoading(false);
+                    setAuthInitialized(true);
+                }
             }
-        });
+        };
+
+        initAuth();
 
         // Listen for auth changes
         const {
             data: { subscription },
-        } = supabase.auth.onAuthStateChange((event, session) => {
+        } = supabase.auth.onAuthStateChange(async (event, session) => {
+            if (!mounted) return;
             const sessionUser = session?.user || null;
 
             // Skip unnecessary re-renders on USER_UPDATED (password change, etc.)
@@ -209,10 +226,15 @@ function App() {
             }
 
             if (sessionUser) {
-                fetchUserRole(sessionUser.id, sessionUser);
+                await fetchUserRole(sessionUser.id, sessionUser);
+                if (mounted) {
+                    setLoading(false);
+                    setAuthInitialized(true);
+                }
             } else {
                 setUserRole(null);
                 setLoading(false);
+                setAuthInitialized(true);
             }
         });
 
