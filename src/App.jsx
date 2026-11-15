@@ -264,8 +264,28 @@ function App() {
 
     if (loading) {
         return (
-            <div className="fixed inset-0 flex items-center justify-center bg-background">
-                <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-primary"></div>
+            <div className="fixed inset-0 flex flex-col items-center justify-center bg-slate-50 z-50 select-none">
+                <div className="flex flex-col items-center">
+                    <img
+                        src="/components/icon_logo.png"
+                        alt="AgriLink"
+                        className="w-14 h-14 object-contain animate-pulse mb-3"
+                    />
+                    <div className="flex flex-col items-center">
+                        <span className="font-bold text-xl text-emerald-800 tracking-tight">
+                            AgriLink
+                        </span>
+                        <span className="text-[11px] uppercase tracking-wider text-emerald-700/80 font-semibold mt-0.5">
+                            Direct From Farms
+                        </span>
+                    </div>
+                    <div className="mt-6 flex items-center gap-2">
+                        <div className="w-5 h-5 border-2 border-emerald-700 border-t-transparent rounded-full animate-spin" />
+                        <span className="text-xs font-medium text-slate-500">
+                            Loading your workspace…
+                        </span>
+                    </div>
+                </div>
             </div>
         );
     }
