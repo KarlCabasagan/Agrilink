@@ -4,9 +4,17 @@ import { useState, useEffect, useContext } from "react";
 import { AuthContext } from "../context/AuthContext.jsx";
 import { CartCountContext } from "../context/CartCountContext.jsx";
 import { UnreadConversationsContext } from "../context/UnreadConversationsContext.jsx";
+import { NavigationLayoutContext } from "../context/NavigationLayoutContext.jsx";
 import supabase from "../SupabaseClient.jsx";
 
-function NavigationBar() {
+function NavigationBar({ isRootPersistent = false }) {
+    const { isPersistentLayoutActive } = useContext(NavigationLayoutContext);
+
+    // If persistent layout already manages this navigation bar, skip rendering inside child page
+    if (isPersistentLayoutActive && !isRootPersistent) {
+        return null;
+    }
+
     const location = useLocation();
     const { user } = useContext(AuthContext);
     const { cartCount } = useContext(CartCountContext);
