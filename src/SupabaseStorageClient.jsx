@@ -3,8 +3,9 @@
 // VITE_SUPABASE_SERVICE_ROLE_KEY=your_service_role_key_here
 
 import { createClient } from "@supabase/supabase-js";
+import { getSupabaseConfig } from "./utils/supabaseConfig.js";
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+const { supabaseUrl } = getSupabaseConfig();
 const supabaseServiceKey = import.meta.env.VITE_SUPABASE_SERVICE_ROLE_KEY;
 
 // Create a client with service role for storage operations
