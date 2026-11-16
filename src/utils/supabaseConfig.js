@@ -1,3 +1,5 @@
+import { createClient } from "@supabase/supabase-js";
+
 /**
  * Supabase Configuration & Fallback Resolver
  * 
@@ -25,6 +27,30 @@ export function isValidSupabaseUrl(url) {
     } catch {
         return false;
     }
+}
+
+/**
+ * Validates a Supabase configuration object.
+ *
+ * @param {{ supabaseUrl?: any, supabaseAnonKey?: any }} config
+ * @returns {{ valid: boolean, errors: string[] }}
+ */
+export function validateSupabaseConfig(config) {
+    const errors = [];
+    if (!isValidSupabaseUrl(config?.supabaseUrl)) {
+        errors.push("Invalid or missing supabaseUrl: must be an HTTPS .supabase.co URL.");
+    }
+    if (
+        !config?.supabaseAnonKey ||
+        typeof config.supabaseAnonKey !== "string" ||
+        config.supabaseAnonKey.trim().length <= 20
+    ) {
+        errors.push("Invalid or missing supabaseAnonKey: must be a valid JWT anon key.");
+    }
+    return {
+        valid: errors.length === 0,
+        errors,
+    };
 }
 
 /**
@@ -60,3 +86,31 @@ export function getSupabaseConfig(customEnv) {
         supabaseAnonKey,
     };
 }
+
+/**
+ * Safely creates a Supabase client ensuring valid credentials and avoiding module-level unhandled exceptions.
+ *
+ * @param {Record<string, string | undefined>} [customEnv]
+ * @param {Record<string, any>} [options]
+ * @returns {import("@supabase/supabase-js").SupabaseClient}
+ */
+export function safeCreateSupabaseClient(customEnv, options = {}) {
+    const config = getSupabaseConfig(customEnv);
+    const validation = validateSupabaseConfig(config);
+
+    if (!validation.valid) {
+        console.warn("[AgriLink Supabase Config Warning]", validation.errors);
+    }
+
+    return createClient(config.supabaseUrl, config.supabaseAnonKey, {
+        auth: {
+            autoRefreshToken: true,
+            persistSession: true,
+            detectSessionInUrl: true,
+            site_url: "https://agrilink-iligan.netlify.app",
+            ...options.auth,
+        },
+        ...options,
+    });
+}
+

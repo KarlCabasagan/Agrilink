@@ -49,3 +49,32 @@ test("isValidSupabaseUrl: validates protocol and Supabase hostname structure", a
     assert.equal(isValidSupabaseUrl("https://evil.com"), false);
 });
 
+test("validateSupabaseConfig: checks completeness and reports descriptive status", async () => {
+    const { validateSupabaseConfig } = await import("../src/utils/supabaseConfig.js");
+
+    const valid = validateSupabaseConfig({
+        supabaseUrl: "https://bybfwdsuftlwsqflmhng.supabase.co",
+        supabaseAnonKey: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.12345678901234567890",
+    });
+    assert.equal(valid.valid, true);
+    assert.equal(valid.errors.length, 0);
+
+    const invalid = validateSupabaseConfig({
+        supabaseUrl: "invalid-url",
+        supabaseAnonKey: "short",
+    });
+    assert.equal(invalid.valid, false);
+    assert.ok(invalid.errors.length >= 2);
+});
+
+test("safeCreateSupabaseClient: creates client with fallback and catches missing params safely", async () => {
+    const { safeCreateSupabaseClient } = await import("../src/utils/supabaseConfig.js");
+
+    // Even if empty object is provided, safeCreateSupabaseClient returns a valid Supabase client instance
+    const client = safeCreateSupabaseClient({});
+    assert.ok(client, "Must return an initialized Supabase client");
+    assert.ok(typeof client.from === "function", "Client must expose .from query builder");
+    assert.ok(typeof client.auth === "function" || typeof client.auth === "object", "Client must expose auth");
+});
+
+
