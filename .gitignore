@@ -26,6 +26,7 @@ dist-ssr
 # Environments
 .env
 .env.*
+!.env.example
 .env.local
 
 # Graphify knowledge graph local artifacts (never track or commit to Git)
