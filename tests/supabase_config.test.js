@@ -32,3 +32,20 @@ test("getSupabaseConfig: resolves fallback credentials when env vars are missing
     assert.equal(customConfig.supabaseUrl, "https://custom-project.supabase.co");
     assert.equal(customConfig.supabaseAnonKey, "custom-anon-key-12345");
 });
+
+test("isValidSupabaseUrl: validates protocol and Supabase hostname structure", async () => {
+    const { isValidSupabaseUrl } = await import("../src/utils/supabaseConfig.js");
+
+    // Valid URLs
+    assert.equal(isValidSupabaseUrl("https://bybfwdsuftlwsqflmhng.supabase.co"), true);
+    assert.equal(isValidSupabaseUrl("https://my-project-123.supabase.co"), true);
+
+    // Invalid URLs
+    assert.equal(isValidSupabaseUrl(""), false);
+    assert.equal(isValidSupabaseUrl(null), false);
+    assert.equal(isValidSupabaseUrl(undefined), false);
+    assert.equal(isValidSupabaseUrl("http://insecure.supabase.co"), false);
+    assert.equal(isValidSupabaseUrl("not-a-url"), false);
+    assert.equal(isValidSupabaseUrl("https://evil.com"), false);
+});
+
