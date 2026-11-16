@@ -2,17 +2,15 @@
 // Add this to your .env file first:
 // VITE_SUPABASE_SERVICE_ROLE_KEY=your_service_role_key_here
 
-import { createClient } from "@supabase/supabase-js";
-import { getSupabaseConfig } from "./utils/supabaseConfig.js";
+import { safeCreateSupabaseClient } from "./utils/supabaseConfig.js";
 
-const { supabaseUrl } = getSupabaseConfig();
 const supabaseServiceKey = import.meta.env.VITE_SUPABASE_SERVICE_ROLE_KEY;
 
 // Create a client with service role for storage operations
 let supabaseStorage = null;
 
 if (supabaseServiceKey) {
-    supabaseStorage = createClient(supabaseUrl, supabaseServiceKey, {
+    supabaseStorage = safeCreateSupabaseClient(undefined, {
         auth: {
             autoRefreshToken: false,
             persistSession: false,
