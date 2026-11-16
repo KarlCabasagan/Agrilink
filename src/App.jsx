@@ -231,7 +231,7 @@ function App() {
                 }
             } catch (error) {
                 console.error(
-                    "Error or timeout during initial auth check:",
+                    "[AgriLink Auth] Initial session check error or timeout:",
                     error
                 );
                 if (mounted) {
