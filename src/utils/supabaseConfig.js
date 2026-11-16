@@ -10,6 +10,24 @@ export const DEFAULT_SUPABASE_ANON_KEY =
     "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJ5YmZ3ZHN1ZnRsd3NxZmxtaG5nIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY2NTAyOTAsImV4cCI6MjA3MjIyNjI5MH0.JyiEkPl3_0kmTnpsLYn0gtcFLjRAkxzf-xTAbBEW0eg";
 
 /**
+ * Validates that a string is a valid HTTPS Supabase project URL.
+ *
+ * @param {any} url
+ * @returns {boolean}
+ */
+export function isValidSupabaseUrl(url) {
+    if (!url || typeof url !== "string") return false;
+    const trimmed = url.trim();
+    if (!trimmed.startsWith("https://")) return false;
+    try {
+        const parsed = new URL(trimmed);
+        return parsed.hostname.endsWith(".supabase.co") && parsed.protocol === "https:";
+    } catch {
+        return false;
+    }
+}
+
+/**
  * Resolves Supabase URL and Anon Key with resilient fallbacks.
  *
  * @param {Record<string, string | undefined>} [customEnv] Optional override env object (useful for tests)
@@ -29,11 +47,11 @@ export function getSupabaseConfig(customEnv) {
         }
     }
 
-    const supabaseUrl = (envUrl && typeof envUrl === "string" && envUrl.trim().length > 0)
+    const supabaseUrl = isValidSupabaseUrl(envUrl)
         ? envUrl.trim()
         : DEFAULT_SUPABASE_URL;
 
-    const supabaseAnonKey = (envAnonKey && typeof envAnonKey === "string" && envAnonKey.trim().length > 0)
+    const supabaseAnonKey = (envAnonKey && typeof envAnonKey === "string" && envAnonKey.trim().length > 20)
         ? envAnonKey.trim()
         : DEFAULT_SUPABASE_ANON_KEY;
 
