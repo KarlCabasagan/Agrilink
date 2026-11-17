@@ -96,6 +96,7 @@ function App() {
     });
     const [loading, setLoading] = useState(true);
     const [authInitialized, setAuthInitialized] = useState(false);
+    const [logoLoaded, setLogoLoaded] = useState(false);
 
     // Fetch user role from profiles table and handle deleted users
     const fetchUserRole = useCallback(async (userId, currentUser = null) => {
@@ -336,11 +337,21 @@ function App() {
         return (
             <div className="fixed inset-0 flex flex-col items-center justify-center bg-slate-50 z-50 select-none">
                 <div className="flex flex-col items-center">
-                    <img
-                        src="/components/icon_logo.png"
-                        alt="AgriLink"
-                        className="w-14 h-14 object-contain animate-pulse mb-3"
-                    />
+                    <div className="w-14 h-14 mb-3 relative flex items-center justify-center">
+                        <img
+                            src="/components/icon_logo.png"
+                            alt="AgriLink"
+                            width="56"
+                            height="56"
+                            loading="eager"
+                            fetchPriority="high"
+                            decoding="async"
+                            onLoad={() => setLogoLoaded(true)}
+                            className={`w-14 h-14 object-contain animate-pulse transition-opacity duration-200 ${
+                                logoLoaded ? "opacity-100" : "opacity-0"
+                            }`}
+                        />
+                    </div>
                     <div className="flex flex-col items-center">
                         <span className="font-bold text-xl text-emerald-800 tracking-tight">
                             AgriLink
