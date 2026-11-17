@@ -4,6 +4,7 @@ import { Link } from "react-router-dom";
 import NavigationBar from "../../components/NavigationBar";
 import Modal from "../../components/Modal";
 import StateView from "../../components/StateView.jsx";
+import SafeImage from "../../components/SafeImage.jsx";
 import supabase from "../../SupabaseClient.jsx";
 import { AuthContext } from "../../context/AuthContext.jsx";
 import useUpdateLastLogin from "../../hooks/useUpdateLastLogin";
@@ -571,15 +572,11 @@ function Home() {
                             >
                                 {/* Image Container */}
                                 <div className="relative aspect-4/3 w-full bg-slate-100 overflow-hidden">
-                                    <img
+                                    <SafeImage
                                         src={product.image}
                                         alt={product.name}
                                         className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
-                                        loading="lazy"
-                                        onError={(e) => {
-                                            e.target.src =
-                                                "https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&q=80&w=400";
-                                        }}
+                                        fallbackSrc="https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&q=80&w=400"
                                     />
                                     {/* Category Pill */}
                                     <span className="absolute top-2 left-2 bg-white/90 backdrop-blur-xs text-emerald-800 text-[11px] font-semibold px-2 py-0.5 rounded-full border border-emerald-100/80 shadow-xs">

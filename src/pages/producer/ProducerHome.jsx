@@ -12,6 +12,7 @@ import { AuthContext } from "../../context/AuthContext.jsx";
 import ProducerNavigationBar from "../../components/ProducerNavigationBar";
 import ConfirmModal from "../../components/ConfirmModal";
 import ImageUpload from "../../components/ImageUpload";
+import SafeImage from "../../components/SafeImage";
 import { deleteImageFromUrl, uploadImage } from "../../utils/imageUpload";
 import supabase from "../../SupabaseClient.jsx";
 
@@ -2098,18 +2099,14 @@ function ProducerHome() {
                                         className="block flex-1"
                                     >
                                         <div className="relative">
-                                            <img
+                                            <SafeImage
                                                 src={
                                                     product.image ||
                                                     "/assets/gray-apple.png"
                                                 }
                                                 alt={product.name}
                                                 className="w-full h-36 sm:h-44 object-cover bg-slate-100"
-                                                loading="lazy"
-                                                onError={(e) => {
-                                                    e.target.src =
-                                                        "/assets/gray-apple.png";
-                                                }}
+                                                fallbackSrc="/assets/gray-apple.png"
                                             />
                                             {/* Status Badge */}
                                             {(() => {

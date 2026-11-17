@@ -6,6 +6,7 @@ import { AuthContext } from "../../context/AuthContext.jsx";
 import supabase from "../../SupabaseClient.jsx";
 import { getProfileAvatarUrl } from "../../utils/avatarUtils.js";
 import { StateView } from "../../components/StateView.jsx";
+import SafeImage from "../../components/SafeImage.jsx";
 
 function Profile() {
     const { user, setUser } = useContext(AuthContext);
@@ -273,13 +274,11 @@ function Profile() {
                                 {/* Avatar */}
                                 <div className="relative">
                                     <div className="w-24 h-24 rounded-2xl p-1 bg-white border border-slate-200/90 shadow-xs overflow-hidden">
-                                        <img
+                                        <SafeImage
                                             src={getProfileAvatarUrl(profile, user)}
                                             alt="Profile"
                                             className="w-full h-full rounded-xl object-cover"
-                                            onError={(e) => {
-                                                e.target.src = "https://ui-avatars.com/api/?name=User&background=047857&color=fff";
-                                            }}
+                                            fallbackSrc="https://ui-avatars.com/api/?name=User&background=047857&color=fff"
                                         />
                                     </div>
                                     <span className="absolute -bottom-1.5 -right-1.5 bg-emerald-600 text-white p-1 rounded-full shadow-xs" title="Verified Customer">

@@ -17,6 +17,7 @@ import { CartCountContext } from "../../context/CartCountContext.jsx";
 import { addToCart } from "../../utils/cartUtils.js";
 import { uploadImage, deleteImageFromUrl } from "../../utils/imageUpload.js";
 import { toast } from "react-hot-toast";
+import SafeImage from "../../components/SafeImage.jsx";
 
 // Helper for review images
 function ReviewImage({ src, alt, className }) {
@@ -962,10 +963,11 @@ function Product() {
                     <div className="lg:col-span-7 space-y-8">
                         {/* Hero Image Container with Aspect Ratio Lock */}
                         <div className="relative aspect-4/3 w-full bg-slate-100 rounded-3xl overflow-hidden border border-slate-200/80 shadow-xs">
-                            <img
+                            <SafeImage
                                 src={product.image}
                                 alt={product.name}
                                 className="w-full h-full object-cover"
+                                fallbackSrc="https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&q=80&w=400"
                             />
                             {/* Category Badge */}
                             <span className="absolute top-4 left-4 bg-white/95 backdrop-blur-md text-emerald-800 text-xs font-semibold px-3 py-1 rounded-full border border-emerald-100 shadow-xs">
