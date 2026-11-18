@@ -4,6 +4,7 @@ import { Link, useNavigate } from "react-router-dom";
 import NavigationBar from "../../components/NavigationBar";
 import Modal from "../../components/Modal";
 import StateView from "../../components/StateView";
+import SafeImage from "../../components/SafeImage.jsx";
 import supabase from "../../SupabaseClient.jsx";
 import { AuthContext } from "../../context/AuthContext.jsx";
 import { CartCountContext } from "../../context/CartCountContext.jsx";
@@ -505,10 +506,12 @@ function Cart() {
                                             {group.items.map((item) => (
                                                 <div key={item.cartItemId} className="p-4 sm:p-5 flex gap-4 items-center">
                                                     {/* Produce Image */}
-                                                    <img
+                                                    <SafeImage
                                                         src={item.image}
                                                         alt={item.name}
-                                                        className="w-20 h-20 rounded-2xl object-cover border border-slate-200 shrink-0"
+                                                        fallbackSrc="/assets/blank-profile.jpg"
+                                                        className="w-full h-full object-cover rounded-2xl"
+                                                        containerClassName="w-20 h-20 rounded-2xl shrink-0 border border-slate-200"
                                                     />
 
                                                     {/* Details & Controls */}

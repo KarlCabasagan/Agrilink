@@ -8,6 +8,7 @@ export default function SafeImage({
     fallbackSrc,
     loading = "lazy",
     fetchPriority = "auto",
+    style,
     ...props
 }) {
     const [loaded, setLoaded] = useState(false);
@@ -35,18 +36,24 @@ export default function SafeImage({
     const roundedMatch = className.match(/\brounded(?:-[^\s]+)?\b/);
     const roundedClass = roundedMatch ? roundedMatch[0] : "";
 
+    const transitionStyle = {
+        transition: "opacity 300ms cubic-bezier(0.16, 1, 0.3, 1)",
+        ...style,
+    };
+
     return (
         <div
             className={`relative overflow-hidden ${roundedClass} ${
                 containerClassName || "w-full h-full"
             }`}
         >
-            {!loaded && (
-                <div
-                    data-testid="safe-image-skeleton"
-                    className="absolute inset-0 bg-slate-200/80 animate-pulse pointer-events-none z-10"
-                />
-            )}
+            <div
+                data-testid="safe-image-skeleton"
+                className={`absolute inset-0 bg-slate-200/80 animate-pulse pointer-events-none z-10 transition-opacity duration-300 ease-out ${
+                    loaded ? "opacity-0" : "opacity-100"
+                }`}
+                style={{ transition: "opacity 300ms cubic-bezier(0.16, 1, 0.3, 1)" }}
+            />
             <img
                 ref={imgRef}
                 src={src}
@@ -56,9 +63,10 @@ export default function SafeImage({
                 fetchPriority={fetchPriority}
                 onLoad={() => setLoaded(true)}
                 onError={handleError}
-                className={`transition-opacity duration-200 ${
+                className={`transition-opacity duration-300 ease-out ${
                     loaded ? "opacity-100" : "opacity-0"
                 } ${className}`}
+                style={transitionStyle}
                 {...props}
             />
         </div>

@@ -4,6 +4,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { AuthContext } from "../../context/AuthContext.jsx";
 import ProducerNavigationBar from "../../components/ProducerNavigationBar";
 import ConfirmModal from "../../components/ConfirmModal";
+import SafeImage from "../../components/SafeImage.jsx";
 import { deleteImageFromUrl, uploadImage } from "../../utils/imageUpload";
 import supabase from "../../SupabaseClient.jsx";
 import { getReviewerAvatarUrl } from "../../utils/avatarUtils.js";
@@ -1605,16 +1606,15 @@ function ProducerProduct() {
                             </div>
                         ) : (
                             <div className="h-64 sm:h-80 bg-gray-200">
-                                <img
+                                <SafeImage
                                     src={
                                         product.image_url ||
                                         "/assets/gray-apple.png"
                                     }
                                     alt={product.name}
+                                    fallbackSrc="/assets/gray-apple.png"
                                     className="w-full h-full object-cover"
-                                    onError={(e) => {
-                                        e.target.src = "/assets/gray-apple.png";
-                                    }}
+                                    containerClassName="w-full h-full"
                                 />
                             </div>
                         )}

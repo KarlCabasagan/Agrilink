@@ -4,6 +4,7 @@ import { Link, useNavigate } from "react-router-dom";
 import NavigationBar from "../../components/NavigationBar";
 import ReviewModal from "../../components/ReviewModal";
 import StateView from "../../components/StateView.jsx";
+import SafeImage from "../../components/SafeImage.jsx";
 import supabase from "../../SupabaseClient";
 import { AuthContext } from "../../context/AuthContext.jsx";
 import { toast } from "react-hot-toast";
@@ -1700,7 +1701,7 @@ function Orders() {
                                                                                 <div className="flex gap-3 sm:gap-4">
                                                                                     {/* Product Image */}
                                                                                     <div className="shrink-0 w-16 h-16 sm:w-20 sm:h-20 rounded-xl overflow-hidden bg-slate-100 border border-slate-200/60">
-                                                                                        <img
+                                                                                        <SafeImage
                                                                                             src={
                                                                                                 item.image ||
                                                                                                 "/assets/blank-profile.jpg"
@@ -1708,13 +1709,9 @@ function Orders() {
                                                                                             alt={
                                                                                                 item.name
                                                                                             }
+                                                                                            fallbackSrc="/assets/blank-profile.jpg"
                                                                                             className="w-full h-full object-cover"
-                                                                                            onError={(
-                                                                                                e
-                                                                                            ) => {
-                                                                                                e.target.src =
-                                                                                                    "/assets/blank-profile.jpg";
-                                                                                            }}
+                                                                                            containerClassName="w-full h-full"
                                                                                         />
                                                                                     </div>
                                                                                     <div className="flex-1 min-w-0">
