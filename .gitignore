@@ -41,4 +41,8 @@ live_schema.sql
 storage_policies_manual.txt
 supabase/.temp/
 
+# Vibe coding local state
+.vibe-temp/
+.tmp/
+
 
