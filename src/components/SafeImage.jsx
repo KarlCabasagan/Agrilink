@@ -19,6 +19,8 @@ export default function SafeImage({
     useEffect(() => {
         if (imgRef.current && imgRef.current.complete && imgRef.current.naturalWidth > 0) {
             setLoaded(true);
+        } else {
+            setLoaded(false);
         }
     }, [src]);
 
@@ -41,6 +43,13 @@ export default function SafeImage({
         ...style,
     };
 
+    const skeletonStyle = {
+        transition: "opacity 300ms cubic-bezier(0.16, 1, 0.3, 1)",
+        animation: loaded
+            ? "none"
+            : "pulse 1.5s cubic-bezier(0.4, 0, 0.6, 1) 1 forwards",
+    };
+
     return (
         <div
             className={`relative overflow-hidden ${roundedClass} ${
@@ -49,10 +58,10 @@ export default function SafeImage({
         >
             <div
                 data-testid="safe-image-skeleton"
-                className={`absolute inset-0 bg-slate-200/80 animate-pulse pointer-events-none z-10 transition-opacity duration-300 ease-out ${
+                className={`absolute inset-0 bg-slate-200/80 pointer-events-none z-10 transition-opacity duration-300 ease-out ${
                     loaded ? "opacity-0" : "opacity-100"
                 }`}
-                style={{ transition: "opacity 300ms cubic-bezier(0.16, 1, 0.3, 1)" }}
+                style={skeletonStyle}
             />
             <img
                 ref={imgRef}

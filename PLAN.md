@@ -1,34 +1,23 @@
 ---
-PIPELINE: add-feature
+PIPELINE: fix-bug
 CURRENT_PHASE: 5
 STATUS: completed
 ---
 
-# Feature Execution Plan: Universal Smooth Fade-In Image Animations
+# Bug Fix Plan: Prevent Infinite Image Skeleton Pulsing & Ensure One-Time Fade-In
 
-## Objective
-Eliminate blank card flicker and abrupt image pop-in across consumer and producer product views by implementing universal smooth cross-fade transitions (`transition: opacity 300ms cubic-bezier(0.16, 1, 0.3, 1)`) and fading skeletons in `SafeImage`, and integrating `SafeImage` across remaining unmigrated product cards.
+## Symptom & Root Cause
+- **Symptom**: Images pulsing continuously across product and media cards.
+- **Root Cause**: `SafeImage.jsx` skeleton div had `animate-pulse` (`animation: pulse 2s infinite`). Keyframe CSS animations take cascade precedence over `opacity-0` and transition styles. Even after `loaded === true`, the `animate-pulse` keyframe continuously animated opacity (1 <-> 0.5) over the image at `z-10`, creating an infinite visual strobe/pulsing effect.
+- **Desired Behavior**: Skeleton displayed only once while image is loading; when image finishes loading, image fades in once (`opacity-0` -> `opacity-100` with 300ms cubic-bezier transition) and skeleton ceases pulsing / unmounts cleanly.
 
-## Target Files Mapped (Blast-Radius Recon)
-1. `src/components/SafeImage.jsx`: Core component providing skeleton pulse and cross-fade transition.
-2. `src/pages/consumer/Cart.jsx`: Cart item produce images currently using unstyled `<img>`.
-3. `src/pages/consumer/Orders.jsx`: Consumer order item produce cards currently using raw `<img>`.
-4. `src/pages/producer/ProducerProduct.jsx`: Producer product hero image currently using raw `<img>`.
-5. `tests/safe_image_audit.test.js`: Verification test suite asserting cross-fade transition and universal adoption.
+## Call Chain / Blast Radius
+- `src/components/SafeImage.jsx`
+- Tests: `tests/safe_image_audit.test.js`
+- Reproduction test: `tests/safe_image_pulse_fix.test.js`
 
-## Minimal-Diff Implementation Steps
-
-### Step 1: Smooth Cross-Fade Transitions in `SafeImage.jsx`
-- Retain skeleton in DOM during fade-out with `transition-opacity duration-300 ease-out` (`opacity-100` -> `opacity-0`, `pointer-events-none`).
-- Provide explicit inline style `transition: opacity 300ms cubic-bezier(0.16, 1, 0.3, 1)` to prevent caller utility classes (`transition-transform`) from clobbering the opacity transition property.
-- Support `ease-out` decelerating curve compliant with Emil Kowalski motion rules.
-
-### Step 2: Universal Card Adoption
-- **`src/pages/consumer/Cart.jsx`**: Import `SafeImage` and replace line 508 raw `<img>` with `<SafeImage>` inside `w-20 h-20 rounded-2xl shrink-0 border border-slate-200`.
-- **`src/pages/consumer/Orders.jsx`**: Import `SafeImage` and replace line 1703 raw `<img>` with `<SafeImage>` inside produce card thumbnails.
-- **`src/pages/producer/ProducerProduct.jsx`**: Import `SafeImage` and replace line 1608 raw `<img>` with `<SafeImage>` inside hero image container (`h-64 sm:h-80 bg-slate-100`).
-
-### Step 3: Test Verification in `tests/safe_image_audit.test.js`
-- Assert `SafeImage.jsx` contains skeleton fade-out transition and inline opacity transition safety.
-- Assert `Cart.jsx`, `Orders.jsx`, and `ProducerProduct.jsx` use `SafeImage` for product cards.
-- Run `npm test` to verify 100% green suite.
+## Verification
+- Reproduction test: `tests/safe_image_pulse_fix.test.js` PASSED.
+- Universal SafeImage audit: `tests/safe_image_audit.test.js` PASSED.
+- Full project test suite: 61/61 tests PASSED.
+- Production build: `npm run build` PASSED (9.75s).
